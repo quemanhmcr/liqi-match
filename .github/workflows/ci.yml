@@ -16,6 +16,7 @@ env:
 
 jobs:
   quality:
+    name: Quality checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
