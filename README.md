@@ -17,6 +17,14 @@ Install dependencies:
 npm install
 ```
 
+Enable repository Git hooks on this machine:
+
+```bash
+npm run prepare:git
+```
+
+The committed `pre-push` hook blocks accidental direct pushes to `main`. It is a local safety guard only; CI remains the source of truth.
+
 Create local env config:
 
 ```bash
