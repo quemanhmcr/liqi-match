@@ -14,15 +14,15 @@ type ExpoConfigWithNewArchitecture = ExpoConfig & {
 const variantConfig: Record<AppVariant, VariantConfig> = {
   development: {
     name: 'Liqi Match Dev',
-    applicationId: 'com.placeholder.liqimatch.dev',
+    applicationId: 'com.quemanhmcr.liqimatch.dev',
   },
   preview: {
     name: 'Liqi Match Preview',
-    applicationId: 'com.placeholder.liqimatch.preview',
+    applicationId: 'com.quemanhmcr.liqimatch.preview',
   },
   production: {
     name: 'Liqi Match',
-    applicationId: 'com.placeholder.liqimatch',
+    applicationId: 'com.quemanhmcr.liqimatch',
   },
 };
 
@@ -51,6 +51,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const resolvedConfig: ExpoConfigWithNewArchitecture = {
     ...config,
     name: selectedConfig.name,
+    owner: 'manhliqi',
     slug: 'liqimatch',
     scheme: 'liqimatch',
     version: '1.0.0',
@@ -60,14 +61,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     icon: './assets/images/icon.png',
     ios: {
       ...config.ios,
-      // TODO: Replace all placeholder application identifiers before the first store build.
-      // Application IDs cannot be chosen casually once the store app is created.
       bundleIdentifier: selectedConfig.applicationId,
     },
     android: {
       ...config.android,
-      // TODO: Replace all placeholder application identifiers before the first store build.
-      // Application IDs cannot be chosen casually once the store app is created.
       package: selectedConfig.applicationId,
       adaptiveIcon: {
         backgroundColor: '#F6F7F9',
@@ -100,6 +97,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       ...config.extra,
       appVariant: variant,
+      eas: {
+        projectId: '7ee062c0-f96d-4e09-9c94-794c49dd6e9c',
+      },
     },
   };
 
