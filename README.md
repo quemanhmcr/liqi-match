@@ -129,20 +129,28 @@ Continuous Native Generation is the policy for this repo:
 
 `APP_VARIANT` supports:
 
-- `development`: `Liqi Match Dev`, `com.placeholder.liqimatch.dev`
-- `preview`: `Liqi Match Preview`, `com.placeholder.liqimatch.preview`
-- `production`: `Liqi Match`, `com.placeholder.liqimatch`
+- `development`: `Liqi Match Dev`, `com.quemanhmcr.liqimatch.dev`
+- `preview`: `Liqi Match Preview`, `com.quemanhmcr.liqimatch.preview`
+- `production`: `Liqi Match`, `com.quemanhmcr.liqimatch`
 
-Bundle identifiers are placeholders. Replace all placeholder application identifiers before the first store build because store application IDs cannot be chosen casually after the app is created.
+Application identifiers are now set to the `com.quemanhmcr.liqimatch` namespace. Treat them as stable once any store app is created.
 
 ## EAS Status
 
-`eas.json` contains development, preview, and production profiles only. This task did not log in to EAS, create an Expo project ID, configure credentials, build in the cloud, submit to stores, or push a Git remote.
+`eas.json` contains development, preview, and production profiles. Development builds use `expo-dev-client` and internal distribution.
 
-After the official Expo organization exists, run:
+The project is linked to EAS as `@manhliqi/liqimatch`. The first Android development cloud build completed successfully:
+
+- Build ID: `642b7b8e-9f8d-4862-a899-f42e1f421360`
+- APK: `https://expo.dev/artifacts/eas/taOXNw1657xYe_EkDJZA3Jg4QDPIpRfEzW1ugLcOYTg.apk`
+
+Initial EAS setup commands:
 
 ```bash
 npx eas-cli@latest login
 npx eas-cli@latest init
 npx eas-cli@latest build:configure
+npx eas-cli@latest build --platform android --profile development
 ```
+
+Production store submission is intentionally out of scope for this stage.
