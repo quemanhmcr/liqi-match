@@ -139,6 +139,11 @@ Application identifiers are now set to the `com.quemanhmcr.liqimatch` namespace.
 
 `eas.json` contains development, preview, and production profiles. Development builds use `expo-dev-client` and internal distribution.
 
+The project is linked to EAS as `@manhliqi/liqimatch`. The first Android development cloud build completed successfully:
+
+- Build ID: `642b7b8e-9f8d-4862-a899-f42e1f421360`
+- APK: `https://expo.dev/artifacts/eas/taOXNw1657xYe_EkDJZA3Jg4QDPIpRfEzW1ugLcOYTg.apk`
+
 Initial EAS setup commands:
 
 ```bash
