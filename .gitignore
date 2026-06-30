@@ -6,6 +6,7 @@ node_modules/
 # Expo
 .expo/
 dist/
+coverage/
 web-build/
 expo-env.d.ts
 
@@ -25,12 +26,17 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+.emulator*.log
+.expo-web*.log
 
 # macOS
 .DS_Store
 *.pem
 
 # local env files
+.env
+.env.*
+!.env.example
 .env*.local
 
 # typescript
@@ -41,3 +47,5 @@ example
 # generated native folders
 /ios
 /android
+ios/
+android/

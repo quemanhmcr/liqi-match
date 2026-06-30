@@ -1,0 +1,11 @@
+node_modules/
+.expo/
+dist/
+coverage/
+ios/
+android/
+web-build/
+.env
+.env.*
+!.env.example
+package-lock.json
