@@ -15,6 +15,8 @@ module.exports = defineConfig([
       'ios/',
       'android/',
       'web-build/',
+      'cloudflare/media-worker/',
+      'supabase/functions/',
     ],
   },
 ]);

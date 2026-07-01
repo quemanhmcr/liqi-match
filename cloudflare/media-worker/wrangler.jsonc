@@ -1,0 +1,96 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "liqi-match-media-worker",
+  "account_id": "61ce3ad376bfdea32d1eebd1231e0617",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-07-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": {
+    "enabled": true,
+  },
+  "vars": {
+    "SUPABASE_URL": "http://127.0.0.1:54321",
+    "SUPABASE_JWT_JWKS_URL": "http://127.0.0.1:54321/auth/v1/.well-known/jwks.json",
+    "MEDIA_ENV": "local",
+  },
+  "r2_buckets": [
+    {
+      "binding": "R2_BUCKET",
+      "bucket_name": "liqi-match-media-local",
+    },
+  ],
+  "queues": {
+    "producers": [
+      {
+        "binding": "MEDIA_QUEUE",
+        "queue": "liqi-match-media-local",
+      },
+    ],
+    "consumers": [
+      {
+        "queue": "liqi-match-media-local",
+        "max_retries": 5,
+        "dead_letter_queue": "liqi-match-media-local-dlq",
+      },
+    ],
+  },
+  "env": {
+    "staging": {
+      "name": "liqi-match-media-worker-staging",
+      "vars": {
+        "MEDIA_ENV": "staging",
+        "SUPABASE_URL": "https://wngumhizuxtlhavbpxzy.supabase.co",
+        "SUPABASE_JWT_JWKS_URL": "https://wngumhizuxtlhavbpxzy.supabase.co/auth/v1/.well-known/jwks.json",
+      },
+      "r2_buckets": [
+        {
+          "binding": "R2_BUCKET",
+          "bucket_name": "liqi-match-media-staging",
+        },
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "MEDIA_QUEUE",
+            "queue": "liqi-match-media-staging",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "liqi-match-media-staging",
+            "max_retries": 5,
+            "dead_letter_queue": "liqi-match-media-staging-dlq",
+          },
+        ],
+      },
+    },
+    "production": {
+      "name": "liqi-match-media-worker",
+      "vars": {
+        "MEDIA_ENV": "production",
+      },
+      "r2_buckets": [
+        {
+          "binding": "R2_BUCKET",
+          "bucket_name": "liqi-match-media-production",
+        },
+      ],
+      "queues": {
+        "producers": [
+          {
+            "binding": "MEDIA_QUEUE",
+            "queue": "liqi-match-media-production",
+          },
+        ],
+        "consumers": [
+          {
+            "queue": "liqi-match-media-production",
+            "max_retries": 5,
+            "dead_letter_queue": "liqi-match-media-production-dlq",
+          },
+        ],
+      },
+    },
+  },
+}

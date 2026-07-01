@@ -57,6 +57,15 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "jest --watch",
-    "test:ci": "jest --runInBand --ci"
+    "test:ci": "jest --runInBand --ci",
+    "supabase:start": "supabase start",
+    "supabase:reset": "supabase db reset",
+    "supabase:lint": "supabase db lint",
+    "supabase:test": "supabase test db",
+    "supabase:types": "supabase gen types typescript --local > src/shared/types/database.types.ts",
+    "cloudflare:media:install": "npm --prefix cloudflare/media-worker ci",
+    "cloudflare:media:typecheck": "npm --prefix cloudflare/media-worker run typecheck",
+    "cloudflare:media:test": "npm --prefix cloudflare/media-worker test",
+    "cloudflare:media:dry-run": "npm --prefix cloudflare/media-worker run deploy:dry-run"
   }
 }
