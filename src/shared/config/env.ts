@@ -4,6 +4,15 @@ const publicEnvSchema = z.object({
   EXPO_PUBLIC_API_URL: z
     .string()
     .url('EXPO_PUBLIC_API_URL must be a valid URL.'),
+  EXPO_PUBLIC_SUPABASE_URL: z
+    .string()
+    .url('EXPO_PUBLIC_SUPABASE_URL must be a valid URL.'),
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z
+    .string()
+    .min(1, 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required.'),
+  EXPO_PUBLIC_MEDIA_BASE_URL: z
+    .string()
+    .url('EXPO_PUBLIC_MEDIA_BASE_URL must be a valid URL.'),
 });
 
 export type PublicEnv = Readonly<z.infer<typeof publicEnvSchema>>;

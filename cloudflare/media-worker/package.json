@@ -1,0 +1,19 @@
+{
+  "name": "@liqi-match/media-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy:dry-run": "wrangler deploy --dry-run",
+    "lint": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260624.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.0.0",
+    "wrangler": "^4.106.0"
+  }
+}

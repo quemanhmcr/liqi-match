@@ -13,6 +13,9 @@ concurrency:
 env:
   APP_VARIANT: development
   EXPO_PUBLIC_API_URL: http://localhost:3000
+  EXPO_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-publishable-key
+  EXPO_PUBLIC_MEDIA_BASE_URL: http://127.0.0.1:8787
 
 jobs:
   quality:
@@ -50,3 +53,70 @@ jobs:
 
       - name: Web export smoke test
         run: npx expo export --platform web
+
+  supabase:
+    name: Supabase checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: 2.109.0
+
+      - name: Start Supabase
+        run: supabase start
+
+      - name: Reset database
+        run: supabase db reset
+
+      - name: Lint database
+        run: supabase db lint
+
+      - name: Test database
+        run: supabase test db
+
+      - name: Generate database types
+        shell: bash
+        run: |
+          supabase gen types typescript --local > /tmp/database.types.ts
+          test -s /tmp/database.types.ts
+          grep -q "media_assets" /tmp/database.types.ts
+
+  media-worker:
+    name: Cloudflare media worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+          cache-dependency-path: cloudflare/media-worker/package-lock.json
+
+      - name: Install dependencies
+        working-directory: cloudflare/media-worker
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: cloudflare/media-worker
+        run: npm run typecheck
+
+      - name: Test
+        working-directory: cloudflare/media-worker
+        run: npm test
+
+      - name: Wrangler dry run
+        working-directory: cloudflare/media-worker
+        env:
+          SUPABASE_SERVICE_ROLE_KEY: dry-run-service-role-key
+        run: npm run deploy:dry-run

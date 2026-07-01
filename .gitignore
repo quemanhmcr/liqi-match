@@ -5,6 +5,8 @@ node_modules/
 
 # Expo
 .expo/
+.wrangler/
+supabase/.temp/
 dist/
 coverage/
 web-build/
@@ -37,6 +39,7 @@ yarn-error.*
 .env
 .env.*
 !.env.example
+!.env*.example
 .env*.local
 
 # typescript
