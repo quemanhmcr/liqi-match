@@ -7,11 +7,13 @@
     "node": ">=24 <25"
   },
   "dependencies": {
+    "@expo/vector-icons": "^15.0.2",
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.101.2",
     "expo": "~56.0.12",
     "expo-constants": "~56.0.18",
     "expo-dev-client": "~56.0.20",
+    "expo-linear-gradient": "~56.0.4",
     "expo-linking": "~56.0.14",
     "expo-router": "~56.2.11",
     "expo-splash-screen": "~56.0.10",
@@ -46,6 +48,7 @@
     "start": "expo start --dev-client",
     "start:clear": "expo start --dev-client --clear",
     "dev:android": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-android.ps1",
+    "dev:android:rebuild": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-android.ps1 -Rebuild",
     "dev:android:cold": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-android.ps1 -ColdBoot",
     "prepare:git": "git config core.hooksPath .githooks",
     "android": "expo run:android",
