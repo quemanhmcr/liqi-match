@@ -14,8 +14,10 @@ export default function RootLayout() {
       <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
+          <Stack.Screen name="rank" />
+          <Stack.Screen name="lane" />
         </Stack>
-        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <StatusBar style="light" />
       </ThemeProvider>
     </AppProviders>
   );
