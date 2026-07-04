@@ -216,7 +216,9 @@ function AuthErrorModal({
               <Text style={styles.authModalIcon}>!</Text>
             </View>
             <View style={styles.authModalTitleBlock}>
-              <Text style={styles.authModalEyebrow}>Đăng nhập chưa hoàn tất</Text>
+              <Text style={styles.authModalEyebrow}>
+                Đăng nhập chưa hoàn tất
+              </Text>
               <Text style={styles.authModalTitle}>{title}</Text>
             </View>
           </View>
@@ -238,7 +240,9 @@ function AuthErrorModal({
               end={{ x: 1, y: 1 }}
               style={styles.authModalPrimaryGradient}
             >
-              <Text style={styles.authModalPrimaryText}>Chọn phương thức khác</Text>
+              <Text style={styles.authModalPrimaryText}>
+                Chọn phương thức khác
+              </Text>
             </LinearGradient>
           </Pressable>
         </LinearGradient>
