@@ -187,9 +187,11 @@ export default function LoginScreen() {
   const authDisabled = Boolean(loadingProvider);
 
   const showAuthError = (provider: AuthProvider, error: unknown) => {
-    Alert.alert(getAuthErrorTitle(provider), getFriendlyAuthError(provider, error), [
-      { text: 'Đã hiểu' },
-    ]);
+    Alert.alert(
+      getAuthErrorTitle(provider),
+      getFriendlyAuthError(provider, error),
+      [{ text: 'Đã hiểu' }],
+    );
   };
 
   const startOAuth = async (provider: AuthProvider) => {
