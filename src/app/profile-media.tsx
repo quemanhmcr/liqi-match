@@ -75,8 +75,8 @@ function getDraftStorage(): DraftStorage {
 
   try {
     // Lazy require keeps old dev-client binaries from crashing before this screen can render.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const asyncStorageModule =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       require('@react-native-async-storage/async-storage') as
         DraftStorage | { default?: DraftStorage };
     cachedDraftStorage =
