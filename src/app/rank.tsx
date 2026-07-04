@@ -228,7 +228,8 @@ export default function RankSelectionScreen() {
             </View>
 
             <View style={styles.progressPill}>
-              <Text style={styles.progressText}>1/3</Text>
+              <Text style={styles.progressLabel}>Bước</Text>
+              <Text style={styles.progressText}>1/5</Text>
               <LinearGradient
                 colors={['#AF3FFF', '#684BFF']}
                 end={{ x: 1, y: 0 }}
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
     right: 52,
   },
   brandLiqi: {
-    color: '#9D4EFF',
+    color: '#C06BFF',
     fontStyle: 'italic',
     fontWeight: '900',
     letterSpacing: 0,
@@ -402,34 +403,42 @@ const styles = StyleSheet.create({
   brandMatch: {
     color: '#F5F6FB',
     fontStyle: 'italic',
-    fontWeight: '800',
+    fontWeight: '900',
     letterSpacing: 0,
   },
   progressPill: {
     alignItems: 'center',
-    backgroundColor: 'rgba(16,21,42,0.74)',
-    borderColor: 'rgba(126,136,178,0.12)',
-    borderRadius: 23,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 46,
+    backgroundColor: 'rgba(17,22,42,0.84)',
+    borderColor: 'rgba(255,255,255,0.055)',
+    borderRadius: 22,
+    borderWidth: 1,
+    height: 48,
     justifyContent: 'center',
-    width: 52,
+    overflow: 'hidden',
+    width: 64,
+  },
+  progressLabel: {
+    color: '#838BA3',
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 12,
   },
   progressText: {
-    color: '#C789FF',
-    fontSize: 15,
-    fontWeight: '700',
-    lineHeight: 18,
+    color: '#D28CFF',
+    fontSize: 14,
+    fontWeight: '900',
+    lineHeight: 17,
   },
   progressLine: {
     borderRadius: 2,
     height: 2.5,
-    marginTop: 5,
+    bottom: 6,
+    position: 'absolute',
     shadowColor: '#A73DFF',
     shadowOffset: { height: 0, width: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 5,
-    width: 22,
+    width: 16,
   },
   heroCopy: {
     alignItems: 'center',

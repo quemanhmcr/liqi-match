@@ -2,14 +2,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
+  ActivityIndicator,
   ImageBackground,
-  KeyboardAvoidingView,
-  Platform,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -18,25 +17,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const heroImage = require('../../assets/anh_mau2/liqi-login-hero.png');
 const BASE_WIDTH = 393;
 
-type FeatureIconType = 'shield' | 'mic' | 'target';
-type SocialType = 'chat' | 'apple' | 'phone';
+type AuthProvider = 'google' | 'facebook' | 'tiktok';
+type TrustIconType = 'shield' | 'mic' | 'target';
 
-const features: { icon: FeatureIconType; title: string; subtitle: string }[] = [
-  { icon: 'shield', title: 'Thật', subtitle: 'Xác thực' },
-  { icon: 'mic', title: 'Voice', subtitle: 'Chat nhanh' },
-  { icon: 'target', title: 'Ghép', subtitle: 'Cân lực' },
+const trustItems: { icon: TrustIconType; title: string }[] = [
+  { icon: 'shield', title: 'Người thật' },
+  { icon: 'mic', title: 'Voice nhanh' },
+  { icon: 'target', title: 'Ghép chuẩn' },
 ];
 
-const socials: { kind: SocialType; label: string }[] = [
-  { kind: 'chat', label: 'WeChat' },
-  { kind: 'apple', label: 'Apple' },
-  { kind: 'phone', label: 'Số điện thoại' },
-];
+const legalLinks = {
+  privacy: 'https://liqimatch.app/privacy',
+  terms: 'https://liqimatch.app/terms',
+};
 
-function FeatureIcon({ type }: { type: FeatureIconType }) {
+function TrustIcon({ type }: { type: TrustIconType }) {
   if (type === 'mic') {
     return (
-      <View style={styles.featureIconShell}>
+      <View style={styles.trustIconShell}>
         <View style={styles.micHead} />
         <View style={styles.micStem} />
         <View style={styles.micBase} />
@@ -46,7 +44,7 @@ function FeatureIcon({ type }: { type: FeatureIconType }) {
 
   if (type === 'target') {
     return (
-      <View style={styles.featureIconShell}>
+      <View style={styles.trustIconShell}>
         <View style={styles.targetOuter}>
           <View style={styles.targetInner}>
             <View style={styles.targetDot} />
@@ -57,7 +55,7 @@ function FeatureIcon({ type }: { type: FeatureIconType }) {
   }
 
   return (
-    <View style={styles.featureIconShell}>
+    <View style={styles.trustIconShell}>
       <View style={styles.shield}>
         <View style={styles.checkLong} />
         <View style={styles.checkShort} />
@@ -66,243 +64,333 @@ function FeatureIcon({ type }: { type: FeatureIconType }) {
   );
 }
 
-function SocialIcon({ kind }: { kind: SocialType }) {
-  if (kind === 'chat') {
-    return (
-      <View style={[styles.socialCircle, styles.chatCircle]}>
-        <View style={styles.chatBubbleBack} />
-        <View style={styles.chatBubbleFront}>
-          <View style={styles.chatDot} />
-          <View style={styles.chatDot} />
-        </View>
-      </View>
-    );
-  }
-
-  if (kind === 'phone') {
-    return (
-      <View style={[styles.socialCircle, styles.phoneCircle]}>
-        <View style={styles.phoneGlyph}>
-          <View style={styles.phoneHome} />
-        </View>
-      </View>
-    );
-  }
-
+function GoogleIcon() {
   return (
-    <View style={[styles.socialCircle, styles.appleCircle]}>
-      <View style={styles.appleBody} />
-      <View style={styles.appleBite} />
-      <View style={styles.appleLeaf} />
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.googleIcon}
+    >
+      <Text style={styles.googleGlyph}>G</Text>
     </View>
   );
 }
 
+function FacebookIcon() {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.facebookIcon}
+    >
+      <Text style={styles.facebookGlyph}>f</Text>
+    </View>
+  );
+}
+
+function TikTokIcon() {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.tiktokIcon}
+    >
+      <Text style={[styles.tiktokGlyph, styles.tiktokCyan]}>♪</Text>
+      <Text style={[styles.tiktokGlyph, styles.tiktokPink]}>♪</Text>
+      <Text style={styles.tiktokGlyph}>♪</Text>
+    </View>
+  );
+}
+
+function ProviderIcon({ provider }: { provider: AuthProvider }) {
+  if (provider === 'google') return <GoogleIcon />;
+  if (provider === 'facebook') return <FacebookIcon />;
+  return <TikTokIcon />;
+}
+
+function providerLabel(provider: AuthProvider) {
+  if (provider === 'google') return 'Tiếp tục với Google';
+  if (provider === 'facebook') return 'Facebook';
+  return 'TikTok';
+}
+
+function SocialAuthButton({
+  disabled,
+  loading,
+  onPress,
+  primary = false,
+  provider,
+}: {
+  disabled: boolean;
+  loading: boolean;
+  onPress: () => void;
+  primary?: boolean;
+  provider: AuthProvider;
+}) {
+  const label = providerLabel(provider);
+
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      accessibilityState={{ busy: loading, disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.socialButton,
+        primary ? styles.googleButton : styles.secondarySocialButton,
+        pressed && !disabled && styles.buttonPressed,
+        disabled && !loading && styles.buttonDisabled,
+      ]}
+    >
+      <View style={styles.socialButtonIcon}>
+        {loading ? (
+          <ActivityIndicator
+            color={primary ? '#20232B' : '#EAF0FF'}
+            size="small"
+          />
+        ) : (
+          <ProviderIcon provider={provider} />
+        )}
+      </View>
+      <Text
+        numberOfLines={2}
+        style={[
+          styles.socialButtonText,
+          primary ? styles.googleButtonText : styles.secondarySocialText,
+        ]}
+      >
+        {label}
+      </Text>
+      {primary ? <Text style={styles.socialArrow}>→</Text> : null}
+    </Pressable>
+  );
+}
+
 export default function LoginScreen() {
-  const { width, height } = useWindowDimensions();
-  const [phone, setPhone] = useState('');
-  const [accepted, setAccepted] = useState(false);
+  const { height, width } = useWindowDimensions();
+  const [loadingProvider, setLoadingProvider] = useState<AuthProvider | null>(
+    null,
+  );
+  const [authMessage, setAuthMessage] = useState<string | null>(null);
 
   const scale = useMemo(
-    () => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.08)),
+    () => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.06)),
     [width],
   );
   const compact = height < 790;
   const horizontal = 18 * scale;
+  const authDisabled = Boolean(loadingProvider);
 
-  const handleLogin = () => {
-    router.push('/rank');
+  const startOAuth = async (provider: AuthProvider) => {
+    if (loadingProvider) return;
+
+    setAuthMessage(null);
+    setLoadingProvider(provider);
+
+    try {
+      await connectOAuthProvider(provider);
+      router.push('/rank');
+    } catch (error) {
+      setAuthMessage(getFriendlyAuthError(provider, error));
+    } finally {
+      setLoadingProvider(null);
+    }
+  };
+
+  const handleGoogleLogin = () => startOAuth('google');
+  const handleFacebookLogin = () => startOAuth('facebook');
+  const handleTikTokLogin = () => startOAuth('tiktok');
+
+  const openLegalLink = async (url: string) => {
+    try {
+      await Linking.openURL(url);
+    } catch {
+      setAuthMessage('Không thể mở liên kết lúc này. Vui lòng thử lại.');
+    }
   };
 
   return (
     <View style={styles.root}>
       <LinearGradient
         colors={['#050817', '#020611', '#01040B']}
-        locations={[0, 0.48, 1]}
+        locations={[0, 0.5, 1]}
         style={StyleSheet.absoluteFill}
       />
       <View style={[styles.glow, styles.glowLeft]} />
       <View style={[styles.glow, styles.glowRight]} />
 
       <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          style={styles.flex}
+        <ScrollView
+          bounces={false}
+          contentContainerStyle={[
+            styles.content,
+            {
+              paddingBottom: compact ? 10 : 16,
+              paddingHorizontal: horizontal,
+            },
+          ]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            bounces={false}
-            contentContainerStyle={[
-              styles.content,
-              {
-                paddingBottom: compact ? 6 : 8,
-                paddingHorizontal: horizontal,
-              },
-            ]}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
+          <View
+            style={[styles.brandBlock, compact && styles.brandBlockCompact]}
           >
-            <View
-              style={[styles.brandBlock, compact && styles.brandBlockCompact]}
-            >
+            <View style={styles.brandHeader}>
+              <View style={styles.headerSide} />
               <View accessibilityLabel="Liqi Match" style={styles.logoRow}>
-                <Text style={[styles.logoLiqi, { fontSize: 39 * scale }]}>
+                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}>
                   Liqi
                 </Text>
-                <Text style={[styles.logoMatch, { fontSize: 39 * scale }]}>
+                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}>
                   {' '}
                   Match
                 </Text>
               </View>
-              <View style={styles.taglineRow}>
-                <LinearGradient
-                  colors={['#A53DFF', '#3E67FF']}
-                  style={styles.taglineDash}
-                />
-                <Text style={styles.tagline}>Match chuẩn, leo rank nhẹ</Text>
-                <LinearGradient
-                  colors={['#3E67FF', '#D237FF']}
-                  style={styles.taglineDash}
-                />
-              </View>
-            </View>
-
-            <View style={styles.heroFrame}>
-              <ImageBackground
-                imageStyle={styles.heroImage}
-                resizeMode="cover"
-                source={heroImage}
-                style={styles.hero}
-              >
-                <LinearGradient
-                  colors={[
-                    'rgba(2,6,17,0.02)',
-                    'rgba(2,6,17,0)',
-                    'rgba(2,6,17,0.4)',
-                  ]}
-                  locations={[0, 0.66, 1]}
-                  pointerEvents="none"
-                  style={StyleSheet.absoluteFill}
-                />
-              </ImageBackground>
-            </View>
-
-            <View style={styles.featureCard}>
-              {features.map((feature, index) => (
-                <View key={feature.title} style={styles.featureItem}>
-                  {index > 0 ? <View style={styles.featureDivider} /> : null}
-                  <FeatureIcon type={feature.icon} />
-                  <View style={styles.featureCopy}>
-                    <Text numberOfLines={1} style={styles.featureTitle}>
-                      {feature.title}
-                    </Text>
-                    <Text numberOfLines={1} style={styles.featureSubtitle}>
-                      {feature.subtitle}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-
-            <View style={styles.phoneField}>
-              <Pressable accessibilityRole="button" style={styles.countryCode}>
-                <Text style={styles.countryText}>+86</Text>
-                <Text style={styles.chevron}>⌄</Text>
-              </Pressable>
-              <View style={styles.fieldDivider} />
-              <TextInput
-                accessibilityLabel="Nhập số điện thoại"
-                keyboardType="phone-pad"
-                maxLength={18}
-                onChangeText={setPhone}
-                placeholder="Nhập số điện thoại"
-                placeholderTextColor="#6F778C"
-                selectionColor="#9954FF"
-                style={styles.input}
-                value={phone}
-              />
               <Pressable
+                accessibilityLabel="Mở cài đặt"
                 accessibilityRole="button"
-                hitSlop={10}
-                onPress={handleLogin}
+                hitSlop={8}
+                onPress={() =>
+                  setAuthMessage('Cài đặt sẽ khả dụng sau khi đăng nhập.')
+                }
+                style={({ pressed }) => [
+                  styles.settingsButton,
+                  pressed && styles.buttonPressed,
+                ]}
               >
-                <Text style={styles.codeText}>Lấy mã</Text>
+                <Text style={styles.settingsGlyph}>⚙</Text>
               </Pressable>
             </View>
+            <View style={styles.taglineRow}>
+              <LinearGradient
+                colors={['#A53DFF', '#3E67FF']}
+                style={styles.taglineDash}
+              />
+              <Text style={styles.tagline}>Match chuẩn, leo rank nhẹ</Text>
+              <LinearGradient
+                colors={['#3E67FF', '#D237FF']}
+                style={styles.taglineDash}
+              />
+            </View>
+          </View>
 
-            <Pressable
-              accessibilityLabel="Đăng nhập ngay"
-              accessibilityRole="button"
-              onPress={handleLogin}
-              style={({ pressed }) => [
-                styles.loginButtonWrap,
-                pressed && styles.buttonPressed,
-              ]}
+          <View style={styles.heroFrame}>
+            <ImageBackground
+              imageStyle={styles.heroImage}
+              resizeMode="cover"
+              source={heroImage}
+              style={styles.hero}
             >
               <LinearGradient
-                colors={['#B22EFF', '#6A43FF', '#1767FF']}
-                end={{ x: 1, y: 0.6 }}
-                start={{ x: 0, y: 0.4 }}
-                style={styles.loginButton}
-              >
-                <Text style={styles.sparkle}>✦</Text>
-                <View style={styles.loginCenter}>
-                  <Text numberOfLines={1} style={styles.loginText}>
-                    Đăng nhập
-                  </Text>
-                  <View style={styles.arrowBadge}>
-                    <Text style={styles.arrow}>→</Text>
-                  </View>
-                </View>
-                <Text style={styles.sparkle}>✦</Text>
-              </LinearGradient>
-            </Pressable>
+                colors={[
+                  'rgba(2,6,17,0)',
+                  'rgba(2,6,17,0.08)',
+                  'rgba(2,6,17,0.46)',
+                ]}
+                locations={[0, 0.66, 1]}
+                pointerEvents="none"
+                style={StyleSheet.absoluteFill}
+              />
+            </ImageBackground>
+          </View>
 
-            <View style={styles.separatorRow}>
-              <View style={styles.separator} />
-              <Text style={styles.separatorText}>Cách đăng nhập khác</Text>
-              <View style={styles.separator} />
-            </View>
-
-            <View style={styles.socialRow}>
-              {socials.map((social) => (
-                <Pressable
-                  accessibilityLabel={`Đăng nhập bằng ${social.label}`}
-                  accessibilityRole="button"
-                  key={social.label}
-                  style={({ pressed }) => [
-                    styles.socialOption,
-                    pressed && styles.buttonPressed,
-                  ]}
-                >
-                  <SocialIcon kind={social.kind} />
-                  <Text numberOfLines={1} style={styles.socialLabel}>
-                    {social.label}
-                  </Text>
-                </Pressable>
-              ))}
-            </View>
-
-            <Pressable
-              accessibilityRole="checkbox"
-              accessibilityState={{ checked: accepted }}
-              onPress={() => setAccepted((value) => !value)}
-              style={styles.agreementRow}
-            >
-              <View
-                style={[styles.checkbox, accepted && styles.checkboxChecked]}
-              >
-                {accepted ? <View style={styles.checkboxTick} /> : null}
+          <View style={styles.trustStrip}>
+            {trustItems.map((item, index) => (
+              <View key={item.title} style={styles.trustItem}>
+                {index > 0 ? <View style={styles.trustDivider} /> : null}
+                <TrustIcon type={item.icon} />
+                <Text numberOfLines={1} style={styles.trustTitle}>
+                  {item.title}
+                </Text>
               </View>
-              <Text style={styles.agreementText}>Tôi đã đọc và đồng ý </Text>
-              <Text style={styles.agreementLink}>Điều khoản</Text>
-              <Text style={styles.agreementText}> và </Text>
-              <Text style={styles.agreementLink}>Quyền riêng tư</Text>
-            </Pressable>
-          </ScrollView>
-        </KeyboardAvoidingView>
+            ))}
+          </View>
+
+          <View style={styles.authCard}>
+            <SocialAuthButton
+              disabled={authDisabled}
+              loading={loadingProvider === 'google'}
+              onPress={handleGoogleLogin}
+              primary
+              provider="google"
+            />
+
+            <View style={styles.secondarySocialRow}>
+              <SocialAuthButton
+                disabled={authDisabled}
+                loading={loadingProvider === 'facebook'}
+                onPress={handleFacebookLogin}
+                provider="facebook"
+              />
+              <SocialAuthButton
+                disabled={authDisabled}
+                loading={loadingProvider === 'tiktok'}
+                onPress={handleTikTokLogin}
+                provider="tiktok"
+              />
+            </View>
+
+            <Text style={styles.consentText}>
+              Bằng việc tiếp tục, bạn đồng ý với{' '}
+              <Text
+                accessibilityRole="link"
+                onPress={() => openLegalLink(legalLinks.terms)}
+                style={styles.consentLink}
+              >
+                Điều khoản sử dụng
+              </Text>{' '}
+              và{' '}
+              <Text
+                accessibilityRole="link"
+                onPress={() => openLegalLink(legalLinks.privacy)}
+                style={styles.consentLink}
+              >
+                Chính sách quyền riêng tư
+              </Text>
+              .
+            </Text>
+
+            {authMessage ? (
+              <View accessibilityLiveRegion="polite" style={styles.authMessage}>
+                <Text style={styles.authMessageText}>{authMessage}</Text>
+              </View>
+            ) : null}
+          </View>
+        </ScrollView>
       </SafeAreaView>
     </View>
   );
+}
+
+async function connectOAuthProvider(provider: AuthProvider) {
+  const unavailable = new Error(`${provider}:oauth-not-configured`);
+  unavailable.name = 'OAuthNotConfigured';
+  throw unavailable;
+}
+
+function getFriendlyAuthError(provider: AuthProvider, error: unknown) {
+  const message = error instanceof Error ? error.message.toLowerCase() : '';
+
+  if (message.includes('cancel')) {
+    return provider === 'facebook'
+      ? 'Đăng nhập Facebook đã bị hủy.'
+      : 'Đăng nhập đã bị hủy. Bạn có thể thử lại bất cứ lúc nào.';
+  }
+
+  if (message.includes('network')) {
+    return 'Kết nối mạng không ổn định. Vui lòng kiểm tra và thử lại.';
+  }
+
+  if (provider === 'google') {
+    return 'Không thể đăng nhập bằng Google. Vui lòng thử lại.';
+  }
+
+  if (provider === 'facebook') {
+    return 'Không thể đăng nhập bằng Facebook. Vui lòng thử lại.';
+  }
+
+  return 'Không thể kết nối với TikTok lúc này.';
 }
 
 const styles = StyleSheet.create({
@@ -314,39 +402,60 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
-  flex: {
-    flex: 1,
-  },
   content: {
     alignItems: 'stretch',
     flexGrow: 1,
   },
   glow: {
-    borderRadius: 190,
-    height: 380,
-    opacity: 0.16,
+    borderRadius: 180,
+    height: 360,
+    opacity: 0.1,
     position: 'absolute',
-    transform: [{ scaleY: 0.42 }, { rotate: '-18deg' }],
-    width: 380,
+    transform: [{ scaleY: 0.38 }, { rotate: '-18deg' }],
+    width: 360,
   },
   glowLeft: {
     backgroundColor: '#762CFF',
-    bottom: 90,
+    bottom: 95,
     left: -270,
   },
   glowRight: {
     backgroundColor: '#2258FF',
-    bottom: 250,
-    right: -290,
+    bottom: 260,
+    right: -285,
   },
   brandBlock: {
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 12,
     marginTop: 10,
   },
   brandBlockCompact: {
-    marginBottom: 6,
+    marginBottom: 9,
     marginTop: 2,
+  },
+  brandHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  headerSide: {
+    width: 44,
+  },
+  settingsButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(17,23,43,0.76)',
+    borderColor: 'rgba(162,176,230,0.14)',
+    borderRadius: 22,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
+  },
+  settingsGlyph: {
+    color: '#D9DDEB',
+    fontSize: 19,
+    lineHeight: 22,
   },
   logoRow: {
     alignItems: 'baseline',
@@ -358,9 +467,9 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontWeight: '900',
     letterSpacing: 0,
-    textShadowColor: 'rgba(132,68,255,0.9)',
+    textShadowColor: 'rgba(132,68,255,0.75)',
     textShadowOffset: { height: 0, width: 0 },
-    textShadowRadius: 18,
+    textShadowRadius: 14,
     transform: [{ skewX: '-7deg' }],
   },
   logoMatch: {
@@ -368,25 +477,22 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontWeight: '900',
     letterSpacing: 0,
-    textShadowColor: 'rgba(255,255,255,0.22)',
+    textShadowColor: 'rgba(255,255,255,0.18)',
     textShadowOffset: { height: 0, width: 0 },
-    textShadowRadius: 8,
+    textShadowRadius: 7,
     transform: [{ skewX: '-7deg' }],
   },
   taglineRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    marginTop: 4,
+    marginTop: 3,
   },
   tagline: {
     color: '#D6D7E2',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
-    letterSpacing: 1.2,
+    letterSpacing: 0.8,
     marginHorizontal: 11,
-    textShadowColor: 'rgba(160,126,255,0.3)',
-    textShadowOffset: { height: 0, width: 0 },
-    textShadowRadius: 6,
   },
   taglineDash: {
     borderRadius: 2,
@@ -395,418 +501,282 @@ const styles = StyleSheet.create({
   },
   heroFrame: {
     backgroundColor: '#080C1C',
-    borderColor: 'rgba(135,143,210,0.16)',
+    borderColor: 'rgba(135,143,210,0.14)',
     borderRadius: 18,
     borderWidth: 1,
     overflow: 'hidden',
-    shadowColor: '#1F3CFF',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.16,
-    shadowRadius: 18,
   },
   hero: {
-    aspectRatio: 548 / 410,
+    aspectRatio: 1.62,
     justifyContent: 'flex-end',
     width: '100%',
   },
   heroImage: {
     borderRadius: 18,
   },
-  featureCard: {
-    backgroundColor: 'rgba(13,19,38,0.97)',
-    borderColor: 'rgba(167,178,226,0.24)',
-    borderRadius: 17,
-    borderWidth: 1,
-    elevation: 8,
+  trustStrip: {
+    alignItems: 'center',
     flexDirection: 'row',
-    marginTop: 7,
-    minHeight: 66,
-    paddingHorizontal: 8,
-    paddingVertical: 9,
-    shadowColor: '#000000',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 18,
+    justifyContent: 'space-between',
+    marginBottom: 18,
+    marginTop: 16,
+    paddingHorizontal: 2,
   },
-  featureItem: {
+  trustItem: {
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
+    justifyContent: 'center',
     minWidth: 0,
-    paddingHorizontal: 8,
     position: 'relative',
   },
-  featureDivider: {
-    backgroundColor: 'rgba(151,162,195,0.18)',
-    bottom: 8,
+  trustDivider: {
+    backgroundColor: 'rgba(151,162,195,0.22)',
+    bottom: 3,
     left: 0,
     position: 'absolute',
-    top: 8,
+    top: 3,
     width: StyleSheet.hairlineWidth,
   },
-  featureIconShell: {
+  trustIconShell: {
     alignItems: 'center',
-    backgroundColor: 'rgba(113,55,255,0.18)',
-    borderRadius: 16,
-    height: 32,
+    backgroundColor: 'rgba(128,72,255,0.14)',
+    borderRadius: 11,
+    height: 24,
     justifyContent: 'center',
-    marginRight: 7,
-    shadowColor: '#A63CFF',
-    shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.7,
-    shadowRadius: 10,
-    width: 32,
+    marginRight: 6,
+    width: 24,
   },
   shield: {
     alignItems: 'center',
-    borderBottomLeftRadius: 9,
-    borderBottomRightRadius: 9,
-    borderColor: '#7257FF',
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-    borderWidth: 1.7,
-    height: 23,
+    borderBottomLeftRadius: 7,
+    borderBottomRightRadius: 7,
+    borderColor: '#8E66FF',
+    borderTopLeftRadius: 5,
+    borderTopRightRadius: 5,
+    borderWidth: 1.4,
+    height: 17,
     justifyContent: 'center',
-    transform: [{ scaleX: 0.92 }],
-    width: 20,
+    width: 15,
   },
   checkLong: {
-    backgroundColor: '#A99BFF',
-    borderRadius: 1,
-    height: 2,
-    position: 'absolute',
-    transform: [{ rotate: '-45deg' }, { translateX: 2 }],
-    width: 10,
-  },
-  checkShort: {
-    backgroundColor: '#A99BFF',
-    borderRadius: 1,
-    height: 2,
-    position: 'absolute',
-    transform: [{ rotate: '45deg' }, { translateX: -4 }, { translateY: 2 }],
-    width: 6,
-  },
-  micHead: {
-    borderColor: '#9B56FF',
-    borderRadius: 6,
-    borderWidth: 1.7,
-    height: 17,
-    width: 9,
-  },
-  micStem: {
-    backgroundColor: '#9B56FF',
-    height: 6,
-    width: 1.7,
-  },
-  micBase: {
-    backgroundColor: '#9B56FF',
+    backgroundColor: '#B6A8FF',
     borderRadius: 1,
     height: 1.7,
-    width: 12,
+    position: 'absolute',
+    transform: [{ rotate: '-45deg' }, { translateX: 2 }],
+    width: 8,
+  },
+  checkShort: {
+    backgroundColor: '#B6A8FF',
+    borderRadius: 1,
+    height: 1.7,
+    position: 'absolute',
+    transform: [{ rotate: '45deg' }, { translateX: -3 }, { translateY: 2 }],
+    width: 5,
+  },
+  micHead: {
+    borderColor: '#A066FF',
+    borderRadius: 5,
+    borderWidth: 1.5,
+    height: 13,
+    width: 8,
+  },
+  micStem: {
+    backgroundColor: '#A066FF',
+    height: 5,
+    width: 1.5,
+  },
+  micBase: {
+    backgroundColor: '#A066FF',
+    borderRadius: 1,
+    height: 1.5,
+    width: 10,
   },
   targetOuter: {
     alignItems: 'center',
-    borderColor: '#5C72FF',
-    borderRadius: 12,
-    borderWidth: 1.5,
-    height: 23,
+    borderColor: '#6477FF',
+    borderRadius: 9,
+    borderWidth: 1.4,
+    height: 18,
     justifyContent: 'center',
-    width: 23,
+    width: 18,
   },
   targetInner: {
     alignItems: 'center',
-    borderColor: '#7E49FF',
-    borderRadius: 7,
-    borderWidth: 1.5,
-    height: 13,
+    borderColor: '#9A55FF',
+    borderRadius: 5,
+    borderWidth: 1.3,
+    height: 10,
     justifyContent: 'center',
-    width: 13,
+    width: 10,
   },
   targetDot: {
-    backgroundColor: '#A966FF',
-    borderRadius: 2,
-    height: 4,
-    width: 4,
+    backgroundColor: '#B174FF',
+    borderRadius: 1.5,
+    height: 3,
+    width: 3,
   },
-  featureCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  featureTitle: {
-    color: '#F6F7FC',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 0,
-  },
-  featureSubtitle: {
-    color: '#9BA3B7',
-    fontSize: 10.5,
-    marginTop: 3,
-  },
-  phoneField: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(9,14,27,0.92)',
-    borderColor: 'rgba(178,188,232,0.38)',
-    borderRadius: 30,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 54,
-    marginTop: 14,
-    paddingHorizontal: 16,
-  },
-  countryCode: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    height: '100%',
-  },
-  countryText: {
-    color: '#F0F2F8',
-    fontSize: 15.5,
-    fontWeight: '500',
-  },
-  chevron: {
-    color: '#858DA1',
-    fontSize: 16,
-    marginLeft: 8,
-    marginTop: -4,
-  },
-  fieldDivider: {
-    backgroundColor: '#343B4D',
-    height: 24,
-    marginHorizontal: 13,
-    width: StyleSheet.hairlineWidth,
-  },
-  input: {
-    color: '#F6F7FC',
-    flex: 1,
-    fontSize: 15.5,
-    height: '100%',
-    minWidth: 0,
-    paddingVertical: 0,
-  },
-  codeText: {
-    color: '#8B68FF',
-    fontSize: 14.5,
+  trustTitle: {
+    color: '#DCE1F0',
+    flexShrink: 1,
+    fontSize: 12.5,
     fontWeight: '800',
   },
-  loginButtonWrap: {
-    borderRadius: 30,
-    elevation: 12,
-    marginTop: 14,
-    shadowColor: '#5E38FF',
-    shadowOffset: { height: 10, width: 0 },
-    shadowOpacity: 0.84,
-    shadowRadius: 30,
+  authCard: {
+    backgroundColor: 'rgba(13,20,38,0.62)',
+    borderColor: 'rgba(162,176,230,0.15)',
+    borderRadius: 24,
+    borderWidth: 1,
+    paddingBottom: 18,
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    shadowColor: '#6840FF',
+    shadowOffset: { height: 8, width: 0 },
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+  },
+  socialButton: {
+    alignItems: 'center',
+    borderRadius: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    minHeight: 48,
+    paddingHorizontal: 14,
+  },
+  googleButton: {
+    backgroundColor: '#F7F8FA',
+    borderColor: 'rgba(255,255,255,0.70)',
+    borderWidth: 1,
+    height: 52,
+  },
+  secondarySocialButton: {
+    backgroundColor: 'rgba(18,27,48,0.86)',
+    borderColor: 'rgba(178,188,232,0.16)',
+    borderWidth: 1,
+    flex: 1,
+    height: 50,
+  },
+  socialButtonIcon: {
+    alignItems: 'center',
+    height: 24,
+    justifyContent: 'center',
+    marginRight: 10,
+    width: 24,
+  },
+  socialButtonText: {
+    flexShrink: 1,
+    fontSize: 15.5,
+    fontWeight: '700',
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  googleButtonText: {
+    color: '#1D2430',
+    flex: 1,
+    fontWeight: '700',
+  },
+  secondarySocialText: {
+    color: '#EEF2FF',
+    fontSize: 14.5,
+  },
+  socialArrow: {
+    color: '#2B3240',
+    fontSize: 18,
+    fontWeight: '800',
+    marginLeft: 8,
+  },
+  secondarySocialRow: {
+    columnGap: 12,
+    flexDirection: 'row',
+    marginTop: 12,
+  },
+  googleIcon: {
+    alignItems: 'center',
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  googleGlyph: {
+    color: '#4285F4',
+    fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 24,
+  },
+  facebookIcon: {
+    alignItems: 'center',
+    backgroundColor: '#1877F2',
+    borderRadius: 11,
+    height: 22,
+    justifyContent: 'center',
+    width: 22,
+  },
+  facebookGlyph: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    lineHeight: 24,
+    marginTop: 3,
+  },
+  tiktokIcon: {
+    height: 24,
+    position: 'relative',
+    width: 24,
+  },
+  tiktokGlyph: {
+    color: '#FFFFFF',
+    fontSize: 22,
+    fontWeight: '900',
+    left: 2,
+    lineHeight: 24,
+    position: 'absolute',
+    top: 0,
+  },
+  tiktokCyan: {
+    color: '#25F4EE',
+    left: 0,
+    top: 1,
+  },
+  tiktokPink: {
+    color: '#FE2C55',
+    left: 4,
+    top: -1,
   },
   buttonPressed: {
     opacity: 0.86,
     transform: [{ scale: 0.992 }],
   },
-  loginButton: {
-    alignItems: 'center',
-    borderColor: 'rgba(255,255,255,0.34)',
-    borderRadius: 30,
-    borderWidth: 1,
-    flexDirection: 'row',
-    height: 56,
-    justifyContent: 'space-between',
-    paddingHorizontal: 19,
+  buttonDisabled: {
+    opacity: 0.48,
   },
-  loginCenter: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
-  loginText: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-    textShadowColor: 'rgba(255,255,255,0.28)',
-    textShadowOffset: { height: 0, width: 0 },
-    textShadowRadius: 8,
-  },
-  arrowBadge: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.78)',
-    borderRadius: 14,
-    height: 27,
-    justifyContent: 'center',
-    marginLeft: 11,
-    width: 27,
-  },
-  arrow: {
-    color: '#5A4DDA',
-    fontSize: 18,
-    fontWeight: '800',
-    lineHeight: 20,
-    marginTop: -1,
-  },
-  sparkle: {
-    color: 'rgba(255,255,255,0.68)',
-    fontSize: 13,
-  },
-  separatorRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    marginBottom: 12,
-    marginTop: 16,
-  },
-  separator: {
-    backgroundColor: 'rgba(116,124,147,0.2)',
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-  },
-  separatorText: {
-    color: '#858CA0',
-    fontSize: 12.5,
-    letterSpacing: 0.6,
-    marginHorizontal: 16,
-  },
-  socialRow: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  socialOption: {
-    alignItems: 'center',
-    width: 92,
-  },
-  socialCircle: {
-    alignItems: 'center',
-    borderRadius: 27,
-    borderWidth: 1,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  chatCircle: {
-    backgroundColor: 'rgba(36,139,83,0.13)',
-    borderColor: 'rgba(75,207,127,0.22)',
-  },
-  appleCircle: {
-    backgroundColor: 'rgba(255,255,255,0.055)',
-    borderColor: 'rgba(255,255,255,0.13)',
-  },
-  phoneCircle: {
-    backgroundColor: 'rgba(113,55,255,0.12)',
-    borderColor: 'rgba(147,87,255,0.22)',
-  },
-  chatBubbleBack: {
-    backgroundColor: '#3CBF69',
-    borderRadius: 8,
-    bottom: 12,
-    height: 14,
-    position: 'absolute',
-    right: 11,
-    width: 18,
-  },
-  chatBubbleFront: {
-    alignItems: 'center',
-    backgroundColor: '#4BD87A',
-    borderRadius: 10,
-    flexDirection: 'row',
-    height: 17,
-    justifyContent: 'center',
-    transform: [{ translateX: -3 }, { translateY: -2 }],
-    width: 23,
-  },
-  chatDot: {
-    backgroundColor: '#052E16',
-    borderRadius: 1.5,
-    height: 3,
-    marginHorizontal: 1.5,
-    width: 3,
-  },
-  appleBody: {
-    backgroundColor: '#FFFFFF',
-    borderBottomLeftRadius: 10,
-    borderBottomRightRadius: 10,
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    height: 25,
-    transform: [{ scaleX: 0.86 }],
-    width: 22,
-  },
-  appleBite: {
-    backgroundColor: '#101522',
-    borderRadius: 6,
-    height: 11,
-    position: 'absolute',
-    right: 13,
-    top: 21,
-    width: 11,
-  },
-  appleLeaf: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 5,
-    height: 5,
-    position: 'absolute',
-    right: 20,
-    top: 11,
-    transform: [{ rotate: '-28deg' }],
-    width: 9,
-  },
-  phoneGlyph: {
-    alignItems: 'center',
-    borderColor: '#9664FF',
-    borderRadius: 3,
-    borderWidth: 2,
-    height: 27,
-    justifyContent: 'flex-end',
-    paddingBottom: 2,
-    width: 17,
-  },
-  phoneHome: {
-    backgroundColor: '#9664FF',
-    borderRadius: 1,
-    height: 2,
-    width: 4,
-  },
-  socialLabel: {
-    color: '#AEB4C4',
-    fontSize: 12,
+  consentText: {
+    color: '#A8B0C4',
+    fontSize: 11.5,
     fontWeight: '500',
-    marginTop: 6,
+    lineHeight: 18,
+    marginTop: 16,
+    paddingHorizontal: 4,
+    textAlign: 'center',
   },
-  agreementRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    marginTop: 12,
-    minHeight: 25,
-    paddingHorizontal: 5,
+  consentLink: {
+    color: '#B885FF',
+    fontWeight: '800',
+    lineHeight: 22,
   },
-  checkbox: {
-    alignItems: 'center',
-    borderColor: '#5D6577',
-    borderRadius: 8,
+  authMessage: {
+    backgroundColor: 'rgba(255,111,159,0.10)',
+    borderColor: 'rgba(255,111,159,0.18)',
+    borderRadius: 14,
     borderWidth: 1,
-    height: 16,
-    justifyContent: 'center',
-    marginRight: 6,
-    width: 16,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
   },
-  checkboxChecked: {
-    backgroundColor: '#7444FF',
-    borderColor: '#9A75FF',
-  },
-  checkboxTick: {
-    borderBottomColor: '#FFFFFF',
-    borderBottomWidth: 2,
-    borderLeftColor: '#FFFFFF',
-    borderLeftWidth: 2,
-    height: 5,
-    transform: [{ rotate: '-45deg' }, { translateY: -1 }],
-    width: 9,
-  },
-  agreementText: {
-    color: '#7B8395',
-    fontSize: 11.2,
-  },
-  agreementLink: {
-    color: '#8B55FF',
-    fontSize: 11.2,
-    fontWeight: '700',
+  authMessageText: {
+    color: '#FFC3D5',
+    fontSize: 12.5,
+    fontWeight: '600',
+    lineHeight: 18,
+    textAlign: 'center',
   },
 });

@@ -52,3 +52,10 @@ example
 /android
 ios/
 android/
+
+# Local debug/runtime artifacts
+.tmp-runtime/
+.tmp-conflict-index/
+debug-artifacts/
+*.log
+scripts/*.backup-*
