@@ -70,6 +70,7 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+#variable_conflict use_column
 declare
   actor_profile_id uuid := auth.uid();
   display_name_value text := nullif(btrim(payload->>'display_name'), '');
