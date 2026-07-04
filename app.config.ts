@@ -7,10 +7,6 @@ type VariantConfig = {
   applicationId: string;
 };
 
-type ExpoConfigWithNewArchitecture = ExpoConfig & {
-  newArchEnabled: boolean;
-};
-
 const variantConfig: Record<AppVariant, VariantConfig> = {
   development: {
     name: 'Liqi Match Dev',
@@ -48,7 +44,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = resolveVariant(process.env.APP_VARIANT);
   const selectedConfig = variantConfig[variant];
 
-  const resolvedConfig: ExpoConfigWithNewArchitecture = {
+  const resolvedConfig: ExpoConfig = {
     ...config,
     name: selectedConfig.name,
     owner: 'manhliqi',
@@ -57,7 +53,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     version: '1.0.0',
     orientation: 'portrait',
     userInterfaceStyle: 'automatic',
-    newArchEnabled: true,
     icon: './assets/images/icon.png',
     ios: {
       ...config.ios,
@@ -80,6 +75,9 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     },
     plugins: [
       'expo-router',
+      'expo-dev-client',
+      'expo-font',
+      './plugins/withAndroidMaterialVersion',
       [
         'expo-splash-screen',
         {

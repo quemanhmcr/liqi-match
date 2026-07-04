@@ -16,6 +16,9 @@ export default function RootLayout() {
           <Stack.Screen name="index" />
           <Stack.Screen name="rank" />
           <Stack.Screen name="lane" />
+          <Stack.Screen name="hero-selection" />
+          <Stack.Screen name="habits" />
+          <Stack.Screen name="profile-media" />
         </Stack>
         <StatusBar style="light" />
       </ThemeProvider>

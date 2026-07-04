@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   Image,
   type ImageSourcePropType,
   Pressable,
@@ -170,7 +169,7 @@ export default function LaneSelectionScreen() {
   };
 
   const submit = () => {
-    Alert.alert('Đã lưu vị trí', selectedNames.join(' · '));
+    router.push('/hero-selection' as never);
   };
 
   return (
@@ -213,7 +212,8 @@ export default function LaneSelectionScreen() {
             </View>
 
             <View style={styles.progressPill}>
-              <Text style={styles.progressText}>2/3</Text>
+              <Text style={styles.progressLabel}>Bước</Text>
+              <Text style={styles.progressText}>2/5</Text>
               <View style={styles.progressTrack}>
                 <LinearGradient
                   colors={['#B63DFF', '#546BFF']}
@@ -385,11 +385,11 @@ const styles = StyleSheet.create({
     right: 72,
   },
   brandLiqi: {
-    color: '#9A4FFF',
+    color: '#C06BFF',
     fontSize: 25,
     fontStyle: 'italic',
     fontWeight: '900',
-    letterSpacing: -1,
+    letterSpacing: 0,
     textShadowColor: 'rgba(151,74,255,0.55)',
     textShadowOffset: { height: 0, width: 0 },
     textShadowRadius: 9,
@@ -399,33 +399,44 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontStyle: 'italic',
     fontWeight: '900',
-    letterSpacing: -1,
+    letterSpacing: 0,
   },
   progressPill: {
     alignItems: 'center',
-    backgroundColor: 'rgba(17,23,43,0.84)',
-    borderRadius: 23,
-    height: 46,
+    backgroundColor: 'rgba(17,22,42,0.84)',
+    borderColor: 'rgba(255,255,255,0.055)',
+    borderRadius: 22,
+    borderWidth: 1,
+    height: 48,
     justifyContent: 'center',
-    width: 66,
+    overflow: 'hidden',
+    width: 64,
+  },
+  progressLabel: {
+    color: '#838BA3',
+    fontSize: 10,
+    fontWeight: '700',
+    lineHeight: 12,
   },
   progressText: {
-    color: '#C99AFF',
-    fontSize: 16,
-    fontWeight: '800',
+    color: '#D28CFF',
+    fontSize: 14,
+    fontWeight: '900',
+    lineHeight: 17,
   },
   progressTrack: {
-    backgroundColor: '#282E48',
+    backgroundColor: 'rgba(40,46,72,0.82)',
     borderRadius: 2,
-    height: 3,
-    marginTop: 6,
+    bottom: 6,
+    height: 2.5,
     overflow: 'hidden',
+    position: 'absolute',
     width: 38,
   },
   progressFill: {
     borderRadius: 2,
     height: '100%',
-    width: 25,
+    width: 18,
   },
   heading: {
     marginBottom: 18,
