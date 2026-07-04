@@ -252,10 +252,10 @@ export default function LoginScreen() {
             <View style={styles.brandHeader}>
               <View style={styles.headerSide} />
               <View accessibilityLabel="Liqi Match" style={styles.logoRow}>
-                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}> 
+                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}>
                   Liqi
                 </Text>
-                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}> 
+                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}>
                   {' '}
                   Match
                 </Text>
