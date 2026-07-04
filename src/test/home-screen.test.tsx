@@ -10,7 +10,7 @@ describe('HomeScreen', () => {
     );
 
     expect(getByText('Liqi')).toBeTruthy();
-    expect(getByText('Match')).toBeTruthy();
+    expect(getByText('Match chuẩn, leo rank nhẹ')).toBeTruthy();
     expect(getByText('Người thật')).toBeTruthy();
     expect(getByText('Tiếp tục với Google')).toBeTruthy();
     expect(getByText('Facebook')).toBeTruthy();

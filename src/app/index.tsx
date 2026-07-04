@@ -24,7 +24,9 @@ const legalLinks = {
 
 export default function LoginScreen() {
   const { loading, session, signIn } = useAuth();
-  const [loadingProvider, setLoadingProvider] = useState<LoginProvider | null>(null);
+  const [loadingProvider, setLoadingProvider] = useState<LoginProvider | null>(
+    null,
+  );
   const [authMessage, setAuthMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -32,7 +34,9 @@ export default function LoginScreen() {
 
     async function routeExistingSession() {
       if (loading || !session) return;
-      const completed = await hasCompletedOnboarding(session).catch(() => false);
+      const completed = await hasCompletedOnboarding(session).catch(
+        () => false,
+      );
       if (!active) return;
       router.replace(completed ? '/home' : '/rank');
     }
@@ -45,7 +49,9 @@ export default function LoginScreen() {
 
   const startOAuth = async (provider: LoginProvider) => {
     if (provider === 'tiktok') {
-      setAuthMessage('TikTok OAuth sẽ được kết nối sau. Hiện hãy dùng Google hoặc Facebook.');
+      setAuthMessage(
+        'TikTok OAuth sẽ được kết nối sau. Hiện hãy dùng Google hoặc Facebook.',
+      );
       return;
     }
 
@@ -55,7 +61,9 @@ export default function LoginScreen() {
 
     try {
       const nextSession = await signIn(provider);
-      const completed = await hasCompletedOnboarding(nextSession).catch(() => false);
+      const completed = await hasCompletedOnboarding(nextSession).catch(
+        () => false,
+      );
       router.replace(completed ? '/home' : '/rank');
     } catch (error) {
       setAuthMessage(getFriendlyAuthError(provider, error));
@@ -95,7 +103,9 @@ export default function LoginScreen() {
 
           <View style={styles.heroCard}>
             <Text style={styles.heroEyebrow}>TÌM ĐỒNG ĐỘI LIÊN QUÂN</Text>
-            <Text style={styles.heroTitle}>Ghép đội theo rank, lane, tướng tủ và thói quen chơi.</Text>
+            <Text style={styles.heroTitle}>
+              Ghép đội theo rank, lane, tướng tủ và thói quen chơi.
+            </Text>
             <View style={styles.trustRow}>
               <TrustPill label="Người thật" />
               <TrustPill label="Voice nhanh" />
@@ -128,11 +138,17 @@ export default function LoginScreen() {
 
             <Text style={styles.consentText}>
               Bằng việc tiếp tục, bạn đồng ý với{' '}
-              <Text onPress={() => openLegalLink(legalLinks.terms)} style={styles.consentLink}>
+              <Text
+                onPress={() => openLegalLink(legalLinks.terms)}
+                style={styles.consentLink}
+              >
                 Điều khoản sử dụng
               </Text>{' '}
               và{' '}
-              <Text onPress={() => openLegalLink(legalLinks.privacy)} style={styles.consentLink}>
+              <Text
+                onPress={() => openLegalLink(legalLinks.privacy)}
+                style={styles.consentLink}
+              >
                 Chính sách quyền riêng tư
               </Text>
               .
@@ -177,9 +193,17 @@ function SocialAuthButton({
         disabled && !loading && styles.disabled,
       ]}
     >
-      {loading ? <ActivityIndicator color={primary ? '#10131F' : '#EAF0FF'} /> : null}
-      {!loading ? <Text style={primary ? styles.primaryIcon : styles.secondaryIcon}>{title[0]}</Text> : null}
-      <Text style={primary ? styles.primaryText : styles.secondaryText}>{title}</Text>
+      {loading ? (
+        <ActivityIndicator color={primary ? '#10131F' : '#EAF0FF'} />
+      ) : null}
+      {!loading ? (
+        <Text style={primary ? styles.primaryIcon : styles.secondaryIcon}>
+          {title[0]}
+        </Text>
+      ) : null}
+      <Text style={primary ? styles.primaryText : styles.secondaryText}>
+        {title}
+      </Text>
       {primary ? <Text style={styles.arrow}>→</Text> : null}
     </Pressable>
   );
@@ -195,9 +219,12 @@ function TrustPill({ label }: { label: string }) {
 
 function getFriendlyAuthError(provider: OAuthProvider, error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : '';
-  if (message.includes('cancel')) return 'Đăng nhập đã bị hủy. Bạn có thể thử lại bất cứ lúc nào.';
-  if (message.includes('network')) return 'Kết nối mạng không ổn định. Vui lòng kiểm tra và thử lại.';
-  if (provider === 'facebook') return 'Không thể đăng nhập bằng Facebook. Vui lòng thử lại.';
+  if (message.includes('cancel'))
+    return 'Đăng nhập đã bị hủy. Bạn có thể thử lại bất cứ lúc nào.';
+  if (message.includes('network'))
+    return 'Kết nối mạng không ổn định. Vui lòng kiểm tra và thử lại.';
+  if (provider === 'facebook')
+    return 'Không thể đăng nhập bằng Facebook. Vui lòng thử lại.';
   return 'Không thể đăng nhập bằng Google. Vui lòng thử lại.';
 }
 
@@ -206,10 +233,27 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   content: { flex: 1, justifyContent: 'space-between', padding: 20 },
   glow: { borderRadius: 999, opacity: 0.22, position: 'absolute' },
-  glowLeft: { backgroundColor: '#7B2DFF', height: 320, left: -180, top: 120, width: 320 },
-  glowRight: { backgroundColor: '#126CFF', bottom: 40, height: 280, right: -170, width: 280 },
+  glowLeft: {
+    backgroundColor: '#7B2DFF',
+    height: 320,
+    left: -180,
+    top: 120,
+    width: 320,
+  },
+  glowRight: {
+    backgroundColor: '#126CFF',
+    bottom: 40,
+    height: 280,
+    right: -170,
+    width: 280,
+  },
   brandBlock: { alignItems: 'center', marginTop: 18 },
-  logo: { color: '#FFFFFF', fontSize: 38, fontWeight: '900', letterSpacing: -1 },
+  logo: {
+    color: '#FFFFFF',
+    fontSize: 38,
+    fontWeight: '900',
+    letterSpacing: -1,
+  },
   logoAccent: { color: '#D662FF' },
   tagline: { color: '#B8C0D8', fontSize: 15, marginTop: 8 },
   heroCard: {
@@ -219,13 +263,36 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     padding: 22,
   },
-  heroEyebrow: { color: '#A9B4D8', fontSize: 12, fontWeight: '800', letterSpacing: 1.4 },
-  heroTitle: { color: '#F6F8FF', fontSize: 26, fontWeight: '900', lineHeight: 34, marginTop: 14 },
+  heroEyebrow: {
+    color: '#A9B4D8',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1.4,
+  },
+  heroTitle: {
+    color: '#F6F8FF',
+    fontSize: 26,
+    fontWeight: '900',
+    lineHeight: 34,
+    marginTop: 14,
+  },
   trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 20 },
-  trustPill: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  trustPill: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
   trustText: { color: '#E7EBFF', fontSize: 12, fontWeight: '700' },
   authCard: { gap: 12 },
-  socialButton: { alignItems: 'center', borderRadius: 20, flexDirection: 'row', gap: 12, minHeight: 58, paddingHorizontal: 16 },
+  socialButton: {
+    alignItems: 'center',
+    borderRadius: 20,
+    flexDirection: 'row',
+    gap: 12,
+    minHeight: 58,
+    paddingHorizontal: 16,
+  },
   primaryButton: { backgroundColor: '#FFFFFF' },
   secondaryButton: { backgroundColor: 'rgba(18,25,49,0.94)', flex: 1 },
   secondaryRow: { flexDirection: 'row', gap: 12 },
@@ -234,10 +301,24 @@ const styles = StyleSheet.create({
   primaryText: { color: '#151923', flex: 1, fontSize: 16, fontWeight: '900' },
   secondaryText: { color: '#EAF0FF', flex: 1, fontSize: 15, fontWeight: '800' },
   arrow: { color: '#151923', fontSize: 23, fontWeight: '900' },
-  consentText: { color: '#8E96AE', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  consentText: {
+    color: '#8E96AE',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   consentLink: { color: '#D7A6FF', fontWeight: '800' },
-  authMessage: { backgroundColor: 'rgba(255,111,159,0.14)', borderRadius: 14, padding: 12 },
-  authMessageText: { color: '#FFD7E4', fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  authMessage: {
+    backgroundColor: 'rgba(255,111,159,0.14)',
+    borderRadius: 14,
+    padding: 12,
+  },
+  authMessageText: {
+    color: '#FFD7E4',
+    fontSize: 13,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   pressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
   disabled: { opacity: 0.7 },
 });

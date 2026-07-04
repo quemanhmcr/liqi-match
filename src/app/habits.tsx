@@ -27,11 +27,17 @@ export default function HabitsScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#050713', '#070B18', '#050713']} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={['#050713', '#070B18', '#050713']}
+        style={StyleSheet.absoluteFill}
+      />
       <SafeAreaView style={styles.safe}>
         <Text style={styles.step}>Step 4/5</Text>
         <Text style={styles.title}>Team habits</Text>
-        <Text style={styles.subtitle}>This first connected build saves a safe default habit profile so the end-to-end account flow can be tested.</Text>
+        <Text style={styles.subtitle}>
+          This first connected build saves a safe default habit profile so the
+          end-to-end account flow can be tested.
+        </Text>
         <View style={styles.card}>
           <Info label="Comms" value="Voice when needed" />
           <Info label="Online" value="Evening" />
@@ -61,10 +67,31 @@ const styles = StyleSheet.create({
   step: { color: '#A8AFC6', fontWeight: '800', marginTop: 8 },
   title: { color: '#F7F8FF', fontSize: 28, fontWeight: '900', marginTop: 18 },
   subtitle: { color: '#A8AFC6', fontSize: 15, lineHeight: 22, marginTop: 8 },
-  card: { backgroundColor: 'rgba(13,17,34,0.9)', borderRadius: 24, gap: 12, marginTop: 24, padding: 18 },
-  info: { backgroundColor: 'rgba(255,255,255,0.045)', borderRadius: 16, padding: 14 },
+  card: {
+    backgroundColor: 'rgba(13,17,34,0.9)',
+    borderRadius: 24,
+    gap: 12,
+    marginTop: 24,
+    padding: 18,
+  },
+  info: {
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderRadius: 16,
+    padding: 14,
+  },
   infoLabel: { color: '#798097', fontSize: 12, fontWeight: '800' },
-  infoValue: { color: '#F7F8FF', fontSize: 15, fontWeight: '800', marginTop: 4 },
-  cta: { alignItems: 'center', backgroundColor: '#8A4DFF', borderRadius: 20, marginTop: 'auto', padding: 17 },
+  infoValue: {
+    color: '#F7F8FF',
+    fontSize: 15,
+    fontWeight: '800',
+    marginTop: 4,
+  },
+  cta: {
+    alignItems: 'center',
+    backgroundColor: '#8A4DFF',
+    borderRadius: 20,
+    marginTop: 'auto',
+    padding: 17,
+  },
   ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 });

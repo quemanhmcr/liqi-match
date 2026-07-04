@@ -38,7 +38,10 @@ export async function signInWithOAuthProvider(
   provider: OAuthProvider,
 ): Promise<AuthSession> {
   const redirectTo = Linking.createURL('auth/callback');
-  const authorizeUrl = new URL('/auth/v1/authorize', env.EXPO_PUBLIC_SUPABASE_URL);
+  const authorizeUrl = new URL(
+    '/auth/v1/authorize',
+    env.EXPO_PUBLIC_SUPABASE_URL,
+  );
 
   authorizeUrl.searchParams.set('provider', provider);
   authorizeUrl.searchParams.set('redirect_to', redirectTo);
@@ -51,7 +54,8 @@ export async function signInWithOAuthProvider(
 
   if (error) {
     const description =
-      params.get('error_description') ?? 'Đăng nhập đã bị hủy hoặc không thành công.';
+      params.get('error_description') ??
+      'Đăng nhập đã bị hủy hoặc không thành công.';
     throw new AuthError(description, error);
   }
 
@@ -66,7 +70,10 @@ export async function signInWithOAuthProvider(
   const refreshToken = params.get('refresh_token');
 
   if (!accessToken || !refreshToken) {
-    throw new AuthError('OAuth callback thiếu access token.', 'oauth_missing_token');
+    throw new AuthError(
+      'OAuth callback thiếu access token.',
+      'oauth_missing_token',
+    );
   }
 
   const tokenType = params.get('token_type') ?? 'bearer';
@@ -110,7 +117,10 @@ export async function refreshAuthSession(
   refreshToken: string,
 ): Promise<AuthSession | null> {
   const response = await fetch(
-    new URL('/auth/v1/token?grant_type=refresh_token', env.EXPO_PUBLIC_SUPABASE_URL),
+    new URL(
+      '/auth/v1/token?grant_type=refresh_token',
+      env.EXPO_PUBLIC_SUPABASE_URL,
+    ),
     {
       body: JSON.stringify({ refresh_token: refreshToken }),
       headers: authHeaders({ includeJson: true }),
@@ -163,19 +173,27 @@ export async function signOutSession(session: AuthSession | null) {
 }
 
 export function shouldRefresh(session: AuthSession) {
-  return session.expiresAt - Math.floor(Date.now() / 1000) <= REFRESH_SKEW_SECONDS;
+  return (
+    session.expiresAt - Math.floor(Date.now() / 1000) <= REFRESH_SKEW_SECONDS
+  );
 }
 
 async function fetchCurrentUser(accessToken: string): Promise<SupabaseUser> {
-  const response = await fetch(new URL('/auth/v1/user', env.EXPO_PUBLIC_SUPABASE_URL), {
-    headers: {
-      ...authHeaders({ includeJson: false }),
-      authorization: `Bearer ${accessToken}`,
+  const response = await fetch(
+    new URL('/auth/v1/user', env.EXPO_PUBLIC_SUPABASE_URL),
+    {
+      headers: {
+        ...authHeaders({ includeJson: false }),
+        authorization: `Bearer ${accessToken}`,
+      },
     },
-  });
+  );
 
   if (!response.ok) {
-    throw new AuthError('Không thể đọc thông tin người dùng sau đăng nhập.', 'user_lookup_failed');
+    throw new AuthError(
+      'Không thể đọc thông tin người dùng sau đăng nhập.',
+      'user_lookup_failed',
+    );
   }
 
   const user = (await response.json()) as SupabaseUser;
@@ -224,7 +242,10 @@ async function waitForOAuthCallback(authorizeUrl: string) {
         reject(
           error instanceof Error
             ? error
-            : new AuthError('Không thể mở trình đăng nhập.', 'oauth_open_failed'),
+            : new AuthError(
+                'Không thể mở trình đăng nhập.',
+                'oauth_open_failed',
+              ),
         ),
       );
     });
@@ -235,10 +256,10 @@ function isOAuthCallbackUrl(url: string) {
   const params = parseAuthCallbackParams(url);
   return Boolean(
     params.get('access_token') ||
-      params.get('refresh_token') ||
-      params.get('error') ||
-      params.get('error_code') ||
-      params.get('code'),
+    params.get('refresh_token') ||
+    params.get('error') ||
+    params.get('error_code') ||
+    params.get('code'),
   );
 }
 

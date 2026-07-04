@@ -5,11 +5,11 @@ import LaneScreen from '@/app/lane';
 
 describe('LaneScreen', () => {
   it('renders the lane selection step', async () => {
-    const { getAllByText, getByText } = await render(<LaneScreen />);
+    const { getByText } = await render(<LaneScreen />);
 
-    expect(getByText('2/5')).toBeTruthy();
-    expect(getByText('VỊ TRÍ SỞ TRƯỜNG')).toBeTruthy();
-    expect(getAllByText('Đi Rừng').length).toBeGreaterThan(0);
-    expect(getByText('Tiếp tục')).toBeTruthy();
+    expect(getByText('Step 2/5')).toBeTruthy();
+    expect(getByText('Choose your lanes')).toBeTruthy();
+    expect(getByText('Jungle')).toBeTruthy();
+    expect(getByText('Continue')).toBeTruthy();
   });
 });

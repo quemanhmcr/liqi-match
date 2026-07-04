@@ -1,38 +1,31 @@
 import { describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, render, waitFor } from '@testing-library/react-native';
+import { fireEvent, render } from '@testing-library/react-native';
 
 import HeroSelectionScreen from '@/app/hero-selection';
-import { HEROES } from '@/features/onboarding/hero-selection-data';
 
 jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
   useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
 }));
 
 describe('HeroSelectionScreen', () => {
-  it('renders the hero selection step with the 128 hero roster', async () => {
-    const { getAllByText, getByPlaceholderText, getByText } = await render(
-      <HeroSelectionScreen />,
-    );
+  it('renders the connected hero selection step', async () => {
+    const { getByText } = await render(<HeroSelectionScreen />);
 
-    expect(HEROES).toHaveLength(128);
-    expect(getByText('3/5')).toBeTruthy();
-    expect(getByText('Chọn')).toBeTruthy();
-    expect(getByText('3 tướng tủ')).toBeTruthy();
-    expect(getByPlaceholderText('Tìm theo tên tướng')).toBeTruthy();
-    expect(getByText('128 tướng')).toBeTruthy();
-    expect(getAllByText('Heino').length).toBeGreaterThan(0);
-    expect(getByText('Tiếp tục')).toBeTruthy();
+    expect(getByText('Step 3/5')).toBeTruthy();
+    expect(getByText('Choose 3 favorite heroes')).toBeTruthy();
+    expect(getByText('Edras')).toBeTruthy();
+    expect(getByText('Goverra')).toBeTruthy();
+    expect(getByText('Heino')).toBeTruthy();
+    expect(getByText('Continue')).toBeTruthy();
   });
 
-  it('opens a replacement sheet when selecting a fourth hero', async () => {
-    const { getAllByText, getByLabelText, getByText } = await render(
-      <HeroSelectionScreen />,
-    );
+  it('keeps exactly three selected heroes when selecting another hero', async () => {
+    const { getByText } = await render(<HeroSelectionScreen />);
 
-    fireEvent.press(getByLabelText('Chọn Flowborn, Xạ thủ'));
+    fireEvent.press(getByText('Billow'));
 
-    await waitFor(() => expect(getByText(/Thay tướng nào bằng/)).toBeTruthy());
-    expect(getAllByText('Flowborn').length).toBeGreaterThan(0);
-    expect(getByText('Hủy')).toBeTruthy();
+    expect(getByText('Selected 3/3')).toBeTruthy();
+    expect(getByText('Billow')).toBeTruthy();
   });
 });

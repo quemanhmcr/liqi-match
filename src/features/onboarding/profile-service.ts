@@ -1,5 +1,8 @@
 import { HEROES } from '@/features/onboarding/hero-selection-data';
-import { dbSlug, type OnboardingSnapshot } from '@/features/onboarding/onboarding-store';
+import {
+  dbSlug,
+  type OnboardingSnapshot,
+} from '@/features/onboarding/onboarding-store';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
@@ -9,7 +12,9 @@ export async function completeOnboardingProfile(
 ) {
   const displayName = displayNameFromSession(session);
   const payload = {
-    availability_slots: [{ day_of_week: 1, starts_at: '18:00:00', ends_at: '23:59:00' }],
+    availability_slots: [
+      { day_of_week: 1, starts_at: '18:00:00', ends_at: '23:59:00' },
+    ],
     display_name: displayName,
     handle: displayName,
     habits: snapshot.habits,
@@ -34,7 +39,7 @@ export async function completeOnboardingProfile(
     timezone: safeTimezone(),
   };
 
-  const result = await supabaseRest<Array<{ completed: boolean }>>(
+  const result = await supabaseRest<{ completed: boolean }[]>(
     'rpc/complete_onboarding',
     { body: { payload }, method: 'POST', session },
   );
@@ -43,7 +48,7 @@ export async function completeOnboardingProfile(
 }
 
 export async function hasCompletedOnboarding(session: AuthSession) {
-  const rows = await supabaseRest<Array<{ profile_id: string }>>(
+  const rows = await supabaseRest<{ profile_id: string }[]>(
     `profile_habits?select=profile_id&profile_id=eq.${session.user.id}&limit=1`,
     { session },
   );

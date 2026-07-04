@@ -32,14 +32,26 @@ export default function RankSelectionScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#080B19', '#030714', '#01040C']} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={['#080B19', '#030714', '#01040C']}
+        style={StyleSheet.absoluteFill}
+      />
       <SafeAreaView style={styles.safe}>
         <Text style={styles.step}>Bước 1/5</Text>
         <Text style={styles.title}>Chọn mức rank hiện tại</Text>
-        <Text style={styles.subtitle}>Rank càng chuẩn, đề xuất đồng đội càng khớp.</Text>
-        <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
+        <Text style={styles.subtitle}>
+          Rank càng chuẩn, đề xuất đồng đội càng khớp.
+        </Text>
+        <ScrollView
+          contentContainerStyle={styles.list}
+          showsVerticalScrollIndicator={false}
+        >
           {ranks.map(([id, name]) => (
-            <Pressable key={id} onPress={() => setSelected(id)} style={[styles.row, selected === id && styles.rowActive]}>
+            <Pressable
+              key={id}
+              onPress={() => setSelected(id)}
+              style={[styles.row, selected === id && styles.rowActive]}
+            >
               <Text style={styles.rowText}>{name}</Text>
               {selected === id ? <Text style={styles.check}>✓</Text> : null}
             </Pressable>
@@ -60,10 +72,22 @@ const styles = StyleSheet.create({
   title: { color: '#F7F8FF', fontSize: 28, fontWeight: '900', marginTop: 18 },
   subtitle: { color: '#A8AFC6', fontSize: 15, marginTop: 8 },
   list: { gap: 10, paddingVertical: 18 },
-  row: { alignItems: 'center', backgroundColor: 'rgba(16,23,45,0.92)', borderRadius: 18, flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
+  row: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(16,23,45,0.92)',
+    borderRadius: 18,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    padding: 16,
+  },
   rowActive: { borderColor: '#B44CFF', borderWidth: 1 },
   rowText: { color: '#F7F8FF', fontSize: 16, fontWeight: '800' },
   check: { color: '#D08BFF', fontSize: 18, fontWeight: '900' },
-  cta: { alignItems: 'center', backgroundColor: '#8A4DFF', borderRadius: 20, padding: 17 },
+  cta: {
+    alignItems: 'center',
+    backgroundColor: '#8A4DFF',
+    borderRadius: 20,
+    padding: 17,
+  },
   ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
 });

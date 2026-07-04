@@ -26,7 +26,9 @@ export async function supabaseRest<T>(path: string, options: RestOptions) {
     headers: {
       apikey: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
       authorization: `Bearer ${options.session.accessToken}`,
-      ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
+      ...(options.body === undefined
+        ? {}
+        : { 'content-type': 'application/json' }),
       ...(options.prefer ? { prefer: options.prefer } : {}),
       ...options.headers,
     },
@@ -47,7 +49,10 @@ export async function supabaseRest<T>(path: string, options: RestOptions) {
 
 export function restUrl(path: string) {
   const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-  return new URL(`/rest/v1/${normalizedPath}`, env.EXPO_PUBLIC_SUPABASE_URL).toString();
+  return new URL(
+    `/rest/v1/${normalizedPath}`,
+    env.EXPO_PUBLIC_SUPABASE_URL,
+  ).toString();
 }
 
 async function toRestError(response: Response) {
@@ -61,7 +66,11 @@ async function toRestError(response: Response) {
       message?: string;
     };
 
-    return new SupabaseRestError(body.message ?? fallback, response.status, body.code);
+    return new SupabaseRestError(
+      body.message ?? fallback,
+      response.status,
+      body.code,
+    );
   } catch {
     return new SupabaseRestError(fallback, response.status);
   }
