@@ -94,9 +94,15 @@ function LaneCard({
         start={{ x: 0, y: 0 }}
         style={[styles.card, selected && styles.cardSelected]}
       >
-        <View style={[styles.iconWrap, selected && { borderColor: item.accent[0] }]}>
+        <View
+          style={[styles.iconWrap, selected && { borderColor: item.accent[0] }]}
+        >
           <LinearGradient colors={item.accent} style={styles.iconGradient}>
-            <Image resizeMode="contain" source={item.icon} style={styles.laneIconImage} />
+            <Image
+              resizeMode="contain"
+              source={item.icon}
+              style={styles.laneIconImage}
+            />
           </LinearGradient>
         </View>
 
@@ -114,7 +120,9 @@ function LaneCard({
         </View>
 
         <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
-          {selected ? <MaterialCommunityIcons color="#FFFFFF" name="check" size={18} /> : null}
+          {selected ? (
+            <MaterialCommunityIcons color="#FFFFFF" name="check" size={18} />
+          ) : null}
         </View>
       </LinearGradient>
     </Pressable>
@@ -131,7 +139,10 @@ export default function LaneSelectionScreen() {
   const compact = height < 760;
 
   const selectedNames = useMemo(
-    () => selected.map((id) => lanes.find((lane) => lane.id === id)?.name).filter(Boolean),
+    () =>
+      selected
+        .map((id) => lanes.find((lane) => lane.id === id)?.name)
+        .filter(Boolean),
     [selected],
   );
 
@@ -145,7 +156,9 @@ export default function LaneSelectionScreen() {
 
     setSelected((current) => {
       if (current.includes(id)) {
-        return current.length === 1 ? current : current.filter((item) => item !== id);
+        return current.length === 1
+          ? current
+          : current.filter((item) => item !== id);
       }
 
       if (current.length >= MAX_SELECTIONS) {
@@ -171,15 +184,27 @@ export default function LaneSelectionScreen() {
       <View style={[styles.glow, styles.glowRight]} />
 
       <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
-        <View style={[styles.content, { paddingHorizontal: pagePadding, width: pageWidth }]}>
+        <View
+          style={[
+            styles.content,
+            { paddingHorizontal: pagePadding, width: pageWidth },
+          ]}
+        >
           <View style={styles.topBar}>
             <Pressable
               accessibilityLabel="Quay lại"
               accessibilityRole="button"
               onPress={() => router.back()}
-              style={({ pressed }) => [styles.circleButton, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.circleButton,
+                pressed && styles.pressed,
+              ]}
             >
-              <MaterialCommunityIcons color="#DCE0EE" name="chevron-left" size={31} />
+              <MaterialCommunityIcons
+                color="#DCE0EE"
+                name="chevron-left"
+                size={31}
+              />
             </Pressable>
 
             <View pointerEvents="none" style={styles.brand}>
@@ -190,7 +215,10 @@ export default function LaneSelectionScreen() {
             <View style={styles.progressPill}>
               <Text style={styles.progressText}>2/3</Text>
               <View style={styles.progressTrack}>
-                <LinearGradient colors={['#B63DFF', '#546BFF']} style={styles.progressFill} />
+                <LinearGradient
+                  colors={['#B63DFF', '#546BFF']}
+                  style={styles.progressFill}
+                />
               </View>
             </View>
           </View>
@@ -198,16 +226,22 @@ export default function LaneSelectionScreen() {
           <View style={[styles.heading, compact && styles.headingCompact]}>
             <Text style={styles.eyebrow}>VỊ TRÍ SỞ TRƯỜNG</Text>
             <Text style={styles.title}>
-              Bạn thường chơi ở <Text style={styles.titleAccent}>lane nào?</Text>
+              Bạn thường chơi ở{' '}
+              <Text style={styles.titleAccent}>lane nào?</Text>
             </Text>
             <Text style={styles.subtitle}>
-              Chọn tối đa 2 vị trí. Vị trí đầu tiên sẽ được ưu tiên khi hệ thống ghép đội.
+              Chọn tối đa 2 vị trí. Vị trí đầu tiên sẽ được ưu tiên khi hệ thống
+              ghép đội.
             </Text>
           </View>
 
           <View style={styles.tipCard}>
             <View style={styles.tipIcon}>
-              <MaterialCommunityIcons color="#D9B4FF" name="auto-fix" size={19} />
+              <MaterialCommunityIcons
+                color="#D9B4FF"
+                name="auto-fix"
+                size={19}
+              />
             </View>
             <Text style={styles.tipText}>
               Ghép đúng vai trò giúp đội hình cân bằng và giảm tranh lane.
@@ -217,7 +251,10 @@ export default function LaneSelectionScreen() {
           <View style={styles.listPanel}>
             <ScrollView
               bounces={false}
-              contentContainerStyle={[styles.listContent, compact && styles.listContentCompact]}
+              contentContainerStyle={[
+                styles.listContent,
+                compact && styles.listContentCompact,
+              ]}
               nestedScrollEnabled
               showsVerticalScrollIndicator={false}
             >
@@ -249,7 +286,10 @@ export default function LaneSelectionScreen() {
             accessibilityLabel="Tiếp tục"
             accessibilityRole="button"
             onPress={submit}
-            style={({ pressed }) => [styles.ctaShell, pressed && styles.ctaPressed]}
+            style={({ pressed }) => [
+              styles.ctaShell,
+              pressed && styles.ctaPressed,
+            ]}
           >
             <LinearGradient
               colors={['#B632EC', '#6742FF', '#236EFF']}
@@ -261,14 +301,20 @@ export default function LaneSelectionScreen() {
               <View style={styles.ctaCenter}>
                 <Text style={styles.ctaText}>Tiếp tục</Text>
                 <View style={styles.arrowBubble}>
-                  <MaterialCommunityIcons color="#5060E9" name="arrow-right" size={21} />
+                  <MaterialCommunityIcons
+                    color="#5060E9"
+                    name="arrow-right"
+                    size={21}
+                  />
                 </View>
               </View>
               <Text style={styles.spark}>✦</Text>
             </LinearGradient>
           </Pressable>
 
-          <Text style={styles.footnote}>Bạn có thể thay đổi lại trong Cài đặt sau.</Text>
+          <Text style={styles.footnote}>
+            Bạn có thể thay đổi lại trong Cài đặt sau.
+          </Text>
         </View>
       </SafeAreaView>
     </View>

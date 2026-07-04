@@ -100,7 +100,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       publicEnv: {
         apiUrl: process.env.EXPO_PUBLIC_API_URL,
         mediaBaseUrl: process.env.EXPO_PUBLIC_MEDIA_BASE_URL,
-        supabasePublishableKey: process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+        supabasePublishableKey:
+          process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
         supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
       },
       eas: {

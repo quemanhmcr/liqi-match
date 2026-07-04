@@ -38,17 +38,41 @@ type RankItem = {
 };
 
 const ranks: RankItem[] = [
-  { id: 'bronze', name: 'Đồng', icon: require('../../assets/anh_mau2/ranks/bronze.png') },
-  { id: 'silver', name: 'Bạc', icon: require('../../assets/anh_mau2/ranks/silver.png') },
-  { id: 'gold', name: 'Vàng', icon: require('../../assets/anh_mau2/ranks/gold.png') },
-  { id: 'platinum', name: 'Bạch Kim', icon: require('../../assets/anh_mau2/ranks/platinum.png') },
+  {
+    id: 'bronze',
+    name: 'Đồng',
+    icon: require('../../assets/anh_mau2/ranks/bronze.png'),
+  },
+  {
+    id: 'silver',
+    name: 'Bạc',
+    icon: require('../../assets/anh_mau2/ranks/silver.png'),
+  },
+  {
+    id: 'gold',
+    name: 'Vàng',
+    icon: require('../../assets/anh_mau2/ranks/gold.png'),
+  },
+  {
+    id: 'platinum',
+    name: 'Bạch Kim',
+    icon: require('../../assets/anh_mau2/ranks/platinum.png'),
+  },
   {
     id: 'diamond',
     name: 'Kim Cương',
     icon: require('../../assets/anh_mau2/ranks/diamond.png'),
   },
-  { id: 'veteran', name: 'Tinh Anh', icon: require('../../assets/anh_mau2/ranks/veteran.png') },
-  { id: 'master', name: 'Cao Thủ', icon: require('../../assets/anh_mau2/ranks/master.png') },
+  {
+    id: 'veteran',
+    name: 'Tinh Anh',
+    icon: require('../../assets/anh_mau2/ranks/veteran.png'),
+  },
+  {
+    id: 'master',
+    name: 'Cao Thủ',
+    icon: require('../../assets/anh_mau2/ranks/master.png'),
+  },
   {
     id: 'grandmaster-iv',
     name: 'Đại Cao Thủ IV',
@@ -111,7 +135,10 @@ function RankRow({
       accessibilityRole="radio"
       accessibilityState={{ checked: selected }}
       onPress={onPress}
-      style={({ pressed }) => [styles.rankRowPressable, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.rankRowPressable,
+        pressed && styles.pressed,
+      ]}
     >
       <LinearGradient
         colors={selected ? ['#23104D', '#101833'] : ['#10172D', '#090F20']}
@@ -120,7 +147,11 @@ function RankRow({
         style={[styles.rankRow, selected && styles.rankRowSelected]}
       >
         <View style={styles.rankThumbShell}>
-          <Image resizeMode="contain" source={item.icon} style={styles.rankThumb} />
+          <Image
+            resizeMode="contain"
+            source={item.icon}
+            style={styles.rankThumb}
+          />
         </View>
         <View style={styles.rankRowCopy}>
           <Text numberOfLines={1} style={styles.rankRowName}>
@@ -167,20 +198,33 @@ export default function RankSelectionScreen() {
       <View style={styles.topVignette} />
 
       <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
-        <View style={[styles.frame, { paddingHorizontal: pagePadding, width: contentMaxWidth }]}>
+        <View
+          style={[
+            styles.frame,
+            { paddingHorizontal: pagePadding, width: contentMaxWidth },
+          ]}
+        >
           <View style={styles.topBar}>
             <Pressable
               accessibilityLabel="Quay lại"
               accessibilityRole="button"
               onPress={() => router.back()}
-              style={({ pressed }) => [styles.backButton, pressed && styles.controlPressed]}
+              style={({ pressed }) => [
+                styles.backButton,
+                pressed && styles.controlPressed,
+              ]}
             >
               <Text style={styles.backGlyph}>‹</Text>
             </Pressable>
 
             <View pointerEvents="none" style={styles.brandRow}>
-              <Text style={[styles.brandLiqi, { fontSize: 25 * uiScale }]}>Liqi</Text>
-              <Text style={[styles.brandMatch, { fontSize: 25 * uiScale }]}> Match</Text>
+              <Text style={[styles.brandLiqi, { fontSize: 25 * uiScale }]}>
+                Liqi
+              </Text>
+              <Text style={[styles.brandMatch, { fontSize: 25 * uiScale }]}>
+                {' '}
+                Match
+              </Text>
             </View>
 
             <View style={styles.progressPill}>
@@ -195,10 +239,17 @@ export default function RankSelectionScreen() {
           </View>
 
           <View style={[styles.heroCopy, compact && styles.heroCopyCompact]}>
-            <Text style={[styles.title, { fontSize: (compact ? 24 : 27) * uiScale }]}>
+            <Text
+              style={[
+                styles.title,
+                { fontSize: (compact ? 24 : 27) * uiScale },
+              ]}
+            >
               Chọn <Text style={styles.titleAccent}>mức rank</Text> hiện tại
             </Text>
-            <Text style={styles.subtitle}>Rank càng chuẩn, đề xuất đồng đội càng khớp.</Text>
+            <Text style={styles.subtitle}>
+              Rank càng chuẩn, đề xuất đồng đội càng khớp.
+            </Text>
           </View>
 
           <View style={styles.listPanel}>
@@ -231,7 +282,10 @@ export default function RankSelectionScreen() {
             accessibilityLabel="Tiếp tục"
             accessibilityRole="button"
             onPress={submit}
-            style={({ pressed }) => [styles.ctaShell, pressed && styles.ctaPressed]}
+            style={({ pressed }) => [
+              styles.ctaShell,
+              pressed && styles.ctaPressed,
+            ]}
           >
             <LinearGradient
               colors={['#B336EC', '#6A3CFF', '#246EFF']}

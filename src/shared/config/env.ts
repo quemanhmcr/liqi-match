@@ -58,7 +58,9 @@ const devPublicEnv = __DEV__
 // Native dev clients can expose an empty process.env, so use app config extra as a fallback.
 export const env = parsePublicEnv({
   EXPO_PUBLIC_API_URL:
-    process.env.EXPO_PUBLIC_API_URL ?? publicEnv?.apiUrl ?? devPublicEnv?.apiUrl,
+    process.env.EXPO_PUBLIC_API_URL ??
+    publicEnv?.apiUrl ??
+    devPublicEnv?.apiUrl,
   EXPO_PUBLIC_SUPABASE_URL:
     process.env.EXPO_PUBLIC_SUPABASE_URL ??
     publicEnv?.supabaseUrl ??

@@ -103,7 +103,10 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [accepted, setAccepted] = useState(false);
 
-  const scale = useMemo(() => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.08)), [width]);
+  const scale = useMemo(
+    () => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.08)),
+    [width],
+  );
   const compact = height < 790;
   const horizontal = 18 * scale;
 
@@ -138,15 +141,28 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <View style={[styles.brandBlock, compact && styles.brandBlockCompact]}>
+            <View
+              style={[styles.brandBlock, compact && styles.brandBlockCompact]}
+            >
               <View accessibilityLabel="Liqi Match" style={styles.logoRow}>
-                <Text style={[styles.logoLiqi, { fontSize: 39 * scale }]}>Liqi</Text>
-                <Text style={[styles.logoMatch, { fontSize: 39 * scale }]}> Match</Text>
+                <Text style={[styles.logoLiqi, { fontSize: 39 * scale }]}>
+                  Liqi
+                </Text>
+                <Text style={[styles.logoMatch, { fontSize: 39 * scale }]}>
+                  {' '}
+                  Match
+                </Text>
               </View>
               <View style={styles.taglineRow}>
-                <LinearGradient colors={['#A53DFF', '#3E67FF']} style={styles.taglineDash} />
+                <LinearGradient
+                  colors={['#A53DFF', '#3E67FF']}
+                  style={styles.taglineDash}
+                />
                 <Text style={styles.tagline}>Match chuẩn, leo rank nhẹ</Text>
-                <LinearGradient colors={['#3E67FF', '#D237FF']} style={styles.taglineDash} />
+                <LinearGradient
+                  colors={['#3E67FF', '#D237FF']}
+                  style={styles.taglineDash}
+                />
               </View>
             </View>
 
@@ -158,7 +174,11 @@ export default function LoginScreen() {
                 style={styles.hero}
               >
                 <LinearGradient
-                  colors={['rgba(2,6,17,0.02)', 'rgba(2,6,17,0)', 'rgba(2,6,17,0.4)']}
+                  colors={[
+                    'rgba(2,6,17,0.02)',
+                    'rgba(2,6,17,0)',
+                    'rgba(2,6,17,0.4)',
+                  ]}
                   locations={[0, 0.66, 1]}
                   pointerEvents="none"
                   style={StyleSheet.absoluteFill}
@@ -200,7 +220,11 @@ export default function LoginScreen() {
                 style={styles.input}
                 value={phone}
               />
-              <Pressable accessibilityRole="button" hitSlop={10} onPress={handleLogin}>
+              <Pressable
+                accessibilityRole="button"
+                hitSlop={10}
+                onPress={handleLogin}
+              >
                 <Text style={styles.codeText}>Lấy mã</Text>
               </Pressable>
             </View>
@@ -209,7 +233,10 @@ export default function LoginScreen() {
               accessibilityLabel="Đăng nhập ngay"
               accessibilityRole="button"
               onPress={handleLogin}
-              style={({ pressed }) => [styles.loginButtonWrap, pressed && styles.buttonPressed]}
+              style={({ pressed }) => [
+                styles.loginButtonWrap,
+                pressed && styles.buttonPressed,
+              ]}
             >
               <LinearGradient
                 colors={['#B22EFF', '#6A43FF', '#1767FF']}
@@ -242,7 +269,10 @@ export default function LoginScreen() {
                   accessibilityLabel={`Đăng nhập bằng ${social.label}`}
                   accessibilityRole="button"
                   key={social.label}
-                  style={({ pressed }) => [styles.socialOption, pressed && styles.buttonPressed]}
+                  style={({ pressed }) => [
+                    styles.socialOption,
+                    pressed && styles.buttonPressed,
+                  ]}
                 >
                   <SocialIcon kind={social.kind} />
                   <Text numberOfLines={1} style={styles.socialLabel}>
@@ -258,7 +288,9 @@ export default function LoginScreen() {
               onPress={() => setAccepted((value) => !value)}
               style={styles.agreementRow}
             >
-              <View style={[styles.checkbox, accepted && styles.checkboxChecked]}>
+              <View
+                style={[styles.checkbox, accepted && styles.checkboxChecked]}
+              >
                 {accepted ? <View style={styles.checkboxTick} /> : null}
               </View>
               <Text style={styles.agreementText}>Tôi đã đọc và đồng ý </Text>
