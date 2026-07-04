@@ -6,6 +6,7 @@ import {
   Alert,
   ImageBackground,
   Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +21,11 @@ const BASE_WIDTH = 393;
 
 type AuthProvider = 'google' | 'facebook' | 'tiktok';
 type TrustIconType = 'shield' | 'mic' | 'target';
+type AuthErrorState = {
+  provider: AuthProvider;
+  title: string;
+  message: string;
+};
 
 const trustItems: { icon: TrustIconType; title: string }[] = [
   { icon: 'shield', title: 'Người thật' },
@@ -172,11 +178,81 @@ function SocialAuthButton({
   );
 }
 
+function AuthErrorModal({
+  error,
+  onClose,
+}: {
+  error: AuthErrorState | null;
+  onClose: () => void;
+}) {
+  const title = error?.title ?? '';
+  const message = error?.message ?? '';
+
+  return (
+    <Modal
+      animationType="fade"
+      hardwareAccelerated
+      onRequestClose={onClose}
+      statusBarTranslucent
+      transparent
+      visible={Boolean(error)}
+    >
+      <View style={styles.authModalRoot}>
+        <Pressable
+          accessibilityLabel="Đóng thông báo đăng nhập"
+          accessibilityRole="button"
+          onPress={onClose}
+          style={styles.authModalBackdrop}
+        />
+        <LinearGradient
+          colors={['rgba(27,36,66,0.98)', 'rgba(12,18,35,0.98)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.authModalCard}
+        >
+          <View pointerEvents="none" style={styles.authModalGlow} />
+          <View style={styles.authModalHeader}>
+            <View style={styles.authModalIconShell}>
+              <Text style={styles.authModalIcon}>!</Text>
+            </View>
+            <View style={styles.authModalTitleBlock}>
+              <Text style={styles.authModalEyebrow}>Đăng nhập chưa hoàn tất</Text>
+              <Text style={styles.authModalTitle}>{title}</Text>
+            </View>
+          </View>
+
+          <Text style={styles.authModalMessage}>{message}</Text>
+
+          <Pressable
+            accessibilityLabel="Chọn phương thức khác"
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.authModalPrimaryAction,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <LinearGradient
+              colors={['#A43DFF', '#4B6BFF']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.authModalPrimaryGradient}
+            >
+              <Text style={styles.authModalPrimaryText}>Chọn phương thức khác</Text>
+            </LinearGradient>
+          </Pressable>
+        </LinearGradient>
+      </View>
+    </Modal>
+  );
+}
+
 export default function LoginScreen() {
   const { height, width } = useWindowDimensions();
   const [loadingProvider, setLoadingProvider] = useState<AuthProvider | null>(
     null,
   );
+  const [authError, setAuthError] = useState<AuthErrorState | null>(null);
 
   const scale = useMemo(
     () => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.06)),
@@ -186,17 +262,20 @@ export default function LoginScreen() {
   const horizontal = 18 * scale;
   const authDisabled = Boolean(loadingProvider);
 
+  const dismissAuthError = () => setAuthError(null);
+
   const showAuthError = (provider: AuthProvider, error: unknown) => {
-    Alert.alert(
-      getAuthErrorTitle(provider),
-      getFriendlyAuthError(provider, error),
-      [{ text: 'Đã hiểu' }],
-    );
+    setAuthError({
+      provider,
+      title: getAuthErrorTitle(provider),
+      message: getFriendlyAuthError(provider, error),
+    });
   };
 
   const startOAuth = async (provider: AuthProvider) => {
     if (loadingProvider) return;
 
+    setAuthError(null);
     setLoadingProvider(provider);
 
     try {
@@ -252,10 +331,10 @@ export default function LoginScreen() {
             <View style={styles.brandHeader}>
               <View style={styles.headerSide} />
               <View accessibilityLabel="Liqi Match" style={styles.logoRow}>
-                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}>
+                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}> 
                   Liqi
                 </Text>
-                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}>
+                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}> 
                   {' '}
                   Match
                 </Text>
@@ -369,6 +448,8 @@ export default function LoginScreen() {
           </View>
         </ScrollView>
       </SafeAreaView>
+
+      <AuthErrorModal error={authError} onClose={dismissAuthError} />
     </View>
   );
 }
@@ -397,14 +478,14 @@ function getFriendlyAuthError(provider: AuthProvider, error: unknown) {
   }
 
   if (provider === 'google') {
-    return 'Google hiện chưa khả dụng. Bạn có thể thử lại sau hoặc tiếp tục với Facebook/TikTok.';
+    return 'Google hiện chưa khả dụng. Hãy thử lại sau hoặc chọn Facebook/TikTok để tiếp tục.';
   }
 
   if (provider === 'facebook') {
-    return 'Facebook hiện chưa khả dụng. Bạn có thể thử lại sau hoặc tiếp tục với Google/TikTok.';
+    return 'Facebook hiện chưa khả dụng. Hãy thử lại sau hoặc chọn Google/TikTok để tiếp tục.';
   }
 
-  return 'TikTok hiện chưa khả dụng. Bạn có thể thử lại sau hoặc tiếp tục với Google/Facebook.';
+  return 'TikTok hiện chưa khả dụng. Hãy thử lại sau hoặc chọn Google/Facebook để tiếp tục.';
 }
 
 const styles = StyleSheet.create({
@@ -776,5 +857,99 @@ const styles = StyleSheet.create({
     color: '#B885FF',
     fontWeight: '800',
     lineHeight: 22,
+  },
+  authModalRoot: {
+    alignItems: 'center',
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 22,
+  },
+  authModalBackdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(1,4,12,0.74)',
+  },
+  authModalCard: {
+    borderColor: 'rgba(171,184,255,0.20)',
+    borderRadius: 28,
+    borderWidth: 1,
+    maxWidth: 360,
+    overflow: 'hidden',
+    padding: 20,
+    shadowColor: '#7B3DFF',
+    shadowOffset: { height: 18, width: 0 },
+    shadowOpacity: 0.24,
+    shadowRadius: 28,
+    width: '100%',
+  },
+  authModalGlow: {
+    backgroundColor: 'rgba(160,61,255,0.18)',
+    borderRadius: 120,
+    height: 180,
+    position: 'absolute',
+    right: -72,
+    top: -92,
+    transform: [{ scaleY: 0.72 }],
+    width: 180,
+  },
+  authModalHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  authModalIconShell: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,190,92,0.14)',
+    borderColor: 'rgba(255,210,128,0.34)',
+    borderRadius: 16,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    marginRight: 12,
+    width: 44,
+  },
+  authModalIcon: {
+    color: '#FFD27C',
+    fontSize: 24,
+    fontWeight: '900',
+    lineHeight: 26,
+  },
+  authModalTitleBlock: {
+    flex: 1,
+  },
+  authModalEyebrow: {
+    color: '#9DA8CB',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    marginBottom: 3,
+    textTransform: 'uppercase',
+  },
+  authModalTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '900',
+    lineHeight: 22,
+  },
+  authModalMessage: {
+    color: '#CBD3EA',
+    fontSize: 13.5,
+    fontWeight: '600',
+    lineHeight: 21,
+    marginTop: 14,
+  },
+  authModalPrimaryAction: {
+    borderRadius: 16,
+    marginTop: 18,
+    overflow: 'hidden',
+  },
+  authModalPrimaryGradient: {
+    alignItems: 'center',
+    borderRadius: 16,
+    height: 48,
+    justifyContent: 'center',
+  },
+  authModalPrimaryText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '900',
   },
 });
