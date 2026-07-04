@@ -527,7 +527,9 @@ function Install-DebugBuild {
   if (Test-Path (Join-Path $ProjectRoot 'android\gradlew.bat')) {
     Push-Location (Join-Path $ProjectRoot 'android')
     try {
-      & .\gradlew.bat :app:installDebug -PreactNativeDevServerPort=$MetroPort
+      $gradleArgs = @(':app:installDebug', "-PreactNativeDevServerPort=$MetroPort")
+      Write-Host "Running Gradle: .\gradlew.bat $($gradleArgs -join ' ')"
+      & .\gradlew.bat @gradleArgs
       if ($LASTEXITCODE -ne 0) {
         throw 'Gradle installDebug failed.'
       }
@@ -555,7 +557,13 @@ function Open-DevClient {
   $deepLink = "${Scheme}://expo-development-client/?url=$encodedUrl&disableOnboarding=1"
   $shellDeepLink = "'$deepLink'"
 
-  & $script:AdbPath -s $Serial reverse --remove "tcp:$MetroPort" 2>$null | Out-Null
+  $reverseList = & $script:AdbPath -s $Serial reverse --list 2>$null
+  $reversePattern = [regex]::Escape("tcp:$MetroPort")
+  if (($reverseList | Out-String) -match $reversePattern) {
+    Invoke-Adb -AdbArgs @('-s', $Serial, 'reverse', '--remove', "tcp:$MetroPort") | Out-Null
+  } else {
+    Write-Host "No existing adb reverse tcp:$MetroPort to remove."
+  }
   Invoke-Adb -AdbArgs @('-s', $Serial, 'reverse', "tcp:$MetroPort", "tcp:$MetroPort") | Out-Null
   Invoke-Adb -AdbArgs @('-s', $Serial, 'shell', 'input', 'keyevent', '82') | Out-Null
   Invoke-Adb -AdbArgs @('-s', $Serial, 'shell', 'wm', 'dismiss-keyguard') | Out-Null
