@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { z } from 'zod';
 
 const publicEnvSchema = z.object({
@@ -33,5 +34,43 @@ export function parsePublicEnv(
   return Object.freeze(result.data);
 }
 
+type ExpoExtra = {
+  publicEnv?: {
+    apiUrl?: string;
+    mediaBaseUrl?: string;
+    supabasePublishableKey?: string;
+    supabaseUrl?: string;
+  };
+};
+
+const extra = Constants.expoConfig?.extra as ExpoExtra | undefined;
+const publicEnv = extra?.publicEnv;
+const devPublicEnv = __DEV__
+  ? {
+      apiUrl: 'http://127.0.0.1:3000',
+      mediaBaseUrl: 'http://127.0.0.1:3000',
+      supabasePublishableKey: 'development-placeholder',
+      supabaseUrl: 'http://127.0.0.1:54321',
+    }
+  : undefined;
+
 // Every EXPO_PUBLIC_* variable is embedded in the client bundle. Never put secrets here.
-export const env = parsePublicEnv(process.env);
+// Native dev clients can expose an empty process.env, so use app config extra as a fallback.
+export const env = parsePublicEnv({
+  EXPO_PUBLIC_API_URL:
+    process.env.EXPO_PUBLIC_API_URL ??
+    publicEnv?.apiUrl ??
+    devPublicEnv?.apiUrl,
+  EXPO_PUBLIC_SUPABASE_URL:
+    process.env.EXPO_PUBLIC_SUPABASE_URL ??
+    publicEnv?.supabaseUrl ??
+    devPublicEnv?.supabaseUrl,
+  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY:
+    process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    publicEnv?.supabasePublishableKey ??
+    devPublicEnv?.supabasePublishableKey,
+  EXPO_PUBLIC_MEDIA_BASE_URL:
+    process.env.EXPO_PUBLIC_MEDIA_BASE_URL ??
+    publicEnv?.mediaBaseUrl ??
+    devPublicEnv?.mediaBaseUrl,
+});

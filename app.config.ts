@@ -97,6 +97,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     extra: {
       ...config.extra,
       appVariant: variant,
+      publicEnv: {
+        apiUrl: process.env.EXPO_PUBLIC_API_URL,
+        mediaBaseUrl: process.env.EXPO_PUBLIC_MEDIA_BASE_URL,
+        supabasePublishableKey:
+          process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+        supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+      },
       eas: {
         projectId: '7ee062c0-f96d-4e09-9c94-794c49dd6e9c',
       },
