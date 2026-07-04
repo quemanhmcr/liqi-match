@@ -1,5 +1,5 @@
-import { env } from '@/shared/config/env';
 import type { AuthSession } from '@/shared/auth/auth-service';
+import { env } from '@/shared/config/env';
 
 export class SupabaseRestError extends Error {
   constructor(
@@ -26,8 +26,8 @@ export async function supabaseRest<T>(path: string, options: RestOptions) {
     headers: {
       apikey: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
       authorization: `Bearer ${options.session.accessToken}`,
-      ...(options.body === undefined ? null : { 'content-type': 'application/json' }),
-      ...(options.prefer ? { prefer: options.prefer } : null),
+      ...(options.body === undefined ? {} : { 'content-type': 'application/json' }),
+      ...(options.prefer ? { prefer: options.prefer } : {}),
       ...options.headers,
     },
     method: options.method ?? 'GET',
