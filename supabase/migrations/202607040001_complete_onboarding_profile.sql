@@ -1,11 +1,12 @@
 insert into public.ranks (slug, name, sort_order)
 values
-  ('bronze', 'Đồng', 10),
-  ('silver', 'Bạc', 20),
-  ('gold', 'Vàng', 30),
-  ('platinum', 'Bạch Kim', 40),
-  ('diamond', 'Kim Cương', 50),
-  ('veteran', 'Tinh Anh', 60),
+  ('iron', 'Sắt', 10),
+  ('bronze', 'Đồng', 20),
+  ('silver', 'Bạc', 30),
+  ('gold', 'Vàng', 40),
+  ('platinum', 'Bạch Kim', 50),
+  ('diamond', 'Kim Cương', 60),
+  ('veteran', 'Tinh Anh', 65),
   ('master', 'Cao Thủ', 70),
   ('grandmaster_iv', 'Đại Cao Thủ IV', 80),
   ('grandmaster_iii', 'Đại Cao Thủ III', 90),
