@@ -23,6 +23,21 @@ import { updateOnboardingSnapshot } from '@/features/onboarding/onboarding-store
 
 const MAX_SELECTED = 3;
 
+const ROLE_LABELS = [
+  'All',
+  'Fighter',
+  'Tank',
+  'Mage',
+  'Assassin',
+  'Support',
+  'Marksman',
+] as const;
+
+function roleLabel(role: HeroRole) {
+  const index = HERO_ROLES.indexOf(role);
+  return ROLE_LABELS[index] ?? role;
+}
+
 export default function HeroSelectionScreen() {
   const [selected, setSelected] = useState<string[]>([
     'edras',
@@ -71,7 +86,11 @@ export default function HeroSelectionScreen() {
         onPress={() => toggleHero(item.id)}
         style={[styles.heroCard, isSelected && styles.heroCardActive]}
       >
-        <Image source={item.image} style={styles.heroImage} />
+        <Image
+          resizeMode="cover"
+          source={item.image}
+          style={styles.heroImage}
+        />
         <LinearGradient
           colors={['transparent', 'rgba(5,7,19,0.9)']}
           style={[StyleSheet.absoluteFill, styles.heroFade]}
@@ -125,6 +144,7 @@ export default function HeroSelectionScreen() {
           contentContainerStyle={styles.roleList}
           horizontal
           showsHorizontalScrollIndicator={false}
+          style={styles.roleScroller}
         >
           {HERO_ROLES.map((role) => {
             const isActive = role === activeRole;
@@ -138,7 +158,7 @@ export default function HeroSelectionScreen() {
                 <Text
                   style={[styles.roleText, isActive && styles.roleTextActive]}
                 >
-                  {role}
+                  {roleLabel(role)}
                 </Text>
               </Pressable>
             );
@@ -154,6 +174,7 @@ export default function HeroSelectionScreen() {
           numColumns={3}
           renderItem={renderHero}
           showsVerticalScrollIndicator={false}
+          style={styles.heroList}
         />
 
         <Pressable
@@ -173,22 +194,34 @@ export default function HeroSelectionScreen() {
 
 const styles = StyleSheet.create({
   root: { backgroundColor: '#050713', flex: 1 },
-  safe: { flex: 1, padding: 18 },
-  step: { color: '#A8AFC6', fontWeight: '800', marginTop: 8 },
+  safe: {
+    flex: 1,
+    paddingBottom: 10,
+    paddingHorizontal: 18,
+    paddingTop: 8,
+  },
+  step: {
+    color: '#A8AFC6',
+    fontSize: 14,
+    fontWeight: '800',
+    marginTop: 2,
+  },
   title: {
     color: '#F7F8FF',
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: '900',
-    marginTop: 18,
+    letterSpacing: -0.4,
+    lineHeight: 30,
+    marginTop: 10,
   },
   summaryRow: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 8,
+    marginTop: 6,
   },
-  subtitle: { color: '#A8AFC6', fontSize: 15 },
-  heroCount: { color: '#697089', fontSize: 13, fontWeight: '800' },
+  subtitle: { color: '#A8AFC6', fontSize: 14, fontWeight: '700' },
+  heroCount: { color: '#697089', fontSize: 12.5, fontWeight: '800' },
   search: {
     backgroundColor: 'rgba(16,23,45,0.92)',
     borderColor: 'rgba(255,255,255,0.08)',
@@ -197,29 +230,54 @@ const styles = StyleSheet.create({
     color: '#F7F8FF',
     fontSize: 15,
     fontWeight: '700',
-    marginTop: 18,
+    marginTop: 12,
     paddingHorizontal: 16,
-    paddingVertical: 13,
+    paddingVertical: 11,
   },
-  roleList: { gap: 10, paddingVertical: 14 },
+  roleScroller: {
+    flexGrow: 0,
+    height: 56,
+    marginTop: 12,
+  },
+  roleList: {
+    alignItems: 'center',
+    gap: 8,
+    paddingBottom: 4,
+    paddingTop: 0,
+  },
   roleChip: {
+    alignItems: 'center',
     backgroundColor: 'rgba(16,23,45,0.92)',
     borderColor: 'rgba(255,255,255,0.06)',
     borderRadius: 999,
     borderWidth: 1,
+    flexShrink: 0,
+    height: 40,
+    justifyContent: 'center',
+    minWidth: 78,
     paddingHorizontal: 14,
-    paddingVertical: 9,
   },
   roleChipActive: {
     backgroundColor: 'rgba(138,77,255,0.22)',
     borderColor: '#B44CFF',
   },
-  roleText: { color: '#A8AFC6', fontSize: 13, fontWeight: '800' },
+  roleText: {
+    color: '#A8AFC6',
+    fontSize: 13.5,
+    fontWeight: '900',
+    lineHeight: 18,
+    textAlign: 'center',
+  },
   roleTextActive: { color: '#F7F8FF' },
-  heroGrid: { paddingBottom: 14 },
-  heroRow: { gap: 10, marginBottom: 10 },
+  heroList: {
+    flex: 1,
+    marginBottom: 16,
+    marginTop: 10,
+  },
+  heroGrid: { paddingBottom: 10 },
+  heroRow: { gap: 10, marginBottom: 14 },
   heroCard: {
-    aspectRatio: 0.72,
+    aspectRatio: 1,
     backgroundColor: 'rgba(16,23,45,0.92)',
     borderColor: 'rgba(255,255,255,0.06)',
     borderRadius: 18,
@@ -230,7 +288,7 @@ const styles = StyleSheet.create({
   },
   heroCardActive: { borderColor: '#B44CFF', borderWidth: 2 },
   heroImage: { height: '100%', width: '100%' },
-  heroFade: { top: '45%' },
+  heroFade: { top: '50%' },
   selectedBadge: {
     alignItems: 'center',
     backgroundColor: '#8A4DFF',
@@ -244,14 +302,26 @@ const styles = StyleSheet.create({
   },
   selectedBadgeText: { color: '#FFFFFF', fontSize: 13, fontWeight: '900' },
   heroMeta: { bottom: 10, left: 9, position: 'absolute', right: 9 },
-  heroName: { color: '#F7F8FF', fontSize: 13, fontWeight: '900' },
-  heroRole: { color: '#A8AFC6', fontSize: 11, fontWeight: '800', marginTop: 2 },
+  heroName: {
+    color: '#F7F8FF',
+    fontSize: 12.5,
+    fontWeight: '900',
+    lineHeight: 16,
+  },
+  heroRole: {
+    color: '#A8AFC6',
+    fontSize: 10.5,
+    fontWeight: '800',
+    lineHeight: 14,
+    marginTop: 2,
+  },
   cta: {
     alignItems: 'center',
     backgroundColor: '#8A4DFF',
-    borderRadius: 20,
-    padding: 17,
+    borderRadius: 22,
+    marginTop: 0,
+    padding: 14,
   },
   ctaDisabled: { opacity: 0.45 },
-  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  ctaText: { color: '#FFFFFF', fontSize: 15, fontWeight: '900' },
 });

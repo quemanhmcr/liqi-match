@@ -183,28 +183,41 @@ function TimeSection({
         <Text style={styles.sectionMeta}>{selected.length}/5</Text>
       </View>
 
-      <View style={styles.chipWrap}>
-        {options.map((option) => (
-          <Chip
-            key={option}
-            label={option}
-            meta={timePresets[option]}
-            onPress={() => toggleTime(option)}
-            selected={selected.includes(option)}
-          />
-        ))}
-      </View>
-    </View>
-  );
-}
+      <View style={styles.timeGrid}>
+        {options.map((option) => {
+          const isSelected = selected.includes(option);
 
-function SummaryRow({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.summaryRow}>
-      <Text style={styles.summaryLabel}>{label}</Text>
-      <Text numberOfLines={1} style={styles.summaryValue}>
-        {value}
-      </Text>
+          return (
+            <Pressable
+              accessibilityLabel={`Online time ${option}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              key={option}
+              onPress={() => toggleTime(option)}
+              style={({ pressed }) => [
+                styles.timeChip,
+                isSelected && styles.timeChipActive,
+                pressed && styles.pressed,
+              ]}
+            >
+              <View
+                style={[styles.timeDot, isSelected && styles.timeDotActive]}
+              />
+              <View style={styles.timeCopy}>
+                <Text
+                  style={[
+                    styles.timeChipLabel,
+                    isSelected && styles.timeChipLabelActive,
+                  ]}
+                >
+                  {option}
+                </Text>
+                <Text style={styles.timeChipMeta}>{timePresets[option]}</Text>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -302,19 +315,6 @@ export default function HabitsScreen() {
           contentContainerStyle={styles.content}
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.summaryCard}>
-            <SummaryRow
-              label="Comms"
-              value={communication[0] ?? 'Pick communication'}
-            />
-            <SummaryRow
-              label="Online"
-              value={onlineTimes.join(', ') || 'Pick time'}
-            />
-            <SummaryRow label="Goal" value={goals[0] ?? 'Pick goal'} />
-            <SummaryRow label="Mode" value={seriousness} />
-          </View>
-
           <MultiSection
             limit={MAX_COMMUNICATION_CHANNELS}
             onToggle={(value) =>
@@ -444,30 +444,7 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   subtitle: { color: '#A8AFC6', fontSize: 15, lineHeight: 22, marginTop: 8 },
-  content: { gap: 14, paddingBottom: 22, paddingTop: 20 },
-  summaryCard: {
-    backgroundColor: 'rgba(13,17,34,0.9)',
-    borderColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 10,
-    padding: 16,
-  },
-  summaryRow: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderRadius: 15,
-    flexDirection: 'row',
-    gap: 12,
-    padding: 13,
-  },
-  summaryLabel: {
-    color: '#798097',
-    fontSize: 12,
-    fontWeight: '900',
-    width: 64,
-  },
-  summaryValue: { color: '#F7F8FF', flex: 1, fontSize: 14, fontWeight: '800' },
+  content: { gap: 14, paddingBottom: 22, paddingTop: 16 },
   section: {
     backgroundColor: 'rgba(13,17,34,0.9)',
     borderColor: 'rgba(255,255,255,0.06)',
@@ -512,6 +489,35 @@ const styles = StyleSheet.create({
   chipText: { color: '#A8AFC6', fontSize: 14, fontWeight: '800' },
   chipTextActive: { color: '#F7F8FF' },
   chipMeta: { color: '#697089', fontSize: 11, fontWeight: '800' },
+  timeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  timeChip: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.035)',
+    borderColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 50,
+    minWidth: '30%',
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  timeChipActive: {
+    backgroundColor: 'rgba(138,77,255,0.16)',
+    borderColor: 'rgba(180,76,255,0.72)',
+  },
+  timeDot: {
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 999,
+    height: 7,
+    width: 7,
+  },
+  timeDotActive: { backgroundColor: '#B44CFF' },
+  timeCopy: { gap: 2 },
+  timeChipLabel: { color: '#A8AFC6', fontSize: 14, fontWeight: '900' },
+  timeChipLabelActive: { color: '#F7F8FF' },
+  timeChipMeta: { color: '#697089', fontSize: 11, fontWeight: '800' },
   checkMark: { color: '#F7F8FF', fontSize: 13, fontWeight: '900' },
   pressed: { opacity: 0.78 },
   cta: {
