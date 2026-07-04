@@ -19,6 +19,7 @@ export default function RootLayout() {
           <Stack.Screen name="hero-selection" />
           <Stack.Screen name="habits" />
           <Stack.Screen name="profile-media" />
+          <Stack.Screen name="home" />
         </Stack>
         <StatusBar style="light" />
       </ThemeProvider>
