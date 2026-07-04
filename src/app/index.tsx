@@ -110,8 +110,8 @@ function ProviderIcon({ provider }: { provider: AuthProvider }) {
 
 function providerLabel(provider: AuthProvider) {
   if (provider === 'google') return 'Tiếp tục với Google';
-  if (provider === 'facebook') return 'Facebook';
-  return 'TikTok';
+  if (provider === 'facebook') return 'Tiếp tục với Facebook';
+  return 'Tiếp tục với TikTok';
 }
 
 function SocialAuthButton({
@@ -154,7 +154,7 @@ function SocialAuthButton({
         )}
       </View>
       <Text
-        numberOfLines={2}
+        numberOfLines={1}
         style={[
           styles.socialButtonText,
           primary ? styles.googleButtonText : styles.secondarySocialText,
@@ -162,7 +162,9 @@ function SocialAuthButton({
       >
         {label}
       </Text>
-      {primary ? <Text style={styles.socialArrow}>→</Text> : null}
+      <Text style={[styles.socialArrow, !primary && styles.secondarySocialArrow]}>
+        →
+      </Text>
     </Pressable>
   );
 }
@@ -239,10 +241,10 @@ export default function LoginScreen() {
             <View style={styles.brandHeader}>
               <View style={styles.headerSide} />
               <View accessibilityLabel="Liqi Match" style={styles.logoRow}>
-                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}>
+                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}> 
                   Liqi
                 </Text>
-                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}>
+                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}> 
                   {' '}
                   Match
                 </Text>
@@ -308,15 +310,14 @@ export default function LoginScreen() {
           </View>
 
           <View style={styles.authCard}>
-            <SocialAuthButton
-              disabled={authDisabled}
-              loading={loadingProvider === 'google'}
-              onPress={handleGoogleLogin}
-              primary
-              provider="google"
-            />
-
-            <View style={styles.secondarySocialRow}>
+            <View style={styles.socialButtonStack}>
+              <SocialAuthButton
+                disabled={authDisabled}
+                loading={loadingProvider === 'google'}
+                onPress={handleGoogleLogin}
+                primary
+                provider="google"
+              />
               <SocialAuthButton
                 disabled={authDisabled}
                 loading={loadingProvider === 'facebook'}
@@ -628,7 +629,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(162,176,230,0.15)',
     borderRadius: 24,
     borderWidth: 1,
-    paddingBottom: 18,
+    paddingBottom: 17,
     paddingHorizontal: 16,
     paddingTop: 18,
     shadowColor: '#6840FF',
@@ -641,8 +642,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 14,
+    minHeight: 52,
+    paddingHorizontal: 16,
+    width: '100%',
   },
   googleButton: {
     backgroundColor: '#F7F8FA',
@@ -651,45 +653,44 @@ const styles = StyleSheet.create({
     height: 52,
   },
   secondarySocialButton: {
-    backgroundColor: 'rgba(18,27,48,0.86)',
-    borderColor: 'rgba(178,188,232,0.16)',
+    backgroundColor: 'rgba(18,27,48,0.92)',
+    borderColor: 'rgba(126,148,255,0.22)',
     borderWidth: 1,
-    flex: 1,
-    height: 50,
+    height: 52,
   },
   socialButtonIcon: {
     alignItems: 'center',
     height: 24,
     justifyContent: 'center',
-    marginRight: 10,
+    marginRight: 12,
     width: 24,
   },
   socialButtonText: {
+    flex: 1,
     flexShrink: 1,
-    fontSize: 15.5,
-    fontWeight: '700',
+    fontSize: 14,
+    fontWeight: '600',
     lineHeight: 19,
     textAlign: 'center',
   },
   googleButtonText: {
     color: '#1D2430',
-    flex: 1,
     fontWeight: '700',
   },
   secondarySocialText: {
     color: '#EEF2FF',
-    fontSize: 14.5,
   },
   socialArrow: {
     color: '#2B3240',
     fontSize: 18,
     fontWeight: '800',
-    marginLeft: 8,
+    marginLeft: 10,
   },
-  secondarySocialRow: {
-    columnGap: 12,
-    flexDirection: 'row',
-    marginTop: 12,
+  secondarySocialArrow: {
+    color: '#B8C4FF',
+  },
+  socialButtonStack: {
+    rowGap: 11,
   },
   googleIcon: {
     alignItems: 'center',
@@ -751,11 +752,11 @@ const styles = StyleSheet.create({
   },
   consentText: {
     color: '#A8B0C4',
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '500',
-    lineHeight: 18,
-    marginTop: 16,
-    paddingHorizontal: 4,
+    lineHeight: 19,
+    marginTop: 15,
+    paddingHorizontal: 8,
     textAlign: 'center',
   },
   consentLink: {
