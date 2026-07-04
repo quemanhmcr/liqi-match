@@ -3,14 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 type TimePreset = 'Sáng' | 'Trưa' | 'Chiều' | 'Tối' | 'Khuya';
 type Seriousness = 'Thoải mái' | 'Cân bằng' | 'Cạnh tranh';
@@ -200,10 +197,7 @@ function Chip({
         {meta ? <Text style={styles.chipMeta}>{meta}</Text> : null}
       </View>
       {selected ? (
-        <LinearGradient
-          colors={['#E6C8FF', '#9D48FF']}
-          style={styles.checkDot}
-        >
+        <LinearGradient colors={['#E6C8FF', '#9D48FF']} style={styles.checkDot}>
           <Ionicons color="#13071F" name="checkmark" size={14} />
         </LinearGradient>
       ) : null}
@@ -222,14 +216,20 @@ function SectionFrame({
   return (
     <View style={styles.section}>
       <View style={styles.sectionHead}>
-        <MaterialCommunityIcons color={colors.violetSoft} name={icon} size={23} />
+        <MaterialCommunityIcons
+          color={colors.violetSoft}
+          name={icon}
+          size={23}
+        />
         <Text style={styles.sectionIndex}>{index}.</Text>
         <View style={styles.sectionCopy}>
           <View style={styles.sectionTitleRow}>
             <Text style={styles.sectionTitle}>{title}</Text>
             {meta ? <Text style={styles.sectionMeta}>{meta}</Text> : null}
           </View>
-          {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+          {subtitle ? (
+            <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+          ) : null}
         </View>
       </View>
       {children}
@@ -260,7 +260,9 @@ function MultiSection<T extends string>({
         {options.map((item) => (
           <Chip
             compact={compact}
-            disabled={Boolean(limit && selected.length >= limit && !selected.includes(item))}
+            disabled={Boolean(
+              limit && selected.length >= limit && !selected.includes(item),
+            )}
             key={item}
             label={item}
             onPress={() => onToggle(item)}
@@ -404,7 +406,9 @@ export default function HabitsScreen() {
     'Voice khi cần',
     'Ping/chat là chính',
   ]);
-  const [decisionStyle, setDecisionStyle] = useState('Cùng trao đổi trước khi quyết định');
+  const [decisionStyle, setDecisionStyle] = useState(
+    'Cùng trao đổi trước khi quyết định',
+  );
   const [onlineTimes, setOnlineTimes] = useState<TimePreset[]>(['Tối']);
   const [sessionLength, setSessionLength] = useState('3-5 trận');
   const [goals, setGoals] = useState<string[]>([
@@ -421,9 +425,13 @@ export default function HabitsScreen() {
   const [atmospheres, setAtmospheres] = useState<string[]>([
     'Nghiêm túc nhưng tôn trọng',
   ]);
-  const [feedbackStyle, setFeedbackStyle] = useState('Chỉ nhắc ngắn gọn trong trận');
+  const [feedbackStyle, setFeedbackStyle] = useState(
+    'Chỉ nhắc ngắn gọn trong trận',
+  );
   const [lossResponse, setLossResponse] = useState('Nghỉ 5-15 phút');
-  const [comebackResponse, setComebackResponse] = useState('Theo quyết định chung của đội');
+  const [comebackResponse, setComebackResponse] = useState(
+    'Theo quyết định chung của đội',
+  );
 
   const primaryGoal = goals[0] ?? 'Chưa chọn mục tiêu';
   const primaryCommunication = communication[0] ?? 'Chưa chọn giao tiếp';
@@ -440,7 +448,11 @@ export default function HabitsScreen() {
   return (
     <View style={styles.root}>
       <LinearGradient
-        colors={['rgba(109,45,220,0.36)', 'rgba(45,116,255,0.16)', 'transparent']}
+        colors={[
+          'rgba(109,45,220,0.36)',
+          'rgba(45,116,255,0.16)',
+          'transparent',
+        ]}
         pointerEvents="none"
         style={styles.bgGlowTop}
       />
@@ -457,7 +469,10 @@ export default function HabitsScreen() {
             accessibilityRole="button"
             hitSlop={8}
             onPress={() => router.back()}
-            style={({ pressed }) => [styles.backButton, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.backButton,
+              pressed && styles.pressed,
+            ]}
           >
             <Ionicons color={colors.text} name="chevron-back" size={28} />
           </Pressable>
@@ -541,7 +556,9 @@ export default function HabitsScreen() {
             icon="target"
             index={5}
             limit={2}
-            onToggle={(value) => setGoals((current) => toggleValue(current, value, 2))}
+            onToggle={(value) =>
+              setGoals((current) => toggleValue(current, value, 2))
+            }
             options={teamGoals}
             selected={goals}
             subtitle="Tách mục tiêu khỏi phong cách chơi để matching rõ hơn."
@@ -565,7 +582,11 @@ export default function HabitsScreen() {
               ]}
             >
               <View style={styles.optionalIcon}>
-                <Ionicons color={colors.violetSoft} name="options-outline" size={22} />
+                <Ionicons
+                  color={colors.violetSoft}
+                  name="options-outline"
+                  size={22}
+                />
               </View>
               <View style={styles.optionalCopy}>
                 <Text style={styles.optionalTitle}>Tùy chọn nâng cao</Text>
@@ -646,7 +667,11 @@ export default function HabitsScreen() {
             ) : null}
           </View>
 
-          <SectionFrame icon="account-group-outline" index={12} title="Hồ sơ ghép đội">
+          <SectionFrame
+            icon="account-group-outline"
+            index={12}
+            title="Hồ sơ ghép đội"
+          >
             <View style={styles.summary}>
               <SummaryItem
                 accent={colors.green}
@@ -659,7 +684,11 @@ export default function HabitsScreen() {
                 accent={colors.cyan}
                 caption={sessionLength}
                 icon="time-outline"
-                title={onlineTimes[0] ? `Online ${onlineTimes[0].toLowerCase()}` : 'Giờ online'}
+                title={
+                  onlineTimes[0]
+                    ? `Online ${onlineTimes[0].toLowerCase()}`
+                    : 'Giờ online'
+                }
               />
               <View style={styles.summaryDivider} />
               <SummaryItem
@@ -672,10 +701,14 @@ export default function HabitsScreen() {
           </SectionFrame>
 
           <View style={styles.note}>
-            <Ionicons color={colors.textDim} name="information-circle-outline" size={18} />
+            <Ionicons
+              color={colors.textDim}
+              name="information-circle-outline"
+              size={18}
+            />
             <Text style={styles.noteText}>
-              Các lựa chọn này là tín hiệu ghép đội mềm; dữ liệu trận và đánh giá
-              sau khi chơi vẫn nên có trọng số cao hơn.
+              Các lựa chọn này là tín hiệu ghép đội mềm; dữ liệu trận và đánh
+              giá sau khi chơi vẫn nên có trọng số cao hơn.
             </Text>
           </View>
         </ScrollView>
@@ -702,7 +735,10 @@ export default function HabitsScreen() {
               accessibilityLabel="Tiếp tục"
               accessibilityRole="button"
               onPress={submit}
-              style={({ pressed }) => [styles.ctaButton, pressed && styles.ctaPressed]}
+              style={({ pressed }) => [
+                styles.ctaButton,
+                pressed && styles.ctaPressed,
+              ]}
             >
               <Ionicons color="#D9CCFF" name="sparkles" size={18} />
               <Text style={styles.ctaText}>Tiếp tục</Text>

@@ -15,7 +15,10 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 
 type MediaKind = 'avatar' | 'cover' | 'wall';
 type MediaStatus = 'processing' | 'ready';
@@ -73,9 +76,9 @@ function getDraftStorage(): DraftStorage {
   try {
     // Lazy require keeps old dev-client binaries from crashing before this screen can render.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const asyncStorageModule = require('@react-native-async-storage/async-storage') as
-      | DraftStorage
-      | { default?: DraftStorage };
+    const asyncStorageModule =
+      require('@react-native-async-storage/async-storage') as
+        DraftStorage | { default?: DraftStorage };
     cachedDraftStorage =
       'default' in asyncStorageModule && asyncStorageModule.default
         ? asyncStorageModule.default
@@ -87,7 +90,8 @@ function getDraftStorage(): DraftStorage {
   if (cachedDraftStorage) return cachedDraftStorage;
 
   return {
-    getItem: async (key: string) => (key === DRAFT_KEY ? volatileDraftValue : null),
+    getItem: async (key: string) =>
+      key === DRAFT_KEY ? volatileDraftValue : null,
     setItem: async (key: string, value: string) => {
       if (key === DRAFT_KEY) volatileDraftValue = value;
     },
@@ -131,7 +135,12 @@ export default function ProfileMediaScreen() {
 
   const [avatar, setAvatar] = useState<MediaItem | null>(null);
   const [cover, setCover] = useState<MediaItem | null>(null);
-  const [wallItems, setWallItems] = useState<(MediaItem | null)[]>([null, null, null, null]);
+  const [wallItems, setWallItems] = useState<(MediaItem | null)[]>([
+    null,
+    null,
+    null,
+    null,
+  ]);
   const [sourceRequest, setSourceRequest] = useState<SourceRequest>(null);
   const [inlineError, setInlineError] = useState<InlineError>(null);
   const [galleryExpanded, setGalleryExpanded] = useState(false);
@@ -141,7 +150,8 @@ export default function ProfileMediaScreen() {
   const snackbarTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const wallCount = wallItems.filter(Boolean).length;
-  const mediaCount = Number(Boolean(avatar)) + Number(Boolean(cover)) + wallCount;
+  const mediaCount =
+    Number(Boolean(avatar)) + Number(Boolean(cover)) + wallCount;
 
   useEffect(() => {
     let active = true;
@@ -152,11 +162,17 @@ export default function ProfileMediaScreen() {
         if (!active || !rawDraft) return;
 
         const draft = JSON.parse(rawDraft) as StoredDraft;
-        setAvatar(draft.avatarUri ? { uri: draft.avatarUri, status: 'ready' } : null);
-        setCover(draft.coverUri ? { uri: draft.coverUri, status: 'ready' } : null);
+        setAvatar(
+          draft.avatarUri ? { uri: draft.avatarUri, status: 'ready' } : null,
+        );
+        setCover(
+          draft.coverUri ? { uri: draft.coverUri, status: 'ready' } : null,
+        );
         setWallItems(
           Array.from({ length: 4 }, (_, index) =>
-            draft.wallUris?.[index] ? { uri: draft.wallUris[index]!, status: 'ready' } : null,
+            draft.wallUris?.[index]
+              ? { uri: draft.wallUris[index]!, status: 'ready' }
+              : null,
           ),
         );
         if (draft.wallUris?.some(Boolean)) setGalleryExpanded(true);
@@ -183,9 +199,11 @@ export default function ProfileMediaScreen() {
       wallUris: wallItems.map((item) => item?.uri ?? null),
     };
 
-    getDraftStorage().setItem(DRAFT_KEY, JSON.stringify(draft)).catch(() => {
-      showSnackbar('Không thể tự động lưu bản nháp.', 'error');
-    });
+    getDraftStorage()
+      .setItem(DRAFT_KEY, JSON.stringify(draft))
+      .catch(() => {
+        showSnackbar('Không thể tự động lưu bản nháp.', 'error');
+      });
   }, [avatar, cover, hydrated, wallItems]);
 
   function showSnackbar(
@@ -196,7 +214,10 @@ export default function ProfileMediaScreen() {
   ) {
     if (snackbarTimer.current) clearTimeout(snackbarTimer.current);
     setSnackbar({ actionLabel, message, onAction, tone });
-    snackbarTimer.current = setTimeout(() => setSnackbar(null), actionLabel ? 5200 : 3200);
+    snackbarTimer.current = setTimeout(
+      () => setSnackbar(null),
+      actionLabel ? 5200 : 3200,
+    );
   }
 
   function openSourcePicker(kind: MediaKind, index?: number) {
@@ -204,11 +225,16 @@ export default function ProfileMediaScreen() {
     setSourceRequest({ kind, index });
   }
 
-  function setMedia(request: Exclude<SourceRequest, null>, item: MediaItem | null) {
+  function setMedia(
+    request: Exclude<SourceRequest, null>,
+    item: MediaItem | null,
+  ) {
     if (request.kind === 'avatar') setAvatar(item);
     if (request.kind === 'cover') setCover(item);
     if (request.kind === 'wall' && request.index !== undefined) {
-      setWallItems((current) => current.map((value, index) => (index === request.index ? item : value)));
+      setWallItems((current) =>
+        current.map((value, index) => (index === request.index ? item : value)),
+      );
     }
   }
 
@@ -232,7 +258,12 @@ export default function ProfileMediaScreen() {
 
       const options: ImagePicker.ImagePickerOptions = {
         allowsEditing: request.kind !== 'wall',
-        aspect: request.kind === 'avatar' ? [1, 1] : request.kind === 'cover' ? [16, 9] : undefined,
+        aspect:
+          request.kind === 'avatar'
+            ? [1, 1]
+            : request.kind === 'cover'
+              ? [16, 9]
+              : undefined,
         exif: false,
         mediaTypes: ['images'],
         quality: 0.88,
@@ -258,7 +289,10 @@ export default function ProfileMediaScreen() {
       setMedia(request, { uri: asset.uri, status: 'ready' });
       showSnackbar('Ảnh đã được thêm và tự động lưu.', 'success');
     } catch {
-      setInlineError({ ...request, message: 'Không thể mở hoặc xử lý ảnh này. Hãy thử lại.' });
+      setInlineError({
+        ...request,
+        message: 'Không thể mở hoặc xử lý ảnh này. Hãy thử lại.',
+      });
       showSnackbar('Không thể xử lý ảnh. Hãy thử lại.', 'error');
     }
   }
@@ -267,9 +301,15 @@ export default function ProfileMediaScreen() {
     const removed = wallItems[index];
     if (!removed) return;
 
-    setWallItems((current) => current.map((item, itemIndex) => (itemIndex === index ? null : item)));
+    setWallItems((current) =>
+      current.map((item, itemIndex) => (itemIndex === index ? null : item)),
+    );
     showSnackbar('Đã xóa ảnh chia sẻ.', 'neutral', 'Hoàn tác', () => {
-      setWallItems((current) => current.map((item, itemIndex) => (itemIndex === index ? removed : item)));
+      setWallItems((current) =>
+        current.map((item, itemIndex) =>
+          itemIndex === index ? removed : item,
+        ),
+      );
       setSnackbar(null);
     });
   }
@@ -284,7 +324,10 @@ export default function ProfileMediaScreen() {
       await getDraftStorage().setItem(DRAFT_KEY, JSON.stringify(draft));
       setCompleted(true);
       if (skipped && mediaCount === 0) {
-        showSnackbar('Bạn có thể thêm ảnh bất cứ lúc nào trong Hồ sơ.', 'neutral');
+        showSnackbar(
+          'Bạn có thể thêm ảnh bất cứ lúc nào trong Hồ sơ.',
+          'neutral',
+        );
       }
     } catch {
       showSnackbar('Không thể lưu hồ sơ lúc này. Hãy thử lại.', 'error');
@@ -303,10 +346,16 @@ export default function ProfileMediaScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#050713', '#070B18', '#050713']} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={['#050713', '#070B18', '#050713']}
+        style={StyleSheet.absoluteFill}
+      />
       <View pointerEvents="none" style={styles.singleGlow} />
 
-      <SafeAreaView edges={['top', 'left', 'right', 'bottom']} style={styles.safe}>
+      <SafeAreaView
+        edges={['top', 'left', 'right', 'bottom']}
+        style={styles.safe}
+      >
         <View style={[styles.frame, { width: contentWidth }]}>
           <Header compact={compact} onBack={() => router.back()} />
 
@@ -320,46 +369,84 @@ export default function ProfileMediaScreen() {
           >
             <View style={styles.hero}>
               <View style={styles.heroIcon}>
-                <Ionicons color={colors.violetSoft} name="images-outline" size={23} />
+                <Ionicons
+                  color={colors.violetSoft}
+                  name="images-outline"
+                  size={23}
+                />
               </View>
-              <Text accessibilityRole="header" style={[styles.heading, compact && styles.headingCompact]}>
+              <Text
+                accessibilityRole="header"
+                style={[styles.heading, compact && styles.headingCompact]}
+              >
                 Hoàn thiện <Text style={styles.headingAccent}>ảnh hồ sơ</Text>
               </Text>
               <Text style={styles.subtitle}>
-                Chọn ảnh giúp đồng đội nhận ra bạn nhanh hơn. Ảnh được lưu nháp trên máy và có thể thay đổi sau.
+                Chọn ảnh giúp đồng đội nhận ra bạn nhanh hơn. Ảnh được lưu nháp
+                trên máy và có thể thay đổi sau.
               </Text>
             </View>
 
             <SectionCard>
               <SectionHeader
                 description="Ảnh vuông, rõ mặt hoặc avatar game. Đây là ảnh hiển thị chính khi ghép đội."
-                status={<StatusPill tone={avatar ? 'complete' : 'recommended'} />}
+                status={
+                  <StatusPill tone={avatar ? 'complete' : 'recommended'} />
+                }
                 title="Ảnh đại diện"
               />
 
               <Pressable
                 accessibilityHint="Mở lựa chọn camera hoặc thư viện ảnh"
-                accessibilityLabel={avatar ? 'Ảnh đại diện đã được thêm. Nhấn để thay đổi.' : 'Thêm ảnh đại diện.'}
+                accessibilityLabel={
+                  avatar
+                    ? 'Ảnh đại diện đã được thêm. Nhấn để thay đổi.'
+                    : 'Thêm ảnh đại diện.'
+                }
                 accessibilityRole="button"
                 accessibilityState={{ busy: avatar?.status === 'processing' }}
                 onPress={() => openSourcePicker('avatar')}
-                style={({ pressed }) => [styles.avatarSelector, pressed && styles.controlPressed]}
+                style={({ pressed }) => [
+                  styles.avatarSelector,
+                  pressed && styles.controlPressed,
+                ]}
               >
                 <View style={styles.avatarPreview}>
-                  {avatar ? <Image source={{ uri: avatar.uri }} style={styles.avatarImage} /> : (
-                    <Ionicons color={colors.violetSoft} name="person-outline" size={32} />
+                  {avatar ? (
+                    <Image
+                      source={{ uri: avatar.uri }}
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <Ionicons
+                      color={colors.violetSoft}
+                      name="person-outline"
+                      size={32}
+                    />
                   )}
-                  {avatar?.status === 'processing' ? <ProcessingOverlay compact /> : null}
+                  {avatar?.status === 'processing' ? (
+                    <ProcessingOverlay compact />
+                  ) : null}
                 </View>
                 <View style={styles.selectorCopy}>
                   <Text style={styles.selectorTitle}>
                     {avatar ? 'Ảnh đại diện đã sẵn sàng' : 'Chọn ảnh đại diện'}
                   </Text>
-                  <Text style={styles.selectorMeta}>Ảnh vuông · tối đa 10 MB</Text>
+                  <Text style={styles.selectorMeta}>
+                    Ảnh vuông · tối đa 10 MB
+                  </Text>
                 </View>
-                <Ionicons color={colors.textDim} name={avatar ? 'pencil-outline' : 'chevron-forward'} size={21} />
+                <Ionicons
+                  color={colors.textDim}
+                  name={avatar ? 'pencil-outline' : 'chevron-forward'}
+                  size={21}
+                />
               </Pressable>
-              <InlineErrorMessage error={inlineError?.kind === 'avatar' ? inlineError.message : null} />
+              <InlineErrorMessage
+                error={
+                  inlineError?.kind === 'avatar' ? inlineError.message : null
+                }
+              />
             </SectionCard>
 
             <SectionCard>
@@ -371,38 +458,74 @@ export default function ProfileMediaScreen() {
 
               <Pressable
                 accessibilityHint="Mở lựa chọn camera hoặc thư viện ảnh"
-                accessibilityLabel={cover ? 'Ảnh hồ sơ game đã được thêm. Nhấn để thay đổi.' : 'Thêm ảnh hồ sơ game.'}
+                accessibilityLabel={
+                  cover
+                    ? 'Ảnh hồ sơ game đã được thêm. Nhấn để thay đổi.'
+                    : 'Thêm ảnh hồ sơ game.'
+                }
                 accessibilityRole="button"
                 accessibilityState={{ busy: cover?.status === 'processing' }}
                 onPress={() => openSourcePicker('cover')}
-                style={({ pressed }) => [styles.coverSelector, pressed && styles.controlPressed]}
+                style={({ pressed }) => [
+                  styles.coverSelector,
+                  pressed && styles.controlPressed,
+                ]}
               >
                 {cover ? (
                   <>
-                    <Image resizeMode="cover" source={{ uri: cover.uri }} style={styles.coverImage} />
-                    <LinearGradient colors={['transparent', 'rgba(4,6,15,0.86)']} style={StyleSheet.absoluteFill} />
+                    <Image
+                      resizeMode="cover"
+                      source={{ uri: cover.uri }}
+                      style={styles.coverImage}
+                    />
+                    <LinearGradient
+                      colors={['transparent', 'rgba(4,6,15,0.86)']}
+                      style={StyleSheet.absoluteFill}
+                    />
                     <View style={styles.coverReadyRow}>
                       <View>
-                        <Text style={styles.coverReadyTitle}>Ảnh đã sẵn sàng</Text>
-                        <Text style={styles.coverReadyMeta}>Nhấn để thay ảnh</Text>
+                        <Text style={styles.coverReadyTitle}>
+                          Ảnh đã sẵn sàng
+                        </Text>
+                        <Text style={styles.coverReadyMeta}>
+                          Nhấn để thay ảnh
+                        </Text>
                       </View>
                       <View style={styles.editCircle}>
-                        <Ionicons color="#FFFFFF" name="pencil-outline" size={18} />
+                        <Ionicons
+                          color="#FFFFFF"
+                          name="pencil-outline"
+                          size={18}
+                        />
                       </View>
                     </View>
-                    {cover.status === 'processing' ? <ProcessingOverlay /> : null}
+                    {cover.status === 'processing' ? (
+                      <ProcessingOverlay />
+                    ) : null}
                   </>
                 ) : (
                   <View style={styles.coverEmpty}>
                     <View style={styles.coverIconBox}>
-                      <MaterialCommunityIcons color={colors.violetSoft} name="image-plus-outline" size={32} />
+                      <MaterialCommunityIcons
+                        color={colors.violetSoft}
+                        name="image-plus-outline"
+                        size={32}
+                      />
                     </View>
-                    <Text style={styles.coverEmptyTitle}>Thêm ảnh hồ sơ game</Text>
-                    <Text style={styles.coverEmptyMeta}>Khung ngang 16:9 · tối đa 10 MB</Text>
+                    <Text style={styles.coverEmptyTitle}>
+                      Thêm ảnh hồ sơ game
+                    </Text>
+                    <Text style={styles.coverEmptyMeta}>
+                      Khung ngang 16:9 · tối đa 10 MB
+                    </Text>
                   </View>
                 )}
               </Pressable>
-              <InlineErrorMessage error={inlineError?.kind === 'cover' ? inlineError.message : null} />
+              <InlineErrorMessage
+                error={
+                  inlineError?.kind === 'cover' ? inlineError.message : null
+                }
+              />
             </SectionCard>
 
             <SectionCard>
@@ -411,22 +534,36 @@ export default function ProfileMediaScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ expanded: galleryExpanded }}
                 onPress={() => setGalleryExpanded((value) => !value)}
-                style={({ pressed }) => [styles.galleryHeader, pressed && styles.controlPressed]}
+                style={({ pressed }) => [
+                  styles.galleryHeader,
+                  pressed && styles.controlPressed,
+                ]}
               >
                 <View style={styles.galleryHeaderIcon}>
-                  <Ionicons color={colors.violetSoft} name="grid-outline" size={21} />
+                  <Ionicons
+                    color={colors.violetSoft}
+                    name="grid-outline"
+                    size={21}
+                  />
                 </View>
                 <View style={styles.galleryHeaderCopy}>
                   <Text style={styles.galleryTitle}>Ảnh chia sẻ</Text>
-                  <Text style={styles.galleryDescription}>Tùy chọn · {wallCount}/4 ảnh</Text>
+                  <Text style={styles.galleryDescription}>
+                    Tùy chọn · {wallCount}/4 ảnh
+                  </Text>
                 </View>
-                <Ionicons color={colors.textDim} name={galleryExpanded ? 'chevron-up' : 'chevron-down'} size={21} />
+                <Ionicons
+                  color={colors.textDim}
+                  name={galleryExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={21}
+                />
               </Pressable>
 
               {galleryExpanded ? (
                 <View style={styles.galleryContent}>
                   <Text style={styles.galleryHelper}>
-                    Thêm khoảnh khắc chơi game, thành tích hoặc ảnh lobby. Phần này có thể hoàn thiện sau.
+                    Thêm khoảnh khắc chơi game, thành tích hoặc ảnh lobby. Phần
+                    này có thể hoàn thiện sau.
                   </Text>
                   <View style={styles.galleryGrid}>
                     {wallItems.map((item, index) => (
@@ -434,37 +571,63 @@ export default function ProfileMediaScreen() {
                         index={index}
                         key={index}
                         onPress={() => openSourcePicker('wall', index)}
-                        onRemove={item ? () => removeWallImage(index) : undefined}
+                        onRemove={
+                          item ? () => removeWallImage(index) : undefined
+                        }
                         uri={item?.uri}
                       />
                     ))}
                   </View>
-                  <InlineErrorMessage error={inlineError?.kind === 'wall' ? inlineError.message : null} />
+                  <InlineErrorMessage
+                    error={
+                      inlineError?.kind === 'wall' ? inlineError.message : null
+                    }
+                  />
                 </View>
               ) : null}
             </SectionCard>
 
             <View style={styles.privacyCard}>
               <View style={styles.privacyIcon}>
-                <Ionicons color={colors.green} name="shield-checkmark-outline" size={25} />
+                <Ionicons
+                  color={colors.green}
+                  name="shield-checkmark-outline"
+                  size={25}
+                />
               </View>
               <View style={styles.privacyCopy}>
-                <Text style={styles.privacyTitle}>Bạn kiểm soát ảnh của mình</Text>
+                <Text style={styles.privacyTitle}>
+                  Bạn kiểm soát ảnh của mình
+                </Text>
                 <Text style={styles.privacyText}>
-                  Ảnh chỉ dùng cho hồ sơ Liqi Match. Bạn có thể thay đổi hoặc xóa bất cứ lúc nào trong cài đặt hồ sơ.
+                  Ảnh chỉ dùng cho hồ sơ Liqi Match. Bạn có thể thay đổi hoặc
+                  xóa bất cứ lúc nào trong cài đặt hồ sơ.
                 </Text>
               </View>
             </View>
           </ScrollView>
 
-          <View style={[styles.stickyAction, { paddingBottom: Math.max(insets.bottom, 10) + 10 }]}>
-            <LinearGradient colors={['transparent', colors.bg]} pointerEvents="none" style={styles.actionFade} />
+          <View
+            style={[
+              styles.stickyAction,
+              { paddingBottom: Math.max(insets.bottom, 10) + 10 },
+            ]}
+          >
+            <LinearGradient
+              colors={['transparent', colors.bg]}
+              pointerEvents="none"
+              style={styles.actionFade}
+            />
             <View style={styles.actionPanel}>
               <View style={styles.actionSummary}>
                 <Text style={styles.actionSummaryTitle}>
-                  {mediaCount > 0 ? `${mediaCount} ảnh đã sẵn sàng` : 'Ảnh có thể thêm sau'}
+                  {mediaCount > 0
+                    ? `${mediaCount} ảnh đã sẵn sàng`
+                    : 'Ảnh có thể thêm sau'}
                 </Text>
-                <Text style={styles.actionSummaryText}>Bản nháp được lưu tự động</Text>
+                <Text style={styles.actionSummaryText}>
+                  Bản nháp được lưu tự động
+                </Text>
               </View>
               <GradientButton
                 accessibilityHint="Lưu lựa chọn và kết thúc thiết lập hồ sơ"
@@ -475,7 +638,10 @@ export default function ProfileMediaScreen() {
                 accessibilityLabel="Làm sau"
                 accessibilityRole="button"
                 onPress={() => completeProfile(true)}
-                style={({ pressed }) => [styles.laterButton, pressed && styles.controlPressed]}
+                style={({ pressed }) => [
+                  styles.laterButton,
+                  pressed && styles.controlPressed,
+                ]}
               >
                 <Text style={styles.laterText}>Làm sau</Text>
               </Pressable>
@@ -510,12 +676,18 @@ function Header({ compact, onBack }: { compact: boolean; onBack: () => void }) {
         accessibilityRole="button"
         hitSlop={8}
         onPress={onBack}
-        style={({ pressed }) => [styles.roundButton, pressed && styles.controlPressed]}
+        style={({ pressed }) => [
+          styles.roundButton,
+          pressed && styles.controlPressed,
+        ]}
       >
         <Ionicons color={colors.text} name="chevron-back" size={25} />
       </Pressable>
 
-      <Text accessibilityLabel="Liqi Match" style={[styles.logo, compact && styles.logoCompact]}>
+      <Text
+        accessibilityLabel="Liqi Match"
+        style={[styles.logo, compact && styles.logoCompact]}
+      >
         <Text style={styles.logoAccent}>Liqi</Text> Match
       </Text>
 
@@ -543,7 +715,9 @@ function SectionHeader({
   return (
     <View style={styles.sectionHeader}>
       <View style={styles.sectionHeaderCopy}>
-        <Text accessibilityRole="header" style={styles.sectionTitle}>{title}</Text>
+        <Text accessibilityRole="header" style={styles.sectionTitle}>
+          {title}
+        </Text>
         <Text style={styles.sectionDescription}>{description}</Text>
       </View>
       {status}
@@ -551,7 +725,11 @@ function SectionHeader({
   );
 }
 
-function StatusPill({ tone }: { tone: 'optional' | 'recommended' | 'complete' }) {
+function StatusPill({
+  tone,
+}: {
+  tone: 'optional' | 'recommended' | 'complete';
+}) {
   const config = {
     optional: { icon: 'ellipse-outline', label: 'Tùy chọn' },
     recommended: { icon: 'sparkles-outline', label: 'Khuyến nghị' },
@@ -562,8 +740,14 @@ function StatusPill({ tone }: { tone: 'optional' | 'recommended' | 'complete' })
 
   return (
     <View style={[styles.statusPill, complete && styles.statusPillDone]}>
-      <Ionicons color={complete ? colors.green : colors.violetSoft} name={item.icon} size={14} />
-      <Text style={[styles.statusText, complete && styles.statusTextDone]}>{item.label}</Text>
+      <Ionicons
+        color={complete ? colors.green : colors.violetSoft}
+        name={item.icon}
+        size={14}
+      />
+      <Text style={[styles.statusText, complete && styles.statusTextDone]}>
+        {item.label}
+      </Text>
     </View>
   );
 }
@@ -572,7 +756,9 @@ function ProcessingOverlay({ compact = false }: { compact?: boolean }) {
   return (
     <View style={styles.processingOverlay}>
       <ActivityIndicator color="#FFFFFF" />
-      {compact ? null : <Text style={styles.processingText}>Đang xử lý ảnh...</Text>}
+      {compact ? null : (
+        <Text style={styles.processingText}>Đang xử lý ảnh...</Text>
+      )}
     </View>
   );
 }
@@ -603,11 +789,20 @@ function GalleryTile({
 
   return (
     <Pressable
-      accessibilityHint={uri ? 'Mở trình chọn để thay ảnh' : 'Mở trình chọn ảnh'}
-      accessibilityLabel={uri ? `Ảnh chia sẻ số ${position} đã được thêm` : `Thêm ảnh chia sẻ số ${position}`}
+      accessibilityHint={
+        uri ? 'Mở trình chọn để thay ảnh' : 'Mở trình chọn ảnh'
+      }
+      accessibilityLabel={
+        uri
+          ? `Ảnh chia sẻ số ${position} đã được thêm`
+          : `Thêm ảnh chia sẻ số ${position}`
+      }
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.galleryTile, pressed && styles.controlPressed]}
+      style={({ pressed }) => [
+        styles.galleryTile,
+        pressed && styles.controlPressed,
+      ]}
     >
       {uri ? (
         <>
@@ -661,7 +856,10 @@ function GradientButton({
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.gradientButtonWrap, pressed && styles.ctaPressed]}
+      style={({ pressed }) => [
+        styles.gradientButtonWrap,
+        pressed && styles.ctaPressed,
+      ]}
     >
       <LinearGradient
         colors={['#B638F3', '#684DFF', '#2379FF']}
@@ -700,12 +898,24 @@ function SourcePickerSheet({
       transparent
       visible={visible}
     >
-      <Pressable accessibilityRole="button" onPress={onClose} style={styles.sheetBackdrop}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onClose}
+        style={styles.sheetBackdrop}
+      >
         <SafeAreaView edges={['bottom']} style={styles.sheetSafeArea}>
-          <Pressable accessibilityViewIsModal onPress={(event) => event.stopPropagation()} style={styles.sheet}>
+          <Pressable
+            accessibilityViewIsModal
+            onPress={(event) => event.stopPropagation()}
+            style={styles.sheet}
+          >
             <View style={styles.sheetHandle} />
-            <Text accessibilityRole="header" style={styles.sheetTitle}>{title}</Text>
-            <Text style={styles.sheetSubtitle}>Chọn cách bạn muốn thêm ảnh.</Text>
+            <Text accessibilityRole="header" style={styles.sheetTitle}>
+              {title}
+            </Text>
+            <Text style={styles.sheetSubtitle}>
+              Chọn cách bạn muốn thêm ảnh.
+            </Text>
 
             <View style={styles.sheetActions}>
               <SourceAction
@@ -722,7 +932,11 @@ function SourcePickerSheet({
               />
             </View>
 
-            <Pressable accessibilityRole="button" onPress={onClose} style={styles.cancelButton}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onClose}
+              style={styles.cancelButton}
+            >
               <Text style={styles.cancelText}>Hủy</Text>
             </Pressable>
           </Pressable>
@@ -749,7 +963,10 @@ function SourceAction({
       accessibilityLabel={label}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.sourceAction, pressed && styles.controlPressed]}
+      style={({ pressed }) => [
+        styles.sourceAction,
+        pressed && styles.controlPressed,
+      ]}
     >
       <View style={styles.sourceIconBox}>
         <Ionicons color={colors.violetSoft} name={icon} size={23} />
@@ -786,13 +1003,23 @@ function Snackbar({
   return (
     <View accessibilityLiveRegion="polite" style={styles.snackbar}>
       <Ionicons
-        color={tone === 'success' ? colors.green : tone === 'error' ? colors.red : colors.textMuted}
+        color={
+          tone === 'success'
+            ? colors.green
+            : tone === 'error'
+              ? colors.red
+              : colors.textMuted
+        }
         name={icon}
         size={20}
       />
       <Text style={styles.snackbarMessage}>{message}</Text>
       {actionLabel && onAction ? (
-        <Pressable accessibilityRole="button" onPress={onAction} style={styles.snackbarAction}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAction}
+          style={styles.snackbarAction}
+        >
           <Text style={styles.snackbarActionText}>{actionLabel}</Text>
         </Pressable>
       ) : null}
@@ -811,14 +1038,19 @@ function CompletionState({
 }) {
   return (
     <View style={styles.root}>
-      <LinearGradient colors={['#050713', '#0B0D1D', '#050713']} style={StyleSheet.absoluteFill} />
+      <LinearGradient
+        colors={['#050713', '#0B0D1D', '#050713']}
+        style={StyleSheet.absoluteFill}
+      />
       <View pointerEvents="none" style={styles.completionGlow} />
       <SafeAreaView style={styles.completionSafeArea}>
         <View style={styles.completionContent}>
           <View style={styles.successIcon}>
             <Ionicons color="#06120B" name="checkmark" size={38} />
           </View>
-          <Text accessibilityRole="header" style={styles.completionTitle}>Hồ sơ đã sẵn sàng</Text>
+          <Text accessibilityRole="header" style={styles.completionTitle}>
+            Hồ sơ đã sẵn sàng
+          </Text>
           <Text style={styles.completionText}>
             {mediaCount > 0
               ? `Đã lưu ${mediaCount} ảnh. Bạn có thể tiếp tục vào Liqi Match và chỉnh sửa bất cứ lúc nào.`
@@ -828,11 +1060,22 @@ function CompletionState({
           <View style={styles.completionChecklist}>
             <CompletionRow complete label="Thiết lập ghép đội" />
             <CompletionRow complete={hasAvatar} label="Ảnh đại diện" optional />
-            <CompletionRow complete={mediaCount > Number(hasAvatar)} label="Ảnh phong cách chơi" optional />
+            <CompletionRow
+              complete={mediaCount > Number(hasAvatar)}
+              label="Ảnh phong cách chơi"
+              optional
+            />
           </View>
 
-          <GradientButton label="Vào Liqi Match" onPress={() => Alert.alert('Liqi Match', 'Onboarding đã hoàn tất.')} />
-          <Pressable accessibilityRole="button" onPress={onEdit} style={styles.editProfileButton}>
+          <GradientButton
+            label="Vào Liqi Match"
+            onPress={() => Alert.alert('Liqi Match', 'Onboarding đã hoàn tất.')}
+          />
+          <Pressable
+            accessibilityRole="button"
+            onPress={onEdit}
+            style={styles.editProfileButton}
+          >
             <Text style={styles.editProfileText}>Quay lại chỉnh ảnh</Text>
           </Pressable>
         </View>
@@ -841,12 +1084,26 @@ function CompletionState({
   );
 }
 
-function CompletionRow({ complete, label, optional = false }: { complete: boolean; label: string; optional?: boolean }) {
+function CompletionRow({
+  complete,
+  label,
+  optional = false,
+}: {
+  complete: boolean;
+  label: string;
+  optional?: boolean;
+}) {
   return (
     <View style={styles.completionRow}>
-      <Ionicons color={complete ? colors.green : colors.textDim} name={complete ? 'checkmark-circle' : 'ellipse-outline'} size={21} />
+      <Ionicons
+        color={complete ? colors.green : colors.textDim}
+        name={complete ? 'checkmark-circle' : 'ellipse-outline'}
+        size={21}
+      />
       <Text style={styles.completionRowLabel}>{label}</Text>
-      {optional ? <Text style={styles.completionOptional}>Tùy chọn</Text> : null}
+      {optional ? (
+        <Text style={styles.completionOptional}>Tùy chọn</Text>
+      ) : null}
     </View>
   );
 }

@@ -66,7 +66,11 @@ function TrustIcon({ type }: { type: TrustIconType }) {
 
 function GoogleIcon() {
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.googleIcon}>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.googleIcon}
+    >
       <Text style={styles.googleGlyph}>G</Text>
     </View>
   );
@@ -74,7 +78,11 @@ function GoogleIcon() {
 
 function FacebookIcon() {
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.facebookIcon}>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.facebookIcon}
+    >
       <Text style={styles.facebookGlyph}>f</Text>
     </View>
   );
@@ -82,7 +90,11 @@ function FacebookIcon() {
 
 function TikTokIcon() {
   return (
-    <View accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={styles.tiktokIcon}>
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      style={styles.tiktokIcon}
+    >
       <Text style={[styles.tiktokGlyph, styles.tiktokCyan]}>♪</Text>
       <Text style={[styles.tiktokGlyph, styles.tiktokPink]}>♪</Text>
       <Text style={styles.tiktokGlyph}>♪</Text>
@@ -133,14 +145,20 @@ function SocialAuthButton({
     >
       <View style={styles.socialButtonIcon}>
         {loading ? (
-          <ActivityIndicator color={primary ? '#20232B' : '#EAF0FF'} size="small" />
+          <ActivityIndicator
+            color={primary ? '#20232B' : '#EAF0FF'}
+            size="small"
+          />
         ) : (
           <ProviderIcon provider={provider} />
         )}
       </View>
       <Text
         numberOfLines={2}
-        style={[styles.socialButtonText, primary ? styles.googleButtonText : styles.secondarySocialText]}
+        style={[
+          styles.socialButtonText,
+          primary ? styles.googleButtonText : styles.secondarySocialText,
+        ]}
       >
         {label}
       </Text>
@@ -151,10 +169,15 @@ function SocialAuthButton({
 
 export default function LoginScreen() {
   const { height, width } = useWindowDimensions();
-  const [loadingProvider, setLoadingProvider] = useState<AuthProvider | null>(null);
+  const [loadingProvider, setLoadingProvider] = useState<AuthProvider | null>(
+    null,
+  );
   const [authMessage, setAuthMessage] = useState<string | null>(null);
 
-  const scale = useMemo(() => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.06)), [width]);
+  const scale = useMemo(
+    () => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.06)),
+    [width],
+  );
   const compact = height < 790;
   const horizontal = 18 * scale;
   const authDisabled = Boolean(loadingProvider);
@@ -210,34 +233,61 @@ export default function LoginScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={[styles.brandBlock, compact && styles.brandBlockCompact]}>
+          <View
+            style={[styles.brandBlock, compact && styles.brandBlockCompact]}
+          >
             <View style={styles.brandHeader}>
               <View style={styles.headerSide} />
               <View accessibilityLabel="Liqi Match" style={styles.logoRow}>
-                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}>Liqi</Text>
-                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}> Match</Text>
+                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}>
+                  Liqi
+                </Text>
+                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}>
+                  {' '}
+                  Match
+                </Text>
               </View>
               <Pressable
                 accessibilityLabel="Mở cài đặt"
                 accessibilityRole="button"
                 hitSlop={8}
-                onPress={() => setAuthMessage('Cài đặt sẽ khả dụng sau khi đăng nhập.')}
-                style={({ pressed }) => [styles.settingsButton, pressed && styles.buttonPressed]}
+                onPress={() =>
+                  setAuthMessage('Cài đặt sẽ khả dụng sau khi đăng nhập.')
+                }
+                style={({ pressed }) => [
+                  styles.settingsButton,
+                  pressed && styles.buttonPressed,
+                ]}
               >
                 <Text style={styles.settingsGlyph}>⚙</Text>
               </Pressable>
             </View>
             <View style={styles.taglineRow}>
-              <LinearGradient colors={['#A53DFF', '#3E67FF']} style={styles.taglineDash} />
+              <LinearGradient
+                colors={['#A53DFF', '#3E67FF']}
+                style={styles.taglineDash}
+              />
               <Text style={styles.tagline}>Match chuẩn, leo rank nhẹ</Text>
-              <LinearGradient colors={['#3E67FF', '#D237FF']} style={styles.taglineDash} />
+              <LinearGradient
+                colors={['#3E67FF', '#D237FF']}
+                style={styles.taglineDash}
+              />
             </View>
           </View>
 
           <View style={styles.heroFrame}>
-            <ImageBackground imageStyle={styles.heroImage} resizeMode="cover" source={heroImage} style={styles.hero}>
+            <ImageBackground
+              imageStyle={styles.heroImage}
+              resizeMode="cover"
+              source={heroImage}
+              style={styles.hero}
+            >
               <LinearGradient
-                colors={['rgba(2,6,17,0)', 'rgba(2,6,17,0.08)', 'rgba(2,6,17,0.46)']}
+                colors={[
+                  'rgba(2,6,17,0)',
+                  'rgba(2,6,17,0.08)',
+                  'rgba(2,6,17,0.46)',
+                ]}
                 locations={[0, 0.66, 1]}
                 pointerEvents="none"
                 style={StyleSheet.absoluteFill}
@@ -283,7 +333,11 @@ export default function LoginScreen() {
 
             <Text style={styles.consentText}>
               Bằng việc tiếp tục, bạn đồng ý với{' '}
-              <Text accessibilityRole="link" onPress={() => openLegalLink(legalLinks.terms)} style={styles.consentLink}>
+              <Text
+                accessibilityRole="link"
+                onPress={() => openLegalLink(legalLinks.terms)}
+                style={styles.consentLink}
+              >
                 Điều khoản sử dụng
               </Text>{' '}
               và{' '}

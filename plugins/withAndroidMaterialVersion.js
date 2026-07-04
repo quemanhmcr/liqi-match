@@ -16,7 +16,9 @@ function withAndroidMaterialVersion(config) {
 
     if (contents.includes(START_MARKER)) {
       contents = contents.replace(
-        new RegExp(`${escapeRegExp(START_MARKER)}[\\s\\S]*?${escapeRegExp(END_MARKER)}`),
+        new RegExp(
+          `${escapeRegExp(START_MARKER)}[\\s\\S]*?${escapeRegExp(END_MARKER)}`,
+        ),
         materialResolutionBlock.trim(),
       );
     } else {

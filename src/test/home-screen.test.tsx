@@ -5,7 +5,9 @@ import HomeScreen from '@/app/index';
 
 describe('HomeScreen', () => {
   it('renders the login screen entry actions', async () => {
-    const { getByText, queryByPlaceholderText, queryByText } = await render(<HomeScreen />);
+    const { getByText, queryByPlaceholderText, queryByText } = await render(
+      <HomeScreen />,
+    );
 
     expect(getByText('Liqi')).toBeTruthy();
     expect(getByText('Match')).toBeTruthy();
