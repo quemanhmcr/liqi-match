@@ -3,6 +3,7 @@ import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   ImageBackground,
   Linking,
   Pressable,
@@ -162,7 +163,9 @@ function SocialAuthButton({
       >
         {label}
       </Text>
-      <Text style={[styles.socialArrow, !primary && styles.secondarySocialArrow]}>
+      <Text
+        style={[styles.socialArrow, !primary && styles.secondarySocialArrow]}
+      >
         →
       </Text>
     </Pressable>
@@ -174,7 +177,6 @@ export default function LoginScreen() {
   const [loadingProvider, setLoadingProvider] = useState<AuthProvider | null>(
     null,
   );
-  const [authMessage, setAuthMessage] = useState<string | null>(null);
 
   const scale = useMemo(
     () => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.06)),
@@ -184,17 +186,22 @@ export default function LoginScreen() {
   const horizontal = 18 * scale;
   const authDisabled = Boolean(loadingProvider);
 
+  const showAuthError = (provider: AuthProvider, error: unknown) => {
+    Alert.alert(getAuthErrorTitle(provider), getFriendlyAuthError(provider, error), [
+      { text: 'Đã hiểu' },
+    ]);
+  };
+
   const startOAuth = async (provider: AuthProvider) => {
     if (loadingProvider) return;
 
-    setAuthMessage(null);
     setLoadingProvider(provider);
 
     try {
       await connectOAuthProvider(provider);
       router.push('/rank');
     } catch (error) {
-      setAuthMessage(getFriendlyAuthError(provider, error));
+      showAuthError(provider, error);
     } finally {
       setLoadingProvider(null);
     }
@@ -208,7 +215,9 @@ export default function LoginScreen() {
     try {
       await Linking.openURL(url);
     } catch {
-      setAuthMessage('Không thể mở liên kết lúc này. Vui lòng thử lại.');
+      Alert.alert('Không thể mở liên kết', 'Vui lòng thử lại sau.', [
+        { text: 'Đã hiểu' },
+      ]);
     }
   };
 
@@ -254,7 +263,11 @@ export default function LoginScreen() {
                 accessibilityRole="button"
                 hitSlop={8}
                 onPress={() =>
-                  setAuthMessage('Cài đặt sẽ khả dụng sau khi đăng nhập.')
+                  Alert.alert(
+                    'Cài đặt',
+                    'Cài đặt sẽ khả dụng sau khi đăng nhập.',
+                    [{ text: 'Đã hiểu' }],
+                  )
                 }
                 style={({ pressed }) => [
                   styles.settingsButton,
@@ -351,12 +364,6 @@ export default function LoginScreen() {
               </Text>
               .
             </Text>
-
-            {authMessage ? (
-              <View accessibilityLiveRegion="polite" style={styles.authMessage}>
-                <Text style={styles.authMessageText}>{authMessage}</Text>
-              </View>
-            ) : null}
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -370,13 +377,17 @@ async function connectOAuthProvider(provider: AuthProvider) {
   throw unavailable;
 }
 
+function getAuthErrorTitle(provider: AuthProvider) {
+  if (provider === 'google') return 'Không thể đăng nhập bằng Google';
+  if (provider === 'facebook') return 'Không thể đăng nhập bằng Facebook';
+  return 'Không thể đăng nhập bằng TikTok';
+}
+
 function getFriendlyAuthError(provider: AuthProvider, error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : '';
 
   if (message.includes('cancel')) {
-    return provider === 'facebook'
-      ? 'Đăng nhập Facebook đã bị hủy.'
-      : 'Đăng nhập đã bị hủy. Bạn có thể thử lại bất cứ lúc nào.';
+    return 'Đăng nhập đã bị hủy. Bạn có thể thử lại bất cứ lúc nào.';
   }
 
   if (message.includes('network')) {
@@ -384,14 +395,14 @@ function getFriendlyAuthError(provider: AuthProvider, error: unknown) {
   }
 
   if (provider === 'google') {
-    return 'Không thể đăng nhập bằng Google. Vui lòng thử lại.';
+    return 'Google hiện chưa khả dụng. Bạn có thể thử lại sau hoặc tiếp tục với Facebook/TikTok.';
   }
 
   if (provider === 'facebook') {
-    return 'Không thể đăng nhập bằng Facebook. Vui lòng thử lại.';
+    return 'Facebook hiện chưa khả dụng. Bạn có thể thử lại sau hoặc tiếp tục với Google/TikTok.';
   }
 
-  return 'Không thể kết nối với TikTok lúc này.';
+  return 'TikTok hiện chưa khả dụng. Bạn có thể thử lại sau hoặc tiếp tục với Google/Facebook.';
 }
 
 const styles = StyleSheet.create({
@@ -763,21 +774,5 @@ const styles = StyleSheet.create({
     color: '#B885FF',
     fontWeight: '800',
     lineHeight: 22,
-  },
-  authMessage: {
-    backgroundColor: 'rgba(255,111,159,0.10)',
-    borderColor: 'rgba(255,111,159,0.18)',
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  authMessageText: {
-    color: '#FFC3D5',
-    fontSize: 12.5,
-    fontWeight: '600',
-    lineHeight: 18,
-    textAlign: 'center',
   },
 });
