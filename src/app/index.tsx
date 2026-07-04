@@ -1,206 +1,68 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  ImageBackground,
   Linking,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const heroImage = require('../../assets/anh_mau2/liqi-login-hero.png');
-const BASE_WIDTH = 393;
+import type { OAuthProvider } from '@/shared/auth/auth-service';
+import { useAuth } from '@/shared/auth/auth-context';
+import { hasCompletedOnboarding } from '@/features/onboarding/profile-service';
 
-type AuthProvider = 'google' | 'facebook' | 'tiktok';
-type TrustIconType = 'shield' | 'mic' | 'target';
-
-const trustItems: { icon: TrustIconType; title: string }[] = [
-  { icon: 'shield', title: 'Người thật' },
-  { icon: 'mic', title: 'Voice nhanh' },
-  { icon: 'target', title: 'Ghép chuẩn' },
-];
+type LoginProvider = OAuthProvider | 'tiktok';
 
 const legalLinks = {
   privacy: 'https://liqimatch.app/privacy',
   terms: 'https://liqimatch.app/terms',
 };
 
-function TrustIcon({ type }: { type: TrustIconType }) {
-  if (type === 'mic') {
-    return (
-      <View style={styles.trustIconShell}>
-        <View style={styles.micHead} />
-        <View style={styles.micStem} />
-        <View style={styles.micBase} />
-      </View>
-    );
-  }
-
-  if (type === 'target') {
-    return (
-      <View style={styles.trustIconShell}>
-        <View style={styles.targetOuter}>
-          <View style={styles.targetInner}>
-            <View style={styles.targetDot} />
-          </View>
-        </View>
-      </View>
-    );
-  }
-
-  return (
-    <View style={styles.trustIconShell}>
-      <View style={styles.shield}>
-        <View style={styles.checkLong} />
-        <View style={styles.checkShort} />
-      </View>
-    </View>
-  );
-}
-
-function GoogleIcon() {
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={styles.googleIcon}
-    >
-      <Text style={styles.googleGlyph}>G</Text>
-    </View>
-  );
-}
-
-function FacebookIcon() {
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={styles.facebookIcon}
-    >
-      <Text style={styles.facebookGlyph}>f</Text>
-    </View>
-  );
-}
-
-function TikTokIcon() {
-  return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={styles.tiktokIcon}
-    >
-      <Text style={[styles.tiktokGlyph, styles.tiktokCyan]}>♪</Text>
-      <Text style={[styles.tiktokGlyph, styles.tiktokPink]}>♪</Text>
-      <Text style={styles.tiktokGlyph}>♪</Text>
-    </View>
-  );
-}
-
-function ProviderIcon({ provider }: { provider: AuthProvider }) {
-  if (provider === 'google') return <GoogleIcon />;
-  if (provider === 'facebook') return <FacebookIcon />;
-  return <TikTokIcon />;
-}
-
-function providerLabel(provider: AuthProvider) {
-  if (provider === 'google') return 'Tiếp tục với Google';
-  if (provider === 'facebook') return 'Facebook';
-  return 'TikTok';
-}
-
-function SocialAuthButton({
-  disabled,
-  loading,
-  onPress,
-  primary = false,
-  provider,
-}: {
-  disabled: boolean;
-  loading: boolean;
-  onPress: () => void;
-  primary?: boolean;
-  provider: AuthProvider;
-}) {
-  const label = providerLabel(provider);
-
-  return (
-    <Pressable
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      accessibilityState={{ busy: loading, disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.socialButton,
-        primary ? styles.googleButton : styles.secondarySocialButton,
-        pressed && !disabled && styles.buttonPressed,
-        disabled && !loading && styles.buttonDisabled,
-      ]}
-    >
-      <View style={styles.socialButtonIcon}>
-        {loading ? (
-          <ActivityIndicator
-            color={primary ? '#20232B' : '#EAF0FF'}
-            size="small"
-          />
-        ) : (
-          <ProviderIcon provider={provider} />
-        )}
-      </View>
-      <Text
-        numberOfLines={2}
-        style={[
-          styles.socialButtonText,
-          primary ? styles.googleButtonText : styles.secondarySocialText,
-        ]}
-      >
-        {label}
-      </Text>
-      {primary ? <Text style={styles.socialArrow}>→</Text> : null}
-    </Pressable>
-  );
-}
-
 export default function LoginScreen() {
-  const { height, width } = useWindowDimensions();
-  const [loadingProvider, setLoadingProvider] = useState<AuthProvider | null>(
-    null,
-  );
+  const { loading, session, signIn } = useAuth();
+  const [loadingProvider, setLoadingProvider] = useState<LoginProvider | null>(null);
   const [authMessage, setAuthMessage] = useState<string | null>(null);
 
-  const scale = useMemo(
-    () => Math.max(0.9, Math.min(width / BASE_WIDTH, 1.06)),
-    [width],
-  );
-  const compact = height < 790;
-  const horizontal = 18 * scale;
-  const authDisabled = Boolean(loadingProvider);
+  useEffect(() => {
+    let active = true;
 
-  const startOAuth = async (provider: AuthProvider) => {
+    async function routeExistingSession() {
+      if (loading || !session) return;
+      const completed = await hasCompletedOnboarding(session).catch(() => false);
+      if (!active) return;
+      router.replace(completed ? '/home' : '/rank');
+    }
+
+    routeExistingSession();
+    return () => {
+      active = false;
+    };
+  }, [loading, session]);
+
+  const startOAuth = async (provider: LoginProvider) => {
+    if (provider === 'tiktok') {
+      setAuthMessage('TikTok OAuth sẽ được kết nối sau. Hiện hãy dùng Google hoặc Facebook.');
+      return;
+    }
+
     if (loadingProvider) return;
-
     setAuthMessage(null);
     setLoadingProvider(provider);
 
     try {
-      await connectOAuthProvider(provider);
-      router.push('/rank');
+      const nextSession = await signIn(provider);
+      const completed = await hasCompletedOnboarding(nextSession).catch(() => false);
+      router.replace(completed ? '/home' : '/rank');
     } catch (error) {
       setAuthMessage(getFriendlyAuthError(provider, error));
     } finally {
       setLoadingProvider(null);
     }
   };
-
-  const handleGoogleLogin = () => startOAuth('google');
-  const handleFacebookLogin = () => startOAuth('facebook');
-  const handleTikTokLogin = () => startOAuth('tiktok');
 
   const openLegalLink = async (url: string) => {
     try {
@@ -210,142 +72,67 @@ export default function LoginScreen() {
     }
   };
 
+  const authDisabled = loading || Boolean(loadingProvider);
+
   return (
     <View style={styles.root}>
       <LinearGradient
         colors={['#050817', '#020611', '#01040B']}
-        locations={[0, 0.5, 1]}
+        locations={[0, 0.55, 1]}
         style={StyleSheet.absoluteFill}
       />
       <View style={[styles.glow, styles.glowLeft]} />
       <View style={[styles.glow, styles.glowRight]} />
 
       <SafeAreaView edges={['top', 'bottom']} style={styles.safe}>
-        <ScrollView
-          bounces={false}
-          contentContainerStyle={[
-            styles.content,
-            {
-              paddingBottom: compact ? 10 : 16,
-              paddingHorizontal: horizontal,
-            },
-          ]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-        >
-          <View
-            style={[styles.brandBlock, compact && styles.brandBlockCompact]}
-          >
-            <View style={styles.brandHeader}>
-              <View style={styles.headerSide} />
-              <View accessibilityLabel="Liqi Match" style={styles.logoRow}>
-                <Text style={[styles.logoLiqi, { fontSize: 38 * scale }]}>
-                  Liqi
-                </Text>
-                <Text style={[styles.logoMatch, { fontSize: 38 * scale }]}>
-                  {' '}
-                  Match
-                </Text>
-              </View>
-              <Pressable
-                accessibilityLabel="Mở cài đặt"
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() =>
-                  setAuthMessage('Cài đặt sẽ khả dụng sau khi đăng nhập.')
-                }
-                style={({ pressed }) => [
-                  styles.settingsButton,
-                  pressed && styles.buttonPressed,
-                ]}
-              >
-                <Text style={styles.settingsGlyph}>⚙</Text>
-              </Pressable>
-            </View>
-            <View style={styles.taglineRow}>
-              <LinearGradient
-                colors={['#A53DFF', '#3E67FF']}
-                style={styles.taglineDash}
-              />
-              <Text style={styles.tagline}>Match chuẩn, leo rank nhẹ</Text>
-              <LinearGradient
-                colors={['#3E67FF', '#D237FF']}
-                style={styles.taglineDash}
-              />
-            </View>
+        <View style={styles.content}>
+          <View style={styles.brandBlock}>
+            <Text accessibilityRole="header" style={styles.logo}>
+              <Text style={styles.logoAccent}>Liqi</Text> Match
+            </Text>
+            <Text style={styles.tagline}>Match chuẩn, leo rank nhẹ</Text>
           </View>
 
-          <View style={styles.heroFrame}>
-            <ImageBackground
-              imageStyle={styles.heroImage}
-              resizeMode="cover"
-              source={heroImage}
-              style={styles.hero}
-            >
-              <LinearGradient
-                colors={[
-                  'rgba(2,6,17,0)',
-                  'rgba(2,6,17,0.08)',
-                  'rgba(2,6,17,0.46)',
-                ]}
-                locations={[0, 0.66, 1]}
-                pointerEvents="none"
-                style={StyleSheet.absoluteFill}
-              />
-            </ImageBackground>
-          </View>
-
-          <View style={styles.trustStrip}>
-            {trustItems.map((item, index) => (
-              <View key={item.title} style={styles.trustItem}>
-                {index > 0 ? <View style={styles.trustDivider} /> : null}
-                <TrustIcon type={item.icon} />
-                <Text numberOfLines={1} style={styles.trustTitle}>
-                  {item.title}
-                </Text>
-              </View>
-            ))}
+          <View style={styles.heroCard}>
+            <Text style={styles.heroEyebrow}>TÌM ĐỒNG ĐỘI LIÊN QUÂN</Text>
+            <Text style={styles.heroTitle}>Ghép đội theo rank, lane, tướng tủ và thói quen chơi.</Text>
+            <View style={styles.trustRow}>
+              <TrustPill label="Người thật" />
+              <TrustPill label="Voice nhanh" />
+              <TrustPill label="Ghép chuẩn" />
+            </View>
           </View>
 
           <View style={styles.authCard}>
             <SocialAuthButton
               disabled={authDisabled}
               loading={loadingProvider === 'google'}
-              onPress={handleGoogleLogin}
+              onPress={() => startOAuth('google')}
               primary
-              provider="google"
+              title="Tiếp tục với Google"
             />
-
-            <View style={styles.secondarySocialRow}>
+            <View style={styles.secondaryRow}>
               <SocialAuthButton
                 disabled={authDisabled}
                 loading={loadingProvider === 'facebook'}
-                onPress={handleFacebookLogin}
-                provider="facebook"
+                onPress={() => startOAuth('facebook')}
+                title="Facebook"
               />
               <SocialAuthButton
                 disabled={authDisabled}
                 loading={loadingProvider === 'tiktok'}
-                onPress={handleTikTokLogin}
-                provider="tiktok"
+                onPress={() => startOAuth('tiktok')}
+                title="TikTok"
               />
             </View>
 
             <Text style={styles.consentText}>
               Bằng việc tiếp tục, bạn đồng ý với{' '}
-              <Text
-                accessibilityRole="link"
-                onPress={() => openLegalLink(legalLinks.terms)}
-                style={styles.consentLink}
-              >
+              <Text onPress={() => openLegalLink(legalLinks.terms)} style={styles.consentLink}>
                 Điều khoản sử dụng
               </Text>{' '}
               và{' '}
-              <Text
-                accessibilityRole="link"
-                onPress={() => openLegalLink(legalLinks.privacy)}
-                style={styles.consentLink}
-              >
+              <Text onPress={() => openLegalLink(legalLinks.privacy)} style={styles.consentLink}>
                 Chính sách quyền riêng tư
               </Text>
               .
@@ -357,426 +144,100 @@ export default function LoginScreen() {
               </View>
             ) : null}
           </View>
-        </ScrollView>
+        </View>
       </SafeAreaView>
     </View>
   );
 }
 
-async function connectOAuthProvider(provider: AuthProvider) {
-  const unavailable = new Error(`${provider}:oauth-not-configured`);
-  unavailable.name = 'OAuthNotConfigured';
-  throw unavailable;
+function SocialAuthButton({
+  disabled,
+  loading,
+  onPress,
+  primary = false,
+  title,
+}: {
+  disabled: boolean;
+  loading: boolean;
+  onPress: () => void;
+  primary?: boolean;
+  title: string;
+}) {
+  return (
+    <Pressable
+      accessibilityLabel={title}
+      accessibilityRole="button"
+      accessibilityState={{ busy: loading, disabled }}
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.socialButton,
+        primary ? styles.primaryButton : styles.secondaryButton,
+        pressed && !disabled && styles.pressed,
+        disabled && !loading && styles.disabled,
+      ]}
+    >
+      {loading ? <ActivityIndicator color={primary ? '#10131F' : '#EAF0FF'} /> : null}
+      {!loading ? <Text style={primary ? styles.primaryIcon : styles.secondaryIcon}>{title[0]}</Text> : null}
+      <Text style={primary ? styles.primaryText : styles.secondaryText}>{title}</Text>
+      {primary ? <Text style={styles.arrow}>→</Text> : null}
+    </Pressable>
+  );
 }
 
-function getFriendlyAuthError(provider: AuthProvider, error: unknown) {
+function TrustPill({ label }: { label: string }) {
+  return (
+    <View style={styles.trustPill}>
+      <Text style={styles.trustText}>{label}</Text>
+    </View>
+  );
+}
+
+function getFriendlyAuthError(provider: OAuthProvider, error: unknown) {
   const message = error instanceof Error ? error.message.toLowerCase() : '';
-
-  if (message.includes('cancel')) {
-    return provider === 'facebook'
-      ? 'Đăng nhập Facebook đã bị hủy.'
-      : 'Đăng nhập đã bị hủy. Bạn có thể thử lại bất cứ lúc nào.';
-  }
-
-  if (message.includes('network')) {
-    return 'Kết nối mạng không ổn định. Vui lòng kiểm tra và thử lại.';
-  }
-
-  if (provider === 'google') {
-    return 'Không thể đăng nhập bằng Google. Vui lòng thử lại.';
-  }
-
-  if (provider === 'facebook') {
-    return 'Không thể đăng nhập bằng Facebook. Vui lòng thử lại.';
-  }
-
-  return 'Không thể kết nối với TikTok lúc này.';
+  if (message.includes('cancel')) return 'Đăng nhập đã bị hủy. Bạn có thể thử lại bất cứ lúc nào.';
+  if (message.includes('network')) return 'Kết nối mạng không ổn định. Vui lòng kiểm tra và thử lại.';
+  if (provider === 'facebook') return 'Không thể đăng nhập bằng Facebook. Vui lòng thử lại.';
+  return 'Không thể đăng nhập bằng Google. Vui lòng thử lại.';
 }
 
 const styles = StyleSheet.create({
-  root: {
-    backgroundColor: '#020611',
-    flex: 1,
-    overflow: 'hidden',
+  root: { backgroundColor: '#020611', flex: 1 },
+  safe: { flex: 1 },
+  content: { flex: 1, justifyContent: 'space-between', padding: 20 },
+  glow: { borderRadius: 999, opacity: 0.22, position: 'absolute' },
+  glowLeft: { backgroundColor: '#7B2DFF', height: 320, left: -180, top: 120, width: 320 },
+  glowRight: { backgroundColor: '#126CFF', bottom: 40, height: 280, right: -170, width: 280 },
+  brandBlock: { alignItems: 'center', marginTop: 18 },
+  logo: { color: '#FFFFFF', fontSize: 38, fontWeight: '900', letterSpacing: -1 },
+  logoAccent: { color: '#D662FF' },
+  tagline: { color: '#B8C0D8', fontSize: 15, marginTop: 8 },
+  heroCard: {
+    backgroundColor: 'rgba(16,22,43,0.78)',
+    borderColor: 'rgba(181,195,255,0.14)',
+    borderRadius: 28,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 22,
   },
-  safe: {
-    flex: 1,
-  },
-  content: {
-    alignItems: 'stretch',
-    flexGrow: 1,
-  },
-  glow: {
-    borderRadius: 180,
-    height: 360,
-    opacity: 0.1,
-    position: 'absolute',
-    transform: [{ scaleY: 0.38 }, { rotate: '-18deg' }],
-    width: 360,
-  },
-  glowLeft: {
-    backgroundColor: '#762CFF',
-    bottom: 95,
-    left: -270,
-  },
-  glowRight: {
-    backgroundColor: '#2258FF',
-    bottom: 260,
-    right: -285,
-  },
-  brandBlock: {
-    alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 10,
-  },
-  brandBlockCompact: {
-    marginBottom: 9,
-    marginTop: 2,
-  },
-  brandHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-  },
-  headerSide: {
-    width: 44,
-  },
-  settingsButton: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(17,23,43,0.76)',
-    borderColor: 'rgba(162,176,230,0.14)',
-    borderRadius: 22,
-    borderWidth: 1,
-    height: 44,
-    justifyContent: 'center',
-    width: 44,
-  },
-  settingsGlyph: {
-    color: '#D9DDEB',
-    fontSize: 19,
-    lineHeight: 22,
-  },
-  logoRow: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
-    justifyContent: 'center',
-  },
-  logoLiqi: {
-    color: '#A23CFF',
-    fontStyle: 'italic',
-    fontWeight: '900',
-    letterSpacing: 0,
-    textShadowColor: 'rgba(132,68,255,0.75)',
-    textShadowOffset: { height: 0, width: 0 },
-    textShadowRadius: 14,
-    transform: [{ skewX: '-7deg' }],
-  },
-  logoMatch: {
-    color: '#F8F8FC',
-    fontStyle: 'italic',
-    fontWeight: '900',
-    letterSpacing: 0,
-    textShadowColor: 'rgba(255,255,255,0.18)',
-    textShadowOffset: { height: 0, width: 0 },
-    textShadowRadius: 7,
-    transform: [{ skewX: '-7deg' }],
-  },
-  taglineRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    marginTop: 3,
-  },
-  tagline: {
-    color: '#D6D7E2',
-    fontSize: 12.5,
-    fontWeight: '600',
-    letterSpacing: 0.8,
-    marginHorizontal: 11,
-  },
-  taglineDash: {
-    borderRadius: 2,
-    height: 2,
-    width: 13,
-  },
-  heroFrame: {
-    backgroundColor: '#080C1C',
-    borderColor: 'rgba(135,143,210,0.14)',
-    borderRadius: 18,
-    borderWidth: 1,
-    overflow: 'hidden',
-  },
-  hero: {
-    aspectRatio: 1.62,
-    justifyContent: 'flex-end',
-    width: '100%',
-  },
-  heroImage: {
-    borderRadius: 18,
-  },
-  trustStrip: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 18,
-    marginTop: 16,
-    paddingHorizontal: 2,
-  },
-  trustItem: {
-    alignItems: 'center',
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    minWidth: 0,
-    position: 'relative',
-  },
-  trustDivider: {
-    backgroundColor: 'rgba(151,162,195,0.22)',
-    bottom: 3,
-    left: 0,
-    position: 'absolute',
-    top: 3,
-    width: StyleSheet.hairlineWidth,
-  },
-  trustIconShell: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(128,72,255,0.14)',
-    borderRadius: 11,
-    height: 24,
-    justifyContent: 'center',
-    marginRight: 6,
-    width: 24,
-  },
-  shield: {
-    alignItems: 'center',
-    borderBottomLeftRadius: 7,
-    borderBottomRightRadius: 7,
-    borderColor: '#8E66FF',
-    borderTopLeftRadius: 5,
-    borderTopRightRadius: 5,
-    borderWidth: 1.4,
-    height: 17,
-    justifyContent: 'center',
-    width: 15,
-  },
-  checkLong: {
-    backgroundColor: '#B6A8FF',
-    borderRadius: 1,
-    height: 1.7,
-    position: 'absolute',
-    transform: [{ rotate: '-45deg' }, { translateX: 2 }],
-    width: 8,
-  },
-  checkShort: {
-    backgroundColor: '#B6A8FF',
-    borderRadius: 1,
-    height: 1.7,
-    position: 'absolute',
-    transform: [{ rotate: '45deg' }, { translateX: -3 }, { translateY: 2 }],
-    width: 5,
-  },
-  micHead: {
-    borderColor: '#A066FF',
-    borderRadius: 5,
-    borderWidth: 1.5,
-    height: 13,
-    width: 8,
-  },
-  micStem: {
-    backgroundColor: '#A066FF',
-    height: 5,
-    width: 1.5,
-  },
-  micBase: {
-    backgroundColor: '#A066FF',
-    borderRadius: 1,
-    height: 1.5,
-    width: 10,
-  },
-  targetOuter: {
-    alignItems: 'center',
-    borderColor: '#6477FF',
-    borderRadius: 9,
-    borderWidth: 1.4,
-    height: 18,
-    justifyContent: 'center',
-    width: 18,
-  },
-  targetInner: {
-    alignItems: 'center',
-    borderColor: '#9A55FF',
-    borderRadius: 5,
-    borderWidth: 1.3,
-    height: 10,
-    justifyContent: 'center',
-    width: 10,
-  },
-  targetDot: {
-    backgroundColor: '#B174FF',
-    borderRadius: 1.5,
-    height: 3,
-    width: 3,
-  },
-  trustTitle: {
-    color: '#DCE1F0',
-    flexShrink: 1,
-    fontSize: 12.5,
-    fontWeight: '800',
-  },
-  authCard: {
-    backgroundColor: 'rgba(13,20,38,0.62)',
-    borderColor: 'rgba(162,176,230,0.15)',
-    borderRadius: 24,
-    borderWidth: 1,
-    paddingBottom: 18,
-    paddingHorizontal: 16,
-    paddingTop: 18,
-    shadowColor: '#6840FF',
-    shadowOffset: { height: 8, width: 0 },
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-  },
-  socialButton: {
-    alignItems: 'center',
-    borderRadius: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    minHeight: 48,
-    paddingHorizontal: 14,
-  },
-  googleButton: {
-    backgroundColor: '#F7F8FA',
-    borderColor: 'rgba(255,255,255,0.70)',
-    borderWidth: 1,
-    height: 52,
-  },
-  secondarySocialButton: {
-    backgroundColor: 'rgba(18,27,48,0.86)',
-    borderColor: 'rgba(178,188,232,0.16)',
-    borderWidth: 1,
-    flex: 1,
-    height: 50,
-  },
-  socialButtonIcon: {
-    alignItems: 'center',
-    height: 24,
-    justifyContent: 'center',
-    marginRight: 10,
-    width: 24,
-  },
-  socialButtonText: {
-    flexShrink: 1,
-    fontSize: 15.5,
-    fontWeight: '700',
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-  googleButtonText: {
-    color: '#1D2430',
-    flex: 1,
-    fontWeight: '700',
-  },
-  secondarySocialText: {
-    color: '#EEF2FF',
-    fontSize: 14.5,
-  },
-  socialArrow: {
-    color: '#2B3240',
-    fontSize: 18,
-    fontWeight: '800',
-    marginLeft: 8,
-  },
-  secondarySocialRow: {
-    columnGap: 12,
-    flexDirection: 'row',
-    marginTop: 12,
-  },
-  googleIcon: {
-    alignItems: 'center',
-    height: 22,
-    justifyContent: 'center',
-    width: 22,
-  },
-  googleGlyph: {
-    color: '#4285F4',
-    fontSize: 22,
-    fontWeight: '900',
-    lineHeight: 24,
-  },
-  facebookIcon: {
-    alignItems: 'center',
-    backgroundColor: '#1877F2',
-    borderRadius: 11,
-    height: 22,
-    justifyContent: 'center',
-    width: 22,
-  },
-  facebookGlyph: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '900',
-    lineHeight: 24,
-    marginTop: 3,
-  },
-  tiktokIcon: {
-    height: 24,
-    position: 'relative',
-    width: 24,
-  },
-  tiktokGlyph: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '900',
-    left: 2,
-    lineHeight: 24,
-    position: 'absolute',
-    top: 0,
-  },
-  tiktokCyan: {
-    color: '#25F4EE',
-    left: 0,
-    top: 1,
-  },
-  tiktokPink: {
-    color: '#FE2C55',
-    left: 4,
-    top: -1,
-  },
-  buttonPressed: {
-    opacity: 0.86,
-    transform: [{ scale: 0.992 }],
-  },
-  buttonDisabled: {
-    opacity: 0.48,
-  },
-  consentText: {
-    color: '#A8B0C4',
-    fontSize: 11.5,
-    fontWeight: '500',
-    lineHeight: 18,
-    marginTop: 16,
-    paddingHorizontal: 4,
-    textAlign: 'center',
-  },
-  consentLink: {
-    color: '#B885FF',
-    fontWeight: '800',
-    lineHeight: 22,
-  },
-  authMessage: {
-    backgroundColor: 'rgba(255,111,159,0.10)',
-    borderColor: 'rgba(255,111,159,0.18)',
-    borderRadius: 14,
-    borderWidth: 1,
-    marginTop: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  authMessageText: {
-    color: '#FFC3D5',
-    fontSize: 12.5,
-    fontWeight: '600',
-    lineHeight: 18,
-    textAlign: 'center',
-  },
+  heroEyebrow: { color: '#A9B4D8', fontSize: 12, fontWeight: '800', letterSpacing: 1.4 },
+  heroTitle: { color: '#F6F8FF', fontSize: 26, fontWeight: '900', lineHeight: 34, marginTop: 14 },
+  trustRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 20 },
+  trustPill: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 8 },
+  trustText: { color: '#E7EBFF', fontSize: 12, fontWeight: '700' },
+  authCard: { gap: 12 },
+  socialButton: { alignItems: 'center', borderRadius: 20, flexDirection: 'row', gap: 12, minHeight: 58, paddingHorizontal: 16 },
+  primaryButton: { backgroundColor: '#FFFFFF' },
+  secondaryButton: { backgroundColor: 'rgba(18,25,49,0.94)', flex: 1 },
+  secondaryRow: { flexDirection: 'row', gap: 12 },
+  primaryIcon: { color: '#20232B', fontSize: 18, fontWeight: '900' },
+  secondaryIcon: { color: '#EAF0FF', fontSize: 18, fontWeight: '900' },
+  primaryText: { color: '#151923', flex: 1, fontSize: 16, fontWeight: '900' },
+  secondaryText: { color: '#EAF0FF', flex: 1, fontSize: 15, fontWeight: '800' },
+  arrow: { color: '#151923', fontSize: 23, fontWeight: '900' },
+  consentText: { color: '#8E96AE', fontSize: 12, lineHeight: 18, textAlign: 'center' },
+  consentLink: { color: '#D7A6FF', fontWeight: '800' },
+  authMessage: { backgroundColor: 'rgba(255,111,159,0.14)', borderRadius: 14, padding: 12 },
+  authMessageText: { color: '#FFD7E4', fontSize: 13, lineHeight: 18, textAlign: 'center' },
+  pressed: { opacity: 0.72, transform: [{ scale: 0.98 }] },
+  disabled: { opacity: 0.7 },
 });
