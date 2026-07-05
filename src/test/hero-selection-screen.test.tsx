@@ -12,12 +12,12 @@ describe('HeroSelectionScreen', () => {
   it('renders the connected hero selection step', async () => {
     const { getByText } = await render(<HeroSelectionScreen />);
 
-    expect(getByText('Step 3/5')).toBeTruthy();
-    expect(getByText('Choose 3 favorite heroes')).toBeTruthy();
+    expect(getByText('Bước 3/5')).toBeTruthy();
+    expect(getByText('Chọn 3 tướng yêu thích')).toBeTruthy();
     expect(getByText('Edras')).toBeTruthy();
     expect(getByText('Goverra')).toBeTruthy();
     expect(getByText('Heino')).toBeTruthy();
-    expect(getByText('Continue')).toBeTruthy();
+    expect(getByText('Tiếp tục')).toBeTruthy();
   });
 
   it('keeps exactly three selected heroes when selecting another hero', async () => {
@@ -25,7 +25,7 @@ describe('HeroSelectionScreen', () => {
 
     fireEvent.press(getByText('Billow'));
 
-    expect(getByText('Selected 3/3')).toBeTruthy();
+    expect(getByText('Đã chọn 3/3')).toBeTruthy();
     expect(getByText('Billow')).toBeTruthy();
   });
 });

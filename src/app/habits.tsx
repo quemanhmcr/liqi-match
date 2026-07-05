@@ -175,9 +175,9 @@ function TimeSection({
     <View style={styles.section}>
       <View style={styles.sectionHead}>
         <View>
-          <Text style={styles.sectionTitle}>Online time</Text>
+          <Text style={styles.sectionTitle}>Thời gian online</Text>
           <Text style={styles.sectionSubtitle}>
-            Pick every usual play window.
+            Chọn các khung giờ bạn thường chơi.
           </Text>
         </View>
         <Text style={styles.sectionMeta}>{selected.length}/5</Text>
@@ -189,7 +189,7 @@ function TimeSection({
 
           return (
             <Pressable
-              accessibilityLabel={`Online time ${option}`}
+              accessibilityLabel={`Thời gian online ${option}`}
               accessibilityRole="button"
               accessibilityState={{ selected: isSelected }}
               key={option}
@@ -304,11 +304,10 @@ export default function HabitsScreen() {
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.step}>Step 4/5</Text>
-        <Text style={styles.title}>Team habits</Text>
+        <Text style={styles.step}>Bước 4/5</Text>
+        <Text style={styles.title}>Thói quen chơi đội</Text>
         <Text style={styles.subtitle}>
-          Keep the new clean profile flow, but capture the full matching
-          signals.
+          Giữ luồng hồ sơ gọn gàng nhưng vẫn thu đủ tín hiệu ghép đội.
         </Text>
 
         <ScrollView
@@ -324,8 +323,8 @@ export default function HabitsScreen() {
             }
             options={communicationChannels}
             selected={communication}
-            subtitle="How you prefer to coordinate while playing."
-            title="Communication"
+            subtitle="Cách bạn muốn phối hợp khi chơi."
+            title="Giao tiếp"
           />
 
           <TimeSection
@@ -339,16 +338,16 @@ export default function HabitsScreen() {
             onSelect={setDecisionStyle}
             options={decisionStyles}
             selected={decisionStyle}
-            subtitle="Shot-calling and follow-call expectations."
-            title="Decision style"
+            subtitle="Kỳ vọng về gọi kèo và nghe call."
+            title="Cách quyết định"
           />
 
           <SingleSection
             onSelect={setSessionLength}
             options={sessionLengths}
             selected={sessionLength}
-            subtitle="How long a normal play session should feel."
-            title="Session length"
+            subtitle="Một phiên chơi bình thường nên kéo dài bao lâu."
+            title="Độ dài phiên chơi"
           />
 
           <MultiSection
@@ -358,8 +357,8 @@ export default function HabitsScreen() {
             }
             options={teamGoals}
             selected={goals}
-            subtitle="What you want from teammates right now."
-            title="Team goals"
+            subtitle="Điều bạn đang muốn từ đồng đội."
+            title="Mục tiêu ghép đội"
           />
 
           <SingleSection
@@ -367,7 +366,7 @@ export default function HabitsScreen() {
             options={Object.keys(seriousnessDescriptions)}
             selected={seriousness}
             subtitle={seriousnessDescriptions[seriousness]}
-            title="Seriousness"
+            title="Mức độ nghiêm túc"
           />
 
           <MultiSection
@@ -379,8 +378,8 @@ export default function HabitsScreen() {
             }
             options={strategyStyles}
             selected={strategies}
-            subtitle="Playstyle preferences, not skill claims."
-            title="Strategy style"
+            subtitle="Sở thích lối chơi, không phải cam kết kỹ năng."
+            title="Lối chơi chiến thuật"
           />
 
           <MultiSection
@@ -392,32 +391,32 @@ export default function HabitsScreen() {
             }
             options={teamAtmospheres}
             selected={atmospheres}
-            subtitle="The team vibe you want to match with."
-            title="Team atmosphere"
+            subtitle="Không khí đội bạn muốn ghép cùng."
+            title="Không khí đội"
           />
 
           <SingleSection
             onSelect={setFeedbackStyle}
             options={feedbackStyles}
             selected={feedbackStyle}
-            subtitle="How feedback should happen in or after matches."
-            title="Feedback style"
+            subtitle="Cách góp ý trong hoặc sau trận."
+            title="Cách góp ý"
           />
 
           <SingleSection
             onSelect={setLossResponse}
             options={lossResponses}
             selected={lossResponse}
-            subtitle="What you prefer after a short losing streak."
-            title="After losses"
+            subtitle="Bạn muốn xử lý thế nào sau vài trận thua."
+            title="Sau chuỗi thua"
           />
 
           <SingleSection
             onSelect={setComebackResponse}
             options={comebackResponses}
             selected={comebackResponse}
-            subtitle="How you decide when a match is going badly."
-            title="Comeback response"
+            subtitle="Cách bạn quyết định khi trận đấu đang xấu đi."
+            title="Khi trận đấu bất lợi"
           />
         </ScrollView>
 
@@ -426,7 +425,7 @@ export default function HabitsScreen() {
           onPress={submit}
           style={[styles.cta, !canContinue && styles.ctaDisabled]}
         >
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>Tiếp tục</Text>
         </Pressable>
       </SafeAreaView>
     </View>

@@ -24,13 +24,13 @@ import { updateOnboardingSnapshot } from '@/features/onboarding/onboarding-store
 const MAX_SELECTED = 3;
 
 const ROLE_LABELS = [
-  'All',
-  'Fighter',
-  'Tank',
-  'Mage',
-  'Assassin',
-  'Support',
-  'Marksman',
+  'Tất cả',
+  'Đấu sĩ',
+  'Đỡ đòn',
+  'Pháp sư',
+  'Sát thủ',
+  'Trợ thủ',
+  'Xạ thủ',
 ] as const;
 
 function roleLabel(role: HeroRole) {
@@ -119,14 +119,14 @@ export default function HeroSelectionScreen() {
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.step}>Step 3/5</Text>
-        <Text style={styles.title}>Choose 3 favorite heroes</Text>
+        <Text style={styles.step}>Bước 3/5</Text>
+        <Text style={styles.title}>Chọn 3 tướng yêu thích</Text>
         <View style={styles.summaryRow}>
           <Text style={styles.subtitle}>
-            Selected {selected.length}/{MAX_SELECTED}
+            Đã chọn {selected.length}/{MAX_SELECTED}
           </Text>
           <Text style={styles.heroCount}>
-            {filteredHeroes.length}/{HEROES.length} heroes
+            {filteredHeroes.length}/{HEROES.length} tướng
           </Text>
         </View>
 
@@ -134,7 +134,7 @@ export default function HeroSelectionScreen() {
           autoCapitalize="none"
           autoCorrect={false}
           onChangeText={setQuery}
-          placeholder="Search hero"
+          placeholder="Tìm tướng"
           placeholderTextColor="#697089"
           style={styles.search}
           value={query}
@@ -185,7 +185,7 @@ export default function HeroSelectionScreen() {
             selected.length !== MAX_SELECTED && styles.ctaDisabled,
           ]}
         >
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>Tiếp tục</Text>
         </Pressable>
       </SafeAreaView>
     </View>

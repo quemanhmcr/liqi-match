@@ -7,12 +7,12 @@ describe('HabitsScreen', () => {
   it('renders the full connected habits step', async () => {
     const { getAllByText, getByText } = await render(<HabitsScreen />);
 
-    expect(getByText('Step 4/5')).toBeTruthy();
-    expect(getByText('Team habits')).toBeTruthy();
-    expect(getByText('Communication')).toBeTruthy();
+    expect(getByText('Bước 4/5')).toBeTruthy();
+    expect(getByText('Thói quen chơi đội')).toBeTruthy();
+    expect(getByText('Giao tiếp')).toBeTruthy();
     expect(getAllByText(/Ping\/chat/).length).toBeGreaterThan(0);
-    expect(getByText('Strategy style')).toBeTruthy();
-    expect(getByText('Team atmosphere')).toBeTruthy();
-    expect(getByText('Continue')).toBeTruthy();
+    expect(getByText('Lối chơi chiến thuật')).toBeTruthy();
+    expect(getByText('Không khí đội')).toBeTruthy();
+    expect(getByText('Tiếp tục')).toBeTruthy();
   });
 });

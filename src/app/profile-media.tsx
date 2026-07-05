@@ -86,7 +86,7 @@ export default function ProfileMediaScreen() {
       if (source === 'camera') {
         const permission = await ImagePicker.requestCameraPermissionsAsync();
         if (!permission.granted) {
-          setError('Camera permission is required to take a new photo.');
+          setError('Bạn cần cấp quyền camera để chụp ảnh mới.');
           return;
         }
       }
@@ -112,7 +112,7 @@ export default function ProfileMediaScreen() {
       if (result.canceled || !result.assets[0]?.uri) return;
       assignMedia(request, result.assets[0].uri);
     } catch {
-      setError('Could not open or process this image. Please try again.');
+      setError('Không thể mở hoặc xử lý ảnh này. Vui lòng thử lại.');
     }
   };
 
@@ -131,7 +131,9 @@ export default function ProfileMediaScreen() {
       await completeOnboardingProfile(session, getOnboardingSnapshot());
       router.replace('/home');
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'save failed');
+      setError(
+        caught instanceof Error ? caught.message : 'Không thể lưu hồ sơ.',
+      );
     } finally {
       setBusy(false);
     }
@@ -144,28 +146,21 @@ export default function ProfileMediaScreen() {
         style={StyleSheet.absoluteFill}
       />
       <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.step}>Step 5/5</Text>
-        <Text style={styles.title}>Finish profile</Text>
+        <Text style={styles.step}>Bước 5/5</Text>
+        <Text style={styles.title}>Hoàn tất hồ sơ</Text>
         <Text style={styles.subtitle}>
-          Add profile photos now or skip them for later. We only save a safe
-          media summary in this connected build.
+          Thêm ảnh để hồ sơ trông đáng tin hơn. Bạn có thể bỏ qua và cập nhật
+          sau.
         </Text>
-
-        <View style={styles.summaryCard}>
-          <Info label="Avatar" value={avatar ? 'Ready' : 'Optional'} />
-          <Info label="Cover" value={cover ? 'Ready' : 'Optional'} />
-          <Info label="Wall" value={`${wallCount}/${WALL_SLOT_COUNT} photos`} />
-          <Info label="Total" value={`${mediaCount} selected`} />
-        </View>
 
         <View style={styles.card}>
           <SectionHeader
-            label="Avatar photo"
-            value={avatar ? 'Added' : 'Recommended'}
+            label="Ảnh đại diện"
+            value={avatar ? 'Đã thêm' : 'Nên thêm'}
           />
           <Pressable
             accessibilityLabel={
-              avatar ? 'Change avatar photo' : 'Choose avatar photo'
+              avatar ? 'Đổi ảnh đại diện' : 'Chọn ảnh đại diện'
             }
             accessibilityRole="button"
             onPress={() => openPicker('avatar')}
@@ -183,24 +178,24 @@ export default function ProfileMediaScreen() {
             </View>
             <View style={styles.mediaCopy}>
               <Text style={styles.mediaTitle}>
-                {avatar ? 'Avatar is ready' : 'Choose avatar'}
+                {avatar ? 'Đã có ảnh đại diện' : 'Chọn ảnh đại diện'}
               </Text>
               <Text style={styles.mediaMeta}>
-                Square image - editable later
+                Ảnh vuông, có thể đổi lại sau
               </Text>
             </View>
-            <Text style={styles.mediaAction}>{avatar ? 'Change' : 'Add'}</Text>
+            <Text style={styles.mediaAction}>{avatar ? 'Đổi' : 'Thêm'}</Text>
           </Pressable>
         </View>
 
         <View style={styles.card}>
           <SectionHeader
-            label="Game profile photo"
-            value={cover ? 'Added' : 'Optional'}
+            label="Ảnh hồ sơ game"
+            value={cover ? 'Đã thêm' : 'Tuỳ chọn'}
           />
           <Pressable
             accessibilityLabel={
-              cover ? 'Change game profile photo' : 'Choose game profile photo'
+              cover ? 'Đổi ảnh hồ sơ game' : 'Chọn ảnh hồ sơ game'
             }
             accessibilityRole="button"
             onPress={() => openPicker('cover')}
@@ -214,29 +209,29 @@ export default function ProfileMediaScreen() {
                   style={StyleSheet.absoluteFill}
                 />
                 <View style={styles.coverCopy}>
-                  <Text style={styles.coverTitle}>Cover is ready</Text>
-                  <Text style={styles.coverMeta}>Tap to change</Text>
+                  <Text style={styles.coverTitle}>Đã có ảnh hồ sơ</Text>
+                  <Text style={styles.coverMeta}>Chạm để đổi ảnh</Text>
                 </View>
               </>
             ) : (
               <View style={styles.coverEmpty}>
                 <Text style={styles.placeholderIcon}>+</Text>
-                <Text style={styles.mediaTitle}>Add game profile photo</Text>
-                <Text style={styles.mediaMeta}>Wide 16:9 image</Text>
+                <Text style={styles.mediaTitle}>Thêm ảnh hồ sơ game</Text>
+                <Text style={styles.mediaMeta}>Ảnh ngang tỷ lệ 16:9</Text>
               </View>
             )}
           </Pressable>
         </View>
 
         <View style={styles.card}>
-          <SectionHeader label="Photo wall" value={`${wallCount}/4`} />
+          <SectionHeader label="Tường ảnh" value={`${wallCount}/4`} />
           <Text style={styles.sectionHint}>
-            Add match moments, lobby screenshots, or profile highlights.
+            Thêm khoảnh khắc trong trận, ảnh sảnh chờ hoặc điểm nổi bật của bạn.
           </Text>
           <View style={styles.wallGrid}>
             {wallItems.map((item, index) => (
               <Pressable
-                accessibilityLabel={`Choose wall photo ${index + 1}`}
+                accessibilityLabel={`Chọn ảnh tường số ${index + 1}`}
                 accessibilityRole="button"
                 key={index}
                 onPress={() => openPicker('wall', index)}
@@ -253,7 +248,7 @@ export default function ProfileMediaScreen() {
                       onPress={() => removeWallImage(index)}
                       style={styles.removeButton}
                     >
-                      <Text style={styles.removeText}>x</Text>
+                      <Text style={styles.removeText}>×</Text>
                     </Pressable>
                   </>
                 ) : (
@@ -265,10 +260,12 @@ export default function ProfileMediaScreen() {
         </View>
 
         <View style={styles.privacyCard}>
-          <Text style={styles.privacyTitle}>You control your photos</Text>
+          <Text style={styles.privacyTitle}>
+            Bạn luôn kiểm soát ảnh của mình
+          </Text>
           <Text style={styles.privacyText}>
-            Upload/R2 is still deferred. This step only records whether avatar,
-            cover, and wall photos were selected.
+            Bản hiện tại chưa upload ảnh lên storage. Bước này chỉ ghi nhận bạn
+            đã chọn ảnh đại diện, ảnh hồ sơ game và tường ảnh hay chưa.
           </Text>
         </View>
 
@@ -278,7 +275,7 @@ export default function ProfileMediaScreen() {
           {busy ? (
             <ActivityIndicator color="#FFFFFF" />
           ) : (
-            <Text style={styles.ctaText}>Create profile</Text>
+            <Text style={styles.ctaText}>Tạo hồ sơ</Text>
           )}
         </Pressable>
       </ScrollView>
@@ -295,18 +292,9 @@ export default function ProfileMediaScreen() {
 }
 
 function sourceRequestTitle(request: SourceRequest) {
-  if (request?.kind === 'avatar') return 'Add avatar photo';
-  if (request?.kind === 'cover') return 'Add game profile photo';
-  return 'Add wall photo';
-}
-
-function Info({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.info}>
-      <Text style={styles.infoLabel}>{label}</Text>
-      <Text style={styles.infoValue}>{value}</Text>
-    </View>
-  );
+  if (request?.kind === 'avatar') return 'Thêm ảnh đại diện';
+  if (request?.kind === 'cover') return 'Thêm ảnh hồ sơ game';
+  return 'Thêm ảnh vào tường ảnh';
 }
 
 function SectionHeader({ label, value }: { label: string; value: string }) {
@@ -342,13 +330,13 @@ function SourcePicker({
         <Pressable style={styles.sheet}>
           <Text style={styles.sheetTitle}>{title}</Text>
           <Pressable onPress={onLibrary} style={styles.sheetAction}>
-            <Text style={styles.sheetActionText}>Choose from library</Text>
+            <Text style={styles.sheetActionText}>Chọn từ thư viện</Text>
           </Pressable>
           <Pressable onPress={onCamera} style={styles.sheetAction}>
-            <Text style={styles.sheetActionText}>Take photo</Text>
+            <Text style={styles.sheetActionText}>Chụp ảnh mới</Text>
           </Pressable>
           <Pressable onPress={onClose} style={styles.sheetCancel}>
-            <Text style={styles.sheetCancelText}>Cancel</Text>
+            <Text style={styles.sheetCancelText}>Huỷ</Text>
           </Pressable>
         </Pressable>
       </Pressable>
@@ -367,32 +355,13 @@ const styles = StyleSheet.create({
     marginTop: 18,
   },
   subtitle: { color: '#A8AFC6', fontSize: 15, lineHeight: 22, marginTop: 8 },
-  summaryCard: {
-    backgroundColor: 'rgba(13,17,34,0.9)',
-    borderColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 10,
-    marginTop: 22,
-    padding: 16,
-  },
-  info: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderRadius: 15,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: 13,
-  },
-  infoLabel: { color: '#798097', fontSize: 12, fontWeight: '900' },
-  infoValue: { color: '#F7F8FF', fontSize: 14, fontWeight: '800' },
   card: {
     backgroundColor: 'rgba(13,17,34,0.9)',
     borderColor: 'rgba(255,255,255,0.06)',
     borderRadius: 24,
     borderWidth: 1,
     gap: 14,
-    marginTop: 14,
+    marginTop: 16,
     padding: 16,
   },
   sectionHeader: {
