@@ -7,11 +7,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { updateOnboardingSnapshot } from '@/features/onboarding/onboarding-store';
 
 const lanes = [
-  ['slayer', 'Slayer Lane'],
-  ['jungle', 'Jungle'],
-  ['mid', 'Mid'],
-  ['dragon', 'Dragon Lane'],
-  ['support', 'Support'],
+  ['slayer', 'Đường Tà thần'],
+  ['jungle', 'Đi rừng'],
+  ['mid', 'Đường giữa'],
+  ['dragon', 'Đường Rồng'],
+  ['support', 'Trợ thủ'],
 ] as const;
 
 export default function LaneSelectionScreen() {
@@ -40,10 +40,10 @@ export default function LaneSelectionScreen() {
         style={StyleSheet.absoluteFill}
       />
       <SafeAreaView style={styles.safe}>
-        <Text style={styles.step}>Step 2/5</Text>
-        <Text style={styles.title}>Choose your lanes</Text>
+        <Text style={styles.step}>Bước 2/5</Text>
+        <Text style={styles.title}>Chọn lane của bạn</Text>
         <Text style={styles.subtitle}>
-          Pick up to 2 lanes. The first one is the priority lane.
+          Chọn tối đa 2 lane. Lane đầu tiên là ưu tiên chính.
         </Text>
         <View style={styles.list}>
           {lanes.map(([id, name]) => (
@@ -54,14 +54,14 @@ export default function LaneSelectionScreen() {
             >
               <Text style={styles.rowText}>{name}</Text>
               {selected[0] === id ? (
-                <Text style={styles.primary}>Primary</Text>
+                <Text style={styles.primary}>Ưu tiên</Text>
               ) : null}
             </Pressable>
           ))}
         </View>
-        <Text style={styles.count}>Selected {selected.length}/2</Text>
+        <Text style={styles.count}>Đã chọn {selected.length}/2</Text>
         <Pressable onPress={submit} style={styles.cta}>
-          <Text style={styles.ctaText}>Continue</Text>
+          <Text style={styles.ctaText}>Tiếp tục</Text>
         </Pressable>
       </SafeAreaView>
     </View>
