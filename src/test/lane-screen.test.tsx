@@ -7,9 +7,9 @@ describe('LaneScreen', () => {
   it('renders the lane selection step', async () => {
     const { getByText } = await render(<LaneScreen />);
 
-    expect(getByText('Step 2/5')).toBeTruthy();
-    expect(getByText('Choose your lanes')).toBeTruthy();
-    expect(getByText('Jungle')).toBeTruthy();
-    expect(getByText('Continue')).toBeTruthy();
+    expect(getByText('Bước 2/5')).toBeTruthy();
+    expect(getByText('Chọn lane của bạn')).toBeTruthy();
+    expect(getByText('Đi rừng')).toBeTruthy();
+    expect(getByText('Tiếp tục')).toBeTruthy();
   });
 });
