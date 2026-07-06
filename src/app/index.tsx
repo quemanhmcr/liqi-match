@@ -13,7 +13,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import type { OAuthProvider } from '@/shared/auth/auth-service';
 import { useAuth } from '@/shared/auth/auth-context';
-import { hasCompletedOnboarding } from '@/features/onboarding/profile-service';
+import {
+  ONBOARDING_STATUS_UNAVAILABLE_MESSAGE,
+  resolvePostLoginRoute,
+} from '@/features/onboarding/onboarding-routing';
 
 type LoginProvider = OAuthProvider | 'tiktok';
 
@@ -34,11 +37,14 @@ export default function LoginScreen() {
 
     async function routeExistingSession() {
       if (loading || !session) return;
-      const completed = await hasCompletedOnboarding(session).catch(
-        () => false,
-      );
-      if (!active) return;
-      router.replace(completed ? '/home' : '/rank');
+      try {
+        const route = await resolvePostLoginRoute(session);
+        if (!active) return;
+        router.replace(route);
+      } catch {
+        if (!active) return;
+        setAuthMessage(ONBOARDING_STATUS_UNAVAILABLE_MESSAGE);
+      }
     }
 
     routeExistingSession();
@@ -61,10 +67,12 @@ export default function LoginScreen() {
 
     try {
       const nextSession = await signIn(provider);
-      const completed = await hasCompletedOnboarding(nextSession).catch(
-        () => false,
-      );
-      router.replace(completed ? '/home' : '/rank');
+      try {
+        const route = await resolvePostLoginRoute(nextSession);
+        router.replace(route);
+      } catch {
+        setAuthMessage(ONBOARDING_STATUS_UNAVAILABLE_MESSAGE);
+      }
     } catch (error) {
       setAuthMessage(getFriendlyAuthError(provider, error));
     } finally {
