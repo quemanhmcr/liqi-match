@@ -1,3 +1,5 @@
+import * as FileSystem from 'expo-file-system/legacy';
+
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
 import { supabaseRest } from '@/shared/services/supabase-rest';
@@ -133,9 +135,9 @@ async function uploadSingleMedia(
   session: AuthSession,
   item: UploadPlanItem,
 ): Promise<UploadedMediaAsset> {
-  const blob = await readLocalImageBlob(item.asset.uri);
-  const mimeType = resolveMimeType(item.asset, blob);
-  const byteSize = blob.size;
+  const localFile = await readLocalImageFile(item.asset.uri);
+  const mimeType = resolveMimeType(item.asset, localFile);
+  const byteSize = localFile.size;
 
   validateImageUpload({ byteSize, mimeType, purpose: item.purpose });
 
@@ -152,15 +154,12 @@ async function uploadSingleMedia(
     },
   );
 
-  const putResponse = await fetch(upload.uploadUrl, {
-    body: blob as unknown as BodyInit,
+  await uploadLocalFileToR2({
     headers: upload.uploadHeaders,
-    method: 'PUT',
+    mimeType,
+    uploadUrl: upload.uploadUrl,
+    uri: item.asset.uri,
   });
-
-  if (!putResponse.ok) {
-    throw new Error('Không thể upload ảnh lên R2. Vui lòng thử lại.');
-  }
 
   const finalized = await callMediaFunction<FinalizeUploadResponse>(
     'media-finalize-upload',
@@ -182,24 +181,48 @@ async function uploadSingleMedia(
   };
 }
 
-async function readLocalImageBlob(uri: string) {
-  const response = await fetch(uri);
-  if (!response.ok) {
+type LocalImageFile = {
+  size: number;
+  type?: string | null;
+};
+
+async function readLocalImageFile(uri: string): Promise<LocalImageFile> {
+  const info = await FileSystem.getInfoAsync(uri);
+
+  if (!info.exists) {
     throw new Error('Không thể đọc ảnh đã chọn. Vui lòng chọn lại ảnh.');
   }
 
-  const blob = await response.blob();
-  if (!blob.size) {
+  const size = 'size' in info && typeof info.size === 'number' ? info.size : 0;
+  if (!size) {
     throw new Error('Ảnh đã chọn không có dữ liệu. Vui lòng chọn lại ảnh.');
   }
 
-  return blob;
+  return { size };
 }
 
-function resolveMimeType(asset: LocalImageAsset, blob: Blob) {
+async function uploadLocalFileToR2(input: {
+  headers: Record<string, string>;
+  mimeType: string;
+  uploadUrl: string;
+  uri: string;
+}) {
+  const response = await FileSystem.uploadAsync(input.uploadUrl, input.uri, {
+    headers: input.headers,
+    httpMethod: 'PUT',
+    mimeType: input.mimeType,
+    uploadType: FileSystem.FileSystemUploadType.BINARY_CONTENT,
+  });
+
+  if (response.status < 200 || response.status >= 300) {
+    throw new Error('Không thể upload ảnh lên R2. Vui lòng thử lại.');
+  }
+}
+
+function resolveMimeType(asset: LocalImageAsset, file: LocalImageFile) {
   return (
     normalizeMimeType(asset.mimeType) ??
-    normalizeMimeType(blob.type) ??
+    normalizeMimeType(file.type) ??
     mimeTypeFromUri(asset.uri) ??
     'image/jpeg'
   );
