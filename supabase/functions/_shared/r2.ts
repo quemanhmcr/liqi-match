@@ -1,4 +1,4 @@
-type PresignPutInput = {
+﻿type PresignPutInput = {
   objectKey: string;
   contentType: string;
   byteSize: number;
@@ -127,7 +127,6 @@ export async function presignR2Put(input: PresignPutInput) {
   const objectUrl = r2ObjectUrl(input.objectKey);
   const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
   const signedHeaderNames = [
-    'content-length',
     'content-type',
     'host',
     'if-none-match',
@@ -142,7 +141,6 @@ export async function presignR2Put(input: PresignPutInput) {
     'X-Amz-SignedHeaders': signedHeaders,
   });
   const canonicalHeaders = [
-    `content-length:${input.byteSize}`,
     `content-type:${input.contentType}`,
     `host:${objectUrl.host}`,
     'if-none-match:*',
@@ -172,7 +170,6 @@ export async function presignR2Put(input: PresignPutInput) {
   return {
     url: objectUrl.toString(),
     headers: {
-      'content-length': String(input.byteSize),
       'content-type': input.contentType,
       'if-none-match': '*',
       ...(input.checksum ? { 'x-amz-checksum-sha256': input.checksum } : {}),
