@@ -5,6 +5,7 @@ import {
 } from '@/features/onboarding/onboarding-store';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
+import type { Tables } from '@/shared/types/database.types';
 
 export async function completeOnboardingProfile(
   session: AuthSession,
@@ -47,8 +48,14 @@ export async function completeOnboardingProfile(
   return Boolean(result?.[0]?.completed);
 }
 
+type OnboardingCompletionRow = Pick<Tables<'profile_habits'>, 'profile_id'>;
+
 export async function hasCompletedOnboarding(session: AuthSession) {
-  const rows = await supabaseRest<{ profile_id: string }[]>(
+  // `complete_onboarding` writes profile_habits last after the required
+  // profile, game profile, role, hero, availability, and preference records.
+  // A row here is therefore the smallest stable client-readable completion
+  // marker for post-login routing.
+  const rows = await supabaseRest<OnboardingCompletionRow[]>(
     `profile_habits?select=profile_id&profile_id=eq.${session.user.id}&limit=1`,
     { session },
   );

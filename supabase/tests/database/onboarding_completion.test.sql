@@ -103,6 +103,17 @@ select isnt(
   'anon cannot execute complete_onboarding'
 );
 
+select ok(
+  has_table_privilege('authenticated', 'public.profile_habits', 'SELECT'),
+  'authenticated can read own profile habits completion marker'
+);
+
+select isnt(
+  has_table_privilege('anon', 'public.profile_habits', 'SELECT'),
+  true,
+  'anon cannot read profile habits completion markers'
+);
+
 select * from finish();
 
 rollback;

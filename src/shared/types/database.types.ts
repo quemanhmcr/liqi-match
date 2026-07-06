@@ -477,6 +477,68 @@ export type Database = {
           },
         ];
       };
+      profile_habits: {
+        Row: {
+          comeback_response: string;
+          communication_channels: string[];
+          created_at: string;
+          decision_style: string;
+          feedback_style: string;
+          loss_response: string;
+          media_summary: Json;
+          online_time_presets: string[];
+          profile_id: string;
+          seriousness: string;
+          session_length: string;
+          strategy_styles: string[];
+          team_atmospheres: string[];
+          team_goals: string[];
+          updated_at: string;
+        };
+        Insert: {
+          comeback_response: string;
+          communication_channels?: string[];
+          created_at?: string;
+          decision_style: string;
+          feedback_style: string;
+          loss_response: string;
+          media_summary?: Json;
+          online_time_presets?: string[];
+          profile_id: string;
+          seriousness: string;
+          session_length: string;
+          strategy_styles?: string[];
+          team_atmospheres?: string[];
+          team_goals?: string[];
+          updated_at?: string;
+        };
+        Update: {
+          comeback_response?: string;
+          communication_channels?: string[];
+          created_at?: string;
+          decision_style?: string;
+          feedback_style?: string;
+          loss_response?: string;
+          media_summary?: Json;
+          online_time_presets?: string[];
+          profile_id?: string;
+          seriousness?: string;
+          session_length?: string;
+          strategy_styles?: string[];
+          team_atmospheres?: string[];
+          team_goals?: string[];
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'profile_habits_profile_id_fkey';
+            columns: ['profile_id'];
+            isOneToOne: true;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profile_roles: {
         Row: {
           created_at: string;
@@ -756,6 +818,13 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      complete_onboarding: {
+        Args: { payload: Json };
+        Returns: {
+          completed: boolean;
+          profile_id: string;
+        }[];
+      };
       record_swipe: {
         Args: {
           direction: Database['public']['Enums']['swipe_direction'];

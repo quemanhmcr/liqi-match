@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -13,6 +13,12 @@ import {
   View,
 } from 'react-native';
 
+import {
+  countUploadableOnboardingMedia,
+  type LocalImageAsset,
+  type UploadProgress,
+  uploadOnboardingMedia,
+} from '@/features/media/media-upload-service';
 import { completeOnboardingProfile } from '@/features/onboarding/profile-service';
 import {
   getOnboardingSnapshot,
@@ -21,25 +27,40 @@ import {
 import { useAuth } from '@/shared/auth/auth-context';
 
 type MediaKind = 'avatar' | 'cover' | 'wall';
-type MediaItem = { uri: string };
 type SourceRequest = { kind: MediaKind; index?: number } | null;
+type SubmitPhase = 'idle' | 'saving' | 'media' | 'done';
 
 const WALL_SLOT_COUNT = 4;
 
 export default function ProfileMediaScreen() {
   const { session } = useAuth();
-  const [avatar, setAvatar] = useState<MediaItem | null>(null);
-  const [cover, setCover] = useState<MediaItem | null>(null);
-  const [wallItems, setWallItems] = useState<(MediaItem | null)[]>(
+  const [avatar, setAvatar] = useState<LocalImageAsset | null>(null);
+  const [cover, setCover] = useState<LocalImageAsset | null>(null);
+  const [wallItems, setWallItems] = useState<(LocalImageAsset | null)[]>(
     Array.from({ length: WALL_SLOT_COUNT }, () => null),
   );
   const [sourceRequest, setSourceRequest] = useState<SourceRequest>(null);
-  const [busy, setBusy] = useState(false);
+  const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle');
+  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
 
   const wallCount = wallItems.filter(Boolean).length;
-  const mediaCount =
+  const selectedMediaCount =
     Number(Boolean(avatar)) + Number(Boolean(cover)) + wallCount;
+  const busy = submitPhase !== 'idle';
+  const uploadableMedia = useMemo(
+    () => ({
+      avatar,
+      cover,
+      wallItems: wallItems.filter((item): item is LocalImageAsset =>
+        Boolean(item),
+      ),
+    }),
+    [avatar, cover, wallItems],
+  );
+  const uploadCount = countUploadableOnboardingMedia(uploadableMedia);
 
   const mediaDraft = {
     avatar: Boolean(avatar),
@@ -48,28 +69,42 @@ export default function ProfileMediaScreen() {
   };
 
   const openPicker = (kind: MediaKind, index?: number) => {
+    if (busy) return;
     setError(null);
     setSourceRequest({ kind, index });
   };
 
-  const assignMedia = (request: Exclude<SourceRequest, null>, uri: string) => {
+  const assignMedia = (
+    request: Exclude<SourceRequest, null>,
+    asset: ImagePicker.ImagePickerAsset,
+  ) => {
+    const media: LocalImageAsset = {
+      fileName: asset.fileName,
+      fileSize: asset.fileSize,
+      height: asset.height,
+      mimeType: asset.mimeType,
+      uri: asset.uri,
+      width: asset.width,
+    };
+
     if (request.kind === 'avatar') {
-      setAvatar({ uri });
+      setAvatar(media);
       return;
     }
 
     if (request.kind === 'cover') {
-      setCover({ uri });
+      setCover(media);
       return;
     }
 
     if (request.index === undefined) return;
     setWallItems((current) =>
-      current.map((item, index) => (index === request.index ? { uri } : item)),
+      current.map((item, index) => (index === request.index ? media : item)),
     );
   };
 
   const removeWallImage = (indexToRemove: number) => {
+    if (busy) return;
     setWallItems((current) =>
       current.map((item, index) => (index === indexToRemove ? null : item)),
     );
@@ -109,14 +144,17 @@ export default function ProfileMediaScreen() {
           ? await ImagePicker.launchCameraAsync(options)
           : await ImagePicker.launchImageLibraryAsync(options);
 
-      if (result.canceled || !result.assets[0]?.uri) return;
-      assignMedia(request, result.assets[0].uri);
+      if (result.canceled || !result.assets?.[0]?.uri) return;
+      const asset = result.assets[0];
+      assignMedia(request, asset);
     } catch {
       setError('Không thể mở hoặc xử lý ảnh này. Vui lòng thử lại.');
     }
   };
 
   const finish = async () => {
+    if (busy) return;
+
     updateOnboardingSnapshot({ mediaDraft });
 
     if (!session) {
@@ -124,18 +162,44 @@ export default function ProfileMediaScreen() {
       return;
     }
 
-    setBusy(true);
+    setSubmitPhase('saving');
+    setUploadProgress(null);
     setError(null);
 
+    let profileSaved = false;
+
     try {
-      await completeOnboardingProfile(session, getOnboardingSnapshot());
+      const completed = await completeOnboardingProfile(
+        session,
+        getOnboardingSnapshot(),
+      );
+
+      if (!completed) {
+        throw new Error('Hồ sơ chưa được xác nhận hoàn tất. Vui lòng thử lại.');
+      }
+
+      profileSaved = true;
+
+      if (uploadCount > 0) {
+        setSubmitPhase('media');
+        await uploadOnboardingMedia(session, uploadableMedia, (progress) =>
+          setUploadProgress(progress),
+        );
+      }
+
+      setSubmitPhase('done');
+      await new Promise((resolve) => setTimeout(resolve, 700));
       router.replace('/home');
     } catch (caught) {
+      setSubmitPhase('idle');
+      setUploadProgress(null);
+      const message =
+        caught instanceof Error ? caught.message : 'Không thể lưu hồ sơ.';
       setError(
-        caught instanceof Error ? caught.message : 'Không thể lưu hồ sơ.',
+        profileSaved
+          ? `Hồ sơ đã lưu, nhưng ảnh chưa upload xong. ${message}`
+          : message,
       );
-    } finally {
-      setBusy(false);
     }
   };
 
@@ -149,8 +213,8 @@ export default function ProfileMediaScreen() {
         <Text style={styles.step}>Bước 5/5</Text>
         <Text style={styles.title}>Hoàn tất hồ sơ</Text>
         <Text style={styles.subtitle}>
-          Thêm ảnh để hồ sơ trông đáng tin hơn. Bạn có thể bỏ qua và cập nhật
-          sau.
+          Thêm ảnh để hồ sơ trông đáng tin hơn. Ảnh sẽ được upload qua URL ký
+          tạm thời lên R2 sau khi hồ sơ nền được lưu.
         </Text>
 
         <View style={styles.card}>
@@ -163,6 +227,7 @@ export default function ProfileMediaScreen() {
               avatar ? 'Đổi ảnh đại diện' : 'Chọn ảnh đại diện'
             }
             accessibilityRole="button"
+            disabled={busy}
             onPress={() => openPicker('avatar')}
             style={styles.avatarRow}
           >
@@ -181,7 +246,7 @@ export default function ProfileMediaScreen() {
                 {avatar ? 'Đã có ảnh đại diện' : 'Chọn ảnh đại diện'}
               </Text>
               <Text style={styles.mediaMeta}>
-                Ảnh vuông, có thể đổi lại sau
+                Ảnh vuông, sẽ hiển thị trên hồ sơ của bạn
               </Text>
             </View>
             <Text style={styles.mediaAction}>{avatar ? 'Đổi' : 'Thêm'}</Text>
@@ -198,6 +263,7 @@ export default function ProfileMediaScreen() {
               cover ? 'Đổi ảnh hồ sơ game' : 'Chọn ảnh hồ sơ game'
             }
             accessibilityRole="button"
+            disabled={busy}
             onPress={() => openPicker('cover')}
             style={styles.coverBox}
           >
@@ -233,6 +299,7 @@ export default function ProfileMediaScreen() {
               <Pressable
                 accessibilityLabel={`Chọn ảnh tường số ${index + 1}`}
                 accessibilityRole="button"
+                disabled={busy}
                 key={index}
                 onPress={() => openPicker('wall', index)}
                 style={styles.wallTile}
@@ -244,6 +311,7 @@ export default function ProfileMediaScreen() {
                       style={styles.wallImage}
                     />
                     <Pressable
+                      disabled={busy}
                       hitSlop={8}
                       onPress={() => removeWallImage(index)}
                       style={styles.removeButton}
@@ -264,8 +332,9 @@ export default function ProfileMediaScreen() {
             Bạn luôn kiểm soát ảnh của mình
           </Text>
           <Text style={styles.privacyText}>
-            Bản hiện tại chưa upload ảnh lên storage. Bước này chỉ ghi nhận bạn
-            đã chọn ảnh đại diện, ảnh hồ sơ game và tường ảnh hay chưa.
+            {selectedMediaCount > 0
+              ? `${selectedMediaCount} ảnh đã sẵn sàng. Khi bấm tạo hồ sơ, app sẽ lưu dữ liệu trước rồi upload ảnh lên R2 và gắn ảnh đại diện vào hồ sơ.`
+              : 'Bạn có thể bỏ qua ảnh ở bước này. Hồ sơ vẫn được lưu đầy đủ và bạn có thể thêm ảnh sau.'}
           </Text>
         </View>
 
@@ -286,6 +355,12 @@ export default function ProfileMediaScreen() {
         onLibrary={() => pickImage('library')}
         title={sourceRequestTitle(sourceRequest)}
         visible={Boolean(sourceRequest)}
+      />
+
+      <SubmitProgressOverlay
+        phase={submitPhase}
+        uploadCount={uploadCount}
+        uploadProgress={uploadProgress}
       />
     </View>
   );
@@ -341,6 +416,94 @@ function SourcePicker({
         </Pressable>
       </Pressable>
     </Modal>
+  );
+}
+
+function SubmitProgressOverlay({
+  phase,
+  uploadCount,
+  uploadProgress,
+}: {
+  phase: SubmitPhase;
+  uploadCount: number;
+  uploadProgress: UploadProgress | null;
+}) {
+  if (phase === 'idle') return null;
+
+  const done = phase === 'done';
+
+  return (
+    <Modal animationType="fade" transparent visible>
+      <View style={styles.progressOverlay}>
+        <View style={styles.progressCard}>
+          <View style={[styles.progressBadge, done && styles.successBadge]}>
+            {done ? (
+              <Text style={styles.successCheck}>✓</Text>
+            ) : (
+              <ActivityIndicator color="#FFFFFF" />
+            )}
+          </View>
+          <Text style={styles.progressTitle}>
+            {done ? 'Hồ sơ đã sẵn sàng' : 'Đang tạo hồ sơ của bạn'}
+          </Text>
+          <Text style={styles.progressText}>
+            {progressDetail({ phase, uploadCount, uploadProgress })}
+          </Text>
+          <View style={styles.progressTrack}>
+            <View
+              style={[
+                styles.progressFill,
+                {
+                  width: `${progressPercent({
+                    phase,
+                    uploadCount,
+                    uploadProgress,
+                  })}%` as `${number}%`,
+                },
+              ]}
+            />
+          </View>
+          <Text style={styles.progressHint}>
+            Vui lòng giữ app mở trong giây lát.
+          </Text>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function progressDetail(input: {
+  phase: SubmitPhase;
+  uploadCount: number;
+  uploadProgress: UploadProgress | null;
+}) {
+  if (input.phase === 'saving') {
+    return 'Đang lưu hồ sơ, rank, lane, tướng và thói quen chơi.';
+  }
+
+  if (input.phase === 'media') {
+    const completed = input.uploadProgress?.completed ?? 0;
+    const total = input.uploadProgress?.total ?? input.uploadCount;
+    return `Đang upload ảnh lên R2 (${completed}/${total}).`;
+  }
+
+  return 'Đang đưa bạn vào trang chính.';
+}
+
+function progressPercent(input: {
+  phase: SubmitPhase;
+  uploadCount: number;
+  uploadProgress: UploadProgress | null;
+}) {
+  if (input.phase === 'saving') return 38;
+  if (input.phase === 'done') return 100;
+
+  const total = input.uploadProgress?.total ?? input.uploadCount;
+  if (!total) return 72;
+
+  return Math.min(
+    92,
+    48 + ((input.uploadProgress?.completed ?? 0) / total) * 42,
   );
 }
 
@@ -492,4 +655,63 @@ const styles = StyleSheet.create({
   sheetActionText: { color: '#F7F8FF', fontSize: 15, fontWeight: '900' },
   sheetCancel: { alignItems: 'center', padding: 14 },
   sheetCancelText: { color: '#A8AFC6', fontSize: 14, fontWeight: '900' },
+  progressOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(2,4,12,0.78)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 22,
+  },
+  progressCard: {
+    alignItems: 'center',
+    backgroundColor: '#10172D',
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 28,
+    borderWidth: 1,
+    padding: 22,
+    width: '100%',
+  },
+  progressBadge: {
+    alignItems: 'center',
+    backgroundColor: '#8A4DFF',
+    borderRadius: 999,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
+  },
+  successBadge: { backgroundColor: '#35D08A' },
+  successCheck: { color: '#FFFFFF', fontSize: 26, fontWeight: '900' },
+  progressTitle: {
+    color: '#F7F8FF',
+    fontSize: 20,
+    fontWeight: '900',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  progressText: {
+    color: '#A8AFC6',
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  progressTrack: {
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 999,
+    height: 8,
+    marginTop: 18,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  progressFill: {
+    backgroundColor: '#B44CFF',
+    borderRadius: 999,
+    height: '100%',
+  },
+  progressHint: {
+    color: '#798097',
+    fontSize: 12,
+    fontWeight: '800',
+    marginTop: 12,
+  },
 });
