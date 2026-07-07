@@ -31,12 +31,7 @@ export class BasicImageMediaProcessor implements MediaProcessor {
 }
 
 export function detectImageMime(bytes: Uint8Array): string | undefined {
-  if (
-    bytes[0] === 0xff &&
-    bytes[1] === 0xd8 &&
-    bytes[bytes.length - 2] === 0xff &&
-    bytes[bytes.length - 1] === 0xd9
-  ) {
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return 'image/jpeg';
   }
 
