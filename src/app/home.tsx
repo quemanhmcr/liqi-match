@@ -113,10 +113,6 @@ export default function HomeScreen() {
         locations={[0, 0.46, 1]}
         style={StyleSheet.absoluteFill}
       />
-      <View style={[styles.orb, styles.orbPurple]} />
-      <View style={[styles.orb, styles.orbCyan]} />
-      <View style={[styles.orb, styles.orbOrange]} />
-
       <SafeAreaView edges={['top']} style={styles.safe}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
@@ -556,33 +552,6 @@ const styles = StyleSheet.create({
     paddingBottom: 212,
     paddingHorizontal: 18,
     paddingTop: 8,
-  },
-  orb: {
-    borderRadius: 999,
-    opacity: 0.09,
-    position: 'absolute',
-  },
-  orbPurple: {
-    backgroundColor: '#8B46FF',
-    height: 340,
-    left: -260,
-    top: 132,
-    width: 340,
-  },
-  orbCyan: {
-    backgroundColor: '#28D7FF',
-    height: 260,
-    right: -224,
-    top: 430,
-    width: 260,
-  },
-  orbOrange: {
-    backgroundColor: '#FF8A3D',
-    bottom: 236,
-    height: 220,
-    left: 72,
-    opacity: 0.07,
-    width: 220,
   },
   topBar: {
     alignItems: 'center',
