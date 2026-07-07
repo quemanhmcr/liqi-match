@@ -19,11 +19,6 @@ type HeroEmbed = {
   slug: string | null;
 };
 
-type AvatarEmbed = {
-  object_key: string | null;
-  status: string | null;
-} | null;
-
 type GameProfileEmbed = {
   handle: string | null;
   ranks?: MaybeArray<RankEmbed>;
@@ -46,7 +41,6 @@ type ProfileHabitEmbed = {
 };
 
 type HomeProfileRow = {
-  avatar?: AvatarEmbed;
   avatar_media_id: string | null;
   display_name: string | null;
   game_profiles?: MaybeArray<GameProfileEmbed>;
@@ -79,6 +73,7 @@ export type HomeReadyMode = {
 };
 
 export type CurrentHomeProfile = {
+  avatarFallbackUrl?: string;
   avatarUrl?: string;
   displayName: string;
   handle?: string;
@@ -151,7 +146,6 @@ const profileSelect = [
   'id',
   'display_name',
   'avatar_media_id',
-  'avatar:media_assets!profiles_avatar_media_id_fkey(object_key,status)',
   'game_profiles(handle,server_region,ranks(name,slug))',
   'profile_roles(roles(name,slug))',
   'profile_heroes(heroes(name,slug))',
@@ -178,10 +172,13 @@ export function buildPreviewHomeDashboard(
   session: AuthSession | null,
 ): HomeDashboard {
   const displayName = displayNameFromSession(session) ?? 'Bạn';
+  const sessionAvatarUrl = avatarUrlFromSession(session);
 
   return {
     activeMatchCount: previewMatchedSets.length,
     currentProfile: {
+      avatarFallbackUrl: sessionAvatarUrl,
+      avatarUrl: sessionAvatarUrl,
       displayName,
       handle: displayName,
       rankName: 'Cao Thủ',
@@ -202,9 +199,13 @@ async function fetchCurrentHomeProfile(
   );
 
   const profile = rows[0];
+  const sessionAvatarUrl = avatarUrlFromSession(session);
+
   if (!profile) {
     const displayName = displayNameFromSession(session) ?? 'Bạn';
     return {
+      avatarFallbackUrl: sessionAvatarUrl,
+      avatarUrl: sessionAvatarUrl,
       displayName,
       handle: displayName,
       readySummary: 'Hồ sơ đã sẵn sàng',
@@ -220,7 +221,8 @@ async function fetchCurrentHomeProfile(
   const timePreset = habits?.online_time_presets?.[0];
 
   return {
-    avatarUrl: mediaUrl(first(profile.avatar)?.object_key),
+    avatarFallbackUrl: sessionAvatarUrl,
+    avatarUrl: mediaUrl(profile.avatar_media_id) ?? sessionAvatarUrl,
     displayName:
       profile.display_name ?? displayNameFromSession(session) ?? 'Bạn',
     handle: gameProfile?.handle ?? undefined,
@@ -276,7 +278,7 @@ function mapMatchRow(
 
   return {
     actionLabel: kind === 'Team Rank' ? 'Join lobby' : 'Vào set',
-    avatarUrl: mediaUrl(first(otherProfile.avatar)?.object_key),
+    avatarUrl: mediaUrl(otherProfile.avatar_media_id),
     conversationId: conversation?.id,
     createdAt: row.created_at,
     heroNames,
@@ -349,11 +351,24 @@ function displayNameFromSession(session: AuthSession | null) {
   return session?.user.email?.split('@')[0];
 }
 
-function mediaUrl(objectKey: string | null | undefined) {
-  if (!objectKey) return undefined;
+function avatarUrlFromSession(session: AuthSession | null) {
+  const metadata = session?.user.user_metadata;
+  const candidates = [
+    metadata?.avatar_url,
+    metadata?.picture,
+    metadata?.picture_url,
+  ];
+  return candidates.find(
+    (value): value is string =>
+      typeof value === 'string' && Boolean(value.trim()),
+  );
+}
+
+function mediaUrl(assetId: string | null | undefined) {
+  if (!assetId) return undefined;
   try {
     return new URL(
-      objectKey,
+      `media/${encodeURIComponent(assetId)}`,
       ensureTrailingSlash(env.EXPO_PUBLIC_MEDIA_BASE_URL),
     ).toString();
   } catch {

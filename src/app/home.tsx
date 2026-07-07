@@ -132,6 +132,7 @@ export default function HomeScreen() {
           <View style={styles.topBar}>
             <View style={styles.identityRow}>
               <Avatar
+                fallbackUri={dashboard.currentProfile.avatarFallbackUrl}
                 name={dashboard.currentProfile.displayName}
                 size={54}
                 uri={dashboard.currentProfile.avatarUrl}
@@ -479,15 +480,24 @@ function FloatingTabs() {
 }
 
 function Avatar({
+  fallbackUri,
   name,
   size,
   uri,
 }: {
+  fallbackUri?: string;
   name: string;
   size: number;
   uri?: string;
 }) {
   const initials = getInitials(name);
+  const [failedUri, setFailedUri] = useState<string | undefined>();
+  const activeUri =
+    uri && failedUri !== uri
+      ? uri
+      : fallbackUri && failedUri !== fallbackUri
+        ? fallbackUri
+        : undefined;
 
   return (
     <LinearGradient
@@ -497,9 +507,10 @@ function Avatar({
         { borderRadius: size / 2, height: size, width: size },
       ]}
     >
-      {uri ? (
+      {activeUri ? (
         <Image
-          source={{ uri }}
+          onError={() => setFailedUri(activeUri)}
+          source={{ uri: activeUri }}
           style={{
             borderRadius: size / 2 - 2,
             height: size - 4,
