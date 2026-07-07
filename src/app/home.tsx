@@ -9,8 +9,9 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
-  Text,
+  Text as RNText,
   View,
+  type TextProps,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -37,6 +38,26 @@ const defaultMode: HomeReadyMode = homeReadyModes[0] ?? {
   id: 'setlv',
   label: 'Set LV',
 };
+
+const modeIcons: Record<HomeReadyMode['id'], keyof typeof Ionicons.glyphMap> = {
+  normal: 'shield-checkmark-outline',
+  rank: 'trophy-outline',
+  setlv: 'flash-outline',
+  soulmate: 'heart-outline',
+  team: 'people-outline',
+};
+
+const kindIcons: Record<MatchedSet['kind'], keyof typeof Ionicons.glyphMap> = {
+  Normal: 'shield-checkmark-outline',
+  Rank: 'trophy-outline',
+  'Set LV': 'flash-outline',
+  'Team Rank': 'people-outline',
+  'Tri kỉ': 'heart-outline',
+};
+
+function HomeText(props: TextProps) {
+  return <RNText maxFontSizeMultiplier={1.08} {...props} />;
+}
 
 export default function HomeScreen() {
   const { session } = useAuth();
@@ -98,17 +119,17 @@ export default function HomeScreen() {
                 uri={dashboard.currentProfile.avatarUrl}
               />
               <View style={styles.greetingBlock}>
-                <Text style={styles.greeting}>Xin chào,</Text>
-                <Text numberOfLines={1} style={styles.userName}>
+                <HomeText style={styles.greeting}>Xin chào,</HomeText>
+                <HomeText numberOfLines={1} style={styles.userName}>
                   {dashboard.currentProfile.displayName}
-                </Text>
+                </HomeText>
                 <View style={styles.miniStatusPill}>
                   <View style={styles.statusDot} />
-                  <Text numberOfLines={1} style={styles.miniStatusText}>
+                  <HomeText numberOfLines={1} style={styles.miniStatusText}>
                     {dashboard.activeMatchCount
                       ? `${dashboard.activeMatchCount} set đã match`
                       : dashboard.currentProfile.readySummary}
-                  </Text>
+                  </HomeText>
                 </View>
               </View>
             </View>
@@ -133,11 +154,11 @@ export default function HomeScreen() {
           {dashboard.preview || dashboardQuery.isError ? (
             <View style={styles.previewBanner}>
               <Ionicons color="#FFB86B" name="information-circle" size={16} />
-              <Text style={styles.previewText}>
+              <HomeText style={styles.previewText}>
                 {dashboardQuery.isError
                   ? 'Chưa đọc được dữ liệu match thật, đang hiển thị layout preview.'
                   : 'Preview giao diện Trang chủ với set đã match.'}
-              </Text>
+              </HomeText>
             </View>
           ) : null}
 
@@ -150,9 +171,11 @@ export default function HomeScreen() {
             <View style={styles.readyBoard}>
               <View style={styles.boardGlow} />
               <View style={styles.boardHeaderRow}>
-                <View>
-                  <Text style={styles.eyebrow}>LIQI LOBBY</Text>
-                  <Text style={styles.boardTitle}>Sẵn sàng vào set?</Text>
+                <View style={styles.boardTitleBlock}>
+                  <HomeText style={styles.eyebrow}>LIQI LOBBY</HomeText>
+                  <HomeText style={styles.boardTitle}>
+                    Sẵn sàng vào set?
+                  </HomeText>
                 </View>
                 <View style={styles.liveBadge}>
                   <View
@@ -161,16 +184,16 @@ export default function HomeScreen() {
                       readyEnabled && styles.liveDotActive,
                     ]}
                   />
-                  <Text style={styles.liveText}>
+                  <HomeText style={styles.liveText}>
                     {readyEnabled ? 'Ready' : 'Idle'}
-                  </Text>
+                  </HomeText>
                 </View>
               </View>
 
-              <Text style={styles.boardSubtitle}>
+              <HomeText style={styles.boardSubtitle}>
                 Chọn mood chơi hôm nay để các tài khoản đã match biết bạn đang
                 muốn vào set kiểu nào.
-              </Text>
+              </HomeText>
 
               <View style={styles.modeGrid}>
                 {homeReadyModes.map((mode) => {
@@ -188,20 +211,19 @@ export default function HomeScreen() {
                         pressed && styles.pressed,
                       ]}
                     >
-                      <View
-                        style={[
-                          styles.modeAccent,
-                          { backgroundColor: mode.accent },
-                        ]}
+                      <Ionicons
+                        color={selected ? '#F7F8FF' : mode.accent}
+                        name={modeIcons[mode.id]}
+                        size={16}
                       />
-                      <Text
+                      <HomeText
                         style={[
                           styles.modeLabel,
                           selected && styles.modeLabelSelected,
                         ]}
                       >
                         {mode.label}
-                      </Text>
+                      </HomeText>
                     </Pressable>
                   );
                 })}
@@ -209,10 +231,10 @@ export default function HomeScreen() {
 
               <View style={styles.readyActionRow}>
                 <View style={styles.readyCopyBlock}>
-                  <Text style={styles.readyCopy}>{readyCopy}</Text>
-                  <Text numberOfLines={1} style={styles.readyDescription}>
+                  <HomeText style={styles.readyCopy}>{readyCopy}</HomeText>
+                  <HomeText numberOfLines={1} style={styles.readyDescription}>
                     {selectedMode.description}
-                  </Text>
+                  </HomeText>
                 </View>
                 <Pressable
                   accessibilityLabel={
@@ -226,9 +248,9 @@ export default function HomeScreen() {
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Text style={styles.primaryActionText}>
+                  <HomeText style={styles.primaryActionText}>
                     {readyEnabled ? 'Đang bật' : 'Bật ngay'}
-                  </Text>
+                  </HomeText>
                   <Ionicons color="#10131F" name="arrow-forward" size={18} />
                 </Pressable>
               </View>
@@ -237,8 +259,10 @@ export default function HomeScreen() {
 
           <View style={styles.sectionHeader}>
             <View>
-              <Text style={styles.sectionEyebrow}>MATCHED</Text>
-              <Text style={styles.sectionTitle}>Đã match thành công</Text>
+              <HomeText style={styles.sectionEyebrow}>MATCHED</HomeText>
+              <HomeText style={styles.sectionTitle}>
+                Đã match thành công
+              </HomeText>
             </View>
             {dashboardQuery.isLoading ? (
               <ActivityIndicator color="#C679FF" />
@@ -275,21 +299,22 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
         <Avatar name={set.name} size={48} uri={set.avatarUrl} />
         <View style={styles.matchMainInfo}>
           <View style={styles.matchNameRow}>
-            <Text numberOfLines={1} style={styles.matchName}>
+            <HomeText numberOfLines={1} style={styles.matchName}>
               {set.name}
-            </Text>
+            </HomeText>
             {set.unreadCount ? (
               <View style={styles.unreadPill}>
-                <Text style={styles.unreadText}>{set.unreadCount}</Text>
+                <HomeText style={styles.unreadText}>{set.unreadCount}</HomeText>
               </View>
             ) : null}
           </View>
-          <Text numberOfLines={1} style={styles.matchSubtitle}>
+          <HomeText numberOfLines={1} style={styles.matchSubtitle}>
             {set.subtitle || 'Đã match thành công'}
-          </Text>
+          </HomeText>
         </View>
         <View style={styles.kindPill}>
-          <Text style={styles.kindText}>{set.kind}</Text>
+          <Ionicons color="#E8D4FF" name={kindIcons[set.kind]} size={14} />
+          <HomeText style={styles.kindText}>{set.kind}</HomeText>
         </View>
       </View>
 
@@ -298,9 +323,9 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
           .slice(0, 4)
           .map((label) => (
             <View key={label} style={styles.softTag}>
-              <Text numberOfLines={1} style={styles.softTagText}>
+              <HomeText numberOfLines={1} style={styles.softTagText}>
                 {label}
-              </Text>
+              </HomeText>
             </View>
           ))}
       </View>
@@ -314,25 +339,27 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
                 { backgroundColor: statusStyle.dot },
               ]}
             />
-            <Text style={[styles.statusLabel, { color: statusStyle.text }]}>
+            <HomeText style={[styles.statusLabel, { color: statusStyle.text }]}>
               {set.statusLabel}
-            </Text>
+            </HomeText>
           </View>
-          <Text numberOfLines={1} style={styles.matchMeta}>
+          <HomeText numberOfLines={1} style={styles.matchMeta}>
             {set.meta}
-          </Text>
+          </HomeText>
         </View>
 
         <View style={styles.cardActions}>
           <Pressable accessibilityRole="button" style={styles.secondaryAction}>
             <Ionicons color="#DDE6FF" name="chatbubble-outline" size={16} />
-            <Text style={styles.secondaryActionText}>Nhắn</Text>
+            <HomeText style={styles.secondaryActionText}>Nhắn</HomeText>
           </Pressable>
           <Pressable
             accessibilityRole="button"
             style={styles.cardPrimaryAction}
           >
-            <Text style={styles.cardPrimaryActionText}>{set.actionLabel}</Text>
+            <HomeText style={styles.cardPrimaryActionText}>
+              {set.actionLabel}
+            </HomeText>
           </Pressable>
         </View>
       </View>
@@ -346,11 +373,13 @@ function EmptyMatchedSets() {
       <View style={styles.emptyIcon}>
         <Ionicons color="#C679FF" name="people-outline" size={26} />
       </View>
-      <Text style={styles.emptyTitle}>Chưa có set nào trong Trang chủ</Text>
-      <Text style={styles.emptyBody}>
+      <HomeText style={styles.emptyTitle}>
+        Chưa có set nào trong Trang chủ
+      </HomeText>
+      <HomeText style={styles.emptyBody}>
         Khi hai bên cùng thích nhau, match sẽ xuất hiện ở đây để bạn vào set,
         nhắn tin hoặc lập lobby rank.
-      </Text>
+      </HomeText>
     </View>
   );
 }
@@ -373,9 +402,11 @@ function FloatingTabs() {
               name={tab.icon}
               size={18}
             />
-            <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>
+            <HomeText
+              style={[styles.tabLabel, active && styles.tabLabelActive]}
+            >
               {tab.label}
-            </Text>
+            </HomeText>
           </Pressable>
         );
       })}
@@ -422,7 +453,7 @@ function Avatar({
             },
           ]}
         >
-          <Text style={styles.avatarInitials}>{initials}</Text>
+          <HomeText style={styles.avatarInitials}>{initials}</HomeText>
         </View>
       )}
     </LinearGradient>
@@ -447,48 +478,55 @@ const styles = StyleSheet.create({
   root: { backgroundColor: '#050713', flex: 1 },
   safe: { flex: 1 },
   scrollContent: {
-    paddingBottom: 118,
-    paddingHorizontal: 18,
-    paddingTop: 12,
+    paddingBottom: 172,
+    paddingHorizontal: 16,
+    paddingTop: 10,
   },
   orb: {
     borderRadius: 999,
-    opacity: 0.52,
+    opacity: 0.2,
     position: 'absolute',
   },
   orbPurple: {
     backgroundColor: '#8B46FF',
-    height: 220,
-    left: -92,
-    top: 78,
-    width: 220,
+    height: 260,
+    left: -150,
+    top: 128,
+    width: 260,
   },
   orbCyan: {
     backgroundColor: '#28D7FF',
-    height: 160,
-    right: -72,
-    top: 252,
-    width: 160,
+    height: 210,
+    right: -146,
+    top: 342,
+    width: 210,
   },
   orbOrange: {
     backgroundColor: '#FF8A3D',
-    bottom: 72,
-    height: 150,
-    left: 42,
-    opacity: 0.24,
-    width: 150,
+    bottom: 210,
+    height: 210,
+    left: 22,
+    opacity: 0.16,
+    width: 210,
   },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 2,
   },
-  identityRow: { alignItems: 'center', flexDirection: 'row', gap: 12, flex: 1 },
+  identityRow: {
+    alignItems: 'center',
+    flex: 1,
+    flexDirection: 'row',
+    gap: 12,
+    minWidth: 0,
+  },
   greetingBlock: { flex: 1 },
   greeting: { color: '#9EA8C5', fontSize: 14, fontWeight: '700' },
   userName: {
     color: '#F7F8FF',
-    fontSize: 28,
+    fontSize: 27,
     fontWeight: '900',
     letterSpacing: -0.8,
     marginTop: -1,
@@ -496,15 +534,15 @@ const styles = StyleSheet.create({
   miniStatusPill: {
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.09)',
+    borderColor: 'rgba(255,255,255,0.14)',
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: 'row',
     gap: 7,
     marginTop: 8,
     maxWidth: '100%',
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 6,
   },
   statusDot: {
@@ -516,14 +554,14 @@ const styles = StyleSheet.create({
   miniStatusText: { color: '#DDE6FF', fontSize: 12, fontWeight: '800' },
   notificationButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderColor: 'rgba(255,255,255,0.16)',
-    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.11)',
+    borderColor: 'rgba(255,255,255,0.18)',
+    borderRadius: 23,
     borderWidth: 1,
-    height: 44,
+    height: 46,
     justifyContent: 'center',
     marginLeft: 12,
-    width: 44,
+    width: 46,
   },
   notificationDot: {
     backgroundColor: '#FF7AD9',
@@ -550,30 +588,32 @@ const styles = StyleSheet.create({
   },
   previewText: { color: '#FFD9A8', flex: 1, fontSize: 12, fontWeight: '700' },
   readyBoardBorder: {
-    borderRadius: 36,
-    marginTop: 20,
+    borderRadius: 34,
+    marginTop: 22,
     padding: 1,
   },
   readyBoard: {
-    backgroundColor: 'rgba(11,15,32,0.84)',
-    borderRadius: 35,
+    backgroundColor: 'rgba(11,15,32,0.88)',
+    borderRadius: 33,
     overflow: 'hidden',
-    padding: 20,
+    padding: 18,
   },
   boardGlow: {
-    backgroundColor: 'rgba(198,121,255,0.26)',
+    backgroundColor: 'rgba(198,121,255,0.12)',
     borderRadius: 999,
-    height: 168,
+    height: 190,
     position: 'absolute',
-    right: -42,
-    top: -72,
-    width: 168,
+    right: -94,
+    top: -76,
+    width: 190,
   },
   boardHeaderRow: {
     alignItems: 'flex-start',
     flexDirection: 'row',
+    gap: 12,
     justifyContent: 'space-between',
   },
+  boardTitleBlock: { flex: 1, minWidth: 0, paddingRight: 4 },
   eyebrow: {
     color: '#C679FF',
     fontSize: 12,
@@ -582,19 +622,23 @@ const styles = StyleSheet.create({
   },
   boardTitle: {
     color: '#F7F8FF',
-    fontSize: 31,
+    fontSize: 29,
     fontWeight: '900',
     letterSpacing: -1,
+    lineHeight: 35,
     marginTop: 6,
   },
   liveBadge: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.09)',
+    borderColor: 'rgba(255,255,255,0.14)',
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: 'row',
+    flexShrink: 0,
     gap: 7,
+    marginTop: 2,
+    minWidth: 64,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
@@ -608,26 +652,26 @@ const styles = StyleSheet.create({
   liveText: { color: '#F7F8FF', fontSize: 12, fontWeight: '900' },
   boardSubtitle: {
     color: '#A8AFC6',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    lineHeight: 22,
+    lineHeight: 21,
     marginTop: 10,
     maxWidth: 316,
   },
   modeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 18,
+    gap: 9,
+    marginTop: 17,
   },
   modeChip: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)',
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 8,
+    gap: 7,
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
@@ -661,6 +705,8 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     flexDirection: 'row',
     gap: 8,
+    justifyContent: 'center',
+    minWidth: 128,
     paddingHorizontal: 16,
     paddingVertical: 13,
   },
@@ -670,7 +716,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 26,
+    marginTop: 28,
   },
   sectionEyebrow: {
     color: '#697089',
@@ -719,10 +765,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   kindPill: {
+    alignItems: 'center',
     backgroundColor: 'rgba(198,121,255,0.16)',
     borderColor: 'rgba(198,121,255,0.32)',
     borderRadius: 999,
     borderWidth: 1,
+    flexDirection: 'row',
+    gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 7,
   },
@@ -783,8 +832,8 @@ const styles = StyleSheet.create({
   },
   emptyCard: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderColor: 'rgba(255,255,255,0.11)',
+    backgroundColor: 'rgba(255,255,255,0.075)',
+    borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: 28,
     borderWidth: 1,
     marginTop: 14,
@@ -816,26 +865,26 @@ const styles = StyleSheet.create({
   tabsShell: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: 'rgba(13,17,34,0.9)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(13,17,34,0.88)',
+    borderColor: 'rgba(255,255,255,0.16)',
     borderRadius: 999,
     borderWidth: 1,
-    bottom: 22,
+    bottom: 18,
     flexDirection: 'row',
-    gap: 4,
-    left: 18,
-    padding: 6,
+    gap: 3,
+    left: 14,
+    padding: 5,
     position: 'absolute',
-    right: 18,
+    right: 14,
   },
   tabItem: {
     alignItems: 'center',
     borderRadius: 999,
     flex: 1,
     flexDirection: 'row',
-    gap: 5,
+    gap: 4,
     justifyContent: 'center',
-    paddingHorizontal: 8,
+    paddingHorizontal: 6,
     paddingVertical: 11,
   },
   tabItemActive: { backgroundColor: '#F7F8FF' },
