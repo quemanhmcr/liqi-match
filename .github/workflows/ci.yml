@@ -80,6 +80,11 @@ jobs:
       - name: Test database
         run: supabase test db
 
+      - name: Preload postgres-meta image
+        run: |
+          docker pull ghcr.io/supabase/postgres-meta:v0.96.1
+          docker tag ghcr.io/supabase/postgres-meta:v0.96.1 public.ecr.aws/supabase/postgres-meta:v0.96.1
+
       - name: Generate database types
         shell: bash
         run: |
