@@ -12,6 +12,9 @@ type FinalizeRequest = {
   assetId: string;
 };
 
+type MediaAssetPurpose =
+  'game_profile' | 'personal_avatar' | 'chat_attachment' | 'report_evidence';
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -27,7 +30,9 @@ Deno.serve(async (request) => {
     const { supabase, user } = await authenticateUser(accessToken);
     const asset = await supabase
       .from('media_assets')
-      .select('id, owner_id, object_key, mime_type, byte_size, status')
+      .select(
+        'id, owner_id, object_key, mime_type, byte_size, purpose, status, moderation_status',
+      )
       .eq('id', assetId)
       .maybeSingle();
 
@@ -35,7 +40,37 @@ Deno.serve(async (request) => {
       return errorResponse(404, 'media_not_found', 'Media asset not found.');
     }
 
-    if (asset.data.status === 'uploaded' || asset.data.status === 'ready') {
+    const autoApproveProfileMedia = shouldAutoApproveProfileMedia(
+      asset.data.purpose,
+    );
+
+    if (asset.data.status === 'ready') {
+      return jsonResponse({
+        assetId: asset.data.id,
+        status: asset.data.status,
+        idempotent: true,
+      });
+    }
+
+    if (asset.data.status === 'uploaded' && autoApproveProfileMedia) {
+      const promoted = await promoteProfileMediaAsset(
+        supabase,
+        asset.data.id,
+        asset.data.status,
+      );
+
+      if (promoted.error) {
+        return errorResponse(500, 'finalize_failed', promoted.error.message);
+      }
+
+      return jsonResponse({
+        assetId: promoted.data.id,
+        status: promoted.data.status,
+        idempotent: true,
+      });
+    }
+
+    if (asset.data.status === 'uploaded') {
       return jsonResponse({
         assetId: asset.data.id,
         status: asset.data.status,
@@ -64,13 +99,15 @@ Deno.serve(async (request) => {
       );
     }
 
-    const update = await supabase
-      .from('media_assets')
-      .update({ status: 'uploaded' })
-      .eq('id', asset.data.id)
-      .eq('status', 'pending')
-      .select('id, status')
-      .single();
+    const update = autoApproveProfileMedia
+      ? await promoteProfileMediaAsset(supabase, asset.data.id, 'pending')
+      : await supabase
+          .from('media_assets')
+          .update({ status: 'uploaded' })
+          .eq('id', asset.data.id)
+          .eq('status', 'pending')
+          .select('id, status')
+          .single();
 
     if (update.error) {
       return errorResponse(500, 'finalize_failed', update.error.message);
@@ -86,15 +123,17 @@ Deno.serve(async (request) => {
         payload: { objectKey: asset.data.object_key },
       });
 
-    await supabase
-      .schema('private')
-      .from('outbox_events')
-      .insert({
-        event_type: 'media_processing_requested',
-        aggregate_type: 'media_asset',
-        aggregate_id: asset.data.id,
-        payload: { objectKey: asset.data.object_key },
-      });
+    if (!autoApproveProfileMedia) {
+      await supabase
+        .schema('private')
+        .from('outbox_events')
+        .insert({
+          event_type: 'media_processing_requested',
+          aggregate_type: 'media_asset',
+          aggregate_id: asset.data.id,
+          payload: { objectKey: asset.data.object_key },
+        });
+    }
 
     return jsonResponse({
       assetId: update.data.id,
@@ -108,3 +147,24 @@ Deno.serve(async (request) => {
     );
   }
 });
+
+function shouldAutoApproveProfileMedia(purpose: MediaAssetPurpose) {
+  return purpose === 'personal_avatar' || purpose === 'game_profile';
+}
+
+function promoteProfileMediaAsset(
+  supabase: Awaited<ReturnType<typeof authenticateUser>>['supabase'],
+  assetId: string,
+  expectedStatus: 'pending' | 'uploaded',
+) {
+  return supabase
+    .from('media_assets')
+    .update({
+      moderation_status: 'approved',
+      status: 'ready',
+    })
+    .eq('id', assetId)
+    .eq('status', expectedStatus)
+    .select('id, status')
+    .single();
+}
