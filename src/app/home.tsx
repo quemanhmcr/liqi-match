@@ -1,5 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useQuery } from '@tanstack/react-query';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useMemo, useState } from 'react';
 import {
@@ -59,6 +61,16 @@ function HomeText(props: TextProps) {
   return <RNText maxFontSizeMultiplier={1.08} {...props} />;
 }
 
+function impactLight() {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+    () => undefined,
+  );
+}
+
+function selectionImpact() {
+  void Haptics.selectionAsync().catch(() => undefined);
+}
+
 export default function HomeScreen() {
   const { session } = useAuth();
   const [selectedModeId, setSelectedModeId] =
@@ -83,6 +95,16 @@ export default function HomeScreen() {
   const readyCopy = readyEnabled
     ? `Đang bật ${selectedMode.label}`
     : 'Bật sẵn sàng để các set thấy bạn';
+
+  const selectMode = (modeId: HomeReadyMode['id']) => {
+    selectionImpact();
+    setSelectedModeId(modeId);
+  };
+
+  const toggleReady = () => {
+    impactLight();
+    setReadyEnabled((value) => !value);
+  };
 
   return (
     <View style={styles.root}>
@@ -137,16 +159,14 @@ export default function HomeScreen() {
             <Pressable
               accessibilityLabel="Thông báo"
               accessibilityRole="button"
+              onPress={selectionImpact}
               style={({ pressed }) => [
                 styles.notificationButton,
                 pressed && styles.pressed,
               ]}
             >
-              <Ionicons
-                color="#F7F8FF"
-                name="notifications-outline"
-                size={22}
-              />
+              <BlurView intensity={24} style={styles.surfaceFill} tint="dark" />
+              <Ionicons color="#F7F8FF" name="notifications" size={21} />
               <View style={styles.notificationDot} />
             </Pressable>
           </View>
@@ -168,7 +188,7 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
             style={styles.readyBoardBorder}
           >
-            <View style={styles.readyBoard}>
+            <BlurView intensity={32} style={styles.readyBoard} tint="dark">
               <View style={styles.boardGlow} />
               <View style={styles.boardHeaderRow}>
                 <View style={styles.boardTitleBlock}>
@@ -204,7 +224,7 @@ export default function HomeScreen() {
                       accessibilityRole="button"
                       accessibilityState={{ selected }}
                       key={mode.id}
-                      onPress={() => setSelectedModeId(mode.id)}
+                      onPress={() => selectMode(mode.id)}
                       style={({ pressed }) => [
                         styles.modeChip,
                         selected && styles.modeChipSelected,
@@ -241,20 +261,31 @@ export default function HomeScreen() {
                     readyEnabled ? 'Tắt sẵn sàng' : 'Bật sẵn sàng'
                   }
                   accessibilityRole="button"
-                  onPress={() => setReadyEnabled((value) => !value)}
+                  onPress={toggleReady}
                   style={({ pressed }) => [
                     styles.primaryAction,
                     readyEnabled && styles.primaryActionActive,
                     pressed && styles.pressed,
                   ]}
                 >
-                  <HomeText style={styles.primaryActionText}>
-                    {readyEnabled ? 'Đang bật' : 'Bật ngay'}
-                  </HomeText>
-                  <Ionicons color="#10131F" name="arrow-forward" size={18} />
+                  <LinearGradient
+                    colors={
+                      readyEnabled
+                        ? ['#5DFFB3', '#64E6FF']
+                        : ['#8A45FF', '#E06CFF']
+                    }
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.primaryActionGradient}
+                  >
+                    <HomeText style={styles.primaryActionText}>
+                      {readyEnabled ? 'Đang bật' : 'Bật ngay'}
+                    </HomeText>
+                    <Ionicons color="#FFFFFF" name="arrow-forward" size={18} />
+                  </LinearGradient>
                 </Pressable>
               </View>
-            </View>
+            </BlurView>
           </LinearGradient>
 
           <View style={styles.sectionHeader}>
@@ -293,83 +324,105 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
     <Pressable
       accessibilityLabel={`${set.name}, ${set.kind}`}
       accessibilityRole="button"
-      style={({ pressed }) => [styles.matchCard, pressed && styles.pressed]}
+      onPress={selectionImpact}
+      style={({ pressed }) => [
+        styles.matchCardFrame,
+        pressed && styles.pressed,
+      ]}
     >
-      <View style={styles.matchCardTop}>
-        <Avatar name={set.name} size={48} uri={set.avatarUrl} />
-        <View style={styles.matchMainInfo}>
-          <View style={styles.matchNameRow}>
-            <HomeText numberOfLines={1} style={styles.matchName}>
-              {set.name}
+      <BlurView intensity={24} style={styles.matchCard} tint="dark">
+        <View style={styles.matchCardTop}>
+          <Avatar name={set.name} size={48} uri={set.avatarUrl} />
+          <View style={styles.matchMainInfo}>
+            <View style={styles.matchNameRow}>
+              <HomeText numberOfLines={1} style={styles.matchName}>
+                {set.name}
+              </HomeText>
+              {set.unreadCount ? (
+                <View style={styles.unreadPill}>
+                  <HomeText style={styles.unreadText}>
+                    {set.unreadCount}
+                  </HomeText>
+                </View>
+              ) : null}
+            </View>
+            <HomeText numberOfLines={1} style={styles.matchSubtitle}>
+              {set.subtitle || 'Đã match thành công'}
             </HomeText>
-            {set.unreadCount ? (
-              <View style={styles.unreadPill}>
-                <HomeText style={styles.unreadText}>{set.unreadCount}</HomeText>
-              </View>
-            ) : null}
           </View>
-          <HomeText numberOfLines={1} style={styles.matchSubtitle}>
-            {set.subtitle || 'Đã match thành công'}
-          </HomeText>
+          <View style={styles.kindPill}>
+            <Ionicons color="#E8D4FF" name={kindIcons[set.kind]} size={14} />
+            <HomeText style={styles.kindText}>{set.kind}</HomeText>
+          </View>
         </View>
-        <View style={styles.kindPill}>
-          <Ionicons color="#E8D4FF" name={kindIcons[set.kind]} size={14} />
-          <HomeText style={styles.kindText}>{set.kind}</HomeText>
-        </View>
-      </View>
 
-      <View style={styles.matchTagsRow}>
-        {[...set.heroNames.slice(0, 3), ...set.roleNames.slice(0, 1)]
-          .slice(0, 4)
-          .map((label) => (
-            <View key={label} style={styles.softTag}>
-              <HomeText numberOfLines={1} style={styles.softTagText}>
-                {label}
+        <View style={styles.matchTagsRow}>
+          {[...set.heroNames.slice(0, 3), ...set.roleNames.slice(0, 1)]
+            .slice(0, 4)
+            .map((label) => (
+              <View key={label} style={styles.softTag}>
+                <HomeText numberOfLines={1} style={styles.softTagText}>
+                  {label}
+                </HomeText>
+              </View>
+            ))}
+        </View>
+
+        <View style={styles.matchFooter}>
+          <View style={styles.matchMetaBlock}>
+            <View style={styles.statusRow}>
+              <View
+                style={[
+                  styles.cardStatusDot,
+                  { backgroundColor: statusStyle.dot },
+                ]}
+              />
+              <HomeText
+                style={[styles.statusLabel, { color: statusStyle.text }]}
+              >
+                {set.statusLabel}
               </HomeText>
             </View>
-          ))}
-      </View>
-
-      <View style={styles.matchFooter}>
-        <View style={styles.matchMetaBlock}>
-          <View style={styles.statusRow}>
-            <View
-              style={[
-                styles.cardStatusDot,
-                { backgroundColor: statusStyle.dot },
-              ]}
-            />
-            <HomeText style={[styles.statusLabel, { color: statusStyle.text }]}>
-              {set.statusLabel}
+            <HomeText numberOfLines={1} style={styles.matchMeta}>
+              {set.meta}
             </HomeText>
           </View>
-          <HomeText numberOfLines={1} style={styles.matchMeta}>
-            {set.meta}
-          </HomeText>
-        </View>
 
-        <View style={styles.cardActions}>
-          <Pressable accessibilityRole="button" style={styles.secondaryAction}>
-            <Ionicons color="#DDE6FF" name="chatbubble-outline" size={16} />
-            <HomeText style={styles.secondaryActionText}>Nhắn</HomeText>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            style={styles.cardPrimaryAction}
-          >
-            <HomeText style={styles.cardPrimaryActionText}>
-              {set.actionLabel}
-            </HomeText>
-          </Pressable>
+          <View style={styles.cardActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={selectionImpact}
+              style={styles.secondaryAction}
+            >
+              <Ionicons color="#DDE6FF" name="chatbubble-outline" size={16} />
+              <HomeText style={styles.secondaryActionText}>Nhắn</HomeText>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={impactLight}
+              style={styles.cardPrimaryAction}
+            >
+              <LinearGradient
+                colors={cardActionGradient(set.kind)}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.cardPrimaryActionGradient}
+              >
+                <HomeText style={styles.cardPrimaryActionText}>
+                  {set.actionLabel}
+                </HomeText>
+              </LinearGradient>
+            </Pressable>
+          </View>
         </View>
-      </View>
+      </BlurView>
     </Pressable>
   );
 }
 
 function EmptyMatchedSets() {
   return (
-    <View style={styles.emptyCard}>
+    <BlurView intensity={22} style={styles.emptyCard} tint="dark">
       <View style={styles.emptyIcon}>
         <Ionicons color="#C679FF" name="people-outline" size={26} />
       </View>
@@ -380,13 +433,13 @@ function EmptyMatchedSets() {
         Khi hai bên cùng thích nhau, match sẽ xuất hiện ở đây để bạn vào set,
         nhắn tin hoặc lập lobby rank.
       </HomeText>
-    </View>
+    </BlurView>
   );
 }
 
 function FloatingTabs() {
   return (
-    <View style={styles.tabsShell}>
+    <BlurView intensity={38} style={styles.tabsShell} tint="dark">
       {tabs.map((tab) => {
         const active = tab.key === 'home';
         return (
@@ -395,6 +448,7 @@ function FloatingTabs() {
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             key={tab.key}
+            onPress={selectionImpact}
             style={[styles.tabItem, active && styles.tabItemActive]}
           >
             <Ionicons
@@ -410,7 +464,7 @@ function FloatingTabs() {
           </Pressable>
         );
       })}
-    </View>
+    </BlurView>
   );
 }
 
@@ -460,6 +514,12 @@ function Avatar({
   );
 }
 
+function cardActionGradient(kind: MatchedSet['kind']): [string, string] {
+  if (kind === 'Rank') return ['#15B7CE', '#64E6FF'];
+  if (kind === 'Team Rank') return ['#FF8A3D', '#FFB86B'];
+  return ['#8A45FF', '#D96CFF'];
+}
+
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
   const first = parts[0]?.[0] ?? 'L';
@@ -477,6 +537,7 @@ const statusStyles: Record<MatchedSetStatus, { dot: string; text: string }> = {
 const styles = StyleSheet.create({
   root: { backgroundColor: '#050713', flex: 1 },
   safe: { flex: 1 },
+  surfaceFill: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   scrollContent: {
     paddingBottom: 172,
     paddingHorizontal: 16,
@@ -554,13 +615,14 @@ const styles = StyleSheet.create({
   miniStatusText: { color: '#DDE6FF', fontSize: 12, fontWeight: '800' },
   notificationButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.11)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderColor: 'rgba(255,255,255,0.18)',
     borderRadius: 23,
     borderWidth: 1,
     height: 46,
     justifyContent: 'center',
     marginLeft: 12,
+    overflow: 'hidden',
     width: 46,
   },
   notificationDot: {
@@ -700,8 +762,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   primaryAction: {
+    borderRadius: 999,
+    minWidth: 128,
+    overflow: 'hidden',
+  },
+  primaryActionActive: {},
+  primaryActionGradient: {
     alignItems: 'center',
-    backgroundColor: '#F7F8FF',
     borderRadius: 999,
     flexDirection: 'row',
     gap: 8,
@@ -710,8 +777,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 13,
   },
-  primaryActionActive: { backgroundColor: '#5DFFB3' },
-  primaryActionText: { color: '#10131F', fontSize: 14, fontWeight: '900' },
+  primaryActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   sectionHeader: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -732,11 +798,13 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   matchList: { gap: 12, marginTop: 14 },
+  matchCardFrame: { borderRadius: 28, overflow: 'hidden' },
   matchCard: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.075)',
     borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: 28,
     borderWidth: 1,
+    overflow: 'hidden',
     padding: 14,
   },
   matchCardTop: { alignItems: 'center', flexDirection: 'row', gap: 11 },
@@ -820,13 +888,16 @@ const styles = StyleSheet.create({
   },
   secondaryActionText: { color: '#DDE6FF', fontSize: 12, fontWeight: '900' },
   cardPrimaryAction: {
-    backgroundColor: '#F7F8FF',
+    borderRadius: 999,
+    overflow: 'hidden',
+  },
+  cardPrimaryActionGradient: {
     borderRadius: 999,
     paddingHorizontal: 13,
     paddingVertical: 10,
   },
   cardPrimaryActionText: {
-    color: '#10131F',
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '900',
   },
@@ -837,6 +908,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     borderWidth: 1,
     marginTop: 14,
+    overflow: 'hidden',
     padding: 22,
   },
   emptyIcon: {
@@ -873,6 +945,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 3,
     left: 14,
+    overflow: 'hidden',
     padding: 5,
     position: 'absolute',
     right: 14,
