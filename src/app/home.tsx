@@ -58,7 +58,7 @@ const kindIcons: Record<MatchedSet['kind'], keyof typeof Ionicons.glyphMap> = {
 };
 
 function HomeText(props: TextProps) {
-  return <RNText maxFontSizeMultiplier={1.08} {...props} />;
+  return <RNText maxFontSizeMultiplier={1} {...props} />;
 }
 
 function impactLight() {
@@ -433,6 +433,20 @@ function EmptyMatchedSets() {
         Khi hai bên cùng thích nhau, match sẽ xuất hiện ở đây để bạn vào set,
         nhắn tin hoặc lập lobby rank.
       </HomeText>
+      <View style={styles.emptyPreviewRow}>
+        <View style={styles.emptyPreviewAvatar} />
+        <View style={styles.emptyPreviewLines}>
+          <View
+            style={[styles.emptyPreviewLine, styles.emptyPreviewLineLong]}
+          />
+          <View
+            style={[styles.emptyPreviewLine, styles.emptyPreviewLineShort]}
+          />
+        </View>
+        <View style={styles.emptyPreviewPill}>
+          <HomeText style={styles.emptyPreviewPillText}>Khám phá</HomeText>
+        </View>
+      </View>
     </BlurView>
   );
 }
@@ -539,42 +553,42 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   surfaceFill: { bottom: 0, left: 0, position: 'absolute', right: 0, top: 0 },
   scrollContent: {
-    paddingBottom: 172,
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingBottom: 212,
+    paddingHorizontal: 18,
+    paddingTop: 8,
   },
   orb: {
     borderRadius: 999,
-    opacity: 0.2,
+    opacity: 0.09,
     position: 'absolute',
   },
   orbPurple: {
     backgroundColor: '#8B46FF',
-    height: 260,
-    left: -150,
-    top: 128,
-    width: 260,
+    height: 340,
+    left: -260,
+    top: 132,
+    width: 340,
   },
   orbCyan: {
     backgroundColor: '#28D7FF',
-    height: 210,
-    right: -146,
-    top: 342,
-    width: 210,
+    height: 260,
+    right: -224,
+    top: 430,
+    width: 260,
   },
   orbOrange: {
     backgroundColor: '#FF8A3D',
-    bottom: 210,
-    height: 210,
-    left: 22,
-    opacity: 0.16,
-    width: 210,
+    bottom: 236,
+    height: 220,
+    left: 72,
+    opacity: 0.07,
+    width: 220,
   },
   topBar: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 2,
+    marginTop: 4,
   },
   identityRow: {
     alignItems: 'center',
@@ -584,10 +598,10 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   greetingBlock: { flex: 1 },
-  greeting: { color: '#9EA8C5', fontSize: 14, fontWeight: '700' },
+  greeting: { color: '#9EA8C5', fontSize: 13, fontWeight: '700' },
   userName: {
     color: '#F7F8FF',
-    fontSize: 27,
+    fontSize: 25,
     fontWeight: '900',
     letterSpacing: -0.8,
     marginTop: -1,
@@ -650,32 +664,32 @@ const styles = StyleSheet.create({
   },
   previewText: { color: '#FFD9A8', flex: 1, fontSize: 12, fontWeight: '700' },
   readyBoardBorder: {
-    borderRadius: 34,
+    borderRadius: 32,
     marginTop: 22,
     padding: 1,
   },
   readyBoard: {
-    backgroundColor: 'rgba(11,15,32,0.88)',
-    borderRadius: 33,
+    backgroundColor: 'rgba(11,15,32,0.9)',
+    borderRadius: 31,
     overflow: 'hidden',
     padding: 18,
+    paddingTop: 17,
   },
   boardGlow: {
-    backgroundColor: 'rgba(198,121,255,0.12)',
+    backgroundColor: 'rgba(198,121,255,0.09)',
     borderRadius: 999,
-    height: 190,
+    height: 210,
     position: 'absolute',
-    right: -94,
-    top: -76,
-    width: 190,
+    right: -132,
+    top: -92,
+    width: 210,
   },
   boardHeaderRow: {
     alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 12,
-    justifyContent: 'space-between',
+    minHeight: 70,
+    position: 'relative',
   },
-  boardTitleBlock: { flex: 1, minWidth: 0, paddingRight: 4 },
+  boardTitleBlock: { minWidth: 0, paddingRight: 0 },
   eyebrow: {
     color: '#C679FF',
     fontSize: 12,
@@ -684,11 +698,11 @@ const styles = StyleSheet.create({
   },
   boardTitle: {
     color: '#F7F8FF',
-    fontSize: 29,
+    fontSize: 26,
     fontWeight: '900',
-    letterSpacing: -1,
-    lineHeight: 35,
-    marginTop: 6,
+    letterSpacing: -0.9,
+    lineHeight: 32,
+    marginTop: 5,
   },
   liveBadge: {
     alignItems: 'center',
@@ -697,12 +711,13 @@ const styles = StyleSheet.create({
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: 'row',
-    flexShrink: 0,
     gap: 7,
-    marginTop: 2,
     minWidth: 64,
     paddingHorizontal: 10,
     paddingVertical: 7,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   liveDot: {
     backgroundColor: '#697089',
@@ -714,17 +729,17 @@ const styles = StyleSheet.create({
   liveText: { color: '#F7F8FF', fontSize: 12, fontWeight: '900' },
   boardSubtitle: {
     color: '#A8AFC6',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: 21,
-    marginTop: 10,
+    lineHeight: 20,
+    marginTop: 6,
     maxWidth: 316,
   },
   modeGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 9,
-    marginTop: 17,
+    gap: 8,
+    marginTop: 15,
   },
   modeChip: {
     alignItems: 'center',
@@ -734,14 +749,13 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flexDirection: 'row',
     gap: 7,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
   },
   modeChipSelected: {
     backgroundColor: 'rgba(255,255,255,0.18)',
     borderColor: 'rgba(255,255,255,0.28)',
   },
-  modeAccent: { borderRadius: 99, height: 8, width: 8 },
   modeLabel: { color: '#A8AFC6', fontSize: 13, fontWeight: '900' },
   modeLabelSelected: { color: '#F7F8FF' },
   readyActionRow: {
@@ -750,11 +764,16 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     flexDirection: 'row',
     gap: 12,
-    marginTop: 18,
-    paddingTop: 16,
+    marginTop: 16,
+    paddingTop: 15,
   },
   readyCopyBlock: { flex: 1 },
-  readyCopy: { color: '#F7F8FF', fontSize: 15, fontWeight: '900' },
+  readyCopy: {
+    color: '#F7F8FF',
+    fontSize: 14,
+    fontWeight: '900',
+    lineHeight: 18,
+  },
   readyDescription: {
     color: '#A8AFC6',
     fontSize: 12,
@@ -763,7 +782,7 @@ const styles = StyleSheet.create({
   },
   primaryAction: {
     borderRadius: 999,
-    minWidth: 128,
+    minWidth: 118,
     overflow: 'hidden',
   },
   primaryActionActive: {},
@@ -773,16 +792,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     justifyContent: 'center',
-    minWidth: 128,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
+    minWidth: 118,
+    paddingHorizontal: 15,
+    paddingVertical: 12,
   },
   primaryActionText: { color: '#FFFFFF', fontSize: 14, fontWeight: '900' },
   sectionHeader: {
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 28,
+    marginTop: 26,
   },
   sectionEyebrow: {
     color: '#697089',
@@ -792,7 +811,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     color: '#F7F8FF',
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     letterSpacing: -0.4,
     marginTop: 3,
@@ -902,66 +921,103 @@ const styles = StyleSheet.create({
     fontWeight: '900',
   },
   emptyCard: {
-    alignItems: 'center',
+    alignItems: 'stretch',
     backgroundColor: 'rgba(255,255,255,0.075)',
     borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: 28,
     borderWidth: 1,
     marginTop: 14,
     overflow: 'hidden',
-    padding: 22,
+    padding: 18,
   },
   emptyIcon: {
     alignItems: 'center',
+    alignSelf: 'center',
     backgroundColor: 'rgba(198,121,255,0.14)',
     borderRadius: 999,
-    height: 52,
+    height: 48,
     justifyContent: 'center',
-    width: 52,
+    width: 48,
   },
   emptyTitle: {
     color: '#F7F8FF',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: '900',
-    marginTop: 14,
+    marginTop: 12,
     textAlign: 'center',
   },
   emptyBody: {
     color: '#A8AFC6',
-    fontSize: 14,
+    fontSize: 12,
     fontWeight: '600',
-    lineHeight: 21,
-    marginTop: 8,
+    lineHeight: 18,
+    marginTop: 7,
     textAlign: 'center',
+  },
+  emptyPreviewRow: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 22,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 14,
+    padding: 10,
+  },
+  emptyPreviewAvatar: {
+    backgroundColor: 'rgba(198,121,255,0.45)',
+    borderRadius: 999,
+    height: 34,
+    width: 34,
+  },
+  emptyPreviewLines: { flex: 1, gap: 7 },
+  emptyPreviewLine: {
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 999,
+    height: 8,
+  },
+  emptyPreviewLineLong: { width: '78%' },
+  emptyPreviewLineShort: { width: '46%' },
+  emptyPreviewPill: {
+    backgroundColor: '#F7F8FF',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+  },
+  emptyPreviewPillText: {
+    color: '#10131F',
+    fontSize: 11,
+    fontWeight: '900',
   },
   tabsShell: {
     alignItems: 'center',
     alignSelf: 'center',
-    backgroundColor: 'rgba(13,17,34,0.88)',
+    backgroundColor: 'rgba(13,17,34,0.9)',
     borderColor: 'rgba(255,255,255,0.16)',
     borderRadius: 999,
     borderWidth: 1,
-    bottom: 18,
+    bottom: 14,
     flexDirection: 'row',
-    gap: 3,
-    left: 14,
+    gap: 2,
+    left: 12,
     overflow: 'hidden',
     padding: 5,
     position: 'absolute',
-    right: 14,
+    right: 12,
   },
   tabItem: {
     alignItems: 'center',
     borderRadius: 999,
     flex: 1,
     flexDirection: 'row',
-    gap: 4,
+    gap: 3,
     justifyContent: 'center',
-    paddingHorizontal: 6,
-    paddingVertical: 11,
+    paddingHorizontal: 5,
+    paddingVertical: 10,
   },
   tabItemActive: { backgroundColor: '#F7F8FF' },
-  tabLabel: { color: '#A8AFC6', fontSize: 11, fontWeight: '900' },
+  tabLabel: { color: '#A8AFC6', fontSize: 10, fontWeight: '900' },
   tabLabelActive: { color: '#10131F' },
   avatarRing: { alignItems: 'center', justifyContent: 'center' },
   avatarFallback: {
