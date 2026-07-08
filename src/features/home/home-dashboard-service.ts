@@ -1,5 +1,6 @@
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
+import { profileMockMinhAnhUserId } from '@/features/profile/profile.mock';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
 type MaybeArray<T> = T | T[] | null | undefined;
@@ -94,6 +95,7 @@ export type MatchedSet = {
   kind: 'Set LV' | 'Tri kỉ' | 'Normal' | 'Rank' | 'Team Rank';
   meta: string;
   name: string;
+  profileId?: string;
   rankName?: string;
   roleNames: string[];
   status: MatchedSetStatus;
@@ -286,6 +288,7 @@ function mapMatchRow(
     kind,
     meta: buildMatchedMeta(habits, conversation?.last_message_at),
     name: otherProfile.display_name ?? gameProfile?.handle ?? 'Đồng đội',
+    profileId: otherProfile.id,
     rankName: first(gameProfile?.ranks)?.name ?? undefined,
     roleNames,
     status: index === 0 ? 'ready' : index % 3 === 0 ? 'idle' : 'online',
@@ -398,6 +401,7 @@ const previewMatchedSets: MatchedSet[] = [
     kind: 'Tri kỉ',
     meta: 'Tối · Voice khi cần',
     name: 'Minh Anh',
+    profileId: profileMockMinhAnhUserId,
     rankName: 'Cao Thủ',
     roleNames: ['Trợ Thủ'],
     status: 'ready',
