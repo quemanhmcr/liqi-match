@@ -47,6 +47,10 @@ type ProfileHabitEmbed = {
   team_goals: string[] | null;
 };
 
+type ProfileCoverMediaRow = {
+  id: string;
+};
+
 type ProfileRow = {
   avatar_media_id: string | null;
   bio: string | null;
@@ -123,9 +127,12 @@ export async function fetchProfileView(input: {
       ? avatarUrlFromSession(input.session)
       : undefined;
   const avatarUrl = mediaUrl(row.avatar_media_id) ?? avatarFallbackUrl;
+  const coverUrl = await fetchUploadedProfileCoverUrl(input.session, row.id);
+
   return {
     avatarFallbackUrl,
     avatarUrl,
+    coverUrl,
     bio: row.bio?.trim() || profileMockQuote,
     displayName:
       row.display_name ?? gameProfile?.handle ?? displayNameFromSession(input.session) ?? 'Liqi Player',
@@ -190,6 +197,33 @@ function buildMinhAnhPreviewProfile(): ProfileViewModel {
 
 function isMinhAnhMockProfile(userId: string | undefined) {
   return userId === profileMockMinhAnhUserId;
+}
+
+
+async function fetchUploadedProfileCoverUrl(
+  session: AuthSession,
+  ownerId: string,
+) {
+  try {
+    const rows = await supabaseRest<ProfileCoverMediaRow[]>(
+      [
+        'media_assets?select=id',
+        `owner_id=eq.${encodeURIComponent(ownerId)}`,
+        'purpose=eq.game_profile',
+        'status=eq.ready',
+        'moderation_status=eq.approved',
+        'deleted_at=is.null',
+        'order=created_at.asc',
+        'limit=1',
+      ].join('&'),
+      { session },
+    );
+
+    return mediaUrl(rows[0]?.id);
+  } catch (error) {
+    console.warn('[profile] Cannot load uploaded profile cover media', error);
+    return undefined;
+  }
 }
 
 function buildFavoriteHeroes(heroes: HeroEmbed[]): ProfileFavoriteHero[] {

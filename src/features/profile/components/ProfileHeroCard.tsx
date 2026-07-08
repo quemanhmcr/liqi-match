@@ -54,6 +54,7 @@ export function ProfileHeroCard({
   const avatarSource =
     imageSource(avatarUri) ??
     (isMinhAnhProfile(profile.displayName) ? fallbackMinhAnhAvatar : fallbackAvatar);
+  const heroSource = imageSource(profile.coverUrl) ?? heroArtwork;
   const meta = [
     profile.rankName ?? 'Cao Thủ',
     profile.roleNames.slice(0, 2).join(' / ') || 'Trợ Thủ',
@@ -97,7 +98,7 @@ export function ProfileHeroCard({
       />
       <Image
         resizeMode="cover"
-        source={heroArtwork}
+        source={heroSource}
         style={styles.heroArtwork}
       />
       <LinearGradient
