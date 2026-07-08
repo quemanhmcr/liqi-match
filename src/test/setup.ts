@@ -1,4 +1,22 @@
 import { jest } from '@jest/globals';
+import type { ReactNode } from 'react';
+
+
+jest.mock('@shopify/react-native-skia', () => {
+  const ReactActual = jest.requireActual<typeof import('react')>('react');
+  const { View: MockView } = jest.requireActual<typeof import('react-native')>(
+    'react-native',
+  );
+  const MockSkiaNode = ({ children }: { children?: ReactNode }) =>
+    ReactActual.createElement(MockView, null, children);
+
+  return {
+    __esModule: true,
+    BlurMask: MockSkiaNode,
+    Canvas: MockSkiaNode,
+    Path: MockSkiaNode,
+  };
+});
 
 process.env.EXPO_PUBLIC_API_URL ??= 'http://localhost:3000';
 process.env.EXPO_PUBLIC_SUPABASE_URL ??= 'http://127.0.0.1:54321';
