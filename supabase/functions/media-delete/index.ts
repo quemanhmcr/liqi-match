@@ -5,7 +5,7 @@ import {
   readJson,
   requireBearerToken,
 } from '../_shared/http.ts';
-import { authenticateUser } from '../_shared/supabase.ts';
+import { authenticateUser, enqueueOutboxEvent } from '../_shared/supabase.ts';
 
 type DeleteRequest = {
   assetId: string;
@@ -57,15 +57,23 @@ Deno.serve(async (request) => {
       return errorResponse(500, 'delete_mark_failed', update.error.message);
     }
 
-    await supabase
-      .schema('private')
-      .from('outbox_events')
-      .insert({
-        event_type: 'media_delete_requested',
-        aggregate_type: 'media_asset',
-        aggregate_id: asset.data.id,
-        payload: { objectKey: asset.data.object_key },
-      });
+    const outbox = await enqueueOutboxEvent(supabase, {
+      aggregateId: asset.data.id,
+      aggregateType: 'media_asset',
+      eventType: 'media_delete_requested',
+      payload: { objectKey: asset.data.object_key },
+    });
+
+    if (outbox.error) {
+      console.error(
+        JSON.stringify({
+          assetId: asset.data.id,
+          level: 'error',
+          message: 'media_delete_outbox_enqueue_failed',
+          reason: outbox.error.message,
+        }),
+      );
+    }
 
     const mediaWorkerInternalUrl = Deno.env.get('MEDIA_WORKER_INTERNAL_URL');
     const mediaWorkerInternalToken = Deno.env.get(

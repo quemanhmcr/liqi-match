@@ -26,3 +26,26 @@ export async function authenticateUser(accessToken: string) {
 
   return { supabase, user: data.user };
 }
+
+type SupabaseServiceClient = ReturnType<typeof createServiceClient>;
+
+type OutboxEventInput = {
+  aggregateId: string;
+  aggregateType: string;
+  eventType: string;
+  payload?: Record<string, unknown>;
+};
+
+export async function enqueueOutboxEvent(
+  supabase: SupabaseServiceClient,
+  input: OutboxEventInput,
+) {
+  const { data, error } = await supabase.rpc('enqueue_outbox_event', {
+    p_aggregate_id: input.aggregateId,
+    p_aggregate_type: input.aggregateType,
+    p_event_type: input.eventType,
+    p_payload: input.payload ?? {},
+  });
+
+  return { data: data as string | null, error };
+}

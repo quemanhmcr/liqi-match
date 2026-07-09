@@ -45,6 +45,10 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
     impactLight();
     router.push('/profile/share');
   };
+  const openProfileSettings = () => {
+    selectionImpact();
+    router.push('/profile/settings');
+  };
   const profileQuery = useQuery({
     enabled: Boolean(session && (mode === 'self' || userId)),
     queryFn: () => {
@@ -68,7 +72,11 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
       withBottomNavPadding={false}
       withHeader={false}
     >
-      <ProfileTopBar mode={mode} loading={profileQuery.isLoading} />
+      <ProfileTopBar
+        loading={profileQuery.isLoading}
+        mode={mode}
+        onSettings={openProfileSettings}
+      />
       <ProfileHeroCard
         mode={mode}
         onEdit={mode === 'self' ? openProfileEditor : selectionImpact}
@@ -78,7 +86,10 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
         profile={profile}
         vibe={profileMockVibe}
       />
-      <ProfileFavoriteHeroes heroes={profile.favoriteHeroes} />
+      <ProfileFavoriteHeroes
+        heroes={profile.favoriteHeroes}
+        showWinRate={profile.showWinRate}
+      />
       <ProfilePlayStyle tags={profile.playStyleTags} />
       <ProfileHighlights mode={mode} />
       <View aria-hidden style={styles.bottomSpacer} />
@@ -94,9 +105,11 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
 function ProfileTopBar({
   loading,
   mode,
+  onSettings,
 }: {
   loading: boolean;
   mode: ProfileHeroMode;
+  onSettings: () => void;
 }) {
   return (
     <View style={styles.topBar}>
@@ -126,7 +139,7 @@ function ProfileTopBar({
           mode === 'self' ? 'Cài đặt hồ sơ' : 'Tùy chọn hồ sơ'
         }
         glowIntensity="low"
-        onPress={selectionImpact}
+        onPress={mode === 'self' ? onSettings : selectionImpact}
         glassIntensity="low"
         size={42}
         style={styles.topOrb}
