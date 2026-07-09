@@ -66,6 +66,17 @@ export function countUploadableOnboardingMedia(
   return buildUploadPlan(input).length;
 }
 
+export async function uploadProfileMediaAsset(
+  session: AuthSession,
+  input: { asset: LocalImageAsset; slot: 'avatar' | 'cover' },
+): Promise<UploadedMediaAsset> {
+  return uploadSingleMedia(session, {
+    asset: input.asset,
+    purpose: input.slot === 'avatar' ? 'personal_avatar' : 'game_profile',
+    slot: input.slot,
+  });
+}
+
 export async function uploadOnboardingMedia(
   session: AuthSession,
   input: UploadableOnboardingMedia,

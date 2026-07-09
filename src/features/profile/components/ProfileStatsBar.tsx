@@ -48,30 +48,46 @@ const stats: StatItem[] = [
 export function ProfileStatsBar({ embedded = false }: { embedded?: boolean }) {
   return (
     <LiquidCard
-      baseStrokeColor="rgba(103,232,255,0.20)"
-      baseStrokeOpacity={0.06}
-      blurIntensity={embedded ? 24 : 28}
+      baseStrokeColor={embedded ? "rgba(150,190,255,0.14)" : "rgba(103,232,255,0.20)"}
+      baseStrokeOpacity={embedded ? 0.045 : 0.06}
+      blurIntensity={embedded ? 18 : 28}
       contentStyle={[styles.surface, embedded && styles.embeddedSurface]}
       density="compact"
-      frameColors={[
-        'rgba(106,101,255,0.14)',
-        'rgba(210,225,255,0.030)',
-        'rgba(103,232,255,0.15)',
-      ]}
+      frameColors={
+        embedded
+          ? [
+              'rgba(106,101,255,0.075)',
+              'rgba(210,225,255,0.018)',
+              'rgba(103,232,255,0.075)',
+            ]
+          : [
+              'rgba(106,101,255,0.14)',
+              'rgba(210,225,255,0.030)',
+              'rgba(103,232,255,0.15)',
+            ]
+      }
       glassIntensity="low"
-      glowIntensity="low"
+      glowIntensity={embedded ? "none" : "low"}
       radius={embedded ? 24 : 27}
       style={[styles.frame, embedded && styles.embeddedFrame]}
-      surfaceBackground={embedded ? 'rgba(8,13,30,0.34)' : undefined}
+      surfaceBackground={embedded ? 'rgba(4,8,20,0.76)' : undefined}
       withInnerReflection
       withShadow={false}
     >
       <LinearGradient
-        colors={[
-          'rgba(106,101,255,0.060)',
-          'rgba(56,215,255,0.050)',
-          'rgba(255,255,255,0)',
-        ]}
+        colors={
+          embedded
+            ? [
+                'rgba(106,101,255,0.034)',
+                'rgba(56,215,255,0.026)',
+                'rgba(255,255,255,0)',
+              ]
+            : [
+                'rgba(106,101,255,0.060)',
+                'rgba(56,215,255,0.050)',
+                'rgba(255,255,255,0)',
+              ]
+        }
         end={{ x: 1, y: 1 }}
         pointerEvents="none"
         start={{ x: 0, y: 0 }}
@@ -120,7 +136,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   separator: {
-    backgroundColor: 'rgba(255,255,255,0.075)',
+    backgroundColor: 'rgba(255,255,255,0.052)',
     bottom: 11,
     left: 0,
     position: 'absolute',
@@ -144,14 +160,14 @@ const styles = StyleSheet.create({
   topHighlight: {
     height: 1,
     left: 18,
-    opacity: 0.62,
+    opacity: 0.40,
     position: 'absolute',
     right: 18,
     top: 1,
   },
   value: {
     ...liquidTypography.cardTitle,
-    color: 'rgba(248,250,255,0.91)',
+    color: 'rgba(250,252,255,0.94)',
     fontSize: 18.5,
     fontWeight: '700',
     letterSpacing: -0.34,
