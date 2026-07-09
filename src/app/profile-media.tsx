@@ -7,23 +7,29 @@ import {
   Image,
   Modal,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 
 import {
+  OnboardingCinematicShell,
+  OnboardingInfoCard,
+  OnboardingPrimaryButton,
+  OnboardingSecondaryAction,
+  OnboardingSection,
+} from '@/features/onboarding/components/OnboardingCinematic';
+import {
   countUploadableOnboardingMedia,
   type LocalImageAsset,
   type UploadProgress,
   uploadOnboardingMedia,
 } from '@/features/media/media-upload-service';
-import { completeOnboardingProfile } from '@/features/onboarding/profile-service';
 import {
   getOnboardingSnapshot,
   updateOnboardingSnapshot,
 } from '@/features/onboarding/onboarding-store';
+import { completeOnboardingProfile } from '@/features/onboarding/profile-service';
 import { useAuth } from '@/shared/auth/auth-context';
 
 type MediaKind = 'avatar' | 'cover' | 'wall';
@@ -152,6 +158,11 @@ export default function ProfileMediaScreen() {
     }
   };
 
+  const goBack = () => {
+    if (busy) return;
+    router.back();
+  };
+
   const finish = async () => {
     if (busy) return;
 
@@ -205,23 +216,34 @@ export default function ProfileMediaScreen() {
 
   return (
     <View style={styles.root}>
-      <LinearGradient
-        colors={['#050713', '#070B18', '#050713']}
-        style={StyleSheet.absoluteFill}
-      />
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <Text style={styles.step}>Bước 5/5</Text>
-        <Text style={styles.title}>Hoàn tất hồ sơ</Text>
-        <Text style={styles.subtitle}>
-          Thêm ảnh để hồ sơ trông đáng tin hơn. Ảnh sẽ được upload qua URL ký
-          tạm thời lên R2 sau khi hồ sơ nền được lưu.
-        </Text>
-
-        <View style={styles.card}>
-          <SectionHeader
-            label="Ảnh đại diện"
-            value={avatar ? 'Đã thêm' : 'Nên thêm'}
-          />
+      <OnboardingCinematicShell
+        contentContainerStyle={styles.content}
+        footer={
+          <View>
+            <OnboardingPrimaryButton
+              disabled={busy}
+              onPress={finish}
+              showArrow={!busy}
+              tone="orange"
+            >
+              {busy ? <ActivityIndicator color="#FFFFFF" /> : 'Tạo hồ sơ'}
+            </OnboardingPrimaryButton>
+            <OnboardingSecondaryAction disabled={busy} onPress={goBack}>
+              Quay lại
+            </OnboardingSecondaryAction>
+          </View>
+        }
+        headerDensity="compact"
+        step={6}
+        subtitle="Thêm avatar, ảnh game và vài khoảnh khắc để hồ sơ nổi bật hơn trong box chat."
+        title="Hoàn tất hồ sơ"
+        tone="orange"
+      >
+        <OnboardingSection
+          meta={avatar ? 'Đã thêm' : 'Nên thêm'}
+          subtitle="Ảnh vuông, dùng làm tín hiệu nhận diện chính trên hồ sơ."
+          title="Ảnh đại diện"
+        >
           <Pressable
             accessibilityLabel={
               avatar ? 'Đổi ảnh đại diện' : 'Chọn ảnh đại diện'
@@ -229,7 +251,11 @@ export default function ProfileMediaScreen() {
             accessibilityRole="button"
             disabled={busy}
             onPress={() => openPicker('avatar')}
-            style={styles.avatarRow}
+            style={({ pressed }) => [
+              styles.avatarRow,
+              pressed && !busy && styles.pressed,
+              busy && styles.disabled,
+            ]}
           >
             <View style={styles.avatarPreview}>
               {avatar ? (
@@ -246,18 +272,20 @@ export default function ProfileMediaScreen() {
                 {avatar ? 'Đã có ảnh đại diện' : 'Chọn ảnh đại diện'}
               </Text>
               <Text style={styles.mediaMeta}>
-                Ảnh vuông, sẽ hiển thị trên hồ sơ của bạn
+                {avatar
+                  ? 'Chạm để đổi ảnh khác'
+                  : 'Nên rõ mặt hoặc avatar game dễ nhận ra'}
               </Text>
             </View>
             <Text style={styles.mediaAction}>{avatar ? 'Đổi' : 'Thêm'}</Text>
           </Pressable>
-        </View>
+        </OnboardingSection>
 
-        <View style={styles.card}>
-          <SectionHeader
-            label="Ảnh hồ sơ game"
-            value={cover ? 'Đã thêm' : 'Tuỳ chọn'}
-          />
+        <OnboardingSection
+          meta={cover ? 'Đã thêm' : 'Tuỳ chọn'}
+          subtitle="Ảnh ngang 16:9, hợp để khoe lobby, rank hoặc phong cách chơi."
+          title="Ảnh hồ sơ game"
+        >
           <Pressable
             accessibilityLabel={
               cover ? 'Đổi ảnh hồ sơ game' : 'Chọn ảnh hồ sơ game'
@@ -265,13 +293,17 @@ export default function ProfileMediaScreen() {
             accessibilityRole="button"
             disabled={busy}
             onPress={() => openPicker('cover')}
-            style={styles.coverBox}
+            style={({ pressed }) => [
+              styles.coverBox,
+              pressed && !busy && styles.pressed,
+              busy && styles.disabled,
+            ]}
           >
             {cover ? (
               <>
                 <Image source={{ uri: cover.uri }} style={styles.coverImage} />
                 <LinearGradient
-                  colors={['transparent', 'rgba(5,7,19,0.88)']}
+                  colors={['rgba(2,5,14,0)', 'rgba(2,5,14,0.88)']}
                   style={StyleSheet.absoluteFill}
                 />
                 <View style={styles.coverCopy}>
@@ -287,13 +319,13 @@ export default function ProfileMediaScreen() {
               </View>
             )}
           </Pressable>
-        </View>
+        </OnboardingSection>
 
-        <View style={styles.card}>
-          <SectionHeader label="Tường ảnh" value={`${wallCount}/4`} />
-          <Text style={styles.sectionHint}>
-            Thêm khoảnh khắc trong trận, ảnh sảnh chờ hoặc điểm nổi bật của bạn.
-          </Text>
+        <OnboardingSection
+          meta={`${wallCount}/4`}
+          subtitle="Khoảnh khắc trong trận, ảnh sảnh chờ hoặc highlight cá nhân."
+          title="Tường ảnh"
+        >
           <View style={styles.wallGrid}>
             {wallItems.map((item, index) => (
               <Pressable
@@ -302,13 +334,21 @@ export default function ProfileMediaScreen() {
                 disabled={busy}
                 key={index}
                 onPress={() => openPicker('wall', index)}
-                style={styles.wallTile}
+                style={({ pressed }) => [
+                  styles.wallTile,
+                  pressed && !busy && styles.pressed,
+                  busy && styles.disabled,
+                ]}
               >
                 {item ? (
                   <>
                     <Image
                       source={{ uri: item.uri }}
                       style={styles.wallImage}
+                    />
+                    <LinearGradient
+                      colors={['rgba(2,5,14,0)', 'rgba(2,5,14,0.42)']}
+                      style={StyleSheet.absoluteFill}
                     />
                     <Pressable
                       disabled={busy}
@@ -325,9 +365,9 @@ export default function ProfileMediaScreen() {
               </Pressable>
             ))}
           </View>
-        </View>
+        </OnboardingSection>
 
-        <View style={styles.privacyCard}>
+        <OnboardingInfoCard>
           <Text style={styles.privacyTitle}>
             Bạn luôn kiểm soát ảnh của mình
           </Text>
@@ -336,18 +376,10 @@ export default function ProfileMediaScreen() {
               ? `${selectedMediaCount} ảnh đã sẵn sàng. Khi bấm tạo hồ sơ, app sẽ lưu dữ liệu trước rồi upload ảnh lên R2 và gắn ảnh đại diện vào hồ sơ.`
               : 'Bạn có thể bỏ qua ảnh ở bước này. Hồ sơ vẫn được lưu đầy đủ và bạn có thể thêm ảnh sau.'}
           </Text>
-        </View>
+        </OnboardingInfoCard>
 
         {error ? <Text style={styles.error}>{error}</Text> : null}
-
-        <Pressable disabled={busy} onPress={finish} style={styles.cta}>
-          {busy ? (
-            <ActivityIndicator color="#FFFFFF" />
-          ) : (
-            <Text style={styles.ctaText}>Tạo hồ sơ</Text>
-          )}
-        </Pressable>
-      </ScrollView>
+      </OnboardingCinematicShell>
 
       <SourcePicker
         onCamera={() => pickImage('camera')}
@@ -370,15 +402,6 @@ function sourceRequestTitle(request: SourceRequest) {
   if (request?.kind === 'avatar') return 'Thêm ảnh đại diện';
   if (request?.kind === 'cover') return 'Thêm ảnh hồ sơ game';
   return 'Thêm ảnh vào tường ảnh';
-}
-
-function SectionHeader({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.sectionHeader}>
-      <Text style={styles.sectionTitle}>{label}</Text>
-      <Text style={styles.sectionPill}>{value}</Text>
-    </View>
-  );
 }
 
 function SourcePicker({
@@ -450,7 +473,10 @@ function SubmitProgressOverlay({
             {progressDetail({ phase, uploadCount, uploadProgress })}
           </Text>
           <View style={styles.progressTrack}>
-            <View
+            <LinearGradient
+              colors={['rgba(204,151,255,0.96)', 'rgba(103,232,255,0.88)']}
+              end={{ x: 1, y: 0.5 }}
+              start={{ x: 0, y: 0.5 }}
               style={[
                 styles.progressFill,
                 {
@@ -508,210 +534,223 @@ function progressPercent(input: {
 }
 
 const styles = StyleSheet.create({
-  root: { backgroundColor: '#050713', flex: 1 },
-  scroll: { padding: 18, paddingBottom: 28 },
-  step: { color: '#A8AFC6', fontWeight: '800', marginTop: 8 },
-  title: {
-    color: '#F7F8FF',
-    fontSize: 28,
-    fontWeight: '900',
-    marginTop: 18,
-  },
-  subtitle: { color: '#A8AFC6', fontSize: 15, lineHeight: 22, marginTop: 8 },
-  card: {
-    backgroundColor: 'rgba(13,17,34,0.9)',
-    borderColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 14,
-    marginTop: 16,
-    padding: 16,
-  },
-  sectionHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  sectionTitle: { color: '#F7F8FF', fontSize: 18, fontWeight: '900' },
-  sectionPill: {
-    color: '#B44CFF',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  sectionHint: { color: '#798097', fontSize: 13, lineHeight: 19 },
-  avatarRow: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderRadius: 18,
-    flexDirection: 'row',
-    gap: 14,
-    padding: 14,
-  },
+  avatarImage: { height: '100%', width: '100%' },
   avatarPreview: {
     alignItems: 'center',
-    backgroundColor: 'rgba(138,77,255,0.18)',
-    borderColor: 'rgba(180,76,255,0.42)',
-    borderRadius: 32,
+    backgroundColor: 'rgba(178,92,255,0.08)',
+    borderColor: 'rgba(204,151,255,0.14)',
+    borderRadius: 29,
     borderWidth: 1,
-    height: 64,
+    height: 58,
     justifyContent: 'center',
     overflow: 'hidden',
-    width: 64,
+    width: 58,
   },
-  avatarImage: { height: '100%', width: '100%' },
-  placeholderIcon: { color: '#D7B8FF', fontSize: 30, fontWeight: '300' },
-  mediaCopy: { flex: 1 },
-  mediaTitle: { color: '#F7F8FF', fontSize: 15, fontWeight: '900' },
-  mediaMeta: {
-    color: '#798097',
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 4,
+  avatarRow: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.022)',
+    borderColor: 'rgba(255,255,255,0.038)',
+    borderRadius: 17,
+    borderWidth: 1,
+    flexDirection: 'row',
+    gap: 10,
+    padding: 10,
   },
-  mediaAction: { color: '#B44CFF', fontSize: 13, fontWeight: '900' },
+  content: { gap: 8, paddingBottom: 8 },
   coverBox: {
     alignItems: 'center',
     aspectRatio: 16 / 9,
-    backgroundColor: 'rgba(255,255,255,0.045)',
+    backgroundColor: 'rgba(255,255,255,0.022)',
+    borderColor: 'rgba(255,255,255,0.038)',
     borderRadius: 18,
+    borderWidth: 1,
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  coverImage: { height: '100%', width: '100%' },
-  coverCopy: { bottom: 16, left: 16, position: 'absolute', right: 16 },
-  coverTitle: { color: '#F7F8FF', fontSize: 16, fontWeight: '900' },
-  coverMeta: {
-    color: '#A8AFC6',
-    fontSize: 12,
-    fontWeight: '800',
-    marginTop: 4,
-  },
+  coverCopy: { bottom: 14, left: 14, position: 'absolute', right: 14 },
   coverEmpty: { alignItems: 'center', gap: 6 },
-  wallGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  wallTile: {
-    alignItems: 'center',
-    aspectRatio: 1,
-    backgroundColor: 'rgba(255,255,255,0.045)',
-    borderColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 18,
-    borderWidth: 1,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: '47.8%',
+  coverImage: { height: '100%', width: '100%' },
+  coverMeta: {
+    color: 'rgba(222,228,251,0.38)',
+    fontSize: 10.2,
+    fontWeight: '400',
+    marginTop: 3,
   },
-  wallImage: { height: '100%', width: '100%' },
-  wallPlaceholder: { color: '#D7B8FF', fontSize: 28, fontWeight: '300' },
-  removeButton: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(5,7,19,0.82)',
-    borderRadius: 999,
-    height: 26,
-    justifyContent: 'center',
-    position: 'absolute',
-    right: 8,
-    top: 8,
-    width: 26,
+  coverTitle: {
+    color: 'rgba(248,250,255,0.86)',
+    fontSize: 13.2,
+    fontWeight: '500',
   },
-  removeText: { color: '#FFFFFF', fontSize: 18, fontWeight: '900' },
-  privacyCard: {
-    backgroundColor: 'rgba(98,242,161,0.08)',
-    borderColor: 'rgba(98,242,161,0.18)',
-    borderRadius: 20,
-    borderWidth: 1,
-    marginTop: 14,
-    padding: 16,
+  disabled: { opacity: 0.48 },
+  error: {
+    color: '#FFD7E4',
+    fontSize: 12.5,
+    fontWeight: '500',
+    lineHeight: 18,
   },
-  privacyTitle: { color: '#F7F8FF', fontSize: 15, fontWeight: '900' },
-  privacyText: { color: '#A8AFC6', fontSize: 13, lineHeight: 20, marginTop: 6 },
-  error: { color: '#FFD7E4', marginTop: 16 },
-  cta: {
-    alignItems: 'center',
-    backgroundColor: '#8A4DFF',
-    borderRadius: 20,
-    marginTop: 18,
-    padding: 17,
+  mediaAction: {
+    color: 'rgba(255,184,107,0.64)',
+    fontSize: 11.4,
+    fontWeight: '500',
   },
-  ctaText: { color: '#FFFFFF', fontSize: 16, fontWeight: '900' },
+  mediaCopy: { flex: 1 },
+  mediaMeta: {
+    color: 'rgba(222,228,251,0.38)',
+    fontSize: 10.2,
+    fontWeight: '400',
+    lineHeight: 13.8,
+    marginTop: 3,
+  },
+  mediaTitle: {
+    color: 'rgba(248,250,255,0.86)',
+    fontSize: 13.2,
+    fontWeight: '500',
+  },
   modalOverlay: {
-    backgroundColor: 'rgba(2,4,12,0.72)',
+    backgroundColor: 'rgba(2,4,12,0.76)',
     flex: 1,
     justifyContent: 'flex-end',
     padding: 18,
   },
-  sheet: {
-    backgroundColor: '#10172D',
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 24,
-    borderWidth: 1,
-    gap: 10,
-    padding: 16,
+  placeholderIcon: {
+    color: 'rgba(255,216,174,0.78)',
+    fontSize: 28,
+    fontWeight: '300',
   },
-  sheetTitle: { color: '#F7F8FF', fontSize: 18, fontWeight: '900' },
-  sheetAction: {
-    backgroundColor: 'rgba(255,255,255,0.055)',
-    borderRadius: 16,
-    padding: 16,
+  pressed: { opacity: 0.82, transform: [{ scale: 0.99 }] },
+  privacyText: {
+    color: 'rgba(222,228,251,0.38)',
+    fontSize: 10.2,
+    lineHeight: 13.8,
+    marginTop: 5,
   },
-  sheetActionText: { color: '#F7F8FF', fontSize: 15, fontWeight: '900' },
-  sheetCancel: { alignItems: 'center', padding: 14 },
-  sheetCancelText: { color: '#A8AFC6', fontSize: 14, fontWeight: '900' },
-  progressOverlay: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(2,4,12,0.78)',
-    flex: 1,
-    justifyContent: 'center',
-    padding: 22,
-  },
-  progressCard: {
-    alignItems: 'center',
-    backgroundColor: '#10172D',
-    borderColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 28,
-    borderWidth: 1,
-    padding: 22,
-    width: '100%',
+  privacyTitle: {
+    color: 'rgba(248,250,255,0.86)',
+    fontSize: 13.2,
+    fontWeight: '500',
   },
   progressBadge: {
     alignItems: 'center',
-    backgroundColor: '#8A4DFF',
+    backgroundColor: 'rgba(138,77,255,0.70)',
+    borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: 999,
-    height: 54,
+    borderWidth: 1,
+    height: 50,
     justifyContent: 'center',
-    width: 54,
+    width: 50,
   },
-  successBadge: { backgroundColor: '#35D08A' },
-  successCheck: { color: '#FFFFFF', fontSize: 26, fontWeight: '900' },
-  progressTitle: {
-    color: '#F7F8FF',
-    fontSize: 20,
-    fontWeight: '900',
-    marginTop: 16,
-    textAlign: 'center',
-  },
-  progressText: {
-    color: '#A8AFC6',
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-  progressTrack: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 999,
-    height: 8,
-    marginTop: 18,
-    overflow: 'hidden',
+  progressCard: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(8,12,26,0.84)',
+    borderColor: 'rgba(255,255,255,0.075)',
+    borderRadius: 26,
+    borderWidth: 1,
+    padding: 20,
     width: '100%',
   },
   progressFill: {
-    backgroundColor: '#B44CFF',
     borderRadius: 999,
     height: '100%',
   },
   progressHint: {
-    color: '#798097',
-    fontSize: 12,
-    fontWeight: '800',
+    color: 'rgba(210,218,245,0.42)',
+    fontSize: 11.6,
+    fontWeight: '500',
     marginTop: 12,
+  },
+  progressOverlay: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(2,4,12,0.80)',
+    flex: 1,
+    justifyContent: 'center',
+    padding: 22,
+  },
+  progressText: {
+    color: 'rgba(222,228,251,0.44)',
+    fontSize: 10.9,
+    lineHeight: 14.8,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  progressTitle: {
+    color: 'rgba(248,250,255,0.90)',
+    fontSize: 14.2,
+    fontWeight: '600',
+    marginTop: 14,
+    textAlign: 'center',
+  },
+  progressTrack: {
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 999,
+    height: 6,
+    marginTop: 16,
+    overflow: 'hidden',
+    width: '100%',
+  },
+  removeButton: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(5,7,19,0.66)',
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 22,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: 7,
+    top: 7,
+    width: 22,
+  },
+  removeText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  root: { backgroundColor: '#02050E', flex: 1 },
+  sheet: {
+    backgroundColor: 'rgba(8,12,26,0.92)',
+    borderColor: 'rgba(255,255,255,0.075)',
+    borderRadius: 24,
+    borderWidth: 1,
+    gap: 9,
+    padding: 15,
+  },
+  sheetAction: {
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 15,
+  },
+  sheetActionText: {
+    color: 'rgba(248,250,255,0.90)',
+    fontSize: 14.2,
+    fontWeight: '600',
+  },
+  sheetCancel: { alignItems: 'center', padding: 13 },
+  sheetCancelText: {
+    color: 'rgba(222,228,251,0.44)',
+    fontSize: 10.9,
+    fontWeight: '500',
+  },
+  sheetTitle: {
+    color: 'rgba(248,250,255,0.90)',
+    fontSize: 14.2,
+    fontWeight: '600',
+  },
+  successBadge: { backgroundColor: 'rgba(53,208,138,0.78)' },
+  successCheck: { color: '#FFFFFF', fontSize: 22, fontWeight: '600' },
+  wallGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  wallImage: { height: '100%', width: '100%' },
+  wallPlaceholder: {
+    color: 'rgba(255,216,174,0.78)',
+    fontSize: 26,
+    fontWeight: '300',
+  },
+  wallTile: {
+    alignItems: 'center',
+    aspectRatio: 1,
+    backgroundColor: 'rgba(255,255,255,0.026)',
+    borderColor: 'rgba(255,255,255,0.055)',
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: '48.2%',
   },
 });

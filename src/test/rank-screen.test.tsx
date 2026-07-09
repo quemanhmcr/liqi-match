@@ -7,9 +7,10 @@ describe('RankScreen', () => {
   it('renders the rank selection step', async () => {
     const { getAllByText, getByText } = await render(<RankScreen />);
 
-    expect(getByText('Bước 1/5')).toBeTruthy();
+    expect(getByText('Bước 2/6')).toBeTruthy();
     expect(getByText('Chọn mức rank hiện tại')).toBeTruthy();
     expect(getAllByText('Cao Thủ').length).toBeGreaterThan(0);
     expect(getByText('Tiếp tục')).toBeTruthy();
+    expect(getByText('Quay lại')).toBeTruthy();
   });
 });

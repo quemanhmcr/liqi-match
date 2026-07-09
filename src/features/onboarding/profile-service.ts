@@ -11,13 +11,17 @@ export async function completeOnboardingProfile(
   session: AuthSession,
   snapshot: OnboardingSnapshot,
 ) {
-  const displayName = displayNameFromSession(session);
+  const displayName =
+    displayNameFromSnapshot(snapshot) ?? displayNameFromSession(session);
   const payload = {
     availability_slots: [
       { day_of_week: 1, starts_at: '18:00:00', ends_at: '23:59:00' },
     ],
     display_name: displayName,
     handle: displayName,
+    profile_basics: {
+      gender: snapshot.profileBasics.gender,
+    },
     habits: snapshot.habits,
     heroes: snapshot.heroIds.map((heroId) => {
       const hero = HEROES.find((item) => item.id === heroId);
@@ -71,6 +75,14 @@ function roleSlug(role: string | undefined) {
   if (role === 'Trợ thủ') return 'support';
   if (role === 'Xạ thủ') return 'marksman';
   return 'mage';
+}
+
+function displayNameFromSnapshot(snapshot: OnboardingSnapshot) {
+  const name = snapshot.profileBasics.displayName
+    .replace(/[._-]+/g, ' ')
+    .trim();
+  if (name.length < 2) return undefined;
+  return name.slice(0, 20);
 }
 
 function displayNameFromSession(session: AuthSession) {
