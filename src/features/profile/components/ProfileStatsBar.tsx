@@ -3,7 +3,10 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
 import { LiquidCard } from '@/shared/components/liquid';
-import { liquidColors, liquidTypography } from '@/shared/theme/liquid-glass.tokens';
+import {
+  liquidColors,
+  liquidTypography,
+} from '@/shared/theme/liquid-glass.tokens';
 
 import { profileMockStats } from '../profile.mock';
 import { ProfileText } from './ProfileShared';
@@ -16,10 +19,30 @@ type StatItem = {
 };
 
 const stats: StatItem[] = [
-  { color: 'rgba(142,118,255,0.78)', icon: 'sparkles-outline', label: 'Trận', value: `${profileMockStats.matches}` },
-  { color: 'rgba(170,190,255,0.72)', icon: 'trophy-outline', label: 'Tỷ lệ thắng', value: `${profileMockStats.winRate}%` },
-  { color: 'rgba(255,205,74,0.88)', icon: 'star-outline', label: 'Đánh giá', value: `${profileMockStats.rating}` },
-  { color: 'rgba(103,232,255,0.88)', icon: 'shield-checkmark-outline', label: 'Uy tín', value: `${profileMockStats.reputation}` },
+  {
+    color: 'rgba(142,118,255,0.78)',
+    icon: 'sparkles-outline',
+    label: 'Trận',
+    value: `${profileMockStats.matches}`,
+  },
+  {
+    color: 'rgba(170,190,255,0.72)',
+    icon: 'trophy-outline',
+    label: 'Tỷ lệ thắng',
+    value: `${profileMockStats.winRate}%`,
+  },
+  {
+    color: 'rgba(255,205,74,0.88)',
+    icon: 'star-outline',
+    label: 'Đánh giá',
+    value: `${profileMockStats.rating}`,
+  },
+  {
+    color: 'rgba(103,232,255,0.88)',
+    icon: 'shield-checkmark-outline',
+    label: 'Uy tín',
+    value: `${profileMockStats.reputation}`,
+  },
 ];
 
 export function ProfileStatsBar({ embedded = false }: { embedded?: boolean }) {
@@ -44,7 +67,11 @@ export function ProfileStatsBar({ embedded = false }: { embedded?: boolean }) {
       withShadow={false}
     >
       <LinearGradient
-        colors={['rgba(106,101,255,0.060)', 'rgba(56,215,255,0.050)', 'rgba(255,255,255,0)']}
+        colors={[
+          'rgba(106,101,255,0.060)',
+          'rgba(56,215,255,0.050)',
+          'rgba(255,255,255,0)',
+        ]}
         end={{ x: 1, y: 1 }}
         pointerEvents="none"
         start={{ x: 0, y: 0 }}
@@ -63,7 +90,9 @@ export function ProfileStatsBar({ embedded = false }: { embedded?: boolean }) {
             {index > 0 ? <View style={styles.separator} /> : null}
             <Ionicons color={item.color} name={item.icon} size={15} />
             <ProfileText style={styles.value}>{item.value}</ProfileText>
-            <ProfileText numberOfLines={1} style={styles.label}>{item.label}</ProfileText>
+            <ProfileText numberOfLines={1} style={styles.label}>
+              {item.label}
+            </ProfileText>
           </View>
         ))}
       </View>

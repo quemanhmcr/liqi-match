@@ -67,32 +67,32 @@ export function LiquidScreen({
       </BlurTargetView>
       <LiquidBlurTargetProvider value={blurTargetRef}>
         <LiquidReducedGlassProvider value={reducedGlass}>
-        <SafeAreaView edges={['top']} style={styles.safe}>
-          {scroll ? (
-            <ScrollView
-              contentContainerStyle={[
-                styles.scrollContent,
-                withBottomNavPadding && styles.bottomNavPadding,
-                contentContainerStyle,
-              ]}
-              refreshControl={refreshControl}
-              showsVerticalScrollIndicator={false}
-            >
-              {content}
-            </ScrollView>
-          ) : (
-            <View
-              style={[
-                styles.staticContent,
-                withBottomNavPadding && styles.bottomNavPadding,
-                contentContainerStyle,
-              ]}
-            >
-              {content}
-            </View>
-          )}
-          {bottomSlot}
-        </SafeAreaView>
+          <SafeAreaView edges={['top']} style={styles.safe}>
+            {scroll ? (
+              <ScrollView
+                contentContainerStyle={[
+                  styles.scrollContent,
+                  withBottomNavPadding && styles.bottomNavPadding,
+                  contentContainerStyle,
+                ]}
+                refreshControl={refreshControl}
+                showsVerticalScrollIndicator={false}
+              >
+                {content}
+              </ScrollView>
+            ) : (
+              <View
+                style={[
+                  styles.staticContent,
+                  withBottomNavPadding && styles.bottomNavPadding,
+                  contentContainerStyle,
+                ]}
+              >
+                {content}
+              </View>
+            )}
+            {bottomSlot}
+          </SafeAreaView>
         </LiquidReducedGlassProvider>
       </LiquidBlurTargetProvider>
     </View>

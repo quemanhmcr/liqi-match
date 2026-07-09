@@ -106,8 +106,7 @@ function scaleEdgeGlowSegments(
   const scale = liquidGlowIntensityScale[intensity];
   return segments.map((segment) => ({
     ...segment,
-    bloomOpacity:
-      (segment.bloomOpacity ?? 0.24) * scale.bloomOpacityMultiplier,
+    bloomOpacity: (segment.bloomOpacity ?? 0.24) * scale.bloomOpacityMultiplier,
     bloomWidth: (segment.bloomWidth ?? 5) * scale.widthMultiplier,
     lineOpacity: (segment.lineOpacity ?? 0.52) * scale.lineOpacityMultiplier,
     lineWidth: (segment.lineWidth ?? 0.9) * scale.widthMultiplier,

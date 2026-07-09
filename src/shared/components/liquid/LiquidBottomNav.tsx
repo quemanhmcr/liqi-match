@@ -83,7 +83,9 @@ export function LiquidBottomNav<
               />
             ) : null}
             {renderIcon(item, active)}
-            <Text style={[styles.label, active && styles.labelActive, labelStyle]}>
+            <Text
+              style={[styles.label, active && styles.labelActive, labelStyle]}
+            >
               {item.label}
             </Text>
           </Pressable>

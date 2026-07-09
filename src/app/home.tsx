@@ -28,7 +28,10 @@ import {
   LiquidSectionHeader,
 } from '@/shared/components/liquid';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import { liquidColors, liquidTypography } from '@/shared/theme/liquid-glass.tokens';
+import {
+  liquidColors,
+  liquidTypography,
+} from '@/shared/theme/liquid-glass.tokens';
 import { profileMockMinhAnhUserId } from '@/features/profile/profile.mock';
 import {
   ctaPurpleCyanGlowSegments,
@@ -144,8 +147,6 @@ const matchTones: Record<MatchedSet['kind'], MatchTone> = {
     text: '#EBD8FF',
   },
 };
-
-
 
 const matchGlowPresets: Record<MatchedSet['kind'], LiquidGlowPreset> = {
   Normal: matchedPurpleGlowSegments,
@@ -292,243 +293,237 @@ export default function HomeScreen() {
       }
       withHeader={false}
     >
-          <View style={styles.topBar}>
-            <View style={styles.identityRow}>
-              <Avatar
-                fallbackUri={dashboard.currentProfile.avatarFallbackUrl}
-                name={dashboard.currentProfile.displayName}
-                size={54}
-                source={avatarKhoaJungle}
-                uri={dashboard.currentProfile.avatarUrl}
-              />
-              <View style={styles.greetingBlock}>
-                <HomeText style={styles.greeting}>Xin chào,</HomeText>
-                <HomeText numberOfLines={1} style={styles.userName}>
-                  {displayFirstName(dashboard.currentProfile.displayName)}
-                </HomeText>
-                <View style={styles.miniStatusPill}>
-                  <View style={styles.statusDot} />
-                  <HomeText numberOfLines={1} style={styles.miniStatusText}>
-                    {activeMatchCount
-                      ? `${activeMatchCount} set đã match`
-                      : dashboard.currentProfile.readySummary}
-                  </HomeText>
-                </View>
-              </View>
-            </View>
-
-            <LiquidOrbButton
-              accessibilityLabel="Thông báo"
-              badge={<View style={styles.notificationDot} />}
-              onPress={selectionImpact}
-              size={52}
-              style={styles.notificationButton}
-            >
-              <Ionicons
-                color="#F7F8FF"
-                name="notifications-outline"
-                size={21}
-              />
-            </LiquidOrbButton>
-          </View>
-
-          {dashboardQuery.isError ? (
-            <View style={styles.previewBanner}>
-              <Ionicons color="#FFB86B" name="information-circle" size={16} />
-              <HomeText style={styles.previewText}>
-                {dashboardQuery.isError
-                  ? 'Chưa đọc được dữ liệu match thật, đang hiển thị layout preview.'
-                  : 'Preview giao diện Trang chủ với set đã match.'}
+      <View style={styles.topBar}>
+        <View style={styles.identityRow}>
+          <Avatar
+            fallbackUri={dashboard.currentProfile.avatarFallbackUrl}
+            name={dashboard.currentProfile.displayName}
+            size={54}
+            source={avatarKhoaJungle}
+            uri={dashboard.currentProfile.avatarUrl}
+          />
+          <View style={styles.greetingBlock}>
+            <HomeText style={styles.greeting}>Xin chào,</HomeText>
+            <HomeText numberOfLines={1} style={styles.userName}>
+              {displayFirstName(dashboard.currentProfile.displayName)}
+            </HomeText>
+            <View style={styles.miniStatusPill}>
+              <View style={styles.statusDot} />
+              <HomeText numberOfLines={1} style={styles.miniStatusText}>
+                {activeMatchCount
+                  ? `${activeMatchCount} set đã match`
+                  : dashboard.currentProfile.readySummary}
               </HomeText>
             </View>
-          ) : null}
+          </View>
+        </View>
 
-          <LiquidGlassSurface
-            backgroundSlot={
-              <View pointerEvents="none" style={styles.readyBoardDepthShadow} />
+        <LiquidOrbButton
+          accessibilityLabel="Thông báo"
+          badge={<View style={styles.notificationDot} />}
+          onPress={selectionImpact}
+          size={52}
+          style={styles.notificationButton}
+        >
+          <Ionicons color="#F7F8FF" name="notifications-outline" size={21} />
+        </LiquidOrbButton>
+      </View>
+
+      {dashboardQuery.isError ? (
+        <View style={styles.previewBanner}>
+          <Ionicons color="#FFB86B" name="information-circle" size={16} />
+          <HomeText style={styles.previewText}>
+            {dashboardQuery.isError
+              ? 'Chưa đọc được dữ liệu match thật, đang hiển thị layout preview.'
+              : 'Preview giao diện Trang chủ với set đã match.'}
+          </HomeText>
+        </View>
+      ) : null}
+
+      <LiquidGlassSurface
+        backgroundSlot={
+          <View pointerEvents="none" style={styles.readyBoardDepthShadow} />
+        }
+        baseStrokeOpacity={0.04}
+        baseStrokeWidth={0.52}
+        blurIntensity={36}
+        contentStyle={styles.readyBoard}
+        frameColors={[
+          'rgba(210,151,255,0.14)',
+          'rgba(255,255,255,0.020)',
+          'rgba(100,230,255,0.12)',
+        ]}
+        glowPad={16}
+        glowPreset={heroGlowSegments}
+        radius={28}
+        style={styles.readyBoardBorder}
+        variant="hero"
+        withInnerReflection={false}
+        withShadow={false}
+      >
+        <Image
+          resizeMode="cover"
+          source={heroBackground}
+          style={styles.readyHeroImage}
+        />
+        <View pointerEvents="none" style={styles.readyBoardDarkTint} />
+        <LinearGradient
+          pointerEvents="none"
+          colors={[
+            'rgba(5,8,20,0.18)',
+            'rgba(5,8,20,0.09)',
+            'rgba(5,8,20,0.02)',
+          ]}
+          locations={[0, 0.76, 1]}
+          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={[
+            'rgba(198,121,255,0.10)',
+            'rgba(100,230,255,0.06)',
+            'rgba(255,255,255,0)',
+          ]}
+          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }}
+          style={styles.readyBoardSheen}
+        />
+        <View style={styles.readyBoardEdgeSweep} />
+        <LinearGradient
+          colors={['rgba(70,220,255,0)', 'rgba(82,214,255,0.040)']}
+          end={{ x: 1, y: 1 }}
+          pointerEvents="none"
+          start={{ x: 0.08, y: 0.16 }}
+          style={styles.readyBoardInnerReflection}
+        />
+        <View style={styles.boardHeaderRow}>
+          <View style={styles.boardTitleBlock}>
+            <HomeText style={styles.eyebrow}>LIQI LOBBY</HomeText>
+            <HomeText numberOfLines={1} style={styles.boardTitle}>
+              Sẵn sàng vào set?
+            </HomeText>
+          </View>
+          <View style={styles.liveBadge}>
+            <View
+              style={[styles.liveDot, readyEnabled && styles.liveDotActive]}
+            />
+            <HomeText style={styles.liveText}>
+              {readyEnabled ? 'Ready' : 'Idle'}
+            </HomeText>
+          </View>
+        </View>
+
+        <HomeText numberOfLines={2} style={styles.boardSubtitle}>
+          Chọn mood chơi hôm nay để các tài khoản đã match biết bạn đang muốn
+          vào set kiểu nào.
+        </HomeText>
+
+        <ScrollView
+          contentContainerStyle={styles.modeRailContent}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={styles.modeRail}
+        >
+          {homeReadyModes.map((mode) => {
+            const selected = mode.id === selectedModeId;
+            return (
+              <LiquidChip
+                accessibilityLabel={mode.label}
+                accessibilityState={{ selected }}
+                contentStyle={[
+                  styles.modeChip,
+                  selected && styles.modeChipSelected,
+                ]}
+                icon={
+                  <Ionicons
+                    color={selected ? 'rgba(247,248,255,0.88)' : mode.accent}
+                    name={modeIcons[mode.id]}
+                    size={12}
+                  />
+                }
+                key={mode.id}
+                onPress={() => selectMode(mode.id)}
+                selected={selected}
+                textStyle={[
+                  styles.modeLabel,
+                  selected && styles.modeLabelSelected,
+                ]}
+              >
+                {mode.label}
+              </LiquidChip>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.readyActionRow}>
+          <View style={styles.readyCopyBlock}>
+            <HomeText numberOfLines={1} style={styles.readyCopy}>
+              {readyCopy}
+            </HomeText>
+            <HomeText numberOfLines={2} style={styles.readyDescription}>
+              {selectedMode.description}
+            </HomeText>
+          </View>
+          <LiquidButton
+            accessibilityLabel={readyEnabled ? 'Tắt sẵn sàng' : 'Bật sẵn sàng'}
+            contentStyle={styles.primaryActionGradient}
+            glowPreset={ctaPurpleCyanGlowSegments}
+            gradientColors={
+              readyEnabled
+                ? [
+                    'rgba(136,84,218,0.90)',
+                    'rgba(78,96,210,0.90)',
+                    'rgba(68,154,190,0.86)',
+                  ]
+                : [
+                    'rgba(142,86,218,0.90)',
+                    'rgba(78,82,200,0.90)',
+                    'rgba(70,142,188,0.86)',
+                  ]
             }
-            baseStrokeOpacity={0.04}
-            baseStrokeWidth={0.52}
-            blurIntensity={36}
-            contentStyle={styles.readyBoard}
-            frameColors={[
-              'rgba(210,151,255,0.14)',
-              'rgba(255,255,255,0.020)',
-              'rgba(100,230,255,0.12)',
-            ]}
-            glowPad={16}
-            glowPreset={heroGlowSegments}
+            gradientLocations={readyEnabled ? [0, 0.5, 1] : [0, 0.52, 1]}
+            onPress={toggleReady}
             radius={28}
-            style={styles.readyBoardBorder}
-            variant="hero"
-            withInnerReflection={false}
+            state={readyEnabled ? 'active' : 'idle'}
+            style={[
+              styles.primaryAction,
+              readyEnabled && styles.primaryActionActive,
+            ]}
             withShadow={false}
           >
-              <Image
-                resizeMode="cover"
-                source={heroBackground}
-                style={styles.readyHeroImage}
-              />
-              <View pointerEvents="none" style={styles.readyBoardDarkTint} />
-              <LinearGradient
-                pointerEvents="none"
-                colors={[
-                  'rgba(5,8,20,0.18)',
-                  'rgba(5,8,20,0.09)',
-                  'rgba(5,8,20,0.02)',
-                ]}
-                locations={[0, 0.76, 1]}
-                end={{ x: 1, y: 1 }}
-                start={{ x: 0, y: 0 }}
-                style={StyleSheet.absoluteFill}
-              />
-              <LinearGradient
-                colors={[
-                  'rgba(198,121,255,0.10)',
-                  'rgba(100,230,255,0.06)',
-                  'rgba(255,255,255,0)',
-                ]}
-                end={{ x: 1, y: 1 }}
-                start={{ x: 0, y: 0 }}
-                style={styles.readyBoardSheen}
-              />
-              <View style={styles.readyBoardEdgeSweep} />
-              <LinearGradient
-                colors={[
-                  'rgba(70,220,255,0)',
-                  'rgba(82,214,255,0.040)',
-                ]}
-                end={{ x: 1, y: 1 }}
-                pointerEvents="none"
-                start={{ x: 0.08, y: 0.16 }}
-                style={styles.readyBoardInnerReflection}
-              />
-              <View style={styles.boardHeaderRow}>
-                <View style={styles.boardTitleBlock}>
-                  <HomeText style={styles.eyebrow}>LIQI LOBBY</HomeText>
-                  <HomeText numberOfLines={1} style={styles.boardTitle}>
-                    Sẵn sàng vào set?
-                  </HomeText>
-                </View>
-                <View style={styles.liveBadge}>
-                  <View
-                    style={[
-                      styles.liveDot,
-                      readyEnabled && styles.liveDotActive,
-                    ]}
-                  />
-                  <HomeText style={styles.liveText}>
-                    {readyEnabled ? 'Ready' : 'Idle'}
-                  </HomeText>
-                </View>
-              </View>
+            <HomeText style={styles.primaryActionText}>
+              {readyEnabled ? 'Đang bật' : 'Bật ngay'}
+            </HomeText>
+            <Ionicons
+              color="#FFFFFF"
+              name="arrow-forward"
+              size={18}
+              style={styles.actionIconForeground}
+            />
+          </LiquidButton>
+        </View>
+      </LiquidGlassSurface>
 
-              <HomeText numberOfLines={2} style={styles.boardSubtitle}>
-                Chọn mood chơi hôm nay để các tài khoản đã match biết bạn đang muốn vào set kiểu nào.
-              </HomeText>
+      <LiquidSectionHeader
+        action={
+          dashboardQuery.isLoading ? (
+            <ActivityIndicator color="#C679FF" />
+          ) : null
+        }
+        label="MATCHED"
+        title="Đã match thành công"
+      />
 
-              <ScrollView
-                contentContainerStyle={styles.modeRailContent}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={styles.modeRail}
-              >
-                {homeReadyModes.map((mode) => {
-                  const selected = mode.id === selectedModeId;
-                  return (
-                    <LiquidChip
-                      accessibilityLabel={mode.label}
-                      accessibilityState={{ selected }}
-                      contentStyle={[
-                        styles.modeChip,
-                        selected && styles.modeChipSelected,
-                      ]}
-                      icon={
-                        <Ionicons
-                          color={selected ? 'rgba(247,248,255,0.88)' : mode.accent}
-                          name={modeIcons[mode.id]}
-                          size={12}
-                        />
-                      }
-                      key={mode.id}
-                      onPress={() => selectMode(mode.id)}
-                      selected={selected}
-                      textStyle={[
-                        styles.modeLabel,
-                        selected && styles.modeLabelSelected,
-                      ]}
-                    >
-                      {mode.label}
-                    </LiquidChip>
-                  );
-                })}
-              </ScrollView>
-
-              <View style={styles.readyActionRow}>
-                <View style={styles.readyCopyBlock}>
-                  <HomeText numberOfLines={1} style={styles.readyCopy}>{readyCopy}</HomeText>
-                  <HomeText numberOfLines={2} style={styles.readyDescription}>
-                    {selectedMode.description}
-                  </HomeText>
-                </View>
-                <LiquidButton
-                  accessibilityLabel={
-                    readyEnabled ? 'Tắt sẵn sàng' : 'Bật sẵn sàng'
-                  }
-                  contentStyle={styles.primaryActionGradient}
-                  glowPreset={ctaPurpleCyanGlowSegments}
-                  gradientColors={
-                    readyEnabled
-                      ? [
-                          'rgba(136,84,218,0.90)',
-                          'rgba(78,96,210,0.90)',
-                          'rgba(68,154,190,0.86)',
-                        ]
-                      : [
-                          'rgba(142,86,218,0.90)',
-                          'rgba(78,82,200,0.90)',
-                          'rgba(70,142,188,0.86)',
-                        ]
-                  }
-                  gradientLocations={readyEnabled ? [0, 0.50, 1] : [0, 0.52, 1]}
-                  onPress={toggleReady}
-                  radius={28}
-                  state={readyEnabled ? 'active' : 'idle'}
-                  style={[styles.primaryAction, readyEnabled && styles.primaryActionActive]}
-                  withShadow={false}
-                >
-                  <HomeText style={styles.primaryActionText}>
-                    {readyEnabled ? 'Đang bật' : 'Bật ngay'}
-                  </HomeText>
-                  <Ionicons
-                    color="#FFFFFF"
-                    name="arrow-forward"
-                    size={18}
-                    style={styles.actionIconForeground}
-                  />
-                </LiquidButton>
-              </View>
-          </LiquidGlassSurface>
-
-          <LiquidSectionHeader
-            action={
-              dashboardQuery.isLoading ? (
-                <ActivityIndicator color="#C679FF" />
-              ) : null
-            }
-            label="MATCHED"
-            title="Đã match thành công"
-          />
-
-          {matchedSetsToRender.length ? (
-            <View style={styles.matchList}>
-              {matchedSetsToRender.map((set, index) => (
-                <MatchedSetCard index={index} key={set.id} set={set} />
-              ))}
-            </View>
-          ) : (
-            <EmptyMatchedSets />
-          )}
+      {matchedSetsToRender.length ? (
+        <View style={styles.matchList}>
+          {matchedSetsToRender.map((set, index) => (
+            <MatchedSetCard index={index} key={set.id} set={set} />
+          ))}
+        </View>
+      ) : (
+        <EmptyMatchedSets />
+      )}
     </LiquidScreen>
   );
 }
@@ -572,174 +567,180 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
         glowPreset={matchGlowPreset}
         radius={28}
         style={styles.matchCardFrame}
-        variant={chipVariant === 'cyan' ? 'cyan' : chipVariant === 'orange' ? 'orange' : 'purple'}
+        variant={
+          chipVariant === 'cyan'
+            ? 'cyan'
+            : chipVariant === 'orange'
+              ? 'orange'
+              : 'purple'
+        }
         withInnerReflection={false}
         withShadow={false}
       >
-          <View pointerEvents="none" style={styles.matchCardDarkTint} />
-          <LinearGradient
-            colors={[
-              'rgba(255,255,255,0.095)',
-              'rgba(255,255,255,0.018)',
-              'rgba(3,7,20,0.28)',
-            ]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
-          <LinearGradient
-            colors={[tone.glow, 'rgba(255,255,255,0)']}
-            start={{ x: 0.06, y: 0 }}
-            end={{ x: 0.86, y: 1 }}
-            style={styles.matchCardSheen}
-          />
-          <LinearGradient
-            colors={['rgba(255,255,255,0)', tone.glow]}
-            end={{ x: 1, y: 1 }}
-            pointerEvents="none"
-            start={{ x: 0.22, y: 0.05 }}
-            style={styles.matchCardInnerReflection}
-          />
-          {set.unreadCount ? (
-            <LiquidBadge style={styles.unreadPillFloating}>
-              {set.unreadCount}
-            </LiquidBadge>
-          ) : null}
+        <View pointerEvents="none" style={styles.matchCardDarkTint} />
+        <LinearGradient
+          colors={[
+            'rgba(255,255,255,0.095)',
+            'rgba(255,255,255,0.018)',
+            'rgba(3,7,20,0.28)',
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <LinearGradient
+          colors={[tone.glow, 'rgba(255,255,255,0)']}
+          start={{ x: 0.06, y: 0 }}
+          end={{ x: 0.86, y: 1 }}
+          style={styles.matchCardSheen}
+        />
+        <LinearGradient
+          colors={['rgba(255,255,255,0)', tone.glow]}
+          end={{ x: 1, y: 1 }}
+          pointerEvents="none"
+          start={{ x: 0.22, y: 0.05 }}
+          style={styles.matchCardInnerReflection}
+        />
+        {set.unreadCount ? (
+          <LiquidBadge style={styles.unreadPillFloating}>
+            {set.unreadCount}
+          </LiquidBadge>
+        ) : null}
 
-          <View style={styles.matchCardTop}>
-            <View style={styles.matchAvatarWrap}>
-              <Pressable
-                accessibilityLabel={`Mở hồ sơ ${set.name}`}
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={(event) => {
-                  event.stopPropagation();
-                  selectionImpact();
-                  router.push({
-                    pathname: '/profile/[userId]',
-                    params: { userId: profileId },
-                  });
-                }}
-                style={({ pressed }) => [pressed && styles.avatarPressed]}
+        <View style={styles.matchCardTop}>
+          <View style={styles.matchAvatarWrap}>
+            <Pressable
+              accessibilityLabel={`Mở hồ sơ ${set.name}`}
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={(event) => {
+                event.stopPropagation();
+                selectionImpact();
+                router.push({
+                  pathname: '/profile/[userId]',
+                  params: { userId: profileId },
+                });
+              }}
+              style={({ pressed }) => [pressed && styles.avatarPressed]}
+            >
+              <Avatar
+                name={set.name}
+                size={58}
+                source={avatarSource}
+                uri={set.avatarUrl}
+              />
+            </Pressable>
+            <View
+              style={[
+                styles.avatarStatusBadge,
+                { backgroundColor: statusStyle.dot },
+              ]}
+            />
+          </View>
+
+          <View style={styles.matchMainInfo}>
+            <View style={styles.matchNameRow}>
+              <HomeText numberOfLines={1} style={styles.matchName}>
+                {set.name}
+              </HomeText>
+              <LiquidChip
+                icon={
+                  <Ionicons
+                    color={tone.text}
+                    name={kindIcons[set.kind]}
+                    size={14}
+                  />
+                }
+                style={[
+                  styles.kindPill,
+                  set.unreadCount ? styles.kindPillUnreadOffset : undefined,
+                  { backgroundColor: tone.pillBg, borderColor: tone.border },
+                ]}
+                textStyle={[styles.kindText, { color: tone.text }]}
+                variant={chipVariant}
               >
-                <Avatar
-                  name={set.name}
-                  size={58}
-                  source={avatarSource}
-                  uri={set.avatarUrl}
-                />
-              </Pressable>
+                {set.kind}
+              </LiquidChip>
+            </View>
+            <HomeText numberOfLines={1} style={styles.matchSubtitle}>
+              {set.subtitle || 'Đã match thành công'}
+            </HomeText>
+
+            <View style={styles.matchTagsRow}>
+              {[...set.heroNames.slice(0, 3), ...set.roleNames.slice(0, 1)]
+                .slice(0, 4)
+                .map((label) => (
+                  <LiquidChip
+                    density="tag"
+                    key={label}
+                    style={styles.softTag}
+                    textStyle={styles.softTagText}
+                    variant={chipVariant}
+                  >
+                    {label}
+                  </LiquidChip>
+                ))}
+            </View>
+          </View>
+        </View>
+
+        <View style={styles.matchFooter}>
+          <View style={styles.matchMetaBlock}>
+            <View style={styles.statusMetaRow}>
               <View
                 style={[
-                  styles.avatarStatusBadge,
+                  styles.cardStatusDot,
                   { backgroundColor: statusStyle.dot },
                 ]}
               />
-            </View>
-
-            <View style={styles.matchMainInfo}>
-              <View style={styles.matchNameRow}>
-                <HomeText numberOfLines={1} style={styles.matchName}>
-                  {set.name}
-                </HomeText>
-                <LiquidChip
-                  icon={
-                    <Ionicons
-                      color={tone.text}
-                      name={kindIcons[set.kind]}
-                      size={14}
-                    />
-                  }
-                  style={[
-                    styles.kindPill,
-                    set.unreadCount ? styles.kindPillUnreadOffset : undefined,
-                    { backgroundColor: tone.pillBg, borderColor: tone.border },
-                  ]}
-                  textStyle={[styles.kindText, { color: tone.text }]}
-                  variant={chipVariant}
-                >
-                  {set.kind}
-                </LiquidChip>
-              </View>
-              <HomeText numberOfLines={1} style={styles.matchSubtitle}>
-                {set.subtitle || 'Đã match thành công'}
+              <HomeText
+                numberOfLines={1}
+                style={[styles.statusLabel, { color: statusStyle.text }]}
+              >
+                {set.statusLabel}
               </HomeText>
-
-              <View style={styles.matchTagsRow}>
-                {[...set.heroNames.slice(0, 3), ...set.roleNames.slice(0, 1)]
-                  .slice(0, 4)
-                  .map((label) => (
-                    <LiquidChip
-                      density="tag"
-                      key={label}
-                      style={styles.softTag}
-                      textStyle={styles.softTagText}
-                      variant={chipVariant}
-                    >
-                      {label}
-                    </LiquidChip>
-                  ))}
-              </View>
+              <View style={styles.footerDivider} />
+              <HomeText numberOfLines={1} style={styles.matchMeta}>
+                {set.meta}
+              </HomeText>
             </View>
           </View>
 
-          <View style={styles.matchFooter}>
-            <View style={styles.matchMetaBlock}>
-              <View style={styles.statusMetaRow}>
-                <View
-                  style={[
-                    styles.cardStatusDot,
-                    { backgroundColor: statusStyle.dot },
-                  ]}
-                />
-                <HomeText
-                  numberOfLines={1}
-                  style={[styles.statusLabel, { color: statusStyle.text }]}
-                >
-                  {set.statusLabel}
-                </HomeText>
-                <View style={styles.footerDivider} />
-                <HomeText numberOfLines={1} style={styles.matchMeta}>
-                  {set.meta}
-                </HomeText>
-              </View>
-            </View>
-
-            <View style={styles.cardActions}>
-              <LiquidOrbButton
-                accessibilityLabel="Nhắn tin"
-                glowPreset={actionGlowPreset}
-                onPress={selectionImpact}
-                size={37}
-                style={[
-                  styles.secondaryAction,
-                  { borderColor: tone.border, shadowColor: tone.text },
-                ]}
-              >
-                <Ionicons
-                  color="#EAF0FF"
-                  name="chatbubble-ellipses-outline"
-                  size={17}
-                  style={styles.secondaryActionIcon}
-                />
-              </LiquidOrbButton>
-              <LiquidButton
-                accessibilityLabel={set.actionLabel}
-                contentStyle={styles.cardPrimaryActionGradient}
-                glowPreset={actionGlowPreset}
-                gradientColors={tone.actionGradient}
-                onPress={impactLight}
-                radius={21}
-                style={[styles.cardPrimaryAction, { shadowColor: tone.text }]}
-                variant={buttonVariant}
-                withShadow={false}
-              >
-                <HomeText style={styles.cardPrimaryActionText}>
-                  {set.actionLabel}
-                </HomeText>
-              </LiquidButton>
-            </View>
+          <View style={styles.cardActions}>
+            <LiquidOrbButton
+              accessibilityLabel="Nhắn tin"
+              glowPreset={actionGlowPreset}
+              onPress={selectionImpact}
+              size={37}
+              style={[
+                styles.secondaryAction,
+                { borderColor: tone.border, shadowColor: tone.text },
+              ]}
+            >
+              <Ionicons
+                color="#EAF0FF"
+                name="chatbubble-ellipses-outline"
+                size={17}
+                style={styles.secondaryActionIcon}
+              />
+            </LiquidOrbButton>
+            <LiquidButton
+              accessibilityLabel={set.actionLabel}
+              contentStyle={styles.cardPrimaryActionGradient}
+              glowPreset={actionGlowPreset}
+              gradientColors={tone.actionGradient}
+              onPress={impactLight}
+              radius={21}
+              style={[styles.cardPrimaryAction, { shadowColor: tone.text }]}
+              variant={buttonVariant}
+              withShadow={false}
+            >
+              <HomeText style={styles.cardPrimaryActionText}>
+                {set.actionLabel}
+              </HomeText>
+            </LiquidButton>
           </View>
+        </View>
       </LiquidCard>
     </Pressable>
   );
@@ -803,7 +804,6 @@ function FloatingTabs() {
   );
 }
 
-
 function ensureMinhAnhMatchedSet(sets: MatchedSet[]) {
   const hasMinhAnh = sets.some(
     (set) =>
@@ -811,8 +811,8 @@ function ensureMinhAnhMatchedSet(sets: MatchedSet[]) {
       normalizeProfileName(set.name).includes('minh anh'),
   );
   if (hasMinhAnh) return sets;
-  return [templateMatchedSets[0], ...sets].filter(
-    (set): set is MatchedSet => Boolean(set),
+  return [templateMatchedSets[0], ...sets].filter((set): set is MatchedSet =>
+    Boolean(set),
   );
 }
 
@@ -825,11 +825,7 @@ function profileIdForMatchedSet(set: MatchedSet, index: number) {
 }
 
 function normalizeProfileName(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .toLowerCase()
-    .trim();
+  return value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 }
 
 function Avatar({
@@ -911,7 +907,6 @@ function displayFirstName(name: string) {
   if (!trimmed || trimmed === 'Bạn') return 'Quân';
   return trimmed.split(/\s+/)[0] ?? trimmed;
 }
-
 
 function getInitials(name: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -1112,7 +1107,7 @@ const styles = StyleSheet.create({
     borderRadius: 21,
     bottom: 0,
     left: -12,
-    opacity: 0.20,
+    opacity: 0.2,
     position: 'absolute',
     right: -12,
     top: -8,
@@ -1125,7 +1120,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     shadowColor: '#C679FF',
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.10,
+    shadowOpacity: 0.1,
     shadowRadius: 10,
   },
   cardPrimaryActionGradient: {
@@ -1144,7 +1139,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
-    letterSpacing: -0.10,
+    letterSpacing: -0.1,
     zIndex: 2,
   },
   cardStatusDot: { borderRadius: 99, height: 8, marginRight: 5, width: 8 },
@@ -1313,7 +1308,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000000',
     shadowOffset: { height: 12, width: 0 },
     elevation: 7,
-    shadowOpacity: 0.20,
+    shadowOpacity: 0.2,
     shadowRadius: 26,
   },
   matchCardSheen: {
@@ -1327,14 +1322,14 @@ const styles = StyleSheet.create({
   matchCardInnerReflection: {
     bottom: 0,
     left: 0,
-    opacity: 0.10,
+    opacity: 0.1,
     position: 'absolute',
     right: 0,
     top: 0,
   },
   matchEdgeSpark: {
     borderRadius: 999,
-    opacity: 0.30,
+    opacity: 0.3,
     position: 'absolute',
   },
   matchEdgeSparkBottom: {
@@ -1380,7 +1375,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 13,
     fontWeight: '600',
-    letterSpacing: -0.20,
+    letterSpacing: -0.2,
     lineHeight: 17,
   },
   matchNameRow: {
@@ -1759,7 +1754,11 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  unreadText: { color: 'rgba(255,255,255,0.88)', fontSize: 12, fontWeight: '700' },
+  unreadText: {
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   userName: {
     ...liquidTypography.screenName,
     fontWeight: '700',

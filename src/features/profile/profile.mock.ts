@@ -61,21 +61,24 @@ export const profileMockPlayStyleTags = [
 
 export const profileMockHeroes: ProfileMockHero[] = [
   {
-    imageSource: require('../../../assets/anh_mau2/heroes/aya.webp') as ImageSourcePropType,
+    imageSource:
+      require('../../../assets/anh_mau2/heroes/aya.webp') as ImageSourcePropType,
     matches: 128,
     name: 'Aya',
     slug: 'aya',
     winRate: 67,
   },
   {
-    imageSource: require('../../../assets/anh_mau2/heroes/helen.webp') as ImageSourcePropType,
+    imageSource:
+      require('../../../assets/anh_mau2/heroes/helen.webp') as ImageSourcePropType,
     matches: 96,
     name: 'Helen',
     slug: 'helen',
     winRate: 63,
   },
   {
-    imageSource: require('../../../assets/anh_mau2/heroes/annette.webp') as ImageSourcePropType,
+    imageSource:
+      require('../../../assets/anh_mau2/heroes/annette.webp') as ImageSourcePropType,
     matches: 84,
     name: 'Annette',
     slug: 'annette',
@@ -83,5 +86,4 @@ export const profileMockHeroes: ProfileMockHero[] = [
   },
 ];
 
-export const profileMockQuote =
-  'Teamwork, giao tranh sạch, không toxic.';
+export const profileMockQuote = 'Teamwork, giao tranh sạch, không toxic.';

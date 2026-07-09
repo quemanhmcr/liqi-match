@@ -13,7 +13,10 @@ import {
   type LiquidGlassIntensity,
   type LiquidGlowIntensity,
 } from '@/shared/theme/liquid-glass.tokens';
-import { ctaPurpleCyanGlowSegments, type LiquidGlowPreset } from '@/shared/theme/liquid-glow.presets';
+import {
+  ctaPurpleCyanGlowSegments,
+  type LiquidGlowPreset,
+} from '@/shared/theme/liquid-glow.presets';
 
 import { LiquidGlassSurface } from './LiquidGlassSurface';
 
@@ -57,7 +60,7 @@ export function LiquidOrbButton({
     >
       <LiquidGlassSurface
         baseStrokeColor={liquidColors.stroke.base}
-        baseStrokeOpacity={0.10}
+        baseStrokeOpacity={0.1}
         baseStrokeWidth={0.56}
         blurIntensity={28}
         contentStyle={styles.content}

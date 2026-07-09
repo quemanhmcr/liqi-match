@@ -4,10 +4,7 @@ import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
-import {
-  LiquidBottomNav,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
+import { LiquidBottomNav, LiquidOrbButton } from '@/shared/components/liquid';
 import { useAuth } from '@/shared/auth/auth-context';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
@@ -16,15 +13,15 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 
 import { ProfileFavoriteHeroes } from './components/ProfileFavoriteHeroes';
-import { ProfileHeroCard, type ProfileHeroMode } from './components/ProfileHeroCard';
+import {
+  ProfileHeroCard,
+  type ProfileHeroMode,
+} from './components/ProfileHeroCard';
 import { ProfileHighlights } from './components/ProfileHighlights';
 import { ProfilePlayStyle } from './components/ProfilePlayStyle';
 import { ProfileText } from './components/ProfileShared';
 import { profileMockVibe } from './profile.mock';
-import {
-  buildPreviewProfile,
-  fetchProfileView,
-} from './profile-service';
+import { buildPreviewProfile, fetchProfileView } from './profile-service';
 
 export type ProfileScreenProps = {
   mode: ProfileHeroMode;
@@ -105,14 +102,20 @@ function ProfileTopBar({
         size={42}
         style={styles.topOrb}
       >
-        <Ionicons color={liquidColors.text.primary} name="chevron-back" size={20} />
+        <Ionicons
+          color={liquidColors.text.primary}
+          name="chevron-back"
+          size={20}
+        />
       </LiquidOrbButton>
       <View style={styles.titleBlock}>
         <ProfileText style={styles.title}>Hồ sơ</ProfileText>
         {loading ? <ActivityIndicator color="#C679FF" size="small" /> : null}
       </View>
       <LiquidOrbButton
-        accessibilityLabel={mode === 'self' ? 'Cài đặt hồ sơ' : 'Tùy chọn hồ sơ'}
+        accessibilityLabel={
+          mode === 'self' ? 'Cài đặt hồ sơ' : 'Tùy chọn hồ sơ'
+        }
         glowIntensity="low"
         onPress={selectionImpact}
         glassIntensity="low"

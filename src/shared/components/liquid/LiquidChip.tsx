@@ -12,7 +12,11 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { liquidColors, liquidGlass, liquidTypography } from '@/shared/theme/liquid-glass.tokens';
+import {
+  liquidColors,
+  liquidGlass,
+  liquidTypography,
+} from '@/shared/theme/liquid-glass.tokens';
 
 type LiquidChipVariant = 'default' | 'selected' | 'purple' | 'cyan' | 'orange';
 type LiquidChipDensity = 'mode' | 'compact' | 'tag';
@@ -122,7 +126,14 @@ export function LiquidChip({
       ) : null}
       {icon ? <View style={styles.iconSlot}>{icon}</View> : null}
       {isTextOnlyChildren(children) ? (
-        <Text style={[styles.text, density === 'tag' && styles.tagText, { color: tone.text }, textStyle]}>
+        <Text
+          style={[
+            styles.text,
+            density === 'tag' && styles.tagText,
+            { color: tone.text },
+            textStyle,
+          ]}
+        >
           {children}
         </Text>
       ) : (
@@ -161,7 +172,6 @@ export function LiquidChip({
     </Pressable>
   );
 }
-
 
 function isTextOnlyChildren(children: ReactNode) {
   const childArray = Children.toArray(children).filter(

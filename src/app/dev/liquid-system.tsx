@@ -11,7 +11,10 @@ import {
   LiquidSectionHeader,
 } from '@/shared/components/liquid';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import { liquidColors, liquidTypography } from '@/shared/theme/liquid-glass.tokens';
+import {
+  liquidColors,
+  liquidTypography,
+} from '@/shared/theme/liquid-glass.tokens';
 
 const playgroundTabs = [
   { icon: 'home', key: 'home', label: 'Home' },
@@ -68,15 +71,22 @@ export default function LiquidSystemPlayground() {
         </LiquidCard>
         <LiquidCard variant="cyan">
           <Text style={styles.cardTitle}>Cyan rank card</Text>
-          <Text style={styles.body}>Rank, online hoặc competitive context.</Text>
+          <Text style={styles.body}>
+            Rank, online hoặc competitive context.
+          </Text>
         </LiquidCard>
         <LiquidCard density="list" glowIntensity="low" variant="orange">
           <Text style={styles.cardTitle}>List row card</Text>
-          <Text style={styles.body}>Dùng cho thread/settings row hiệu năng nhẹ.</Text>
+          <Text style={styles.body}>
+            Dùng cho thread/settings row hiệu năng nhẹ.
+          </Text>
         </LiquidCard>
       </View>
 
-      <LiquidSectionHeader label="BADGES / ORBS" title="Small system elements" />
+      <LiquidSectionHeader
+        label="BADGES / ORBS"
+        title="Small system elements"
+      />
       <View style={styles.rowWrap}>
         <LiquidBadge>1</LiquidBadge>
         <LiquidBadge variant="cyan">8</LiquidBadge>
@@ -84,7 +94,11 @@ export default function LiquidSystemPlayground() {
           3
         </LiquidBadge>
         <LiquidOrbButton accessibilityLabel="Demo orb" size={52}>
-          <Ionicons color={liquidColors.text.primary} name="notifications-outline" size={21} />
+          <Ionicons
+            color={liquidColors.text.primary}
+            name="notifications-outline"
+            size={21}
+          />
         </LiquidOrbButton>
       </View>
 
@@ -92,7 +106,9 @@ export default function LiquidSystemPlayground() {
       <View style={styles.cardStack}>
         <LiquidCard density="list" glowIntensity="none" reducedGlass>
           <Text style={styles.cardTitle}>Reduced transparency row</Text>
-          <Text style={styles.body}>Ít blur, không glow, contrast giữ an toàn.</Text>
+          <Text style={styles.body}>
+            Ít blur, không glow, contrast giữ an toàn.
+          </Text>
         </LiquidCard>
       </View>
     </LiquidScreen>

@@ -135,7 +135,10 @@ export async function fetchProfileView(input: {
     coverUrl,
     bio: row.bio?.trim() || profileMockQuote,
     displayName:
-      row.display_name ?? gameProfile?.handle ?? displayNameFromSession(input.session) ?? 'Liqi Player',
+      row.display_name ??
+      gameProfile?.handle ??
+      displayNameFromSession(input.session) ??
+      'Liqi Player',
     favoriteHeroes: buildFavoriteHeroes(heroEmbeds),
     id: row.id,
     playStyleTags: buildPlayStyleTags(habits),
@@ -175,7 +178,6 @@ export function buildPreviewProfile(
   };
 }
 
-
 function buildMinhAnhPreviewProfile(): ProfileViewModel {
   return {
     bio: profileMockQuote,
@@ -198,7 +200,6 @@ function buildMinhAnhPreviewProfile(): ProfileViewModel {
 function isMinhAnhMockProfile(userId: string | undefined) {
   return userId === profileMockMinhAnhUserId;
 }
-
 
 async function fetchUploadedProfileCoverUrl(
   session: AuthSession,
@@ -275,7 +276,8 @@ function displayNameFromSession(session: AuthSession | null) {
   const fullName = metadata?.full_name;
   const name = metadata?.name;
   const preferred = typeof fullName === 'string' ? fullName : name;
-  if (typeof preferred === 'string' && preferred.trim()) return preferred.trim();
+  if (typeof preferred === 'string' && preferred.trim())
+    return preferred.trim();
   return session?.user.email?.split('@')[0];
 }
 

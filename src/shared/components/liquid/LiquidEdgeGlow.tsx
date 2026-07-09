@@ -104,11 +104,7 @@ export const LiquidEdgeGlow = memo(function LiquidEdgeGlow({
   if (!Canvas || !Path || !BlurMask) return null;
 
   return (
-    <View
-      onLayout={onLayout}
-      pointerEvents="none"
-      style={[styles.host, style]}
-    >
+    <View onLayout={onLayout} pointerEvents="none" style={[styles.host, style]}>
       {size ? (
         <Canvas
           style={[

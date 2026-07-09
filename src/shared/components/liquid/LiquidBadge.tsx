@@ -17,7 +17,12 @@ const badgeGradient: Record<LiquidBadgeVariant, GradientColors> = {
 
 const sizeStyle: Record<
   LiquidBadgeSize,
-  { fontSize: number; height: number; minWidth: number; paddingHorizontal: number }
+  {
+    fontSize: number;
+    height: number;
+    minWidth: number;
+    paddingHorizontal: number;
+  }
 > = {
   sm: { fontSize: 10, height: 18, minWidth: 18, paddingHorizontal: 6 },
   md: { fontSize: 12, height: 26, minWidth: 26, paddingHorizontal: 8 },

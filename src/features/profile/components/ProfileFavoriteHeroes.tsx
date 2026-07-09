@@ -10,7 +10,10 @@ import {
 
 import { HEROES } from '@/features/onboarding/hero-selection-data';
 import { LiquidCard } from '@/shared/components/liquid';
-import { liquidColors, liquidTypography } from '@/shared/theme/liquid-glass.tokens';
+import {
+  liquidColors,
+  liquidTypography,
+} from '@/shared/theme/liquid-glass.tokens';
 
 import type { ProfileFavoriteHero } from '../profile-service';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
@@ -96,7 +99,11 @@ export function ProfileFavoriteHeroes({
                 <Image source={heroImage(hero)} style={styles.heroAvatar} />
               </LinearGradient>
               <View style={styles.roleBadge}>
-                <Ionicons color="rgba(205,244,255,0.86)" name="sparkles" size={10} />
+                <Ionicons
+                  color="rgba(205,244,255,0.86)"
+                  name="sparkles"
+                  size={10}
+                />
               </View>
             </View>
             <View style={styles.heroMiniCopy}>

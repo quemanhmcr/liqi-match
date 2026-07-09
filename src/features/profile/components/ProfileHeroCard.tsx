@@ -14,7 +14,10 @@ import {
   LiquidGlassSurface,
   LiquidOrbButton,
 } from '@/shared/components/liquid';
-import { liquidColors, liquidTypography } from '@/shared/theme/liquid-glass.tokens';
+import {
+  liquidColors,
+  liquidTypography,
+} from '@/shared/theme/liquid-glass.tokens';
 import {
   heroGlowSegments,
   profileFantasyBlueGlowSegments,
@@ -53,7 +56,9 @@ export function ProfileHeroCard({
   const avatarUri = profile.avatarUrl ?? profile.avatarFallbackUrl;
   const avatarSource =
     imageSource(avatarUri) ??
-    (isMinhAnhProfile(profile.displayName) ? fallbackMinhAnhAvatar : fallbackAvatar);
+    (isMinhAnhProfile(profile.displayName)
+      ? fallbackMinhAnhAvatar
+      : fallbackAvatar);
   const uploadedCoverSource = imageSource(profile.coverUrl);
   const hasUploadedCover = Boolean(uploadedCoverSource);
   const heroSource = uploadedCoverSource ?? heroArtwork;
@@ -101,11 +106,7 @@ export function ProfileHeroCard({
         start={{ x: 0, y: 0.42 }}
         style={StyleSheet.absoluteFill}
       />
-      <Image
-        resizeMode="cover"
-        source={heroSource}
-        style={heroImageStyle}
-      />
+      <Image resizeMode="cover" source={heroSource} style={heroImageStyle} />
       <LinearGradient
         colors={
           hasUploadedCover
@@ -164,11 +165,7 @@ export function ProfileHeroCard({
         style={styles.topHighlight}
       />
       <LinearGradient
-        colors={[
-          'rgba(3,6,18,0.00)',
-          'rgba(3,6,18,0.38)',
-          'rgba(3,6,18,0.78)',
-        ]}
+        colors={['rgba(3,6,18,0.00)', 'rgba(3,6,18,0.38)', 'rgba(3,6,18,0.78)']}
         end={{ x: 0.5, y: 1 }}
         pointerEvents="none"
         start={{ x: 0.5, y: 0.42 }}
@@ -194,21 +191,37 @@ export function ProfileHeroCard({
                 size={31}
                 style={styles.editAvatarOrb}
               >
-                <Ionicons color={liquidColors.text.primary} name="pencil" size={12} />
+                <Ionicons
+                  color={liquidColors.text.primary}
+                  name="pencil"
+                  size={12}
+                />
               </LiquidOrbButton>
             ) : null}
           </View>
 
           <View style={styles.identityCopy}>
             <View style={styles.nameRow}>
-              <ProfileText ellipsizeMode="tail" numberOfLines={1} style={styles.name}>
+              <ProfileText
+                ellipsizeMode="tail"
+                numberOfLines={1}
+                style={styles.name}
+              >
                 {profile.displayName}
               </ProfileText>
               {profile.verified ? (
-                <LiquidBadge size="sm" variant="cyan" style={styles.verifiedBadge}>✓</LiquidBadge>
+                <LiquidBadge
+                  size="sm"
+                  variant="cyan"
+                  style={styles.verifiedBadge}
+                >
+                  ✓
+                </LiquidBadge>
               ) : null}
             </View>
-            <ProfileText numberOfLines={1} style={styles.meta}>{meta}</ProfileText>
+            <ProfileText numberOfLines={1} style={styles.meta}>
+              {meta}
+            </ProfileText>
             <View style={styles.statusRow}>
               <LiquidChip
                 contentStyle={styles.readyChip}
@@ -224,7 +237,13 @@ export function ProfileHeroCard({
                 <LiquidChip
                   contentStyle={styles.statusChip}
                   density="compact"
-                  icon={<Ionicons color="rgba(224,170,255,0.92)" name="heart" size={12} />}
+                  icon={
+                    <Ionicons
+                      color="rgba(224,170,255,0.92)"
+                      name="heart"
+                      size={12}
+                    />
+                  }
                   textStyle={styles.statusText}
                   variant="purple"
                 >
@@ -235,17 +254,16 @@ export function ProfileHeroCard({
           </View>
         </View>
 
-        <ProfileText numberOfLines={2} style={styles.bio}>“{profile.bio}”</ProfileText>
+        <ProfileText numberOfLines={2} style={styles.bio}>
+          “{profile.bio}”
+        </ProfileText>
 
         <View style={styles.actionRow}>
           <LiquidButton
             accessibilityLabel={isSelf ? 'Chỉnh sửa hồ sơ' : 'Nhắn tin'}
             contentStyle={styles.secondaryActionContent}
             glowIntensity="none"
-            gradientColors={[
-              'rgba(24,28,47,0.42)',
-              'rgba(13,17,32,0.34)',
-            ]}
+            gradientColors={['rgba(24,28,47,0.42)', 'rgba(13,17,32,0.34)']}
             onPress={isSelf ? onEdit : onMessage}
             radius={22}
             style={styles.messageButton}
@@ -272,7 +290,7 @@ export function ProfileHeroCard({
               'rgba(48,170,255,0.86)',
               'rgba(72,226,255,0.82)',
             ]}
-            gradientLocations={[0, 0.20, 0.58, 1]}
+            gradientLocations={[0, 0.2, 0.58, 1]}
             onPress={isSelf ? onInvite : onInvite}
             radius={22}
             style={styles.inviteButton}
@@ -336,11 +354,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     maxWidth: 242,
   },
-  contentLayer: { minHeight: 254, padding: 16, paddingTop: 17, position: 'relative', zIndex: 3 },
+  contentLayer: {
+    minHeight: 254,
+    padding: 16,
+    paddingTop: 17,
+    position: 'relative',
+    zIndex: 3,
+  },
   editAvatarOrb: { bottom: 0, position: 'absolute', right: 0 },
   heroArtwork: {
     height: 224,
-    opacity: 0.40,
+    opacity: 0.4,
     position: 'absolute',
     right: -84,
     top: -27,
@@ -355,9 +379,19 @@ const styles = StyleSheet.create({
     top: 0,
   },
   heroFrame: { marginTop: 8, overflow: 'visible' },
-  heroSurface: { borderRadius: 29, minHeight: 254, overflow: 'hidden', padding: 0 },
+  heroSurface: {
+    borderRadius: 29,
+    minHeight: 254,
+    overflow: 'hidden',
+    padding: 0,
+  },
   identityCopy: { flex: 1, minWidth: 0, paddingTop: 5 },
-  identityRow: { alignItems: 'flex-start', flexDirection: 'row', gap: 11, minWidth: 0 },
+  identityRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 11,
+    minWidth: 0,
+  },
   inviteButton: { flex: 1.04, minWidth: 0 },
   messageButton: { flex: 0.94, minWidth: 0 },
   meta: {
@@ -379,8 +413,18 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   nameRow: { alignItems: 'center', flexDirection: 'row', gap: 5, minWidth: 0 },
-  primaryActionContent: { borderColor: 'rgba(103,232,255,0.38)', minHeight: 38, paddingHorizontal: 10, paddingVertical: 6 },
-  primaryButtonText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700', letterSpacing: -0.03 },
+  primaryActionContent: {
+    borderColor: 'rgba(103,232,255,0.38)',
+    minHeight: 38,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  primaryButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: -0.03,
+  },
   readyDot: {
     backgroundColor: 'rgba(103,232,255,0.92)',
     borderRadius: 4,
@@ -390,8 +434,18 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     width: 8,
   },
-  secondaryActionContent: { borderColor: 'rgba(190,218,255,0.10)', minHeight: 38, paddingHorizontal: 10, paddingVertical: 6 },
-  secondaryButtonText: { color: 'rgba(231,237,255,0.78)', fontSize: 12, fontWeight: '600', letterSpacing: -0.03 },
+  secondaryActionContent: {
+    borderColor: 'rgba(190,218,255,0.10)',
+    minHeight: 38,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  secondaryButtonText: {
+    color: 'rgba(231,237,255,0.78)',
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: -0.03,
+  },
   readyChip: {
     backgroundColor: 'rgba(37,72,128,0.28)',
     borderColor: 'rgba(103,232,255,0.18)',
@@ -409,6 +463,20 @@ const styles = StyleSheet.create({
     width: 232,
   },
   statusText: { fontSize: 10.4, fontWeight: '600', letterSpacing: -0.01 },
-  topHighlight: { height: 1, left: 14, opacity: 0.70, position: 'absolute', right: 20, top: 1 },
-  verifiedBadge: { borderRadius: 999, flexShrink: 0, shadowColor: '#67E8FF', shadowOpacity: 0.10, shadowRadius: 6, transform: [{ scale: 0.92 }] },
+  topHighlight: {
+    height: 1,
+    left: 14,
+    opacity: 0.7,
+    position: 'absolute',
+    right: 20,
+    top: 1,
+  },
+  verifiedBadge: {
+    borderRadius: 999,
+    flexShrink: 0,
+    shadowColor: '#67E8FF',
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    transform: [{ scale: 0.92 }],
+  },
 });

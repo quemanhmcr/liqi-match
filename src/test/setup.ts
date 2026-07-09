@@ -1,12 +1,10 @@
 import { jest } from '@jest/globals';
 import type { ReactNode } from 'react';
 
-
 jest.mock('@shopify/react-native-skia', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const { View: MockView } = jest.requireActual<typeof import('react-native')>(
-    'react-native',
-  );
+  const { View: MockView } =
+    jest.requireActual<typeof import('react-native')>('react-native');
   const MockSkiaNode = ({ children }: { children?: ReactNode }) =>
     ReactActual.createElement(MockView, null, children);
 

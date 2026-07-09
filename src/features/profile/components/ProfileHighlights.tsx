@@ -7,13 +7,17 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 
-import { LiquidBadge, LiquidCard, LiquidOrbButton } from '@/shared/components/liquid';
-import { liquidColors, liquidTypography } from '@/shared/theme/liquid-glass.tokens';
-
 import {
-  profileMockReviews,
-  type ProfileMockReview,
-} from '../profile.mock';
+  LiquidBadge,
+  LiquidCard,
+  LiquidOrbButton,
+} from '@/shared/components/liquid';
+import {
+  liquidColors,
+  liquidTypography,
+} from '@/shared/theme/liquid-glass.tokens';
+
+import { profileMockReviews, type ProfileMockReview } from '../profile.mock';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
 import { ProfileText } from './ProfileShared';
 
@@ -25,7 +29,8 @@ const reviewAvatars = [
 ];
 
 export function ProfileHighlights({ mode }: { mode: 'self' | 'other' }) {
-  const icon = mode === 'self' ? 'sparkles-outline' : 'chatbubble-ellipses-outline';
+  const icon =
+    mode === 'self' ? 'sparkles-outline' : 'chatbubble-ellipses-outline';
 
   return (
     <LiquidCard
@@ -51,7 +56,9 @@ export function ProfileHighlights({ mode }: { mode: 'self' | 'other' }) {
       <View style={styles.rows}>
         {profileMockReviews.map((row, index) => (
           <HighlightRow
-            avatar={reviewAvatars[index % reviewAvatars.length] ?? reviewAvatarMinhAnh}
+            avatar={
+              reviewAvatars[index % reviewAvatars.length] ?? reviewAvatarMinhAnh
+            }
             index={index}
             key={row.author}
             row={row}
@@ -86,7 +93,9 @@ function HighlightRow({
           <ProfileText numberOfLines={1} style={styles.rowTitle}>
             {row.author}
           </ProfileText>
-          <LiquidBadge size="sm" variant="cyan" style={styles.checkBadge}>✓</LiquidBadge>
+          <LiquidBadge size="sm" variant="cyan" style={styles.checkBadge}>
+            ✓
+          </LiquidBadge>
         </View>
         <ProfileText numberOfLines={1} style={styles.rowBody}>
           {row.body}
@@ -99,7 +108,11 @@ function HighlightRow({
         size={33}
         style={styles.likeButton}
       >
-        <Ionicons color="rgba(185,239,255,0.84)" name="thumbs-up-outline" size={16} />
+        <Ionicons
+          color="rgba(185,239,255,0.84)"
+          name="thumbs-up-outline"
+          size={16}
+        />
       </LiquidOrbButton>
     </View>
   );

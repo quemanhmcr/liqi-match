@@ -1,9 +1,9 @@
 import { createContext, useContext, type RefObject } from 'react';
 import type { View } from 'react-native';
 
-const LiquidBlurTargetContext = createContext<RefObject<View | null> | undefined>(
-  undefined,
-);
+const LiquidBlurTargetContext = createContext<
+  RefObject<View | null> | undefined
+>(undefined);
 const LiquidReducedGlassContext = createContext(false);
 
 export const LiquidBlurTargetProvider = LiquidBlurTargetContext.Provider;

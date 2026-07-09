@@ -82,12 +82,11 @@ export const liquidEdgeGlow = {
     pad: 14,
     baseStrokeOpacity: 0.16,
     hairlineOpacity: 0.62,
-    bloomOpacity: 0.30,
+    bloomOpacity: 0.3,
     bloomBlur: 10,
     bloomWidth: 5.6,
   },
 } as const;
-
 
 export type LiquidGlassIntensity = 'low' | 'medium' | 'high';
 export type LiquidGlowIntensity = 'none' | 'low' | 'medium' | 'high';
@@ -117,7 +116,11 @@ export const liquidGlassIntensityScale: Record<
 
 export const liquidGlowIntensityScale: Record<
   LiquidGlowIntensity,
-  { bloomOpacityMultiplier: number; lineOpacityMultiplier: number; widthMultiplier: number }
+  {
+    bloomOpacityMultiplier: number;
+    lineOpacityMultiplier: number;
+    widthMultiplier: number;
+  }
 > = {
   none: {
     bloomOpacityMultiplier: 0,
@@ -135,12 +138,11 @@ export const liquidGlowIntensityScale: Record<
     widthMultiplier: 1,
   },
   high: {
-    bloomOpacityMultiplier: 1.10,
+    bloomOpacityMultiplier: 1.1,
     lineOpacityMultiplier: 1.04,
     widthMultiplier: 1.04,
   },
 };
-
 
 export const liquidLayout = {
   bottomNavSpacer: 240,
@@ -165,7 +167,7 @@ export const liquidShadow = {
 
   nav: {
     shadowColor: '#000',
-    shadowOpacity: 0.20,
+    shadowOpacity: 0.2,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
     elevation: 8,

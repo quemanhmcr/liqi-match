@@ -28,13 +28,23 @@ export function ProfilePlayStyle({ tags }: { tags: string[] }) {
       withInnerReflection
       withShadow={false}
     >
-      <ProfileSectionHeader icon="radio-button-on-outline" title="Phong cách chơi" withChevron={false} />
+      <ProfileSectionHeader
+        icon="radio-button-on-outline"
+        title="Phong cách chơi"
+        withChevron={false}
+      />
       <View style={styles.chipWrap}>
         {visibleTags.map((tag, index) => (
           <LiquidChip
             contentStyle={styles.chip}
             density="compact"
-            icon={<Ionicons color={iconColor(index)} name={iconForTag(tag)} size={12} />}
+            icon={
+              <Ionicons
+                color={iconColor(index)}
+                name={iconForTag(tag)}
+                size={12}
+              />
+            }
             key={`${tag}-${index}`}
             selected={index === 0}
             textStyle={styles.chipText}
@@ -65,7 +75,12 @@ function normalizeTag(tag: string) {
   if (lower.includes('mic') || lower.includes('voice')) return 'Mic on';
   if (lower.includes('tối') || lower.includes('toi')) return 'Buổi tối';
   if (lower.includes('rank')) return 'Rank';
-  if (lower.includes('team') || lower.includes('phối') || lower.includes('phoi')) return 'Teamplay';
+  if (
+    lower.includes('team') ||
+    lower.includes('phối') ||
+    lower.includes('phoi')
+  )
+    return 'Teamplay';
   if (lower.includes('ping') || lower.includes('chat')) return 'Ping/chat';
   if (lower.includes('toxic')) return 'Không toxic';
   return tag.length > 12 ? `${tag.slice(0, 10)}…` : tag;
@@ -83,7 +98,6 @@ function iconForTag(tag: string): keyof typeof Ionicons.glyphMap {
   if (lower.includes('toxic')) return 'happy-outline';
   return 'disc-outline';
 }
-
 
 const styles = StyleSheet.create({
   chip: {

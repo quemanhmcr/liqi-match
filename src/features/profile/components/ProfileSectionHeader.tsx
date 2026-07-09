@@ -31,7 +31,11 @@ export function ProfileSectionHeader({
         <ProfileText style={styles.title}>{title}</ProfileText>
       </View>
       {withChevron ? (
-        <Ionicons color="rgba(218,225,255,0.48)" name="chevron-forward" size={17} />
+        <Ionicons
+          color="rgba(218,225,255,0.48)"
+          name="chevron-forward"
+          size={17}
+        />
       ) : null}
     </View>
   );
