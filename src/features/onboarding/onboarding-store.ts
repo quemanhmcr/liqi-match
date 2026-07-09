@@ -1,4 +1,12 @@
+export type ProfileGender = 'male' | 'female' | 'hidden';
+
+export type ProfileBasics = {
+  displayName: string;
+  gender: ProfileGender;
+};
+
 export type OnboardingSnapshot = {
+  profileBasics: ProfileBasics;
   rankId: string;
   laneIds: string[];
   heroIds: string[];
@@ -7,6 +15,7 @@ export type OnboardingSnapshot = {
 };
 
 let onboardingSnapshot: OnboardingSnapshot = {
+  profileBasics: { displayName: '', gender: 'male' },
   rankId: 'master',
   laneIds: ['jungle'],
   heroIds: ['edras', 'goverra', 'heino'],

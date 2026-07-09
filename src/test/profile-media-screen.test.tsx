@@ -11,12 +11,13 @@ describe('ProfileMediaScreen', () => {
   it('renders the full connected profile media step', async () => {
     const { getByText } = await render(<ProfileMediaScreen />);
 
-    expect(getByText('Bước 5/5')).toBeTruthy();
+    expect(getByText('Bước 6/6')).toBeTruthy();
     expect(getByText('Hoàn tất hồ sơ')).toBeTruthy();
     expect(getByText('Ảnh đại diện')).toBeTruthy();
     expect(getByText('Ảnh hồ sơ game')).toBeTruthy();
     expect(getByText('Tường ảnh')).toBeTruthy();
     expect(getByText('Tạo hồ sơ')).toBeTruthy();
+    expect(getByText('Quay lại')).toBeTruthy();
   });
 
   it('opens the avatar source picker', async () => {
@@ -37,5 +38,6 @@ describe('ProfileMediaScreen', () => {
     fireEvent.press(getByText('Tạo hồ sơ'));
 
     expect(getByText('Tạo hồ sơ')).toBeTruthy();
+    expect(getByText('Quay lại')).toBeTruthy();
   });
 });
