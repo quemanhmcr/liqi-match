@@ -251,7 +251,6 @@ export function ProfileHeroCard({
             >
               <Image source={avatarSource} style={styles.avatarImage} />
             </LinearGradient>
-
           </View>
 
           <View style={styles.identityCopy}>

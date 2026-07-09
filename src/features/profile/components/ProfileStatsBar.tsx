@@ -48,7 +48,9 @@ const stats: StatItem[] = [
 export function ProfileStatsBar({ embedded = false }: { embedded?: boolean }) {
   return (
     <LiquidCard
-      baseStrokeColor={embedded ? "rgba(150,190,255,0.14)" : "rgba(103,232,255,0.20)"}
+      baseStrokeColor={
+        embedded ? 'rgba(150,190,255,0.14)' : 'rgba(103,232,255,0.20)'
+      }
       baseStrokeOpacity={embedded ? 0.045 : 0.06}
       blurIntensity={embedded ? 18 : 28}
       contentStyle={[styles.surface, embedded && styles.embeddedSurface]}
@@ -67,7 +69,7 @@ export function ProfileStatsBar({ embedded = false }: { embedded?: boolean }) {
             ]
       }
       glassIntensity="low"
-      glowIntensity={embedded ? "none" : "low"}
+      glowIntensity={embedded ? 'none' : 'low'}
       radius={embedded ? 24 : 27}
       style={[styles.frame, embedded && styles.embeddedFrame]}
       surfaceBackground={embedded ? 'rgba(4,8,20,0.76)' : undefined}
@@ -160,7 +162,7 @@ const styles = StyleSheet.create({
   topHighlight: {
     height: 1,
     left: 18,
-    opacity: 0.40,
+    opacity: 0.4,
     position: 'absolute',
     right: 18,
     top: 1,

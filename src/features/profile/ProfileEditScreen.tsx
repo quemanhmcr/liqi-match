@@ -62,7 +62,11 @@ const statusOptions: { label: string; value: ProfileStatusValue }[] = [
 ];
 
 const seriousnessOptions = ['Thoải mái', 'Cân bằng', 'Cạnh tranh'] as const;
-const communicationOptions = ['Voice chủ động', 'Voice khi cần', 'Ping/chat là chính'] as const;
+const communicationOptions = [
+  'Voice chủ động',
+  'Voice khi cần',
+  'Ping/chat là chính',
+] as const;
 const timeOptions = ['Sáng', 'Chiều', 'Tối', 'Khuya'] as const;
 const teamGoalOptions = [
   'Leo rank nghiêm túc',
@@ -178,12 +182,12 @@ export function ProfileEditScreen() {
   const mediaBusy = Boolean(uploadingMedia);
   const canSave = Boolean(
     form &&
-      hasChanges &&
-      form.displayName.trim().length >= 2 &&
-      form.displayName.trim().length <= maxDisplayNameLength &&
-      form.bio.trim().length <= maxBioLength &&
-      !saveMutation.isPending &&
-      !mediaBusy,
+    hasChanges &&
+    form.displayName.trim().length >= 2 &&
+    form.displayName.trim().length <= maxDisplayNameLength &&
+    form.bio.trim().length <= maxBioLength &&
+    !saveMutation.isPending &&
+    !mediaBusy,
   );
 
   const pickImage = async (slot: MediaSlot) => {
@@ -191,7 +195,8 @@ export function ProfileEditScreen() {
     selectionImpact();
 
     try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
           'Cần quyền truy cập ảnh',
@@ -221,7 +226,9 @@ export function ProfileEditScreen() {
       };
 
       setUploadingMedia(slot);
-      showFeedback(slot === 'avatar' ? 'Đang tải ảnh lên...' : 'Đang tải ảnh nền...');
+      showFeedback(
+        slot === 'avatar' ? 'Đang tải ảnh lên...' : 'Đang tải ảnh nền...',
+      );
       const uploaded = await uploadEditableProfileMedia(session, {
         asset: uploadAsset,
         slot,
@@ -245,15 +252,11 @@ export function ProfileEditScreen() {
       });
 
       showFeedback(
-        slot === 'avatar'
-          ? 'Đã cập nhật ảnh đại diện'
-          : 'Đã cập nhật ảnh nền',
+        slot === 'avatar' ? 'Đã cập nhật ảnh đại diện' : 'Đã cập nhật ảnh nền',
       );
     } catch (error) {
       Alert.alert(
-        slot === 'avatar'
-          ? 'Không thể tải ảnh lên'
-          : 'Không thể tải ảnh nền',
+        slot === 'avatar' ? 'Không thể tải ảnh lên' : 'Không thể tải ảnh nền',
         error instanceof Error ? error.message : 'Vui lòng thử lại.',
       );
     } finally {
@@ -306,13 +309,16 @@ export function ProfileEditScreen() {
           <PlayStyleSection form={form} setForm={setForm} />
           <FavoriteHeroesSection
             heroes={form.favoriteHeroes}
-            onChangeMatches={(slot, matches) => updateHeroMatches(setForm, slot, matches)}
+            onChangeMatches={(slot, matches) =>
+              updateHeroMatches(setForm, slot, matches)
+            }
             onChangeSlot={(slot) => setHeroPickerSlot(slot)}
           />
           <PrivacySection />
           {draftQuery.isError ? (
             <ProfileText style={styles.errorText}>
-              Chưa đọc được dữ liệu chỉnh sửa mới nhất. App đang giữ form hiện tại.
+              Chưa đọc được dữ liệu chỉnh sửa mới nhất. App đang giữ form hiện
+              tại.
             </ProfileText>
           ) : null}
           <HeroPickerModal
@@ -354,7 +360,11 @@ function EditorTopBar({
         size={42}
         style={styles.topOrb}
       >
-        <Ionicons color={liquidColors.text.primary} name="chevron-back" size={20} />
+        <Ionicons
+          color={liquidColors.text.primary}
+          name="chevron-back"
+          size={20}
+        />
       </LiquidOrbButton>
       <View style={styles.titleBlock}>
         <ProfileText style={styles.title}>Chỉnh sửa hồ sơ</ProfileText>
@@ -373,9 +383,13 @@ function EditorTopBar({
         withShadow={false}
       >
         {loading ? <ActivityIndicator color="#FFFFFF" size="small" /> : null}
-        <ProfileText style={styles.saveText}>{loading ? 'Đang lưu' : 'Lưu'}</ProfileText>
+        <ProfileText style={styles.saveText}>
+          {loading ? 'Đang lưu' : 'Lưu'}
+        </ProfileText>
       </LiquidButton>
-      {!hasChanges ? null : <View pointerEvents="none" style={styles.dirtyDot} />}
+      {!hasChanges ? null : (
+        <View pointerEvents="none" style={styles.dirtyDot} />
+      )}
     </View>
   );
 }
@@ -391,14 +405,29 @@ function LoadingState() {
 
 function ErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <LiquidCard density="regular" glowIntensity="low" style={styles.sectionCard}>
+    <LiquidCard
+      density="regular"
+      glowIntensity="low"
+      style={styles.sectionCard}
+    >
       <View style={styles.errorState}>
-        <Ionicons color="rgba(255,216,168,0.84)" name="warning-outline" size={22} />
-        <ProfileText style={styles.errorTitle}>Không tải được hồ sơ</ProfileText>
+        <Ionicons
+          color="rgba(255,216,168,0.84)"
+          name="warning-outline"
+          size={22}
+        />
+        <ProfileText style={styles.errorTitle}>
+          Không tải được hồ sơ
+        </ProfileText>
         <ProfileText style={styles.errorBody}>
           Kiểm tra kết nối rồi thử lại. Dữ liệu chưa được thay đổi.
         </ProfileText>
-        <LiquidButton onPress={onRetry} radius={18} style={styles.retryButton} withShadow={false}>
+        <LiquidButton
+          onPress={onRetry}
+          radius={18}
+          style={styles.retryButton}
+          withShadow={false}
+        >
           <ProfileText style={styles.primaryMiniText}>Thử lại</ProfileText>
         </LiquidButton>
       </View>
@@ -406,12 +435,21 @@ function ErrorState({ onRetry }: { onRetry: () => void }) {
   );
 }
 
-function PreviewStrip({ draft, form }: { draft: ProfileEditDraft; form: EditForm }) {
+function PreviewStrip({
+  draft,
+  form,
+}: {
+  draft: ProfileEditDraft;
+  form: EditForm;
+}) {
   const rankLabel = labelFor(draft.ranks, form.rankId) ?? 'Chưa chọn rank';
   const roleLabel = labelFor(draft.roles, form.roleId) ?? 'Chưa chọn vai trò';
   const regionLabel =
-    regionOptions.find((option) => option.value === form.region)?.label ?? 'Global';
-  const status = statusOptions.find((option) => option.value === form.status)?.label ?? 'Sẵn sàng';
+    regionOptions.find((option) => option.value === form.region)?.label ??
+    'Global';
+  const status =
+    statusOptions.find((option) => option.value === form.status)?.label ??
+    'Sẵn sàng';
 
   return (
     <LiquidCard
@@ -421,10 +459,18 @@ function PreviewStrip({ draft, form }: { draft: ProfileEditDraft; form: EditForm
       style={styles.previewCard}
     >
       {form.coverUrl ? (
-        <Image resizeMode="cover" source={{ uri: form.coverUrl }} style={styles.previewCover} />
+        <Image
+          resizeMode="cover"
+          source={{ uri: form.coverUrl }}
+          style={styles.previewCover}
+        />
       ) : (
         <LinearGradient
-          colors={['rgba(38,72,128,0.64)', 'rgba(96,52,148,0.36)', 'rgba(5,8,20,0.16)']}
+          colors={[
+            'rgba(38,72,128,0.64)',
+            'rgba(96,52,148,0.36)',
+            'rgba(5,8,20,0.16)',
+          ]}
           style={StyleSheet.absoluteFill}
         />
       )}
@@ -445,7 +491,11 @@ function PreviewStrip({ draft, form }: { draft: ProfileEditDraft; form: EditForm
               {form.displayName || 'Tên hiển thị'}
             </ProfileText>
             <View style={styles.previewCheck}>
-              <Ionicons color="rgba(210,245,255,0.94)" name="checkmark" size={13} />
+              <Ionicons
+                color="rgba(210,245,255,0.94)"
+                name="checkmark"
+                size={13}
+              />
             </View>
           </View>
           <ProfileText numberOfLines={1} style={styles.previewMeta}>
@@ -478,13 +528,26 @@ function AvatarPreview({
       colors={['rgba(142,92,255,0.76)', 'rgba(103,232,255,0.68)']}
       end={{ x: 1, y: 1 }}
       start={{ x: 0, y: 0 }}
-      style={[styles.avatarRing, { borderRadius: size / 2 + 4, height: size + 8, width: size + 8 }]}
+      style={[
+        styles.avatarRing,
+        { borderRadius: size / 2 + 4, height: size + 8, width: size + 8 },
+      ]}
     >
-      <View style={[styles.avatarInner, { borderRadius: size / 2, height: size, width: size }]}> 
+      <View
+        style={[
+          styles.avatarInner,
+          { borderRadius: size / 2, height: size, width: size },
+        ]}
+      >
         {uri ? (
-          <Image source={{ uri }} style={[styles.avatarImage, { borderRadius: size / 2 }]} />
+          <Image
+            source={{ uri }}
+            style={[styles.avatarImage, { borderRadius: size / 2 }]}
+          />
         ) : (
-          <ProfileText style={[styles.avatarInitial, { fontSize: size * 0.42 }]}> 
+          <ProfileText
+            style={[styles.avatarInitial, { fontSize: size * 0.42 }]}
+          >
             {displayName.trim().charAt(0).toUpperCase() || 'L'}
           </ProfileText>
         )}
@@ -510,7 +573,11 @@ function MediaSection({
     >
       <View style={styles.mediaLayout}>
         <View style={styles.avatarEditBlock}>
-          <AvatarPreview displayName={form.displayName} size={68} uri={form.avatarUrl} />
+          <AvatarPreview
+            displayName={form.displayName}
+            size={68}
+            uri={form.avatarUrl}
+          />
           <LiquidButton
             accessibilityLabel="Đổi ảnh đại diện"
             disabled={Boolean(uploadingMedia)}
@@ -521,9 +588,17 @@ function MediaSection({
             variant="secondary"
             withShadow={false}
           >
-            {uploadingMedia === 'avatar' ? <ActivityIndicator color="#FFFFFF" size="small" /> : null}
-            <Ionicons color="rgba(231,236,255,0.86)" name="camera-outline" size={15} />
-            <ProfileText style={styles.mediaButtonText}>Ảnh đại diện</ProfileText>
+            {uploadingMedia === 'avatar' ? (
+              <ActivityIndicator color="#FFFFFF" size="small" />
+            ) : null}
+            <Ionicons
+              color="rgba(231,236,255,0.86)"
+              name="camera-outline"
+              size={15}
+            />
+            <ProfileText style={styles.mediaButtonText}>
+              Ảnh đại diện
+            </ProfileText>
           </LiquidButton>
         </View>
         <Pressable
@@ -531,13 +606,23 @@ function MediaSection({
           accessibilityRole="button"
           disabled={Boolean(uploadingMedia)}
           onPress={() => onPick('cover')}
-          style={({ pressed }) => [styles.coverEditor, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.coverEditor,
+            pressed && styles.pressed,
+          ]}
         >
           {form.coverUrl ? (
-            <Image source={{ uri: form.coverUrl }} style={styles.coverEditorImage} />
+            <Image
+              source={{ uri: form.coverUrl }}
+              style={styles.coverEditorImage}
+            />
           ) : (
             <LinearGradient
-              colors={['rgba(55,145,255,0.22)', 'rgba(162,92,255,0.16)', 'rgba(255,255,255,0.035)']}
+              colors={[
+                'rgba(55,145,255,0.22)',
+                'rgba(162,92,255,0.16)',
+                'rgba(255,255,255,0.035)',
+              ]}
               style={StyleSheet.absoluteFill}
             />
           )}
@@ -556,7 +641,11 @@ function MediaSection({
             {uploadingMedia === 'cover' ? (
               <ActivityIndicator color="#FFFFFF" size="small" />
             ) : (
-              <Ionicons color="rgba(231,236,255,0.86)" name="image-outline" size={14} />
+              <Ionicons
+                color="rgba(231,236,255,0.86)"
+                name="image-outline"
+                size={14}
+              />
             )}
             <ProfileText style={styles.coverActionText}>Đổi nền</ProfileText>
           </View>
@@ -583,35 +672,51 @@ function BasicInfoSection({
 }) {
   return (
     <EditorSection icon="person-outline" title="Thông tin cơ bản">
-      <FieldLabel label="Tên hiển thị" meta={`${form.displayName.length}/${maxDisplayNameLength}`} />
+      <FieldLabel
+        label="Tên hiển thị"
+        meta={`${form.displayName.length}/${maxDisplayNameLength}`}
+      />
       <TextInput
         accessibilityLabel="Tên hiển thị"
         maxLength={maxDisplayNameLength}
         onBlur={() => setFocusedField(null)}
-        onChangeText={(displayName) => setForm((current) => current && { ...current, displayName })}
+        onChangeText={(displayName) =>
+          setForm((current) => current && { ...current, displayName })
+        }
         onFocus={() => setFocusedField('displayName')}
         placeholder="Tên của bạn"
         placeholderTextColor="rgba(215,224,255,0.36)"
-        style={[styles.input, focusedField === 'displayName' && styles.inputFocused]}
+        style={[
+          styles.input,
+          focusedField === 'displayName' && styles.inputFocused,
+        ]}
         value={form.displayName}
       />
       {!form.displayName.trim() ? (
-        <ProfileText style={styles.validationText}>Tên không được để trống.</ProfileText>
+        <ProfileText style={styles.validationText}>
+          Tên không được để trống.
+        </ProfileText>
       ) : form.displayName.trim().length < 2 ? (
-        <ProfileText style={styles.validationText}>Tên cần ít nhất 2 ký tự.</ProfileText>
+        <ProfileText style={styles.validationText}>
+          Tên cần ít nhất 2 ký tự.
+        </ProfileText>
       ) : null}
 
       <OptionGroup
         label="Vai trò chính"
         options={roles}
         selectedId={form.roleId}
-        onSelect={(roleId) => setForm((current) => current && { ...current, roleId })}
+        onSelect={(roleId) =>
+          setForm((current) => current && { ...current, roleId })
+        }
       />
       <OptionGroup
         label="Cấp độ"
         options={ranks}
         selectedId={form.rankId}
-        onSelect={(rankId) => setForm((current) => current && { ...current, rankId })}
+        onSelect={(rankId) =>
+          setForm((current) => current && { ...current, rankId })
+        }
       />
       <StringValueGroup
         label="Khu vực"
@@ -646,7 +751,12 @@ function BioSection({
   setFocusedField: (field: FocusedField) => void;
   setForm: Dispatch<SetStateAction<EditForm | null>>;
 }) {
-  const suggestions = ['Không toxic', 'Mic on', 'Leo rank nghiêm túc', 'Vui vẻ hòa đồng'];
+  const suggestions = [
+    'Không toxic',
+    'Mic on',
+    'Leo rank nghiêm túc',
+    'Vui vẻ hòa đồng',
+  ];
 
   return (
     <EditorSection icon="chatbox-ellipses-outline" title="Câu giới thiệu">
@@ -656,11 +766,17 @@ function BioSection({
         maxLength={maxBioLength}
         multiline
         onBlur={() => setFocusedField(null)}
-        onChangeText={(bio) => setForm((current) => current && { ...current, bio })}
+        onChangeText={(bio) =>
+          setForm((current) => current && { ...current, bio })
+        }
         onFocus={() => setFocusedField('bio')}
         placeholder="Teamwork, giao tranh sạch, không toxic."
         placeholderTextColor="rgba(215,224,255,0.36)"
-        style={[styles.input, styles.bioInput, focusedField === 'bio' && styles.inputFocused]}
+        style={[
+          styles.input,
+          styles.bioInput,
+          focusedField === 'bio' && styles.inputFocused,
+        ]}
         textAlignVertical="top"
         value={form.bio}
       />
@@ -671,7 +787,12 @@ function BioSection({
             key={suggestion}
             onPress={() =>
               setForm((current) =>
-                current ? { ...current, bio: applyBioSuggestion(current.bio, suggestion) } : current,
+                current
+                  ? {
+                      ...current,
+                      bio: applyBioSuggestion(current.bio, suggestion),
+                    }
+                  : current,
               )
             }
             variant="purple"
@@ -713,7 +834,11 @@ function PlayStyleSection({
         onToggle={(value) =>
           updateHabits(setForm, (habits) => ({
             ...habits,
-            communication_channels: toggleString(habits.communication_channels, value, 2),
+            communication_channels: toggleString(
+              habits.communication_channels,
+              value,
+              2,
+            ),
           }))
         }
       />
@@ -725,7 +850,11 @@ function PlayStyleSection({
         onToggle={(value) =>
           updateHabits(setForm, (habits) => ({
             ...habits,
-            online_time_presets: toggleString(habits.online_time_presets, value, 5),
+            online_time_presets: toggleString(
+              habits.online_time_presets,
+              value,
+              5,
+            ),
           }))
         }
       />
@@ -765,7 +894,9 @@ function FavoriteHeroesSection({
         return (
           <View key={index} style={styles.heroEditRow}>
             <View style={styles.heroEditIndex}>
-              <ProfileText style={styles.heroEditIndexText}>{index + 1}</ProfileText>
+              <ProfileText style={styles.heroEditIndexText}>
+                {index + 1}
+              </ProfileText>
             </View>
             <Image source={heroImage(hero)} style={styles.heroEditImage} />
             <View style={styles.heroEditCopy}>
@@ -784,7 +915,9 @@ function FavoriteHeroesSection({
                     placeholder="0"
                     placeholderTextColor="rgba(205,216,245,0.34)"
                     style={styles.heroMatchInput}
-                    value={hero.matches !== undefined ? String(hero.matches) : ''}
+                    value={
+                      hero.matches !== undefined ? String(hero.matches) : ''
+                    }
                   />
                   <ProfileText style={styles.heroMatchSuffix}>trận</ProfileText>
                 </View>
@@ -838,7 +971,12 @@ function HeroPickerModal({
     .slice(0, 80);
 
   return (
-    <Modal animationType="fade" onRequestClose={onClose} transparent visible={visible}>
+    <Modal
+      animationType="fade"
+      onRequestClose={onClose}
+      transparent
+      visible={visible}
+    >
       <View style={styles.modalOverlay}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
         <View style={styles.heroSheet}>
@@ -846,7 +984,9 @@ function HeroPickerModal({
           <View style={styles.sheetHeader}>
             <View>
               <ProfileText style={styles.sheetTitle}>Chọn tướng</ProfileText>
-              <ProfileText style={styles.sheetSubtitle}>Không thể chọn trùng tướng ở nhiều slot.</ProfileText>
+              <ProfileText style={styles.sheetSubtitle}>
+                Không thể chọn trùng tướng ở nhiều slot.
+              </ProfileText>
             </View>
             <LiquidOrbButton
               accessibilityLabel="Đóng chọn tướng"
@@ -854,7 +994,11 @@ function HeroPickerModal({
               onPress={onClose}
               size={36}
             >
-              <Ionicons color={liquidColors.text.primary} name="close" size={18} />
+              <Ionicons
+                color={liquidColors.text.primary}
+                name="close"
+                size={18}
+              />
             </LiquidOrbButton>
           </View>
           <View style={styles.searchBox}>
@@ -868,10 +1012,15 @@ function HeroPickerModal({
               value={search}
             />
           </View>
-          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+          <ScrollView
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             {filtered.map((hero) => {
               const key = heroKey(hero);
-              const selectedElsewhere = Boolean(key && selectedKeys.includes(key) && key !== currentKey);
+              const selectedElsewhere = Boolean(
+                key && selectedKeys.includes(key) && key !== currentKey,
+              );
               return (
                 <Pressable
                   accessibilityLabel={`Chọn ${hero.name}`}
@@ -886,17 +1035,29 @@ function HeroPickerModal({
                     pressed && styles.pressed,
                   ]}
                 >
-                  <Image source={heroImage(hero)} style={styles.heroPickerImage} />
+                  <Image
+                    source={heroImage(hero)}
+                    style={styles.heroPickerImage}
+                  />
                   <View style={styles.heroPickerCopy}>
-                    <ProfileText style={styles.heroPickerName}>{hero.name}</ProfileText>
+                    <ProfileText style={styles.heroPickerName}>
+                      {hero.name}
+                    </ProfileText>
                     <ProfileText style={styles.heroPickerMeta}>
-                      {hero.role ? `${hero.role} · ` : ''}{heroMeta(hero)}
+                      {hero.role ? `${hero.role} · ` : ''}
+                      {heroMeta(hero)}
                     </ProfileText>
                   </View>
                   {selectedElsewhere ? (
-                    <ProfileText style={styles.heroPickedText}>Đã chọn</ProfileText>
+                    <ProfileText style={styles.heroPickedText}>
+                      Đã chọn
+                    </ProfileText>
                   ) : (
-                    <Ionicons color="rgba(186,239,255,0.72)" name="chevron-forward" size={17} />
+                    <Ionicons
+                      color="rgba(186,239,255,0.72)"
+                      name="chevron-forward"
+                      size={17}
+                    />
                   )}
                 </Pressable>
               );
@@ -916,12 +1077,20 @@ function PrivacySection() {
       subtitle="Stats, rating và uy tín là dữ liệu hệ thống nên không cho sửa tay trong form này."
     >
       <View style={styles.privacyRow}>
-        <ProfileText style={styles.privacyLabel}>Hiển thị tỷ lệ thắng</ProfileText>
-        <LiquidChip density="compact" selected variant="cyan">On</LiquidChip>
+        <ProfileText style={styles.privacyLabel}>
+          Hiển thị tỷ lệ thắng
+        </ProfileText>
+        <LiquidChip density="compact" selected variant="cyan">
+          On
+        </LiquidChip>
       </View>
       <View style={styles.privacyRow}>
-        <ProfileText style={styles.privacyLabel}>Cho phép chia sẻ hồ sơ</ProfileText>
-        <LiquidChip density="compact" selected variant="cyan">On</LiquidChip>
+        <ProfileText style={styles.privacyLabel}>
+          Cho phép chia sẻ hồ sơ
+        </ProfileText>
+        <LiquidChip density="compact" selected variant="cyan">
+          On
+        </LiquidChip>
       </View>
     </EditorSection>
   );
@@ -939,14 +1108,20 @@ function EditorSection({
   title: string;
 }) {
   return (
-    <LiquidCard density="regular" glowIntensity="low" style={styles.sectionCard}>
+    <LiquidCard
+      density="regular"
+      glowIntensity="low"
+      style={styles.sectionCard}
+    >
       <View style={styles.sectionHeader}>
         <View style={styles.sectionIcon}>
           <Ionicons color="rgba(178,235,255,0.82)" name={icon} size={16} />
         </View>
         <View style={styles.sectionTitleBlock}>
           <ProfileText style={styles.sectionTitle}>{title}</ProfileText>
-          {subtitle ? <ProfileText style={styles.sectionSubtitle}>{subtitle}</ProfileText> : null}
+          {subtitle ? (
+            <ProfileText style={styles.sectionSubtitle}>{subtitle}</ProfileText>
+          ) : null}
         </View>
       </View>
       {children}
@@ -1217,7 +1392,9 @@ function replaceHeroSlot(
       .map((_, index) => current.favoriteHeroes[index])
       .filter((item): item is ProfileFavoriteHero => Boolean(item));
     const selectedKey = heroKey(hero);
-    const withoutDuplicate = nextHeroes.filter((item, index) => index === slot || heroKey(item) !== selectedKey);
+    const withoutDuplicate = nextHeroes.filter(
+      (item, index) => index === slot || heroKey(item) !== selectedKey,
+    );
     const normalized = Array.from({ length: heroSlotCount })
       .map((_, index) => withoutDuplicate[index])
       .filter((item): item is ProfileFavoriteHero => Boolean(item));
@@ -1228,7 +1405,10 @@ function replaceHeroSlot(
       slug: hero.slug,
       winRate: hero.winRate,
     };
-    return { ...current, favoriteHeroes: normalized.filter(Boolean).slice(0, heroSlotCount) };
+    return {
+      ...current,
+      favoriteHeroes: normalized.filter(Boolean).slice(0, heroSlotCount),
+    };
   });
 }
 
@@ -1242,7 +1422,9 @@ function heroMeta(hero: ProfileFavoriteHero) {
 
 function heroImage(hero: ProfileFavoriteHero | undefined) {
   if (!hero) return fallbackHeroImage;
-  return heroImageByKey[heroVisualKey(hero.slug ?? hero.name)] ?? fallbackHeroImage;
+  return (
+    heroImageByKey[heroVisualKey(hero.slug ?? hero.name)] ?? fallbackHeroImage
+  );
 }
 
 function heroKey(hero: Pick<ProfileFavoriteHero, 'name' | 'slug'> | undefined) {
@@ -1286,7 +1468,11 @@ const styles = StyleSheet.create({
   },
   bioInput: { minHeight: 82, paddingTop: 12 },
   changeHeroButton: { minWidth: 54 },
-  changeHeroText: { color: 'rgba(231,236,255,0.78)', fontSize: 11, fontWeight: '800' },
+  changeHeroText: {
+    color: 'rgba(231,236,255,0.78)',
+    fontSize: 11,
+    fontWeight: '800',
+  },
   chipText: { fontSize: 11.2, fontWeight: '700' },
   chipWrap: {
     flexDirection: 'row',
@@ -1308,7 +1494,11 @@ const styles = StyleSheet.create({
     right: 10,
     top: 10,
   },
-  coverActionText: { color: 'rgba(231,236,255,0.86)', fontSize: 10.5, fontWeight: '800' },
+  coverActionText: {
+    color: 'rgba(231,236,255,0.86)',
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
   coverEditor: {
     aspectRatio: 16 / 9,
     backgroundColor: 'rgba(255,255,255,0.045)',
@@ -1327,7 +1517,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 3,
   },
-  coverEditorTitle: { color: liquidColors.text.primary, fontSize: 15, fontWeight: '900' },
+  coverEditorTitle: {
+    color: liquidColors.text.primary,
+    fontSize: 15,
+    fontWeight: '900',
+  },
   dirtyDot: {
     backgroundColor: 'rgba(103,232,255,0.94)',
     borderRadius: 3,
@@ -1352,7 +1546,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 12,
   },
-  errorTitle: { color: 'rgba(255,245,230,0.92)', fontSize: 16, fontWeight: '900' },
+  errorTitle: {
+    color: 'rgba(255,245,230,0.92)',
+    fontSize: 16,
+    fontWeight: '900',
+  },
   fieldLabel: {
     color: 'rgba(236,242,255,0.82)',
     fontSize: 12,
@@ -1380,8 +1578,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 22,
   },
-  heroEditIndexText: { color: 'rgba(186,239,255,0.82)', fontSize: 11, fontWeight: '900' },
-  heroEditMeta: { color: 'rgba(205,216,245,0.54)', fontSize: 10.5, fontWeight: '600', marginTop: 2 },
+  heroEditIndexText: {
+    color: 'rgba(186,239,255,0.82)',
+    fontSize: 11,
+    fontWeight: '900',
+  },
+  heroEditMeta: {
+    color: 'rgba(205,216,245,0.54)',
+    fontSize: 10.5,
+    fontWeight: '600',
+    marginTop: 2,
+  },
   heroMatchInput: {
     color: 'rgba(250,252,255,0.94)',
     fontSize: 12,
@@ -1408,7 +1615,11 @@ const styles = StyleSheet.create({
     fontSize: 10.5,
     fontWeight: '700',
   },
-  heroEditName: { color: liquidColors.text.primary, fontSize: 13.5, fontWeight: '900' },
+  heroEditName: {
+    color: liquidColors.text.primary,
+    fontSize: 13.5,
+    fontWeight: '900',
+  },
   heroEditRow: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.038)',
@@ -1420,12 +1631,25 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     padding: 9,
   },
-  heroPickedText: { color: 'rgba(205,216,245,0.44)', fontSize: 11, fontWeight: '800' },
+  heroPickedText: {
+    color: 'rgba(205,216,245,0.44)',
+    fontSize: 11,
+    fontWeight: '800',
+  },
   heroPickerCopy: { flex: 1, minWidth: 0 },
   heroPickerDisabled: { opacity: 0.42 },
   heroPickerImage: { borderRadius: 22, height: 44, width: 44 },
-  heroPickerMeta: { color: 'rgba(205,216,245,0.56)', fontSize: 11, fontWeight: '600', marginTop: 3 },
-  heroPickerName: { color: liquidColors.text.primary, fontSize: 14, fontWeight: '900' },
+  heroPickerMeta: {
+    color: 'rgba(205,216,245,0.56)',
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  heroPickerName: {
+    color: liquidColors.text.primary,
+    fontSize: 14,
+    fontWeight: '900',
+  },
   heroPickerRow: {
     alignItems: 'center',
     borderBottomColor: 'rgba(255,255,255,0.055)',
@@ -1471,9 +1695,17 @@ const styles = StyleSheet.create({
     minHeight: 280,
   },
   mediaButton: { minWidth: 108 },
-  mediaButtonText: { color: 'rgba(231,236,255,0.86)', fontSize: 11, fontWeight: '800' },
+  mediaButtonText: {
+    color: 'rgba(231,236,255,0.86)',
+    fontSize: 11,
+    fontWeight: '800',
+  },
   mediaLayout: { alignItems: 'center', flexDirection: 'row', gap: 12 },
-  modalOverlay: { backgroundColor: 'rgba(1,3,10,0.72)', flex: 1, justifyContent: 'flex-end' },
+  modalOverlay: {
+    backgroundColor: 'rgba(1,3,10,0.72)',
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
   mutedText: {
     color: 'rgba(218,226,255,0.62)',
     fontSize: 12,
@@ -1506,7 +1738,12 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  previewHeader: { alignItems: 'center', flexDirection: 'row', gap: 13, zIndex: 2 },
+  previewHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 13,
+    zIndex: 2,
+  },
   previewMeta: {
     color: 'rgba(219,226,255,0.66)',
     fontSize: 12,
@@ -1520,10 +1757,29 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     letterSpacing: -0.48,
   },
-  previewNameRow: { alignItems: 'center', flexDirection: 'row', gap: 7, minWidth: 0 },
-  previewStatus: { color: 'rgba(231,236,255,0.84)', fontSize: 11.5, fontWeight: '800' },
-  previewStatusRow: { alignItems: 'center', flexDirection: 'row', gap: 7, marginTop: 8 },
-  previewSurface: { borderRadius: 27, minHeight: 154, overflow: 'hidden', padding: 16 },
+  previewNameRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 7,
+    minWidth: 0,
+  },
+  previewStatus: {
+    color: 'rgba(231,236,255,0.84)',
+    fontSize: 11.5,
+    fontWeight: '800',
+  },
+  previewStatusRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 8,
+  },
+  previewSurface: {
+    borderRadius: 27,
+    minHeight: 154,
+    overflow: 'hidden',
+    padding: 16,
+  },
   pressed: { opacity: 0.84, transform: [{ scale: 0.985 }] },
   primaryMiniText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
   privacyLabel: {
@@ -1563,7 +1819,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     paddingHorizontal: 12,
   },
-  searchInput: { color: liquidColors.text.primary, flex: 1, fontSize: 14, fontWeight: '700', minHeight: 42 },
+  searchInput: {
+    color: liquidColors.text.primary,
+    flex: 1,
+    fontSize: 14,
+    fontWeight: '700',
+    minHeight: 42,
+  },
   sectionCard: { marginBottom: 14 },
   sectionHeader: {
     alignItems: 'flex-start',
@@ -1601,9 +1863,24 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     width: 42,
   },
-  sheetHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 },
-  sheetSubtitle: { color: 'rgba(205,216,245,0.54)', fontSize: 11.5, fontWeight: '600', marginTop: 3 },
-  sheetTitle: { color: liquidColors.text.primary, fontSize: 20, fontWeight: '900', letterSpacing: -0.3 },
+  sheetHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 14,
+  },
+  sheetSubtitle: {
+    color: 'rgba(205,216,245,0.54)',
+    fontSize: 11.5,
+    fontWeight: '600',
+    marginTop: 3,
+  },
+  sheetTitle: {
+    color: liquidColors.text.primary,
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+  },
   subtitle: {
     color: 'rgba(205,216,245,0.60)',
     fontSize: 11.5,

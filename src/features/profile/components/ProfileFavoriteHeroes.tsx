@@ -64,62 +64,66 @@ export function ProfileFavoriteHeroes({
         horizontal
         showsHorizontalScrollIndicator={false}
       >
-        {items.length ? items.map((hero, index) => (
-          <LiquidCard
-            contentStyle={styles.heroMiniSurface}
-            density="list"
-            frameColors={[
-              'rgba(106,101,255,0.10)',
-              'rgba(255,255,255,0.026)',
-              'rgba(103,232,255,0.09)',
-            ]}
-            glassIntensity="low"
-            glowIntensity="low"
-            key={`${hero.name}-${index}`}
-            radius={18}
-            style={styles.heroMiniFrame}
-            surfaceBackground="rgba(11,15,32,0.28)"
-            withInnerReflection={false}
-            withShadow={false}
-          >
-            <LinearGradient
-              colors={['rgba(255,255,255,0.09)', 'rgba(255,255,255,0.00)']}
-              end={{ x: 1, y: 0 }}
-              pointerEvents="none"
-              start={{ x: 0, y: 0 }}
-              style={styles.heroMiniHighlight}
-            />
-            <View style={styles.heroAvatarWrap}>
+        {items.length ? (
+          items.map((hero, index) => (
+            <LiquidCard
+              contentStyle={styles.heroMiniSurface}
+              density="list"
+              frameColors={[
+                'rgba(106,101,255,0.10)',
+                'rgba(255,255,255,0.026)',
+                'rgba(103,232,255,0.09)',
+              ]}
+              glassIntensity="low"
+              glowIntensity="low"
+              key={`${hero.name}-${index}`}
+              radius={18}
+              style={styles.heroMiniFrame}
+              surfaceBackground="rgba(11,15,32,0.28)"
+              withInnerReflection={false}
+              withShadow={false}
+            >
               <LinearGradient
-                colors={['rgba(142,92,255,0.60)', 'rgba(103,232,255,0.52)']}
-                end={{ x: 1, y: 1 }}
+                colors={['rgba(255,255,255,0.09)', 'rgba(255,255,255,0.00)']}
+                end={{ x: 1, y: 0 }}
+                pointerEvents="none"
                 start={{ x: 0, y: 0 }}
-                style={styles.heroAvatarRing}
-              >
-                <Image source={heroImage(hero)} style={styles.heroAvatar} />
-              </LinearGradient>
-              <View style={styles.roleBadge}>
-                <Ionicons
-                  color="rgba(205,244,255,0.86)"
-                  name="sparkles"
-                  size={10}
-                />
+                style={styles.heroMiniHighlight}
+              />
+              <View style={styles.heroAvatarWrap}>
+                <LinearGradient
+                  colors={['rgba(142,92,255,0.60)', 'rgba(103,232,255,0.52)']}
+                  end={{ x: 1, y: 1 }}
+                  start={{ x: 0, y: 0 }}
+                  style={styles.heroAvatarRing}
+                >
+                  <Image source={heroImage(hero)} style={styles.heroAvatar} />
+                </LinearGradient>
+                <View style={styles.roleBadge}>
+                  <Ionicons
+                    color="rgba(205,244,255,0.86)"
+                    name="sparkles"
+                    size={10}
+                  />
+                </View>
               </View>
-            </View>
-            <View style={styles.heroMiniCopy}>
-              <ProfileText numberOfLines={1} style={styles.heroName}>
-                {hero.name}
-              </ProfileText>
-              {heroStatsLabel(hero) ? (
-                <ProfileText numberOfLines={1} style={styles.heroMeta}>
-                  {heroStatsLabel(hero)}
+              <View style={styles.heroMiniCopy}>
+                <ProfileText numberOfLines={1} style={styles.heroName}>
+                  {hero.name}
                 </ProfileText>
-              ) : null}
-            </View>
-          </LiquidCard>
-        )) : (
+                {heroStatsLabel(hero) ? (
+                  <ProfileText numberOfLines={1} style={styles.heroMeta}>
+                    {heroStatsLabel(hero)}
+                  </ProfileText>
+                ) : null}
+              </View>
+            </LiquidCard>
+          ))
+        ) : (
           <View style={styles.emptyHeroes}>
-            <ProfileText style={styles.emptyText}>Chưa chọn tướng tủ.</ProfileText>
+            <ProfileText style={styles.emptyText}>
+              Chưa chọn tướng tủ.
+            </ProfileText>
           </View>
         )}
       </ScrollView>
@@ -151,7 +155,6 @@ function normalizeKey(value: string) {
 }
 
 const styles = StyleSheet.create({
-
   emptyHeroes: {
     alignItems: 'center',
     minHeight: 54,

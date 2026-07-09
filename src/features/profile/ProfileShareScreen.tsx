@@ -5,7 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
-import { useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import {
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -201,12 +207,15 @@ export function ProfileShareScreen() {
           ) : (
             <Ionicons color="#FFFFFF" name="share-social-outline" size={16} />
           )}
-          <ProfileText style={styles.primaryActionText}>Chia sẻ ảnh</ProfileText>
+          <ProfileText style={styles.primaryActionText}>
+            Chia sẻ ảnh
+          </ProfileText>
         </LiquidButton>
       </View>
 
       <ProfileText style={styles.exportNote}>
-        Preview này được render thành PNG thật để lưu vào máy hoặc gửi qua native share sheet. Không kèm QR, deep link hay link mở app.
+        Preview này được render thành PNG thật để lưu vào máy hoặc gửi qua
+        native share sheet. Không kèm QR, deep link hay link mở app.
       </ProfileText>
     </LiquidScreen>
   );
@@ -226,7 +235,11 @@ function ShareTopBar({ loading }: { loading: boolean }) {
         size={42}
         style={styles.topOrb}
       >
-        <Ionicons color={liquidColors.text.primary} name="chevron-back" size={20} />
+        <Ionicons
+          color={liquidColors.text.primary}
+          name="chevron-back"
+          size={20}
+        />
       </LiquidOrbButton>
       <View style={styles.titleBlock}>
         <ProfileText style={styles.title}>Chia sẻ ảnh hồ sơ</ProfileText>
@@ -293,7 +306,11 @@ function SocialProfileCard({
         </>
       ) : (
         <LinearGradient
-          colors={['rgba(42,28,96,0.72)', 'rgba(9,18,42,0.92)', 'rgba(3,6,18,1)']}
+          colors={[
+            'rgba(42,28,96,0.72)',
+            'rgba(9,18,42,0.92)',
+            'rgba(3,6,18,1)',
+          ]}
           style={StyleSheet.absoluteFill}
         />
       )}
@@ -306,17 +323,13 @@ function SocialProfileCard({
           'rgba(2,5,16,0.62)',
         ]}
         end={{ x: 1, y: 0.46 }}
-        locations={[0, 0.40, 0.74, 1]}
+        locations={[0, 0.4, 0.74, 1]}
         pointerEvents="none"
         start={{ x: 0, y: 0.46 }}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
-        colors={[
-          'rgba(2,5,16,0.56)',
-          'rgba(2,5,16,0.08)',
-          'rgba(2,5,16,0.84)',
-        ]}
+        colors={['rgba(2,5,16,0.56)', 'rgba(2,5,16,0.08)', 'rgba(2,5,16,0.84)']}
         end={{ x: 0.5, y: 1 }}
         locations={[0, 0.42, 1]}
         pointerEvents="none"
@@ -343,7 +356,9 @@ function SocialProfileCard({
       <View style={styles.cardContent}>
         <View style={styles.brandRow}>
           <ProfileText style={styles.brandText}>LIQI MATCH</ProfileText>
-          <ProfileText style={styles.brandMeta}>Fantasy Profile Card</ProfileText>
+          <ProfileText style={styles.brandMeta}>
+            Fantasy Profile Card
+          </ProfileText>
         </View>
 
         <View style={styles.identityRow}>
@@ -370,7 +385,9 @@ function SocialProfileCard({
         <ProfileText numberOfLines={2} style={styles.posterBio}>
           “{profile.bio}”
         </ProfileText>
-        <ProfileText numberOfLines={2} style={styles.posterCta}>{cta}</ProfileText>
+        <ProfileText numberOfLines={2} style={styles.posterCta}>
+          {cta}
+        </ProfileText>
 
         <View style={styles.statsBox}>
           <PosterStat label="Trận" value={String(profileMockStats.matches)} />
@@ -405,7 +422,10 @@ function AvatarPoster({ profile }: { profile: ProfileViewModel }) {
     >
       <View style={styles.avatarRingInner}>
         {profile.avatarUrl ? (
-          <Image source={{ uri: profile.avatarUrl }} style={styles.avatarImage} />
+          <Image
+            source={{ uri: profile.avatarUrl }}
+            style={styles.avatarImage}
+          />
         ) : (
           <ProfileText style={styles.avatarInitial}>
             {profile.displayName.charAt(0).toUpperCase() || 'L'}
@@ -598,7 +618,9 @@ function showFeedback(message: string) {
 }
 
 function impactLight() {
-  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(
+    () => undefined,
+  );
 }
 
 function selectionImpact() {
@@ -716,7 +738,12 @@ const styles = StyleSheet.create({
   },
   heroPill: { borderColor: 'rgba(142,92,255,0.34)' },
   identityCopy: { flex: 1, minWidth: 0 },
-  identityRow: { alignItems: 'center', flexDirection: 'row', gap: 13, minWidth: 0 },
+  identityRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 13,
+    minWidth: 0,
+  },
   nameRow: { alignItems: 'center', flexDirection: 'row', gap: 6, minWidth: 0 },
   optionChipText: { fontSize: 11, fontWeight: '800' },
   optionChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
@@ -834,8 +861,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 12,
   },
-  statusLine: { alignItems: 'center', flexDirection: 'row', gap: 7, marginTop: 9 },
-  statusText: { color: 'rgba(235,244,255,0.84)', fontSize: 12, fontWeight: '900' },
+  statusLine: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 9,
+  },
+  statusText: {
+    color: 'rgba(235,244,255,0.84)',
+    fontSize: 12,
+    fontWeight: '900',
+  },
   subtitle: {
     color: 'rgba(205,216,245,0.58)',
     fontSize: 11.5,

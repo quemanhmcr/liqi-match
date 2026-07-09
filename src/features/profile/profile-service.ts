@@ -249,18 +249,26 @@ export async function fetchProfileEditDraft(
   session: AuthSession,
 ): Promise<ProfileEditDraft> {
   const profileId = session.user.id;
-  const [profileRows, ranks, roles, heroRows, backendHeroes] = await Promise.all([
-    supabaseRest<ProfileEditRow[]>(
-      `profiles?id=eq.${encodeURIComponent(profileId)}&select=${profileEditSelect}&limit=1`,
-      { session },
-    ),
-    supabaseRest<RankRow[]>('ranks?select=id,slug,name,sort_order&order=sort_order.asc', {
-      session,
-    }),
-    supabaseRest<RoleRow[]>('roles?select=id,slug,name&order=name.asc', { session }),
-    fetchProfileHeroRows(session, profileId),
-    supabaseRest<HeroRow[]>('heroes?select=id,slug,name&order=name.asc', { session }),
-  ]);
+  const [profileRows, ranks, roles, heroRows, backendHeroes] =
+    await Promise.all([
+      supabaseRest<ProfileEditRow[]>(
+        `profiles?id=eq.${encodeURIComponent(profileId)}&select=${profileEditSelect}&limit=1`,
+        { session },
+      ),
+      supabaseRest<RankRow[]>(
+        'ranks?select=id,slug,name,sort_order&order=sort_order.asc',
+        {
+          session,
+        },
+      ),
+      supabaseRest<RoleRow[]>('roles?select=id,slug,name&order=name.asc', {
+        session,
+      }),
+      fetchProfileHeroRows(session, profileId),
+      supabaseRest<HeroRow[]>('heroes?select=id,slug,name&order=name.asc', {
+        session,
+      }),
+    ]);
 
   const row = profileRows[0];
   const preview = buildPreviewProfile(session, profileId);
@@ -268,7 +276,10 @@ export async function fetchProfileEditDraft(
   const habits = first(row?.profile_habits);
   const mediaSummary = mediaSummaryRecord(habits?.media_summary);
   const fallbackCover = await fetchUploadedProfileCover(session, profileId);
-  const explicitCoverMediaId = mediaIdFromSummary(mediaSummary, 'cover_media_id');
+  const explicitCoverMediaId = mediaIdFromSummary(
+    mediaSummary,
+    'cover_media_id',
+  );
   const coverMediaId = explicitCoverMediaId ?? fallbackCover?.id ?? null;
   const avatarMediaId = row?.avatar_media_id ?? null;
   const avatarFallbackUrl = avatarUrlFromSession(session);
@@ -277,7 +288,8 @@ export async function fetchProfileEditDraft(
     .filter((role) => editableRoleOrder.includes(role.slug))
     .sort(
       (left, right) =>
-        editableRoleOrder.indexOf(left.slug) - editableRoleOrder.indexOf(right.slug),
+        editableRoleOrder.indexOf(left.slug) -
+        editableRoleOrder.indexOf(right.slug),
     )
     .map(toReferenceOption);
   const favoriteHeroes = buildFavoriteHeroes(heroRows, false, mediaSummary);
@@ -297,7 +309,9 @@ export async function fetchProfileEditDraft(
     ranks: rankOptions,
     region: gameProfile?.server_region ?? 'global',
     roles: roleOptions,
-    selectedRankId: gameProfile?.rank_id ?? rankOptions.find((rank) => rank.slug === 'master')?.id,
+    selectedRankId:
+      gameProfile?.rank_id ??
+      rankOptions.find((rank) => rank.slug === 'master')?.id,
     selectedRoleId:
       row?.profile_roles?.[0]?.role_id ??
       roleOptions.find((role) => role.slug === 'jungle')?.id,
@@ -413,7 +427,10 @@ export async function fetchProfileView(input: {
       ? avatarUrlFromSession(input.session)
       : undefined;
   const avatarUrl = mediaUrl(row.avatar_media_id) ?? avatarFallbackUrl;
-  const explicitCoverMediaId = mediaIdFromSummary(mediaSummary, 'cover_media_id');
+  const explicitCoverMediaId = mediaIdFromSummary(
+    mediaSummary,
+    'cover_media_id',
+  );
   const fallbackCover = explicitCoverMediaId
     ? undefined
     : await fetchUploadedProfileCover(input.session, row.id);
@@ -592,7 +609,10 @@ function favoriteHeroStatsFromSummary(
   summary: MediaSummary,
 ): Map<string, Pick<ProfileFavoriteHero, 'matches' | 'winRate'>> {
   const source = summary.favorite_hero_stats;
-  const statsByKey = new Map<string, Pick<ProfileFavoriteHero, 'matches' | 'winRate'>>();
+  const statsByKey = new Map<
+    string,
+    Pick<ProfileFavoriteHero, 'matches' | 'winRate'>
+  >();
   if (!Array.isArray(source)) return statsByKey;
 
   for (const item of source) {
@@ -629,10 +649,14 @@ function buildFavoriteHeroStatsSummary(heroes: ProfileFavoriteHero[]) {
         win_rate: normalizeOptionalStatNumber(hero.winRate),
       }),
     )
-    .filter((hero) => hero.matches !== undefined || hero.win_rate !== undefined);
+    .filter(
+      (hero) => hero.matches !== undefined || hero.win_rate !== undefined,
+    );
 }
 
-function heroStatKeys(hero: Pick<ProfileFavoriteHero, 'heroId' | 'name' | 'slug'>) {
+function heroStatKeys(
+  hero: Pick<ProfileFavoriteHero, 'heroId' | 'name' | 'slug'>,
+) {
   return Array.from(
     new Set(
       [
@@ -821,13 +845,17 @@ function normalizeEditHabits(input: ProfileEditHabits): ProfileEditHabits {
     comeback_response:
       input.comeback_response.trim() || defaultEditHabits.comeback_response,
     communication_channels: compactUnique(input.communication_channels, 2),
-    decision_style: input.decision_style.trim() || defaultEditHabits.decision_style,
-    feedback_style: input.feedback_style.trim() || defaultEditHabits.feedback_style,
-    loss_response: input.loss_response.trim() || defaultEditHabits.loss_response,
+    decision_style:
+      input.decision_style.trim() || defaultEditHabits.decision_style,
+    feedback_style:
+      input.feedback_style.trim() || defaultEditHabits.feedback_style,
+    loss_response:
+      input.loss_response.trim() || defaultEditHabits.loss_response,
     media_summary: mediaSummaryRecord(input.media_summary),
     online_time_presets: compactUnique(input.online_time_presets, 5),
     seriousness: input.seriousness.trim() || defaultEditHabits.seriousness,
-    session_length: input.session_length.trim() || defaultEditHabits.session_length,
+    session_length:
+      input.session_length.trim() || defaultEditHabits.session_length,
     strategy_styles: compactUnique(input.strategy_styles, 3),
     team_atmospheres: compactUnique(input.team_atmospheres, 2),
     team_goals: compactUnique(input.team_goals, 2),
@@ -835,15 +863,16 @@ function normalizeEditHabits(input: ProfileEditHabits): ProfileEditHabits {
 }
 
 function compactUnique(values: readonly string[], limit: number) {
-  return Array.from(new Set(values.map((value) => value.trim()).filter(Boolean))).slice(
-    0,
-    limit,
-  );
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean)),
+  ).slice(0, limit);
 }
 
 function stripUndefined<T extends Record<string, unknown>>(value: T) {
   return Object.fromEntries(
-    Object.entries(value).filter(([, item]) => item !== undefined && item !== null),
+    Object.entries(value).filter(
+      ([, item]) => item !== undefined && item !== null,
+    ),
   ) as Partial<T>;
 }
 
@@ -933,7 +962,8 @@ function statusFromSummary(summary: MediaSummary): ProfileStatusValue {
 }
 
 function normalizeStatus(value: unknown): ProfileStatusValue {
-  if (value === 'busy' || value === 'offline' || value === 'friends') return value;
+  if (value === 'busy' || value === 'offline' || value === 'friends')
+    return value;
   return 'ready';
 }
 
@@ -993,5 +1023,7 @@ function first<T>(value: MaybeArray<T>) {
 }
 
 function compact<T>(values: (T | null | undefined)[]) {
-  return values.filter((value): value is T => value !== null && value !== undefined);
+  return values.filter(
+    (value): value is T => value !== null && value !== undefined,
+  );
 }
