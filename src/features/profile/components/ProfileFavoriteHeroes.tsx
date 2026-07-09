@@ -8,10 +8,10 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 
+import { HEROES } from '@/features/onboarding/hero-selection-data';
 import { LiquidCard } from '@/shared/components/liquid';
 import { liquidColors, liquidTypography } from '@/shared/theme/liquid-glass.tokens';
 
-import { profileMockHeroes } from '../profile.mock';
 import type { ProfileFavoriteHero } from '../profile-service';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
 import { ProfileText } from './ProfileShared';
@@ -19,16 +19,14 @@ import { ProfileText } from './ProfileShared';
 const fallbackHeroImage =
   require('../../../../assets/anh_mau2/heroes/aya.webp') as ImageSourcePropType;
 
-const heroImageByKey: Record<string, ImageSourcePropType> = {
-  annette: require('../../../../assets/anh_mau2/heroes/annette.webp') as ImageSourcePropType,
-  aoi: require('../../../../assets/anh_mau2/heroes/aoi.webp') as ImageSourcePropType,
-  aya: require('../../../../assets/anh_mau2/heroes/aya.webp') as ImageSourcePropType,
-  helen: require('../../../../assets/anh_mau2/heroes/helen.webp') as ImageSourcePropType,
-  keera: require('../../../../assets/anh_mau2/heroes/keera.webp') as ImageSourcePropType,
-  liliana: require('../../../../assets/anh_mau2/heroes/liliana.webp') as ImageSourcePropType,
-  nakroth: require('../../../../assets/anh_mau2/heroes/nakroth.webp') as ImageSourcePropType,
-  yue: require('../../../../assets/anh_mau2/heroes/yue.webp') as ImageSourcePropType,
-};
+const heroImageByKey = HEROES.reduce<Record<string, ImageSourcePropType>>(
+  (images, hero) => {
+    images[normalizeKey(hero.id)] = hero.image;
+    images[normalizeKey(hero.name)] = hero.image;
+    return images;
+  },
+  {},
+);
 
 export function ProfileFavoriteHeroes({
   heroes,
@@ -95,7 +93,7 @@ export function ProfileFavoriteHeroes({
                 start={{ x: 0, y: 0 }}
                 style={styles.heroAvatarRing}
               >
-                <Image source={heroImage(hero, index)} style={styles.heroAvatar} />
+                <Image source={heroImage(hero)} style={styles.heroAvatar} />
               </LinearGradient>
               <View style={styles.roleBadge}>
                 <Ionicons color="rgba(205,244,255,0.86)" name="sparkles" size={10} />
@@ -119,13 +117,9 @@ export function ProfileFavoriteHeroes({
   );
 }
 
-function heroImage(hero: ProfileFavoriteHero, index: number) {
+function heroImage(hero: ProfileFavoriteHero) {
   const key = normalizeKey(hero.slug ?? hero.name);
-  return (
-    heroImageByKey[key] ??
-    profileMockHeroes[index % profileMockHeroes.length]?.imageSource ??
-    fallbackHeroImage
-  );
+  return heroImageByKey[key] ?? fallbackHeroImage;
 }
 
 function normalizeKey(value: string) {

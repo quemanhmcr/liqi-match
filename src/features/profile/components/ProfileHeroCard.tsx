@@ -54,7 +54,12 @@ export function ProfileHeroCard({
   const avatarSource =
     imageSource(avatarUri) ??
     (isMinhAnhProfile(profile.displayName) ? fallbackMinhAnhAvatar : fallbackAvatar);
-  const heroSource = imageSource(profile.coverUrl) ?? heroArtwork;
+  const uploadedCoverSource = imageSource(profile.coverUrl);
+  const hasUploadedCover = Boolean(uploadedCoverSource);
+  const heroSource = uploadedCoverSource ?? heroArtwork;
+  const heroImageStyle = hasUploadedCover
+    ? styles.heroCoverImage
+    : styles.heroArtwork;
   const meta = [
     profile.rankName ?? 'Cao Thủ',
     profile.roleNames.slice(0, 2).join(' / ') || 'Trợ Thủ',
@@ -99,18 +104,27 @@ export function ProfileHeroCard({
       <Image
         resizeMode="cover"
         source={heroSource}
-        style={styles.heroArtwork}
+        style={heroImageStyle}
       />
       <LinearGradient
-        colors={[
-          'rgba(3,6,18,0.96)',
-          'rgba(3,6,18,0.78)',
-          'rgba(3,6,18,0.18)',
-          'rgba(3,6,18,0.00)',
-        ]}
+        colors={
+          hasUploadedCover
+            ? [
+                'rgba(3,6,18,0.76)',
+                'rgba(3,6,18,0.50)',
+                'rgba(3,6,18,0.18)',
+                'rgba(3,6,18,0.04)',
+              ]
+            : [
+                'rgba(3,6,18,0.96)',
+                'rgba(3,6,18,0.78)',
+                'rgba(3,6,18,0.18)',
+                'rgba(3,6,18,0.00)',
+              ]
+        }
         end={{ x: 1, y: 0.42 }}
         pointerEvents="none"
-        start={{ x: 0.12, y: 0.42 }}
+        start={hasUploadedCover ? { x: 0, y: 0.42 } : { x: 0.12, y: 0.42 }}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
@@ -124,18 +138,20 @@ export function ProfileHeroCard({
         start={{ x: 0.04, y: 0 }}
         style={StyleSheet.absoluteFill}
       />
-      <LinearGradient
-        colors={[
-          'rgba(106,101,255,0.00)',
-          'rgba(106,101,255,0.11)',
-          'rgba(103,232,255,0.12)',
-          'rgba(3,7,20,0.00)',
-        ]}
-        end={{ x: 1, y: 0.5 }}
-        pointerEvents="none"
-        start={{ x: 0.42, y: 0.46 }}
-        style={styles.artPresence}
-      />
+      {!hasUploadedCover ? (
+        <LinearGradient
+          colors={[
+            'rgba(106,101,255,0.00)',
+            'rgba(106,101,255,0.11)',
+            'rgba(103,232,255,0.12)',
+            'rgba(3,7,20,0.00)',
+          ]}
+          end={{ x: 1, y: 0.5 }}
+          pointerEvents="none"
+          start={{ x: 0.42, y: 0.46 }}
+          style={styles.artPresence}
+        />
+      ) : null}
       <LinearGradient
         colors={[
           'rgba(255,255,255,0.16)',
@@ -329,6 +345,14 @@ const styles = StyleSheet.create({
     right: -84,
     top: -27,
     width: 318,
+  },
+  heroCoverImage: {
+    bottom: 0,
+    left: 0,
+    opacity: 0.52,
+    position: 'absolute',
+    right: 0,
+    top: 0,
   },
   heroFrame: { marginTop: 8, overflow: 'visible' },
   heroSurface: { borderRadius: 29, minHeight: 254, overflow: 'hidden', padding: 0 },
