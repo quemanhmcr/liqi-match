@@ -143,6 +143,7 @@ export type ProfileViewModel = {
   rankName?: string;
   region?: string;
   roleNames: string[];
+  showWinRate: boolean;
   statusLabel: string;
   statusValue: ProfileStatusValue;
   verified: boolean;
@@ -435,6 +436,7 @@ export async function fetchProfileView(input: {
     ? undefined
     : await fetchUploadedProfileCover(input.session, row.id);
   const coverUrl = mediaUrl(explicitCoverMediaId) ?? fallbackCover?.url;
+  const showWinRate = showWinRateFromSummary(mediaSummary);
   const statusValue = statusFromSummary(mediaSummary);
 
   return {
@@ -453,6 +455,7 @@ export async function fetchProfileView(input: {
     rankName: first(gameProfile?.ranks)?.name ?? undefined,
     region: formatRegion(gameProfile?.server_region),
     roleNames,
+    showWinRate,
     statusLabel: statusLabel(statusValue),
     statusValue,
     verified: true,
@@ -485,6 +488,7 @@ export function buildPreviewProfile(
     rankName: 'Cao Thủ',
     region: 'Global',
     roleNames: ['Trợ Thủ'],
+    showWinRate: true,
     statusLabel: 'Sẵn sàng',
     statusValue: 'ready',
     verified: true,
@@ -508,6 +512,7 @@ function buildMinhAnhPreviewProfile(): ProfileViewModel {
     rankName: 'Cao Thủ',
     region: 'Global',
     roleNames: ['Trợ Thủ'],
+    showWinRate: true,
     statusLabel: 'Sẵn sàng',
     statusValue: 'ready',
     verified: true,
@@ -955,6 +960,11 @@ function formatRegion(value: string | null | undefined) {
   if (normalized === 'vn') return 'VN';
   if (normalized === 'sea') return 'SEA';
   return value.toUpperCase();
+}
+
+function showWinRateFromSummary(summary: MediaSummary) {
+  const settings = mediaSummaryRecord(summary.settings);
+  return settings.show_win_rate === false ? false : true;
 }
 
 function statusFromSummary(summary: MediaSummary): ProfileStatusValue {

@@ -18,7 +18,7 @@ type StatItem = {
   value: string;
 };
 
-const stats: StatItem[] = [
+const baseStats: StatItem[] = [
   {
     color: 'rgba(142,118,255,0.78)',
     icon: 'sparkles-outline',
@@ -45,7 +45,17 @@ const stats: StatItem[] = [
   },
 ];
 
-export function ProfileStatsBar({ embedded = false }: { embedded?: boolean }) {
+export function ProfileStatsBar({
+  embedded = false,
+  showWinRate = true,
+}: {
+  embedded?: boolean;
+  showWinRate?: boolean;
+}) {
+  const stats = showWinRate
+    ? baseStats
+    : baseStats.filter((item) => item.label !== 'Tỷ lệ thắng');
+
   return (
     <LiquidCard
       baseStrokeColor={

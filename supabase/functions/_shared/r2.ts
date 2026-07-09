@@ -1,4 +1,4 @@
-﻿type PresignPutInput = {
+type PresignPutInput = {
   objectKey: string;
   contentType: string;
   byteSize: number;
@@ -177,6 +177,50 @@ export async function presignR2Put(input: PresignPutInput) {
     expiresAt: new Date(
       now.getTime() + input.expiresInSeconds * 1000,
     ).toISOString(),
+  };
+}
+
+export async function deleteR2Object(objectKey: string) {
+  const accessKeyId = env('R2_ACCESS_KEY_ID');
+  const secretAccessKey = env('R2_SECRET_ACCESS_KEY');
+  const now = new Date();
+  const dateStamp = amzDate(now).slice(0, 8);
+  const requestDate = amzDate(now);
+  const objectUrl = r2ObjectUrl(objectKey);
+  const credentialScope = `${dateStamp}/auto/s3/aws4_request`;
+  const signedHeaders = 'host';
+  const query = new URLSearchParams({
+    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+    'X-Amz-Credential': `${accessKeyId}/${credentialScope}`,
+    'X-Amz-Date': requestDate,
+    'X-Amz-Expires': '60',
+    'X-Amz-SignedHeaders': signedHeaders,
+  });
+  const canonicalRequest = [
+    'DELETE',
+    objectUrl.pathname,
+    query.toString(),
+    `host:${objectUrl.host}`,
+    '',
+    signedHeaders,
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+  const stringToSign = [
+    'AWS4-HMAC-SHA256',
+    requestDate,
+    credentialScope,
+    await sha256(canonicalRequest),
+  ].join('\n');
+  const key = await signingKey(secretAccessKey, dateStamp);
+  const signature = toHex(await hmac(key, stringToSign));
+
+  query.set('X-Amz-Signature', signature);
+  objectUrl.search = query.toString();
+
+  const response = await fetch(objectUrl, { method: 'DELETE' });
+  return {
+    ok: response.ok || response.status === 404,
+    status: response.status,
   };
 }
 

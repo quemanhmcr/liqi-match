@@ -6,7 +6,7 @@ import {
   requireBearerToken,
 } from '../_shared/http.ts';
 import { headR2Object } from '../_shared/r2.ts';
-import { authenticateUser } from '../_shared/supabase.ts';
+import { authenticateUser, enqueueOutboxEvent } from '../_shared/supabase.ts';
 
 type FinalizeRequest = {
   assetId: string;
@@ -113,26 +113,18 @@ Deno.serve(async (request) => {
       return errorResponse(500, 'finalize_failed', update.error.message);
     }
 
-    await supabase
-      .schema('private')
-      .from('outbox_events')
-      .insert({
-        event_type: 'media_uploaded',
-        aggregate_type: 'media_asset',
-        aggregate_id: asset.data.id,
-        payload: { objectKey: asset.data.object_key },
-      });
+    await enqueueMediaOutboxEvent(supabase, {
+      aggregateId: asset.data.id,
+      eventType: 'media_uploaded',
+      objectKey: asset.data.object_key,
+    });
 
     if (!autoApproveProfileMedia) {
-      await supabase
-        .schema('private')
-        .from('outbox_events')
-        .insert({
-          event_type: 'media_processing_requested',
-          aggregate_type: 'media_asset',
-          aggregate_id: asset.data.id,
-          payload: { objectKey: asset.data.object_key },
-        });
+      await enqueueMediaOutboxEvent(supabase, {
+        aggregateId: asset.data.id,
+        eventType: 'media_processing_requested',
+        objectKey: asset.data.object_key,
+      });
     }
 
     return jsonResponse({
@@ -167,4 +159,32 @@ function promoteProfileMediaAsset(
     .eq('status', expectedStatus)
     .select('id, status')
     .single();
+}
+
+async function enqueueMediaOutboxEvent(
+  supabase: Awaited<ReturnType<typeof authenticateUser>>['supabase'],
+  input: {
+    aggregateId: string;
+    eventType: 'media_processing_requested' | 'media_uploaded';
+    objectKey: string;
+  },
+) {
+  const outbox = await enqueueOutboxEvent(supabase, {
+    aggregateId: input.aggregateId,
+    aggregateType: 'media_asset',
+    eventType: input.eventType,
+    payload: { objectKey: input.objectKey },
+  });
+
+  if (outbox.error) {
+    console.error(
+      JSON.stringify({
+        assetId: input.aggregateId,
+        eventType: input.eventType,
+        level: 'error',
+        message: 'media_finalize_outbox_enqueue_failed',
+        reason: outbox.error.message,
+      }),
+    );
+  }
 }

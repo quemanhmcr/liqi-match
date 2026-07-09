@@ -51,3 +51,6 @@ verify_jwt = true
 
 [functions.media-delete]
 verify_jwt = true
+
+[functions.account-delete]
+verify_jwt = true

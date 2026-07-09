@@ -33,8 +33,10 @@ const heroImageByKey = HEROES.reduce<Record<string, ImageSourcePropType>>(
 
 export function ProfileFavoriteHeroes({
   heroes,
+  showWinRate = true,
 }: {
   heroes: ProfileFavoriteHero[];
+  showWinRate?: boolean;
 }) {
   const items = heroes.slice(0, 3);
 
@@ -111,9 +113,9 @@ export function ProfileFavoriteHeroes({
                 <ProfileText numberOfLines={1} style={styles.heroName}>
                   {hero.name}
                 </ProfileText>
-                {heroStatsLabel(hero) ? (
+                {heroStatsLabel(hero, showWinRate) ? (
                   <ProfileText numberOfLines={1} style={styles.heroMeta}>
-                    {heroStatsLabel(hero)}
+                    {heroStatsLabel(hero, showWinRate)}
                   </ProfileText>
                 ) : null}
               </View>
@@ -131,13 +133,13 @@ export function ProfileFavoriteHeroes({
   );
 }
 
-function heroStatsLabel(hero: ProfileFavoriteHero) {
-  if (hero.matches !== undefined && hero.winRate !== undefined) {
+function heroStatsLabel(hero: ProfileFavoriteHero, showWinRate: boolean) {
+  if (hero.matches !== undefined && hero.winRate !== undefined && showWinRate) {
     return `${hero.matches} trận · ${hero.winRate}% win`;
   }
 
   if (hero.matches !== undefined) return `${hero.matches} trận`;
-  if (hero.winRate !== undefined) return `${hero.winRate}% win`;
+  if (hero.winRate !== undefined && showWinRate) return `${hero.winRate}% win`;
   return undefined;
 }
 

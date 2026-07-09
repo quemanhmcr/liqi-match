@@ -23,6 +23,8 @@ export default function RootLayout() {
           <Stack.Screen name="profile/index" />
           <Stack.Screen name="profile/edit" />
           <Stack.Screen name="profile/share" />
+          <Stack.Screen name="profile/settings" />
+          <Stack.Screen name="profile/settings/blocked" />
           <Stack.Screen name="profile/[userId]" />
           <Stack.Screen name="dev/liquid-system" />
         </Stack>

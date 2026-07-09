@@ -361,7 +361,7 @@ export function ProfileHeroCard({
           </LiquidButton>
         </View>
 
-        <ProfileStatsBar embedded />
+        <ProfileStatsBar embedded showWinRate={profile.showWinRate} />
       </View>
     </LiquidGlassSurface>
   );

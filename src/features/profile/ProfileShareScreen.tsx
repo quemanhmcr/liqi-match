@@ -43,6 +43,7 @@ import {
   fetchProfileView,
   type ProfileViewModel,
 } from './profile-service';
+import { fetchProfileSettings } from './profile-settings-service';
 
 type ShareRatio = 'story' | 'feed' | 'square';
 type ShareTemplate = 'fantasy' | 'minimal' | 'rank';
@@ -105,6 +106,14 @@ export function ProfileShareScreen() {
     },
     queryKey: ['profile-view', 'self', session?.user.id],
   });
+  const settingsQuery = useQuery({
+    enabled: Boolean(session),
+    queryFn: () => {
+      if (!session) throw new Error('Missing auth session');
+      return fetchProfileSettings(session);
+    },
+    queryKey: ['profile-settings', session?.user.id],
+  });
 
   const profile =
     profileQuery.data ?? buildPreviewProfile(session, session?.user.id);
@@ -112,6 +121,88 @@ export function ProfileShareScreen() {
     () => ctaOptions.find((item) => item.id === cta) ?? ctaOptions[0]!,
     [cta],
   );
+
+  if (!session) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading={false} />
+        <ShareGuardCard
+          icon="lock-closed-outline"
+          primaryLabel="Về đăng nhập"
+          title="Cần đăng nhập"
+          onPrimaryPress={() => router.replace('/')}
+        >
+          Đăng nhập để tạo ảnh chia sẻ từ hồ sơ của bạn.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
+
+  if (settingsQuery.isLoading) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading />
+        <ShareGuardCard icon="hourglass-outline" title="Đang kiểm tra cài đặt">
+          Liqi Match đang xác nhận quyền tạo ảnh chia sẻ trước khi render thẻ
+          social.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
+
+  if (settingsQuery.isError) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading={false} />
+        <ShareGuardCard
+          icon="warning-outline"
+          primaryLabel="Thử lại"
+          secondaryLabel="Về cài đặt"
+          title="Chưa kiểm tra được quyền chia sẻ"
+          onPrimaryPress={() => void settingsQuery.refetch()}
+          onSecondaryPress={() => router.replace('/profile/settings')}
+        >
+          Vì đây là cài đặt quyền riêng tư, màn hình chia sẻ sẽ tạm khoá cho đến
+          khi đọc được trạng thái mới nhất.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
+
+  if (settingsQuery.data?.allowProfileShare !== true) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading={false} />
+        <ShareGuardCard
+          icon="image-outline"
+          primaryLabel="Bật trong cài đặt"
+          secondaryLabel="Về hồ sơ"
+          title="Đang tắt chia sẻ hồ sơ"
+          onPrimaryPress={() => router.replace('/profile/settings')}
+          onSecondaryPress={() => router.replace('/profile')}
+        >
+          Bạn đã tắt “Cho phép tạo ảnh chia sẻ”. Bật lại trong Cài đặt nếu muốn
+          xuất PNG social từ hồ sơ.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
 
   return (
     <LiquidScreen
@@ -218,6 +309,77 @@ export function ProfileShareScreen() {
         native share sheet. Không kèm QR, deep link hay link mở app.
       </ProfileText>
     </LiquidScreen>
+  );
+}
+
+function ShareGuardCard({
+  children,
+  icon,
+  onPrimaryPress,
+  onSecondaryPress,
+  primaryLabel,
+  secondaryLabel,
+  title,
+}: {
+  children: ReactNode;
+  icon: keyof typeof Ionicons.glyphMap;
+  onPrimaryPress?: () => void;
+  onSecondaryPress?: () => void;
+  primaryLabel?: string;
+  secondaryLabel?: string;
+  title: string;
+}) {
+  return (
+    <LiquidCard
+      density="regular"
+      glowIntensity="low"
+      style={styles.guardCard}
+      surfaceBackground="rgba(7,10,24,0.44)"
+      withShadow={false}
+    >
+      <View style={styles.guardIconShell}>
+        <Ionicons color="rgba(178,235,255,0.86)" name={icon} size={22} />
+      </View>
+      <ProfileText style={styles.guardTitle}>{title}</ProfileText>
+      <ProfileText style={styles.guardText}>{children}</ProfileText>
+      {onPrimaryPress || onSecondaryPress ? (
+        <View style={styles.guardActions}>
+          {onPrimaryPress && primaryLabel ? (
+            <LiquidButton
+              glowIntensity="low"
+              onPress={() => {
+                selectionImpact();
+                onPrimaryPress();
+              }}
+              radius={18}
+              style={styles.guardAction}
+              withShadow={false}
+            >
+              <ProfileText style={styles.primaryActionText}>
+                {primaryLabel}
+              </ProfileText>
+            </LiquidButton>
+          ) : null}
+          {onSecondaryPress && secondaryLabel ? (
+            <LiquidButton
+              glowIntensity="none"
+              onPress={() => {
+                selectionImpact();
+                onSecondaryPress();
+              }}
+              radius={18}
+              style={styles.guardAction}
+              variant="ghost"
+              withShadow={false}
+            >
+              <ProfileText style={styles.secondaryActionText}>
+                {secondaryLabel}
+              </ProfileText>
+            </LiquidButton>
+          ) : null}
+        </View>
+      ) : null}
+    </LiquidCard>
   );
 }
 
@@ -391,7 +553,9 @@ function SocialProfileCard({
 
         <View style={styles.statsBox}>
           <PosterStat label="Trận" value={String(profileMockStats.matches)} />
-          <PosterStat label="Win" value={`${profileMockStats.winRate}%`} />
+          {profile.showWinRate ? (
+            <PosterStat label="Win" value={`${profileMockStats.winRate}%`} />
+          ) : null}
           <PosterStat label="Rating" value={String(profileMockStats.rating)} />
         </View>
 
@@ -713,6 +877,39 @@ const styles = StyleSheet.create({
     right: -78,
     top: 80,
     width: 160,
+  },
+  guardAction: { flex: 1, minHeight: 42 },
+  guardActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  guardCard: {
+    alignItems: 'center',
+    marginTop: 18,
+    paddingHorizontal: 18,
+    paddingVertical: 22,
+  },
+  guardIconShell: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(103,232,255,0.10)',
+    borderColor: 'rgba(178,235,255,0.16)',
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 44,
+    justifyContent: 'center',
+    marginBottom: 12,
+    width: 44,
+  },
+  guardText: {
+    color: 'rgba(205,216,245,0.64)',
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+  guardTitle: {
+    color: 'rgba(248,251,255,0.96)',
+    fontSize: 18,
+    fontWeight: '900',
+    marginBottom: 8,
+    textAlign: 'center',
   },
   exportNote: {
     color: 'rgba(205,216,245,0.46)',
