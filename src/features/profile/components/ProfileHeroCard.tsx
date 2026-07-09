@@ -12,12 +12,8 @@ import {
   LiquidButton,
   LiquidChip,
   LiquidGlassSurface,
-  LiquidOrbButton,
 } from '@/shared/components/liquid';
-import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+import { liquidTypography } from '@/shared/theme/liquid-glass.tokens';
 import {
   heroGlowSegments,
   profileFantasyBlueGlowSegments,
@@ -41,6 +37,7 @@ export type ProfileHeroCardProps = {
   onEdit?: () => void;
   onInvite?: () => void;
   onMessage?: () => void;
+  onShare?: () => void;
   profile: ProfileViewModel;
   vibe?: number;
 };
@@ -50,6 +47,7 @@ export function ProfileHeroCard({
   onEdit,
   onInvite,
   onMessage,
+  onShare,
   profile,
   vibe,
 }: ProfileHeroCardProps) {
@@ -106,53 +104,107 @@ export function ProfileHeroCard({
         start={{ x: 0, y: 0.42 }}
         style={StyleSheet.absoluteFill}
       />
-      <Image resizeMode="cover" source={heroSource} style={heroImageStyle} />
-      <LinearGradient
-        colors={
-          hasUploadedCover
-            ? [
-                'rgba(3,6,18,0.76)',
-                'rgba(3,6,18,0.50)',
-                'rgba(3,6,18,0.18)',
-                'rgba(3,6,18,0.04)',
-              ]
-            : [
-                'rgba(3,6,18,0.96)',
-                'rgba(3,6,18,0.78)',
-                'rgba(3,6,18,0.18)',
-                'rgba(3,6,18,0.00)',
-              ]
-        }
-        end={{ x: 1, y: 0.42 }}
-        pointerEvents="none"
-        start={hasUploadedCover ? { x: 0, y: 0.42 } : { x: 0.12, y: 0.42 }}
-        style={StyleSheet.absoluteFill}
+      <Image
+        blurRadius={hasUploadedCover ? 4 : 0}
+        resizeMode="cover"
+        source={heroSource}
+        style={heroImageStyle}
       />
-      <LinearGradient
-        colors={[
-          'rgba(106,101,255,0.15)',
-          'rgba(56,215,255,0.13)',
-          'rgba(3,7,20,0.00)',
-        ]}
-        end={{ x: 1, y: 1 }}
-        pointerEvents="none"
-        start={{ x: 0.04, y: 0 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {!hasUploadedCover ? (
-        <LinearGradient
-          colors={[
-            'rgba(106,101,255,0.00)',
-            'rgba(106,101,255,0.11)',
-            'rgba(103,232,255,0.12)',
-            'rgba(3,7,20,0.00)',
-          ]}
-          end={{ x: 1, y: 0.5 }}
-          pointerEvents="none"
-          start={{ x: 0.42, y: 0.46 }}
-          style={styles.artPresence}
-        />
-      ) : null}
+      {hasUploadedCover ? (
+        <>
+          <Image
+            resizeMode="cover"
+            source={heroSource}
+            style={styles.heroCoverClarityImage}
+          />
+          <View pointerEvents="none" style={styles.uploadedCoverDimLayer} />
+          <LinearGradient
+            colors={[
+              'rgba(1,3,12,0.84)',
+              'rgba(1,3,12,0.56)',
+              'rgba(1,3,12,0.18)',
+              'rgba(1,3,12,0.30)',
+            ]}
+            end={{ x: 1, y: 0.44 }}
+            locations={[0, 0.38, 0.72, 1]}
+            pointerEvents="none"
+            start={{ x: 0, y: 0.44 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={[
+              'rgba(2,5,16,0.58)',
+              'rgba(2,5,16,0.14)',
+              'rgba(2,5,16,0.78)',
+            ]}
+            end={{ x: 0.5, y: 1 }}
+            locations={[0, 0.48, 1]}
+            pointerEvents="none"
+            start={{ x: 0.5, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={[
+              'rgba(92,96,255,0.13)',
+              'rgba(36,178,255,0.06)',
+              'rgba(2,5,16,0.00)',
+            ]}
+            end={{ x: 1, y: 1 }}
+            pointerEvents="none"
+            start={{ x: 0.06, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={[
+              'rgba(0,0,0,0.34)',
+              'rgba(0,0,0,0.00)',
+              'rgba(0,0,0,0.38)',
+            ]}
+            end={{ x: 1, y: 0.5 }}
+            pointerEvents="none"
+            start={{ x: 0, y: 0.5 }}
+            style={StyleSheet.absoluteFill}
+          />
+        </>
+      ) : (
+        <>
+          <LinearGradient
+            colors={[
+              'rgba(3,6,18,0.96)',
+              'rgba(3,6,18,0.78)',
+              'rgba(3,6,18,0.18)',
+              'rgba(3,6,18,0.00)',
+            ]}
+            end={{ x: 1, y: 0.42 }}
+            pointerEvents="none"
+            start={{ x: 0.12, y: 0.42 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={[
+              'rgba(106,101,255,0.15)',
+              'rgba(56,215,255,0.13)',
+              'rgba(3,7,20,0.00)',
+            ]}
+            end={{ x: 1, y: 1 }}
+            pointerEvents="none"
+            start={{ x: 0.04, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <LinearGradient
+            colors={[
+              'rgba(106,101,255,0.00)',
+              'rgba(106,101,255,0.11)',
+              'rgba(103,232,255,0.12)',
+              'rgba(3,7,20,0.00)',
+            ]}
+            end={{ x: 1, y: 0.5 }}
+            pointerEvents="none"
+            start={{ x: 0.42, y: 0.46 }}
+            style={styles.artPresence}
+          />
+        </>
+      )}
       <LinearGradient
         colors={[
           'rgba(255,255,255,0.16)',
@@ -165,12 +217,28 @@ export function ProfileHeroCard({
         style={styles.topHighlight}
       />
       <LinearGradient
-        colors={['rgba(3,6,18,0.00)', 'rgba(3,6,18,0.38)', 'rgba(3,6,18,0.78)']}
+        colors={[
+          'rgba(3,6,18,0.00)',
+          hasUploadedCover ? 'rgba(3,6,18,0.54)' : 'rgba(3,6,18,0.38)',
+          hasUploadedCover ? 'rgba(3,6,18,0.90)' : 'rgba(3,6,18,0.78)',
+        ]}
         end={{ x: 0.5, y: 1 }}
         pointerEvents="none"
         start={{ x: 0.5, y: 0.42 }}
         style={StyleSheet.absoluteFill}
       />
+      {hasUploadedCover ? (
+        <LinearGradient
+          colors={[
+            'rgba(3,6,18,0.00)',
+            'rgba(3,6,18,0.66)',
+            'rgba(3,6,18,0.94)',
+          ]}
+          locations={[0, 0.42, 1]}
+          pointerEvents="none"
+          style={styles.uploadedCoverStatsScrim}
+        />
+      ) : null}
 
       <View style={styles.contentLayer}>
         <View style={styles.identityRow}>
@@ -183,21 +251,7 @@ export function ProfileHeroCard({
             >
               <Image source={avatarSource} style={styles.avatarImage} />
             </LinearGradient>
-            {isSelf ? (
-              <LiquidOrbButton
-                accessibilityLabel="Đổi ảnh đại diện"
-                glowIntensity="low"
-                onPress={onEdit}
-                size={31}
-                style={styles.editAvatarOrb}
-              >
-                <Ionicons
-                  color={liquidColors.text.primary}
-                  name="pencil"
-                  size={12}
-                />
-              </LiquidOrbButton>
-            ) : null}
+
           </View>
 
           <View style={styles.identityCopy}>
@@ -231,7 +285,7 @@ export function ProfileHeroCard({
                 textStyle={styles.statusText}
                 variant="cyan"
               >
-                Sẵn sàng
+                {profile.statusLabel}
               </LiquidChip>
               {!isSelf && vibe ? (
                 <LiquidChip
@@ -291,7 +345,7 @@ export function ProfileHeroCard({
               'rgba(72,226,255,0.82)',
             ]}
             gradientLocations={[0, 0.2, 0.58, 1]}
-            onPress={isSelf ? onInvite : onInvite}
+            onPress={isSelf ? onShare : onInvite}
             radius={22}
             style={styles.inviteButton}
             variant="primary"
@@ -361,7 +415,6 @@ const styles = StyleSheet.create({
     position: 'relative',
     zIndex: 3,
   },
-  editAvatarOrb: { bottom: 0, position: 'absolute', right: 0 },
   heroArtwork: {
     height: 224,
     opacity: 0.4,
@@ -370,13 +423,23 @@ const styles = StyleSheet.create({
     top: -27,
     width: 318,
   },
-  heroCoverImage: {
-    bottom: 0,
+  heroCoverClarityImage: {
+    bottom: 82,
     left: 0,
-    opacity: 0.52,
+    opacity: 0.24,
     position: 'absolute',
     right: 0,
     top: 0,
+    transform: [{ scale: 1.006 }],
+  },
+  heroCoverImage: {
+    bottom: 82,
+    left: 0,
+    opacity: 0.44,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    transform: [{ scale: 1.018 }],
   },
   heroFrame: { marginTop: 8, overflow: 'visible' },
   heroSurface: {
@@ -463,6 +526,21 @@ const styles = StyleSheet.create({
     width: 232,
   },
   statusText: { fontSize: 10.4, fontWeight: '600', letterSpacing: -0.01 },
+  uploadedCoverDimLayer: {
+    backgroundColor: 'rgba(1,3,10,0.06)',
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
+  uploadedCoverStatsScrim: {
+    bottom: 0,
+    height: 126,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+  },
   topHighlight: {
     height: 1,
     left: 14,

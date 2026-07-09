@@ -77,6 +77,16 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-router',
       'expo-dev-client',
       'expo-font',
+      'expo-sharing',
+      [
+        'expo-media-library',
+        {
+          photosPermission:
+            'Cho phép Liqi Match lưu ảnh hồ sơ chia sẻ vào thư viện ảnh của bạn.',
+          savePhotosPermission:
+            'Cho phép Liqi Match lưu ảnh hồ sơ chia sẻ vào thư viện ảnh của bạn.',
+        },
+      ],
       './plugins/withAndroidMaterialVersion',
       [
         'expo-splash-screen',

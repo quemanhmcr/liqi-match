@@ -37,6 +37,14 @@ const tabs = [
 
 export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
   const { session } = useAuth();
+  const openProfileEditor = () => {
+    selectionImpact();
+    router.push('/profile/edit');
+  };
+  const openProfileShare = () => {
+    impactLight();
+    router.push('/profile/share');
+  };
   const profileQuery = useQuery({
     enabled: Boolean(session && (mode === 'self' || userId)),
     queryFn: () => {
@@ -63,9 +71,10 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
       <ProfileTopBar mode={mode} loading={profileQuery.isLoading} />
       <ProfileHeroCard
         mode={mode}
-        onEdit={selectionImpact}
+        onEdit={mode === 'self' ? openProfileEditor : selectionImpact}
         onInvite={impactLight}
         onMessage={selectionImpact}
+        onShare={openProfileShare}
         profile={profile}
         vibe={profileMockVibe}
       />

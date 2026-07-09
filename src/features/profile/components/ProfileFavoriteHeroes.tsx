@@ -64,7 +64,7 @@ export function ProfileFavoriteHeroes({
         horizontal
         showsHorizontalScrollIndicator={false}
       >
-        {items.map((hero, index) => (
+        {items.length ? items.map((hero, index) => (
           <LiquidCard
             contentStyle={styles.heroMiniSurface}
             density="list"
@@ -110,18 +110,31 @@ export function ProfileFavoriteHeroes({
               <ProfileText numberOfLines={1} style={styles.heroName}>
                 {hero.name}
               </ProfileText>
-              <ProfileText numberOfLines={1} style={styles.heroMeta}>
-                {hero.matches} trận
-              </ProfileText>
-              <ProfileText numberOfLines={1} style={styles.heroWinRate}>
-                {hero.winRate}% win
-              </ProfileText>
+              {heroStatsLabel(hero) ? (
+                <ProfileText numberOfLines={1} style={styles.heroMeta}>
+                  {heroStatsLabel(hero)}
+                </ProfileText>
+              ) : null}
             </View>
           </LiquidCard>
-        ))}
+        )) : (
+          <View style={styles.emptyHeroes}>
+            <ProfileText style={styles.emptyText}>Chưa chọn tướng tủ.</ProfileText>
+          </View>
+        )}
       </ScrollView>
     </LiquidCard>
   );
+}
+
+function heroStatsLabel(hero: ProfileFavoriteHero) {
+  if (hero.matches !== undefined && hero.winRate !== undefined) {
+    return `${hero.matches} trận · ${hero.winRate}% win`;
+  }
+
+  if (hero.matches !== undefined) return `${hero.matches} trận`;
+  if (hero.winRate !== undefined) return `${hero.winRate}% win`;
+  return undefined;
 }
 
 function heroImage(hero: ProfileFavoriteHero) {
@@ -138,6 +151,18 @@ function normalizeKey(value: string) {
 }
 
 const styles = StyleSheet.create({
+
+  emptyHeroes: {
+    alignItems: 'center',
+    minHeight: 54,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  emptyText: {
+    color: 'rgba(205,216,245,0.54)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
   heroAvatar: {
     borderRadius: 19,
     height: 38,
@@ -161,10 +186,10 @@ const styles = StyleSheet.create({
     paddingRight: 2,
   },
   heroMeta: {
-    color: liquidColors.text.muted,
-    fontSize: 9,
-    fontWeight: '500',
-    marginTop: 2,
+    color: 'rgba(186,239,255,0.58)',
+    fontSize: 9.4,
+    fontWeight: '600',
+    marginTop: 3,
   },
   heroMiniHighlight: {
     height: 1,
@@ -175,8 +200,8 @@ const styles = StyleSheet.create({
     top: 1,
   },
   heroMiniFrame: {
-    minWidth: 116,
-    width: 118,
+    minWidth: 120,
+    width: 122,
   },
   heroMiniCopy: {
     flex: 1,
@@ -198,12 +223,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 0,
     maxWidth: '100%',
-  },
-  heroWinRate: {
-    color: 'rgba(186,239,255,0.62)',
-    fontSize: 9,
-    fontWeight: '600',
-    marginTop: 2,
   },
   roleBadge: {
     alignItems: 'center',
