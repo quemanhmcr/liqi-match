@@ -10,6 +10,7 @@ import {
   profileMockMinhAnhUserId,
   profileMockPlayStyleTags,
   profileMockQuote,
+  profileMockStats,
 } from './profile.mock';
 
 type MaybeArray<T> = T | T[] | null | undefined;
@@ -118,6 +119,14 @@ type ProfileRow = {
 };
 
 export type ProfileStatusValue = 'ready' | 'busy' | 'offline' | 'friends';
+export type ProfileGender = 'male' | 'female' | 'hidden';
+
+export type ProfileStats = {
+  matches: number;
+  rating: number;
+  reputation: number;
+  winRate: number;
+};
 
 export type ProfileFavoriteHero = {
   heroId?: string;
@@ -138,12 +147,14 @@ export type ProfileViewModel = {
   coverUrl?: string;
   displayName: string;
   favoriteHeroes: ProfileFavoriteHero[];
+  gender: ProfileGender;
   id: string;
   playStyleTags: string[];
   rankName?: string;
   region?: string;
   roleNames: string[];
   showWinRate: boolean;
+  stats: ProfileStats;
   statusLabel: string;
   statusValue: ProfileStatusValue;
   verified: boolean;
@@ -179,6 +190,7 @@ export type ProfileEditDraft = {
   coverUrl?: string;
   displayName: string;
   favoriteHeroes: ProfileFavoriteHero[];
+  gender: ProfileGender;
   habits: ProfileEditHabits;
   heroOptions: ProfileHeroPickerOption[];
   id: string;
@@ -187,6 +199,7 @@ export type ProfileEditDraft = {
   roles: ProfileReferenceOption[];
   selectedRankId?: string;
   selectedRoleId?: string;
+  stats: ProfileStats;
   status: ProfileStatusValue;
 };
 
@@ -196,10 +209,12 @@ export type SaveProfileEditInput = {
   coverMediaId?: string | null;
   displayName: string;
   favoriteHeroes: ProfileFavoriteHero[];
+  gender: ProfileGender;
   habits: ProfileEditHabits;
   rankId?: string;
   region: string;
   roleId?: string;
+  stats: ProfileStats;
   status: ProfileStatusValue;
 };
 
@@ -214,6 +229,13 @@ const profileSelect = [
 ].join(',');
 
 const editableRoleOrder = ['slayer', 'jungle', 'mid', 'dragon', 'support'];
+
+const defaultProfileStats: ProfileStats = {
+  matches: profileMockStats.matches,
+  rating: profileMockStats.rating,
+  reputation: profileMockStats.reputation,
+  winRate: profileMockStats.winRate,
+};
 
 const defaultEditHabits: ProfileEditHabits = {
   comeback_response: 'Vẫn cố gắng đến cuối',
@@ -276,6 +298,8 @@ export async function fetchProfileEditDraft(
   const gameProfile = first(row?.game_profiles);
   const habits = first(row?.profile_habits);
   const mediaSummary = mediaSummaryRecord(habits?.media_summary);
+  const gender = profileGenderFromSummary(mediaSummary);
+  const stats = profileStatsFromSummary(mediaSummary);
   const fallbackCover = await fetchUploadedProfileCover(session, profileId);
   const explicitCoverMediaId = mediaIdFromSummary(
     mediaSummary,
@@ -304,6 +328,7 @@ export async function fetchProfileEditDraft(
     coverUrl: mediaUrl(coverMediaId) ?? fallbackCover?.url,
     displayName: (row?.display_name ?? preview.displayName).slice(0, 20),
     favoriteHeroes,
+    gender,
     habits: buildEditHabits(habits),
     heroOptions: buildHeroOptions(backendHeroes, favoriteHeroes),
     id: row?.id ?? profileId,
@@ -316,6 +341,7 @@ export async function fetchProfileEditDraft(
     selectedRoleId:
       row?.profile_roles?.[0]?.role_id ??
       roleOptions.find((role) => role.slug === 'jungle')?.id,
+    stats,
     status: statusFromSummary(mediaSummary),
   };
 }
@@ -333,6 +359,13 @@ export async function saveProfileEdit(
     ...mediaSummaryRecord(habits.media_summary),
     cover_media_id: input.coverMediaId ?? null,
     favorite_hero_stats: buildFavoriteHeroStatsSummary(input.favoriteHeroes),
+    profile_basics: {
+      ...mediaSummaryRecord(
+        mediaSummaryRecord(habits.media_summary).profile_basics,
+      ),
+      gender: normalizeProfileGender(input.gender),
+    },
+    profile_stats: normalizeProfileStats(input.stats),
     profile_status: normalizeStatus(input.status),
   };
 
@@ -436,7 +469,9 @@ export async function fetchProfileView(input: {
     ? undefined
     : await fetchUploadedProfileCover(input.session, row.id);
   const coverUrl = mediaUrl(explicitCoverMediaId) ?? fallbackCover?.url;
+  const gender = profileGenderFromSummary(mediaSummary);
   const showWinRate = showWinRateFromSummary(mediaSummary);
+  const stats = profileStatsFromSummary(mediaSummary);
   const statusValue = statusFromSummary(mediaSummary);
 
   return {
@@ -450,12 +485,14 @@ export async function fetchProfileView(input: {
       displayNameFromSession(input.session) ??
       'Liqi Player',
     favoriteHeroes: buildFavoriteHeroes(heroRows, false, mediaSummary),
+    gender,
     id: row.id,
     playStyleTags: buildPlayStyleTags(habits),
     rankName: first(gameProfile?.ranks)?.name ?? undefined,
     region: formatRegion(gameProfile?.server_region),
     roleNames,
     showWinRate,
+    stats,
     statusLabel: statusLabel(statusValue),
     statusValue,
     verified: true,
@@ -483,12 +520,14 @@ export function buildPreviewProfile(
       slug: hero.slug,
       winRate: hero.winRate,
     })),
+    gender: 'male',
     id: userId,
     playStyleTags: [...profileMockPlayStyleTags],
     rankName: 'Cao Thủ',
     region: 'Global',
     roleNames: ['Trợ Thủ'],
     showWinRate: true,
+    stats: defaultProfileStats,
     statusLabel: 'Sẵn sàng',
     statusValue: 'ready',
     verified: true,
@@ -507,12 +546,14 @@ function buildMinhAnhPreviewProfile(): ProfileViewModel {
       slug: hero.slug,
       winRate: hero.winRate,
     })),
+    gender: 'female',
     id: profileMockMinhAnhUserId,
     playStyleTags: [...profileMockPlayStyleTags],
     rankName: 'Cao Thủ',
     region: 'Global',
     roleNames: ['Trợ Thủ'],
     showWinRate: true,
+    stats: defaultProfileStats,
     statusLabel: 'Sẵn sàng',
     statusValue: 'ready',
     verified: true,
@@ -727,15 +768,30 @@ async function saveProfileHeroes(
   heroes: ProfileFavoriteHero[],
 ) {
   const selected = dedupeHeroes(heroes).slice(0, 3);
+  const resolvedHeroes = await Promise.all(
+    selected.map(async (hero) => ({
+      hero,
+      heroId: await resolveHeroId(session, hero),
+    })),
+  );
+  const missingHero = resolvedHeroes.find((item) => !item.heroId)?.hero;
+
+  if (missingHero) {
+    throw new Error(
+      `Chưa đồng bộ dữ liệu tướng “${missingHero.name}”. Vui lòng cập nhật dữ liệu và thử lại.`,
+    );
+  }
+
+  const resolvedHeroIds = resolvedHeroes
+    .map((item) => item.heroId)
+    .filter((heroId): heroId is string => Boolean(heroId));
 
   await supabaseRest(
     `profile_heroes?profile_id=eq.${encodeURIComponent(profileId)}`,
     { method: 'DELETE', prefer: 'return=minimal', session },
   );
 
-  for (const hero of selected) {
-    const heroId = await resolveHeroId(session, hero);
-    if (!heroId) continue;
+  for (const heroId of resolvedHeroIds) {
     await supabaseRest('profile_heroes?on_conflict=profile_id,hero_id', {
       body: { hero_id: heroId, profile_id: profileId },
       method: 'POST',
@@ -748,38 +804,12 @@ async function saveProfileHeroes(
 async function resolveHeroId(session: AuthSession, hero: ProfileFavoriteHero) {
   if (hero.heroId && isUuid(hero.heroId)) return hero.heroId;
   const slug = hero.slug ? normalizeSlug(hero.slug) : normalizeSlug(hero.name);
-  const catalogHero = HEROES.find((item) => toDbSlug(item.id) === slug);
-  const roleSlug = catalogHero ? roleSlugForHero(catalogHero.role) : undefined;
-  const roleId = roleSlug ? await fetchRoleId(session, roleSlug) : undefined;
-
   const rows = await supabaseRest<HeroRow[]>(
-    'heroes?on_conflict=slug&select=id,slug,name',
-    {
-      body: {
-        name: hero.name,
-        role_id: roleId ?? null,
-        slug,
-      },
-      method: 'POST',
-      prefer: 'resolution=merge-duplicates,return=representation',
-      session,
-    },
+    `heroes?select=id,slug,name&slug=eq.${encodeURIComponent(slug)}&limit=1`,
+    { session },
   );
 
   return rows[0]?.id;
-}
-
-const roleIdCache = new Map<string, string | undefined>();
-
-async function fetchRoleId(session: AuthSession, slug: string) {
-  if (roleIdCache.has(slug)) return roleIdCache.get(slug);
-  const rows = await supabaseRest<{ id: string }[]>(
-    `roles?select=id&slug=eq.${encodeURIComponent(slug)}&limit=1`,
-    { session },
-  );
-  const id = rows[0]?.id;
-  roleIdCache.set(slug, id);
-  return id;
 }
 
 function dedupeHeroes(heroes: ProfileFavoriteHero[]) {
@@ -962,6 +992,73 @@ function formatRegion(value: string | null | undefined) {
   return value.toUpperCase();
 }
 
+function profileGenderFromSummary(summary: MediaSummary): ProfileGender {
+  const basics = mediaSummaryRecord(summary.profile_basics);
+  return normalizeProfileGender(basics.gender ?? summary.gender);
+}
+
+function normalizeProfileGender(value: unknown): ProfileGender {
+  if (value === 'female' || value === 'hidden') return value;
+  return 'male';
+}
+
+function profileStatsFromSummary(summary: MediaSummary): ProfileStats {
+  const stats = mediaSummaryRecord(summary.profile_stats);
+  return normalizeProfileStats({
+    matches: stats.matches,
+    rating: stats.rating,
+    reputation: stats.reputation,
+    winRate: stats.win_rate ?? stats.winRate,
+  });
+}
+
+function normalizeProfileStats(
+  value: Partial<Record<keyof ProfileStats, unknown>>,
+): ProfileStats {
+  return {
+    matches: normalizeStatNumber(
+      value.matches,
+      defaultProfileStats.matches,
+      0,
+      99999,
+    ),
+    rating: normalizeRatingNumber(value.rating),
+    reputation: normalizeStatNumber(
+      value.reputation,
+      defaultProfileStats.reputation,
+      0,
+      100,
+    ),
+    winRate: normalizeStatNumber(
+      value.winRate,
+      defaultProfileStats.winRate,
+      0,
+      100,
+    ),
+  };
+}
+
+function normalizeStatNumber(
+  value: unknown,
+  fallback: number,
+  min: number,
+  max: number,
+) {
+  if (value === null || value === undefined || value === '') return fallback;
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(number)));
+}
+
+function normalizeRatingNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') {
+    return defaultProfileStats.rating;
+  }
+  const number = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(number)) return defaultProfileStats.rating;
+  return Math.max(0, Math.min(5, Math.round(number * 10) / 10));
+}
+
 function showWinRateFromSummary(summary: MediaSummary) {
   const settings = mediaSummaryRecord(summary.settings);
   return settings.show_win_rate === false ? false : true;
@@ -1010,17 +1107,6 @@ function normalizeHeroKey(value: string) {
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_+|_+$/g, '');
 }
-
-function roleSlugForHero(role: string | undefined) {
-  if (role === 'Đấu sĩ') return 'fighter';
-  if (role === 'Đỡ đòn') return 'tank';
-  if (role === 'Pháp sư') return 'mage';
-  if (role === 'Sát thủ') return 'assassin';
-  if (role === 'Trợ thủ') return 'support';
-  if (role === 'Xạ thủ') return 'marksman';
-  return undefined;
-}
-
 function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value,

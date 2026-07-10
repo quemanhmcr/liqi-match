@@ -43,8 +43,10 @@ import {
   type ProfileEditDraft,
   type ProfileEditHabits,
   type ProfileFavoriteHero,
+  type ProfileGender,
   type ProfileHeroPickerOption,
   type ProfileReferenceOption,
+  type ProfileStats,
   type ProfileStatusValue,
 } from './profile-service';
 
@@ -59,6 +61,22 @@ const statusOptions: { label: string; value: ProfileStatusValue }[] = [
   { label: 'Đang bận', value: 'busy' },
   { label: 'Offline', value: 'offline' },
   { label: 'Chỉ bạn bè', value: 'friends' },
+];
+
+const genderOptions: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  meta: string;
+  value: ProfileGender;
+}[] = [
+  { icon: 'male', label: 'Nam', meta: 'hiện ký hiệu ♂', value: 'male' },
+  { icon: 'female', label: 'Nữ', meta: 'hiện ký hiệu ♀', value: 'female' },
+  {
+    icon: 'remove-outline',
+    label: 'Ẩn',
+    meta: 'không hiện trên hồ sơ',
+    value: 'hidden',
+  },
 ];
 
 const seriousnessOptions = ['Thoải mái', 'Cân bằng', 'Cạnh tranh'] as const;
@@ -81,6 +99,7 @@ const heroSlotCount = 3;
 
 type MediaSlot = 'avatar' | 'cover';
 type FocusedField = 'displayName' | 'bio' | null;
+type ProfileStatKey = keyof ProfileStats;
 
 type EditForm = {
   avatarMediaId?: string | null;
@@ -90,10 +109,12 @@ type EditForm = {
   coverUrl?: string;
   displayName: string;
   favoriteHeroes: ProfileFavoriteHero[];
+  gender: ProfileGender;
   habits: ProfileEditHabits;
   rankId?: string;
   region: string;
   roleId?: string;
+  stats: ProfileStats;
   status: ProfileStatusValue;
 };
 
@@ -150,10 +171,12 @@ export function ProfileEditScreen() {
         coverMediaId: value.coverMediaId,
         displayName: value.displayName,
         favoriteHeroes: value.favoriteHeroes,
+        gender: value.gender,
         habits: value.habits,
         rankId: value.rankId,
         region: value.region,
         roleId: value.roleId,
+        stats: value.stats,
         status: value.status,
       });
     },
@@ -307,14 +330,17 @@ export function ProfileEditScreen() {
             setForm={setForm}
           />
           <PlayStyleSection form={form} setForm={setForm} />
+          <StatsSection form={form} setForm={setForm} />
           <FavoriteHeroesSection
             heroes={form.favoriteHeroes}
             onChangeMatches={(slot, matches) =>
               updateHeroMatches(setForm, slot, matches)
             }
             onChangeSlot={(slot) => setHeroPickerSlot(slot)}
+            onChangeWinRate={(slot, winRate) =>
+              updateHeroWinRate(setForm, slot, winRate)
+            }
           />
-          <PrivacySection />
           {draftQuery.isError ? (
             <ProfileText style={styles.errorText}>
               Chưa đọc được dữ liệu chỉnh sửa mới nhất. App đang giữ form hiện
@@ -702,6 +728,12 @@ function BasicInfoSection({
         </ProfileText>
       ) : null}
 
+      <GenderGroup
+        selected={form.gender}
+        onSelect={(gender) =>
+          setForm((current) => (current ? { ...current, gender } : current))
+        }
+      />
       <OptionGroup
         label="Vai trò chính"
         options={roles}
@@ -874,20 +906,125 @@ function PlayStyleSection({
   );
 }
 
+function StatsSection({
+  form,
+  setForm,
+}: {
+  form: EditForm;
+  setForm: Dispatch<SetStateAction<EditForm | null>>;
+}) {
+  return (
+    <EditorSection
+      icon="analytics-outline"
+      title="Thanh thông số"
+      subtitle="Chỉnh các con số đang hiển thị trên hồ sơ và ảnh chia sẻ."
+    >
+      <View style={styles.statsGrid}>
+        <StatInput
+          label="Số trận"
+          maxLength={5}
+          suffix="trận"
+          value={String(form.stats.matches)}
+          onChange={(value) =>
+            updateProfileStats(
+              setForm,
+              'matches',
+              parseIntegerInput(value, 99999),
+            )
+          }
+        />
+        <StatInput
+          label="Tỷ lệ thắng"
+          maxLength={3}
+          suffix="%"
+          value={String(form.stats.winRate)}
+          onChange={(value) =>
+            updateProfileStats(
+              setForm,
+              'winRate',
+              parseIntegerInput(value, 100),
+            )
+          }
+        />
+        <StatInput
+          decimal
+          label="Đánh giá"
+          maxLength={3}
+          suffix="★"
+          value={String(form.stats.rating)}
+          onChange={(value) =>
+            updateProfileStats(setForm, 'rating', parseRatingInput(value))
+          }
+        />
+        <StatInput
+          label="Uy tín"
+          maxLength={3}
+          suffix="điểm"
+          value={String(form.stats.reputation)}
+          onChange={(value) =>
+            updateProfileStats(
+              setForm,
+              'reputation',
+              parseIntegerInput(value, 100),
+            )
+          }
+        />
+      </View>
+    </EditorSection>
+  );
+}
+
+function StatInput({
+  decimal = false,
+  label,
+  maxLength,
+  onChange,
+  suffix,
+  value,
+}: {
+  decimal?: boolean;
+  label: string;
+  maxLength: number;
+  onChange: (value: string) => void;
+  suffix: string;
+  value: string;
+}) {
+  return (
+    <View style={styles.statInputCard}>
+      <ProfileText style={styles.statInputLabel}>{label}</ProfileText>
+      <View style={styles.statInputRow}>
+        <TextInput
+          accessibilityLabel={label}
+          keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
+          maxLength={maxLength}
+          onChangeText={onChange}
+          placeholder="0"
+          placeholderTextColor="rgba(205,216,245,0.34)"
+          style={styles.statInput}
+          value={value}
+        />
+        <ProfileText style={styles.statInputSuffix}>{suffix}</ProfileText>
+      </View>
+    </View>
+  );
+}
+
 function FavoriteHeroesSection({
   heroes,
   onChangeMatches,
   onChangeSlot,
+  onChangeWinRate,
 }: {
   heroes: ProfileFavoriteHero[];
   onChangeMatches: (slot: number, matches: number | undefined) => void;
   onChangeSlot: (slot: number) => void;
+  onChangeWinRate: (slot: number, winRate: number | undefined) => void;
 }) {
   return (
     <EditorSection
       icon="shield-checkmark-outline"
       title="Tướng tủ"
-      subtitle="Chọn 3 tướng đại diện và nhập số trận muốn hiển thị trên hồ sơ."
+      subtitle="Chọn 3 tướng đại diện, số trận và tỷ lệ thắng muốn hiển thị."
     >
       {Array.from({ length: heroSlotCount }).map((_, index) => {
         const hero = heroes[index];
@@ -904,22 +1041,43 @@ function FavoriteHeroesSection({
                 {hero?.name ?? 'Chọn tướng'}
               </ProfileText>
               {hero ? (
-                <View style={styles.heroMatchInputRow}>
-                  <TextInput
-                    accessibilityLabel={`Số trận ${hero.name}`}
-                    keyboardType="number-pad"
-                    maxLength={5}
-                    onChangeText={(value) =>
-                      onChangeMatches(index, parseMatchCountInput(value))
-                    }
-                    placeholder="0"
-                    placeholderTextColor="rgba(205,216,245,0.34)"
-                    style={styles.heroMatchInput}
-                    value={
-                      hero.matches !== undefined ? String(hero.matches) : ''
-                    }
-                  />
-                  <ProfileText style={styles.heroMatchSuffix}>trận</ProfileText>
+                <View style={styles.heroStatsEditRow}>
+                  <View style={styles.heroMatchInputRow}>
+                    <TextInput
+                      accessibilityLabel={`Số trận ${hero.name}`}
+                      keyboardType="number-pad"
+                      maxLength={5}
+                      onChangeText={(value) =>
+                        onChangeMatches(index, parseMatchCountInput(value))
+                      }
+                      placeholder="0"
+                      placeholderTextColor="rgba(205,216,245,0.34)"
+                      style={styles.heroMatchInput}
+                      value={
+                        hero.matches !== undefined ? String(hero.matches) : ''
+                      }
+                    />
+                    <ProfileText style={styles.heroMatchSuffix}>
+                      trận
+                    </ProfileText>
+                  </View>
+                  <View style={styles.heroMatchInputRow}>
+                    <TextInput
+                      accessibilityLabel={`Tỷ lệ thắng ${hero.name}`}
+                      keyboardType="number-pad"
+                      maxLength={3}
+                      onChangeText={(value) =>
+                        onChangeWinRate(index, parseWinRateInput(value))
+                      }
+                      placeholder="0"
+                      placeholderTextColor="rgba(205,216,245,0.34)"
+                      style={styles.heroMatchInput}
+                      value={
+                        hero.winRate !== undefined ? String(hero.winRate) : ''
+                      }
+                    />
+                    <ProfileText style={styles.heroMatchSuffix}>%</ProfileText>
+                  </View>
                 </View>
               ) : (
                 <ProfileText numberOfLines={1} style={styles.heroEditMeta}>
@@ -1066,33 +1224,6 @@ function HeroPickerModal({
         </View>
       </View>
     </Modal>
-  );
-}
-
-function PrivacySection() {
-  return (
-    <EditorSection
-      icon="shield-checkmark-outline"
-      title="Quyền riêng tư"
-      subtitle="Stats, rating và uy tín là dữ liệu hệ thống nên không cho sửa tay trong form này."
-    >
-      <View style={styles.privacyRow}>
-        <ProfileText style={styles.privacyLabel}>
-          Hiển thị tỷ lệ thắng
-        </ProfileText>
-        <LiquidChip density="compact" selected variant="cyan">
-          On
-        </LiquidChip>
-      </View>
-      <View style={styles.privacyRow}>
-        <ProfileText style={styles.privacyLabel}>
-          Cho phép chia sẻ hồ sơ
-        </ProfileText>
-        <LiquidChip density="compact" selected variant="cyan">
-          On
-        </LiquidChip>
-      </View>
-    </EditorSection>
   );
 }
 
@@ -1274,6 +1405,72 @@ function StringMultiGroup({
   );
 }
 
+function GenderGroup({
+  onSelect,
+  selected,
+}: {
+  onSelect: (value: ProfileGender) => void;
+  selected: ProfileGender;
+}) {
+  return (
+    <>
+      <FieldLabel label="Giới tính" meta="hiển thị cạnh dấu tích" />
+      <View style={styles.genderOptionRow}>
+        {genderOptions.map((option) => {
+          const isSelected = option.value === selected;
+          return (
+            <Pressable
+              accessibilityLabel={`Giới tính ${option.label}`}
+              accessibilityRole="button"
+              accessibilityState={{ selected: isSelected }}
+              key={option.value}
+              onPress={() => onSelect(option.value)}
+              style={({ pressed }) => [
+                styles.genderOption,
+                isSelected && styles.genderOptionSelected,
+                pressed && styles.pressed,
+              ]}
+            >
+              <LinearGradient
+                colors={
+                  option.value === 'female'
+                    ? ['rgba(255,116,211,0.28)', 'rgba(142,92,255,0.12)']
+                    : option.value === 'male'
+                      ? ['rgba(103,232,255,0.24)', 'rgba(87,111,255,0.11)']
+                      : ['rgba(205,216,245,0.12)', 'rgba(255,255,255,0.02)']
+                }
+                end={{ x: 1, y: 1 }}
+                pointerEvents="none"
+                start={{ x: 0, y: 0 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={styles.genderIconShell}>
+                <Ionicons
+                  color={
+                    isSelected
+                      ? 'rgba(250,252,255,0.96)'
+                      : 'rgba(205,216,245,0.62)'
+                  }
+                  name={option.icon}
+                  size={14}
+                />
+              </View>
+              <View style={styles.genderCopy}>
+                <ProfileText style={styles.genderLabel}>
+                  {option.label}
+                </ProfileText>
+                <ProfileText numberOfLines={1} style={styles.genderMeta}>
+                  {option.meta}
+                </ProfileText>
+              </View>
+            </Pressable>
+          );
+        })}
+      </View>
+    </>
+  );
+}
+
 function FieldLabel({ label, meta }: { label: string; meta?: string }) {
   return (
     <View style={styles.fieldLabelRow}>
@@ -1292,10 +1489,12 @@ function draftToForm(draft: ProfileEditDraft): EditForm {
     coverUrl: draft.coverUrl,
     displayName: draft.displayName,
     favoriteHeroes: draft.favoriteHeroes,
+    gender: draft.gender,
     habits: draft.habits,
     rankId: draft.selectedRankId,
     region: draft.region,
     roleId: draft.selectedRoleId,
+    stats: draft.stats,
     status: draft.status,
   };
 }
@@ -1311,10 +1510,12 @@ function stableFormKey(value: EditForm) {
       matches: hero.matches ?? null,
       winRate: hero.winRate ?? null,
     })),
+    gender: value.gender,
     habits: value.habits,
     rankId: value.rankId ?? null,
     region: value.region,
     roleId: value.roleId ?? null,
+    stats: value.stats,
     status: value.status,
   });
 }
@@ -1374,10 +1575,59 @@ function updateHeroMatches(
   });
 }
 
+function updateHeroWinRate(
+  setForm: Dispatch<SetStateAction<EditForm | null>>,
+  slot: number,
+  winRate: number | undefined,
+) {
+  setForm((current) => {
+    if (!current) return current;
+    const nextHeroes = current.favoriteHeroes.map((hero, index) =>
+      index === slot ? { ...hero, winRate } : hero,
+    );
+    return { ...current, favoriteHeroes: nextHeroes };
+  });
+}
+
+function updateProfileStats(
+  setForm: Dispatch<SetStateAction<EditForm | null>>,
+  key: ProfileStatKey,
+  value: number,
+) {
+  setForm((current) =>
+    current
+      ? {
+          ...current,
+          stats: { ...current.stats, [key]: value },
+        }
+      : current,
+  );
+}
+
 function parseMatchCountInput(value: string) {
   const digits = value.replace(/[^0-9]/g, '');
   if (!digits) return undefined;
   return Math.min(99999, Number(digits));
+}
+
+function parseWinRateInput(value: string) {
+  const digits = value.replace(/[^0-9]/g, '');
+  if (!digits) return undefined;
+  return Math.min(100, Number(digits));
+}
+
+function parseIntegerInput(value: string, max: number) {
+  const digits = value.replace(/[^0-9]/g, '');
+  if (!digits) return 0;
+  return Math.min(max, Number(digits));
+}
+
+function parseRatingInput(value: string) {
+  const normalized = value.replace(/[^0-9.]/g, '');
+  if (!normalized) return 0;
+  const number = Number(normalized);
+  if (!Number.isFinite(number)) return 0;
+  return Math.max(0, Math.min(5, Math.round(number * 10) / 10));
 }
 
 function replaceHeroSlot(
@@ -1398,12 +1648,13 @@ function replaceHeroSlot(
     const normalized = Array.from({ length: heroSlotCount })
       .map((_, index) => withoutDuplicate[index])
       .filter((item): item is ProfileFavoriteHero => Boolean(item));
+    const previous = current.favoriteHeroes[slot];
     normalized[slot] = {
       heroId: hero.heroId,
-      matches: hero.matches,
+      matches: previous?.matches ?? hero.matches,
       name: hero.name,
       slug: hero.slug,
-      winRate: hero.winRate,
+      winRate: previous?.winRate ?? hero.winRate,
     };
     return {
       ...current,
@@ -1568,6 +1819,51 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
   },
+  genderCopy: { flex: 1, minWidth: 0 },
+  genderIconShell: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(5,9,22,0.30)',
+    borderColor: 'rgba(190,218,255,0.12)',
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 27,
+    justifyContent: 'center',
+    width: 27,
+  },
+  genderLabel: {
+    color: 'rgba(250,252,255,0.88)',
+    fontSize: 12.2,
+    fontWeight: '900',
+  },
+  genderMeta: {
+    color: 'rgba(205,216,245,0.50)',
+    fontSize: 9.6,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  genderOption: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.042)',
+    borderColor: 'rgba(190,218,255,0.09)',
+    borderRadius: 17,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    flexDirection: 'row',
+    gap: 8,
+    minHeight: 54,
+    overflow: 'hidden',
+    paddingHorizontal: 9,
+    paddingVertical: 8,
+  },
+  genderOptionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  genderOptionSelected: {
+    borderColor: 'rgba(103,232,255,0.30)',
+    backgroundColor: 'rgba(103,232,255,0.070)',
+  },
   heroEditCopy: { flex: 1, minWidth: 0 },
   heroEditImage: { borderRadius: 20, height: 40, width: 40 },
   heroEditIndex: {
@@ -1606,7 +1902,6 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 5,
-    marginTop: 5,
     minHeight: 25,
     paddingHorizontal: 9,
   },
@@ -1614,6 +1909,12 @@ const styles = StyleSheet.create({
     color: 'rgba(186,239,255,0.66)',
     fontSize: 10.5,
     fontWeight: '700',
+  },
+  heroStatsEditRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+    marginTop: 6,
   },
   heroEditName: {
     color: liquidColors.text.primary,
@@ -1825,6 +2126,48 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     minHeight: 42,
+  },
+  statInput: {
+    color: 'rgba(250,252,255,0.95)',
+    flex: 1,
+    fontSize: 18,
+    fontWeight: '900',
+    letterSpacing: -0.22,
+    minHeight: 32,
+    padding: 0,
+  },
+  statInputCard: {
+    backgroundColor: 'rgba(255,255,255,0.044)',
+    borderColor: 'rgba(190,218,255,0.09)',
+    borderRadius: 18,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexBasis: '48%',
+    flexGrow: 1,
+    minHeight: 74,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  statInputLabel: {
+    color: 'rgba(205,216,245,0.58)',
+    fontSize: 10.8,
+    fontWeight: '700',
+  },
+  statInputRow: {
+    alignItems: 'flex-end',
+    flexDirection: 'row',
+    gap: 7,
+    marginTop: 6,
+  },
+  statInputSuffix: {
+    color: 'rgba(186,239,255,0.64)',
+    fontSize: 11,
+    fontWeight: '800',
+    paddingBottom: 5,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 9,
   },
   sectionCard: { marginBottom: 14 },
   sectionHeader: {

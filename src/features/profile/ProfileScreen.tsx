@@ -89,6 +89,7 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
       <ProfileFavoriteHeroes
         heroes={profile.favoriteHeroes}
         showWinRate={profile.showWinRate}
+        onOpen={mode === 'self' ? openProfileEditor : undefined}
       />
       <ProfilePlayStyle tags={profile.playStyleTags} />
       <ProfileHighlights mode={mode} />
