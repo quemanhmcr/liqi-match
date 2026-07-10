@@ -8,7 +8,7 @@ import {
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 
-import type { ProfileStats } from '../profile-service';
+import type { ProfileStats } from '../services/profile-service';
 import { ProfileText } from './ProfileShared';
 
 type StatItem = {

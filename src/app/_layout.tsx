@@ -1,33 +1,18 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
 import { useColorScheme } from 'react-native';
 
 import '@/shared/config/env';
-import { AppProviders } from '@/shared/components/app-providers';
-import { StatusBar } from 'expo-status-bar';
+import { AppProviders } from '@/app-shell/providers/AppProviders';
 
+/** Root owns only runtime providers and the top-level navigator. */
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
 
   return (
     <AppProviders>
-      <ThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="rank" />
-          <Stack.Screen name="lane" />
-          <Stack.Screen name="hero-selection" />
-          <Stack.Screen name="habits" />
-          <Stack.Screen name="profile-media" />
-          <Stack.Screen name="home" />
-          <Stack.Screen name="profile/index" />
-          <Stack.Screen name="profile/edit" />
-          <Stack.Screen name="profile/share" />
-          <Stack.Screen name="profile/settings" />
-          <Stack.Screen name="profile/settings/blocked" />
-          <Stack.Screen name="profile/[userId]" />
-          <Stack.Screen name="dev/liquid-system" />
-        </Stack>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack screenOptions={{ headerShown: false }} />
         <StatusBar style="light" />
       </ThemeProvider>
     </AppProviders>

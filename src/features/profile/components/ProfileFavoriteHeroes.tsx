@@ -8,14 +8,14 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 
-import { HEROES } from '@/features/onboarding/hero-selection-data';
+import { HEROES } from '@/entities/hero';
 import { LiquidCard } from '@/shared/components/liquid';
 import {
   liquidColors,
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 
-import type { ProfileFavoriteHero } from '../profile-service';
+import type { ProfileFavoriteHero } from '../services/profile-service';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
 import { ProfileText } from './ProfileShared';
 

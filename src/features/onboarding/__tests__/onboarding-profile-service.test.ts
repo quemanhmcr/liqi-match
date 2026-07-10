@@ -1,0 +1,107 @@
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+
+import {
+  completeOnboardingProfile,
+  hasCompletedOnboarding,
+} from '@/features/onboarding';
+import type { AuthSession } from '@/shared/auth/auth-service';
+import { supabaseRest } from '@/shared/services/supabase-rest';
+
+jest.mock('@/shared/services/supabase-rest', () => ({
+  supabaseRest: jest.fn(),
+}));
+
+const mockSupabaseRest = jest.mocked(supabaseRest);
+
+const session: AuthSession = {
+  accessToken: 'test-access-token',
+  expiresAt: 4102444800,
+  refreshToken: 'test-refresh-token',
+  tokenType: 'bearer',
+  user: {
+    email: 'tester@example.com',
+    id: '00000000-0000-0000-0000-000000000001',
+    user_metadata: { full_name: 'Test Player' },
+  },
+};
+
+describe('hasCompletedOnboarding', () => {
+  beforeEach(() => {
+    mockSupabaseRest.mockReset();
+  });
+
+  it('checks the profile_habits completion marker for the current user', async () => {
+    mockSupabaseRest.mockResolvedValueOnce([
+      { profile_id: '00000000-0000-0000-0000-000000000001' },
+    ]);
+
+    await expect(hasCompletedOnboarding(session)).resolves.toBe(true);
+
+    expect(mockSupabaseRest).toHaveBeenCalledWith(
+      'profile_habits?select=profile_id&profile_id=eq.00000000-0000-0000-0000-000000000001&limit=1',
+      { session },
+    );
+  });
+
+  it('returns false when no completion marker exists', async () => {
+    mockSupabaseRest.mockResolvedValueOnce([]);
+
+    await expect(hasCompletedOnboarding(session)).resolves.toBe(false);
+  });
+
+  it('lets callers decide the safe fallback when the backend check fails', async () => {
+    mockSupabaseRest.mockRejectedValueOnce(new Error('permission denied'));
+
+    await expect(hasCompletedOnboarding(session)).rejects.toThrow(
+      'permission denied',
+    );
+  });
+});
+
+describe('completeOnboardingProfile', () => {
+  beforeEach(() => {
+    mockSupabaseRest.mockReset();
+  });
+
+  it('uses profile basics from onboarding snapshot when completing the profile', async () => {
+    mockSupabaseRest.mockResolvedValueOnce([{ completed: true }]);
+
+    await expect(
+      completeOnboardingProfile(session, {
+        profileBasics: { displayName: 'Liqi Pro', gender: 'hidden' },
+        rankId: 'master',
+        laneIds: ['jungle'],
+        heroIds: ['edras', 'goverra', 'heino'],
+        habits: {
+          comeback_response: 'Theo quyết định chung của đội',
+          communication_channels: ['Voice khi cần'],
+          decision_style: 'Cùng trao đổi trước khi quyết định',
+          feedback_style: 'Chỉ nhắc ngắn gọn trong trận',
+          loss_response: 'Nghỉ 5-15 phút',
+          online_time_presets: ['Tối'],
+          seriousness: 'Cân bằng',
+          session_length: '3-5 trận',
+          strategy_styles: ['Ưu tiên kiểm soát mục tiêu'],
+          team_atmospheres: ['Nghiêm túc nhưng tôn trọng'],
+          team_goals: ['Leo rank nghiêm túc'],
+        },
+        mediaDraft: { avatar: false, cover: false, wallCount: 0 },
+      }),
+    ).resolves.toBe(true);
+
+    expect(mockSupabaseRest).toHaveBeenCalledWith(
+      'rpc/complete_onboarding',
+      expect.objectContaining({
+        body: expect.objectContaining({
+          payload: expect.objectContaining({
+            display_name: 'Liqi Pro',
+            handle: 'Liqi Pro',
+            profile_basics: { gender: 'hidden' },
+          }),
+        }),
+        method: 'POST',
+        session,
+      }),
+    );
+  });
+});

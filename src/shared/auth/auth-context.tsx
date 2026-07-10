@@ -26,11 +26,24 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
-export function AuthStateProvider({ children }: PropsWithChildren) {
-  const [loading, setLoading] = useState(true);
-  const [session, setSession] = useState<AuthSession | null>(null);
+type AuthStateProviderProps = PropsWithChildren<{
+  /** Test-only deterministic state. Omit in the app to hydrate secure storage. */
+  initialSession?: AuthSession | null;
+}>;
+
+export function AuthStateProvider({
+  children,
+  initialSession,
+}: AuthStateProviderProps) {
+  const hasInitialSession = initialSession !== undefined;
+  const [loading, setLoading] = useState(!hasInitialSession);
+  const [session, setSession] = useState<AuthSession | null>(
+    initialSession ?? null,
+  );
 
   useEffect(() => {
+    if (hasInitialSession) return;
+
     let active = true;
 
     async function hydrate() {
@@ -51,7 +64,7 @@ export function AuthStateProvider({ children }: PropsWithChildren) {
     return () => {
       active = false;
     };
-  }, []);
+  }, [hasInitialSession]);
 
   const signIn = useCallback(async (provider: OAuthProvider) => {
     const nextSession = await signInWithOAuthProvider(provider);

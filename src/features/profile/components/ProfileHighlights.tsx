@@ -17,7 +17,10 @@ import {
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 
-import { profileMockReviews, type ProfileMockReview } from '../profile.mock';
+import {
+  profileMockReviews,
+  type ProfileMockReview,
+} from '../data/profile.fixture';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
 import { ProfileText } from './ProfileShared';
 

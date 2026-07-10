@@ -1,6 +1,7 @@
 # Liqi Match Mobile
 
-Production-ready Expo SDK 56 foundation for the Liqi Match mobile app. This repository intentionally contains no product matching, auth, backend, chat, swipe UI, or game-owned assets.
+Production-ready Expo SDK 56 foundation for the Liqi Match mobile app, including
+the app shell, onboarding, profile and preview dashboard foundations.
 
 ## Requirements
 
@@ -100,6 +101,7 @@ npm run web
 
 ```bash
 npm run format:check
+npm run architecture:check
 npm run lint
 npm run typecheck
 npm run test:ci
@@ -109,12 +111,18 @@ npx expo config
 
 ## Project Structure
 
-- `src/app`: Expo Router routes, route-level layouts, and screen composition only.
-- `src/features`: future independent product domains.
+- `src/app`: Expo Router route adapters and nested layouts only; never put screen UI or service logic here.
+- `src/app-shell`: provider composition, route policy and the sole primary-tab contract.
+- `src/features`: independently owned product domains with public `index.ts` APIs.
+- `src/entities`: shared product concepts used by more than one feature.
 - `src/shared`: reusable components, config, theme, hooks, services, types, and utilities.
-- `src/test`: test setup and route render tests. Do not place tests inside `src/app`.
+- `src/test`: test setup and provider helpers only. Colocate tests with their feature or app shell; never place tests inside `src/app`.
 
 The `@/*` alias maps to `src/*` in TypeScript and Jest.
+
+See [mobile frontend architecture](docs/architecture/mobile-frontend.md) for
+route ownership, dependency rules, adding a page/tab, and the parallel work
+workflow.
 
 ## CNG Policy
 
