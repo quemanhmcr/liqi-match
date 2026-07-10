@@ -36,6 +36,9 @@ export async function completeOnboardingProfile(
     media_summary: {
       avatar: snapshot.mediaDraft.avatar,
       cover: snapshot.mediaDraft.cover,
+      profile_basics: {
+        gender: snapshot.profileBasics.gender,
+      },
       wall_count: snapshot.mediaDraft.wallCount,
     },
     rank_slug: dbSlug(snapshot.rankId),

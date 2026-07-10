@@ -271,6 +271,7 @@ export function ProfileHeroCard({
                   ✓
                 </LiquidBadge>
               ) : null}
+              <GenderBadge gender={profile.gender} />
             </View>
             <ProfileText numberOfLines={1} style={styles.meta}>
               {meta}
@@ -361,9 +362,36 @@ export function ProfileHeroCard({
           </LiquidButton>
         </View>
 
-        <ProfileStatsBar embedded showWinRate={profile.showWinRate} />
+        <ProfileStatsBar
+          embedded
+          showWinRate={profile.showWinRate}
+          stats={profile.stats}
+        />
       </View>
     </LiquidGlassSurface>
+  );
+}
+
+function GenderBadge({ gender }: { gender: ProfileViewModel['gender'] }) {
+  if (gender === 'hidden') return null;
+  const isFemale = gender === 'female';
+  return (
+    <LinearGradient
+      colors={
+        isFemale
+          ? ['rgba(255,116,211,0.48)', 'rgba(142,92,255,0.25)']
+          : ['rgba(103,232,255,0.44)', 'rgba(87,111,255,0.24)']
+      }
+      end={{ x: 1, y: 1 }}
+      start={{ x: 0, y: 0 }}
+      style={[styles.genderBadge, isFemale && styles.genderBadgeFemale]}
+    >
+      <Ionicons
+        color={isFemale ? 'rgba(255,232,249,0.96)' : 'rgba(223,250,255,0.96)'}
+        name={isFemale ? 'female' : 'male'}
+        size={12}
+      />
+    </LinearGradient>
   );
 }
 
@@ -440,6 +468,22 @@ const styles = StyleSheet.create({
     top: 0,
     transform: [{ scale: 1.018 }],
   },
+  genderBadge: {
+    alignItems: 'center',
+    borderColor: 'rgba(103,232,255,0.22)',
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 22,
+    justifyContent: 'center',
+    shadowColor: '#67E8FF',
+    shadowOpacity: 0.12,
+    shadowRadius: 7,
+    width: 22,
+  },
+  genderBadgeFemale: {
+    borderColor: 'rgba(255,155,222,0.22)',
+    shadowColor: '#FF8EDB',
+  },
   heroFrame: { marginTop: 8, overflow: 'visible' },
   heroSurface: {
     borderRadius: 29,
@@ -467,7 +511,7 @@ const styles = StyleSheet.create({
     ...liquidTypography.screenName,
     color: 'rgba(250,252,255,0.94)',
     flexShrink: 1,
-    maxWidth: 188,
+    maxWidth: 168,
     fontSize: 21.5,
     fontWeight: '700',
     letterSpacing: -0.42,

@@ -21,8 +21,8 @@ export type ProfileMockAchievement = {
 export const profileMockMinhAnhUserId = 'minh-anh';
 
 export const profileMockStats = {
-  matches: 356,
-  winRate: 64,
+  matches: 99,
+  winRate: 49,
   rating: 4.9,
   reputation: 99,
 } as const;

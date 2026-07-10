@@ -37,7 +37,6 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 
 import { ProfileText } from './components/ProfileShared';
-import { profileMockStats } from './profile.mock';
 import {
   buildPreviewProfile,
   fetchProfileView,
@@ -552,11 +551,11 @@ function SocialProfileCard({
         </ProfileText>
 
         <View style={styles.statsBox}>
-          <PosterStat label="Trận" value={String(profileMockStats.matches)} />
+          <PosterStat label="Trận" value={String(profile.stats.matches)} />
           {profile.showWinRate ? (
-            <PosterStat label="Win" value={`${profileMockStats.winRate}%`} />
+            <PosterStat label="Win" value={`${profile.stats.winRate}%`} />
           ) : null}
-          <PosterStat label="Rating" value={String(profileMockStats.rating)} />
+          <PosterStat label="Rating" value={String(profile.stats.rating)} />
         </View>
 
         {heroNames.length ? (

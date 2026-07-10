@@ -33,9 +33,11 @@ const heroImageByKey = HEROES.reduce<Record<string, ImageSourcePropType>>(
 
 export function ProfileFavoriteHeroes({
   heroes,
+  onOpen,
   showWinRate = true,
 }: {
   heroes: ProfileFavoriteHero[];
+  onOpen?: () => void;
   showWinRate?: boolean;
 }) {
   const items = heroes.slice(0, 3);
@@ -60,7 +62,13 @@ export function ProfileFavoriteHeroes({
       withInnerReflection
       withShadow={false}
     >
-      <ProfileSectionHeader icon="shield-checkmark-outline" title="Tướng tủ" />
+      <ProfileSectionHeader
+        accessibilityLabel="Chỉnh sửa tướng tủ"
+        icon="shield-checkmark-outline"
+        title="Tướng tủ"
+        withChevron={Boolean(onOpen)}
+        onPress={onOpen}
+      />
       <ScrollView
         contentContainerStyle={styles.heroGrid}
         horizontal

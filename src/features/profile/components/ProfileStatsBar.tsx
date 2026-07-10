@@ -8,7 +8,7 @@ import {
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 
-import { profileMockStats } from '../profile.mock';
+import type { ProfileStats } from '../profile-service';
 import { ProfileText } from './ProfileShared';
 
 type StatItem = {
@@ -18,43 +18,47 @@ type StatItem = {
   value: string;
 };
 
-const baseStats: StatItem[] = [
-  {
-    color: 'rgba(142,118,255,0.78)',
-    icon: 'sparkles-outline',
-    label: 'Trận',
-    value: `${profileMockStats.matches}`,
-  },
-  {
-    color: 'rgba(170,190,255,0.72)',
-    icon: 'trophy-outline',
-    label: 'Tỷ lệ thắng',
-    value: `${profileMockStats.winRate}%`,
-  },
-  {
-    color: 'rgba(255,205,74,0.88)',
-    icon: 'star-outline',
-    label: 'Đánh giá',
-    value: `${profileMockStats.rating}`,
-  },
-  {
-    color: 'rgba(103,232,255,0.88)',
-    icon: 'shield-checkmark-outline',
-    label: 'Uy tín',
-    value: `${profileMockStats.reputation}`,
-  },
-];
+function buildStats(stats: ProfileStats): StatItem[] {
+  return [
+    {
+      color: 'rgba(142,118,255,0.78)',
+      icon: 'sparkles-outline',
+      label: 'Trận',
+      value: `${stats.matches}`,
+    },
+    {
+      color: 'rgba(170,190,255,0.72)',
+      icon: 'trophy-outline',
+      label: 'Tỷ lệ thắng',
+      value: `${stats.winRate}%`,
+    },
+    {
+      color: 'rgba(255,205,74,0.88)',
+      icon: 'star-outline',
+      label: 'Đánh giá',
+      value: `${stats.rating}`,
+    },
+    {
+      color: 'rgba(103,232,255,0.88)',
+      icon: 'shield-checkmark-outline',
+      label: 'Uy tín',
+      value: `${stats.reputation}`,
+    },
+  ];
+}
 
 export function ProfileStatsBar({
   embedded = false,
   showWinRate = true,
+  stats,
 }: {
   embedded?: boolean;
   showWinRate?: boolean;
+  stats: ProfileStats;
 }) {
-  const stats = showWinRate
-    ? baseStats
-    : baseStats.filter((item) => item.label !== 'Tỷ lệ thắng');
+  const items = showWinRate
+    ? buildStats(stats)
+    : buildStats(stats).filter((item) => item.label !== 'Tỷ lệ thắng');
 
   return (
     <LiquidCard
@@ -113,7 +117,7 @@ export function ProfileStatsBar({
         style={styles.topHighlight}
       />
       <View style={styles.row}>
-        {stats.map((item, index) => (
+        {items.map((item, index) => (
           <View key={item.label} style={styles.statSlot}>
             {index > 0 ? <View style={styles.separator} /> : null}
             <Ionicons color={item.color} name={item.icon} size={15} />
