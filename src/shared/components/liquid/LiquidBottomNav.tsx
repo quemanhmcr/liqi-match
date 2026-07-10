@@ -23,8 +23,11 @@ export type LiquidBottomNavProps<
   Item extends LiquidBottomNavItem<string> = LiquidBottomNavItem<string>,
 > = {
   activeKey: Item['key'];
+  /** Use inline mode when a navigator, rather than a screen, owns placement. */
+  floating?: boolean;
   items: readonly Item[];
   labelStyle?: StyleProp<TextStyle>;
+  onLongPress?: (key: Item['key'], event: GestureResponderEvent) => void;
   onPress?: (key: Item['key'], event: GestureResponderEvent) => void;
   renderIcon: (item: Item, active: boolean) => ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -34,8 +37,10 @@ export function LiquidBottomNav<
   Item extends LiquidBottomNavItem<string> = LiquidBottomNavItem<string>,
 >({
   activeKey,
+  floating = true,
   items,
   labelStyle,
+  onLongPress,
   onPress,
   renderIcon,
   style,
@@ -47,7 +52,7 @@ export function LiquidBottomNav<
       blurIntensity={22}
       contentStyle={styles.surface}
       radius={27}
-      style={[styles.shell, style]}
+      style={[styles.shell, !floating && styles.inlineShell, style]}
       variant="nav"
       withInnerReflection={false}
       withShadow={false}
@@ -66,6 +71,7 @@ export function LiquidBottomNav<
             accessibilityState={{ selected: active }}
             android_ripple={null}
             key={item.key}
+            onLongPress={(event) => onLongPress?.(item.key, event)}
             onPress={(event) => onPress?.(item.key, event)}
             style={({ pressed }) => [
               styles.item,
@@ -96,6 +102,13 @@ export function LiquidBottomNav<
 }
 
 const styles = StyleSheet.create({
+  inlineShell: {
+    alignSelf: 'stretch',
+    bottom: 0,
+    left: 0,
+    position: 'relative',
+    right: 0,
+  },
   item: {
     alignItems: 'center',
     borderRadius: 23,

@@ -19,7 +19,7 @@ import {
   profileFantasyBlueGlowSegments,
 } from '@/shared/theme/liquid-glow.presets';
 
-import type { ProfileViewModel } from '../profile-service';
+import type { ProfileViewModel } from '../services/profile-service';
 import { ProfileStatsBar } from './ProfileStatsBar';
 import { ProfileText } from './ProfileShared';
 

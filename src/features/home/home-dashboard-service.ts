@@ -1,6 +1,6 @@
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
-import { profileMockMinhAnhUserId } from '@/features/profile/profile.mock';
+import { homePreviewProfileId } from './data/home-preview.fixture';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
 type MaybeArray<T> = T | T[] | null | undefined;
@@ -401,7 +401,7 @@ const previewMatchedSets: MatchedSet[] = [
     kind: 'Tri kỉ',
     meta: 'Tối · Voice khi cần',
     name: 'Minh Anh',
-    profileId: profileMockMinhAnhUserId,
+    profileId: homePreviewProfileId,
     rankName: 'Cao Thủ',
     roleNames: ['Trợ Thủ'],
     status: 'ready',

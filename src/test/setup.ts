@@ -30,38 +30,3 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
     setItem: async () => undefined,
   },
 }));
-
-jest.mock('@/shared/auth/auth-context', () => ({
-  AuthStateProvider: ({ children }: { children: React.ReactNode }) => children,
-  useAuth: () => ({
-    loading: false,
-    session: {
-      accessToken: 'test-access-token',
-      expiresAt: 4102444800,
-      refreshToken: 'test-refresh-token',
-      tokenType: 'bearer',
-      user: {
-        email: 'tester@example.com',
-        id: '00000000-0000-0000-0000-000000000001',
-        user_metadata: {
-          full_name: 'Test Player',
-        },
-      },
-    },
-    setSession: async () => undefined,
-    signIn: async () => ({
-      accessToken: 'test-access-token',
-      expiresAt: 4102444800,
-      refreshToken: 'test-refresh-token',
-      tokenType: 'bearer',
-      user: {
-        email: 'tester@example.com',
-        id: '00000000-0000-0000-0000-000000000001',
-        user_metadata: {
-          full_name: 'Test Player',
-        },
-      },
-    }),
-    signOut: async () => undefined,
-  }),
-}));
