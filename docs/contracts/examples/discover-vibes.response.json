@@ -1,0 +1,62 @@
+{
+  "contractVersion": 1,
+  "data": {
+    "items": [
+      {
+        "id": "vibe-late-night-rank",
+        "slug": "late-night-rank",
+        "title": "Leo rank đêm",
+        "artwork": {
+          "kind": "remote",
+          "id": "media-vibe-rank",
+          "url": "https://cdn.example.com/discover/vibes/late-night-rank.png",
+          "width": 1254,
+          "height": 1254,
+          "altText": "Leo rank đêm"
+        },
+        "facetIds": ["rank", "mic"],
+        "activityType": "ranked",
+        "engagement": {
+          "kind": "interested_players",
+          "count": 128
+        },
+        "participants": {
+          "totalCount": 27,
+          "preview": [
+            {
+              "id": "profile-a",
+              "media": {
+                "kind": "remote",
+                "id": "media-profile-a",
+                "url": "https://cdn.example.com/discover/profile-a.png",
+                "width": 1254,
+                "height": 1254,
+                "altText": "Player A"
+              }
+            },
+            {
+              "id": "profile-b",
+              "media": {
+                "kind": "remote",
+                "id": "media-profile-b",
+                "url": "https://cdn.example.com/discover/profile-b.png",
+                "width": 1254,
+                "height": 1254,
+                "altText": "Player B"
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "pageInfo": {
+      "hasNextPage": true,
+      "nextCursor": "opaque-vibe-cursor-2"
+    },
+    "totalCount": 6
+  },
+  "meta": {
+    "generatedAt": "2026-07-11T08:00:00.000Z",
+    "requestId": "req-vibes-01"
+  }
+}

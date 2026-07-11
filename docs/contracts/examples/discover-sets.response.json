@@ -1,0 +1,96 @@
+{
+  "contractVersion": 1,
+  "data": {
+    "items": [
+      {
+        "id": "set-team-sao-bang",
+        "title": "Team Sao Băng",
+        "artwork": {
+          "kind": "remote",
+          "id": "media-set-sao-bang",
+          "url": "https://cdn.example.com/discover/sets/team-sao-bang.png",
+          "width": 1254,
+          "height": 1254,
+          "altText": "Team Sao Băng"
+        },
+        "mode": "team_rank",
+        "facetIds": ["rank", "team-rank", "mic"],
+        "matchScore": 96,
+        "openedAt": "2026-07-11T07:56:00.000Z",
+        "occupancy": {
+          "current": 4,
+          "capacity": 5
+        },
+        "recruitment": {
+          "status": "open",
+          "missingRoles": [
+            {
+              "id": "mid",
+              "name": "Mid"
+            }
+          ],
+          "requiresRoleSelection": true,
+          "requiresApproval": true
+        },
+        "communication": {
+          "voicePolicy": "required"
+        },
+        "tags": [
+          {
+            "id": "liliana",
+            "kind": "hero",
+            "label": "Liliana"
+          },
+          {
+            "id": "mid",
+            "kind": "role",
+            "label": "Đường Giữa"
+          }
+        ],
+        "members": {
+          "totalCount": 4,
+          "preview": [
+            {
+              "id": "profile-c",
+              "media": {
+                "kind": "remote",
+                "id": "media-profile-c",
+                "url": "https://cdn.example.com/discover/profile-c.png",
+                "width": 1254,
+                "height": 1254,
+                "altText": "Player C"
+              }
+            },
+            {
+              "id": "profile-d",
+              "media": {
+                "kind": "remote",
+                "id": "media-profile-d",
+                "url": "https://cdn.example.com/discover/profile-d.png",
+                "width": 1254,
+                "height": 1254,
+                "altText": "Player D"
+              }
+            }
+          ]
+        },
+        "viewerState": {
+          "relationship": "none",
+          "joinRequestStatus": "none",
+          "canRequestJoin": false,
+          "canViewDetails": true
+        },
+        "version": 3
+      }
+    ],
+    "pageInfo": {
+      "hasNextPage": true,
+      "nextCursor": "opaque-set-cursor-2"
+    },
+    "totalCount": 4
+  },
+  "meta": {
+    "generatedAt": "2026-07-11T08:00:00.000Z",
+    "requestId": "req-sets-01"
+  }
+}

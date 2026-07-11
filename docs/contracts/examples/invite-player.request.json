@@ -1,0 +1,8 @@
+{
+  "setId": "set-team-sao-bang",
+  "profileId": "profile-lyra",
+  "idempotencyKey": "invite:user-1:profile-lyra:01",
+  "clientMutationId": "client-invite-01",
+  "expectedSetVersion": 3,
+  "source": "discover"
+}
