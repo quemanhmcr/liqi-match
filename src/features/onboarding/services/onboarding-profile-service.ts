@@ -3,6 +3,7 @@ import {
   dbSlug,
   type OnboardingSnapshot,
 } from '../model/onboarding-draft-store';
+import { buildRecurringAvailabilitySlots } from '../model/availability-slots';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 import type { Tables } from '@/shared/types/database.types';
@@ -13,16 +14,22 @@ export async function completeOnboardingProfile(
 ) {
   const displayName =
     displayNameFromSnapshot(snapshot) ?? displayNameFromSession(session);
+  const habits = requireHabits(snapshot);
+  const availabilitySlots = buildRecurringAvailabilitySlots(
+    habits.online_time_presets,
+  );
+  if (!availabilitySlots.length) {
+    throw new Error('Chọn ít nhất một khung giờ online trước khi hoàn tất.');
+  }
+
   const payload = {
-    availability_slots: [
-      { day_of_week: 1, starts_at: '18:00:00', ends_at: '23:59:00' },
-    ],
+    availability_slots: availabilitySlots,
     display_name: displayName,
     handle: displayName,
     profile_basics: {
       gender: snapshot.profileBasics.gender,
     },
-    habits: snapshot.habits,
+    habits,
     heroes: snapshot.heroIds.map((heroId) => {
       const hero = HEROES.find((item) => item.id === heroId);
       return {
@@ -68,6 +75,15 @@ export async function hasCompletedOnboarding(session: AuthSession) {
   );
 
   return rows.length > 0;
+}
+
+function requireHabits(snapshot: OnboardingSnapshot) {
+  if (!snapshot.habits) {
+    throw new Error(
+      'Dữ liệu thói quen chưa hoàn tất. Vui lòng quay lại bước 5.',
+    );
+  }
+  return snapshot.habits;
 }
 
 function roleSlug(role: string | undefined) {
