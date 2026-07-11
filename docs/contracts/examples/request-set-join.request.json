@@ -1,0 +1,8 @@
+{
+  "setId": "set-duo-jungle-support",
+  "idempotencyKey": "join:user-1:set-duo-jungle-support:01",
+  "clientMutationId": "client-join-01",
+  "expectedSetVersion": 2,
+  "requestedRoleId": "marksman",
+  "source": "discover"
+}

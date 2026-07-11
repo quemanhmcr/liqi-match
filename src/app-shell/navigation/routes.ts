@@ -7,6 +7,11 @@ export const appRoutes = {
     login: '/',
     preview: '/preview',
   },
+  discover: {
+    matches: '/discover/matches',
+    sets: '/discover/sets',
+    vibes: '/discover/vibes',
+  },
   main: {
     explore: '/explore',
     home: '/home',

@@ -29,7 +29,7 @@ export function MainTabBar({
         styles.container,
         {
           paddingBottom: Math.max(bottomInset, 12),
-          paddingHorizontal: Math.max(horizontalInset + 12, 34),
+          paddingHorizontal: Math.max(horizontalInset + 8, 18),
         },
       ]}
       testID="main-tab-bar"
@@ -42,9 +42,9 @@ export function MainTabBar({
         onPress={(key) => onSelect(key)}
         renderIcon={(tab, active) => (
           <Ionicons
-            color={active ? 'rgba(255,255,255,0.84)' : '#A8AFC6'}
+            color={active ? 'rgba(255,255,255,0.90)' : 'rgba(218,224,240,0.84)'}
             name={tab.icon}
-            size={active ? 22 : 21}
+            size={16}
             style={styles.icon}
           />
         )}
@@ -56,7 +56,7 @@ export function MainTabBar({
 const styles = StyleSheet.create({
   container: {
     paddingBottom: 12,
-    paddingHorizontal: 34,
+    paddingHorizontal: 18,
     paddingTop: 6,
   },
   icon: { marginBottom: -1 },

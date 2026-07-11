@@ -10,8 +10,6 @@ import {
   type ViewStyle,
 } from 'react-native';
 
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
-
 import { LiquidGlassSurface } from './LiquidGlassSurface';
 
 export type LiquidBottomNavItem<Key extends string = string> = {
@@ -51,7 +49,7 @@ export function LiquidBottomNav<
       baseStrokeWidth={0.54}
       blurIntensity={22}
       contentStyle={styles.surface}
-      radius={27}
+      radius={24}
       style={[styles.shell, !floating && styles.inlineShell, style]}
       variant="nav"
       withInnerReflection={false}
@@ -81,7 +79,7 @@ export function LiquidBottomNav<
           >
             {active ? (
               <LinearGradient
-                colors={['rgba(106,101,255,0.115)', 'rgba(56,215,255,0.030)']}
+                colors={['rgba(106,101,255,0.070)', 'rgba(56,215,255,0.020)']}
                 end={{ x: 1, y: 1 }}
                 pointerEvents="none"
                 start={{ x: 0, y: 0 }}
@@ -90,6 +88,7 @@ export function LiquidBottomNav<
             ) : null}
             {renderIcon(item, active)}
             <Text
+              maxFontSizeMultiplier={1}
               style={[styles.label, active && styles.labelActive, labelStyle]}
             >
               {item.label}
@@ -111,28 +110,29 @@ const styles = StyleSheet.create({
   },
   item: {
     alignItems: 'center',
-    borderRadius: 23,
+    borderRadius: 17,
     flex: 1,
-    gap: 3,
+    gap: 2,
+    minWidth: 0,
     justifyContent: 'center',
-    minHeight: 50,
+    minHeight: 34,
     overflow: 'hidden',
-    paddingVertical: 6,
+    paddingVertical: 1.5,
   },
   itemActive: {
-    borderColor: 'rgba(103,232,255,0.105)',
+    borderColor: 'rgba(103,232,255,0.090)',
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#67E8FF',
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.055,
+    shadowOpacity: 0.045,
     shadowRadius: 8,
   },
   label: {
-    color: liquidColors.text.muted,
-    fontSize: 10,
+    color: 'rgba(210,218,238,0.80)',
+    fontSize: 9,
     fontWeight: '600',
   },
-  labelActive: { color: 'rgba(255,255,255,0.84)', fontWeight: '700' },
+  labelActive: { color: 'rgba(255,255,255,0.90)', fontWeight: '700' },
   pressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
   shell: {
     alignSelf: 'center',
@@ -146,7 +146,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(190,218,255,0.062)',
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
-    gap: 5,
-    padding: 6,
+    gap: 3,
+    width: '100%',
+    padding: 4,
   },
 });

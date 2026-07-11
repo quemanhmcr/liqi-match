@@ -1,0 +1,57 @@
+{
+  "contractVersion": 1,
+  "data": {
+    "items": [
+      {
+        "profileId": "profile-lyra",
+        "displayName": "Lyra Mid",
+        "avatar": {
+          "kind": "remote",
+          "id": "media-player-lyra",
+          "url": "https://cdn.example.com/discover/players/lyra.png",
+          "width": 1254,
+          "height": 1254,
+          "altText": "Lyra Mid"
+        },
+        "onlineStatus": "online",
+        "rank": {
+          "id": "master",
+          "name": "Cao Thủ"
+        },
+        "primaryRole": {
+          "id": "mid",
+          "name": "Đường Giữa"
+        },
+        "matchScore": 95,
+        "matchReasons": [
+          {
+            "code": "evening-rank",
+            "label": "Leo rank buổi tối"
+          },
+          {
+            "code": "mic",
+            "label": "Mic on"
+          }
+        ],
+        "facetIds": ["rank", "mic"],
+        "capabilities": {
+          "canViewProfile": true,
+          "canMessage": true,
+          "invite": {
+            "state": "available",
+            "targetSetId": "set-team-sao-bang"
+          }
+        }
+      }
+    ],
+    "pageInfo": {
+      "hasNextPage": true,
+      "nextCursor": "opaque-player-cursor-2"
+    },
+    "totalCount": 6
+  },
+  "meta": {
+    "generatedAt": "2026-07-11T08:00:00.000Z",
+    "requestId": "req-players-01"
+  }
+}
