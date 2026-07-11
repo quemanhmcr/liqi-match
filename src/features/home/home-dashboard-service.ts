@@ -69,7 +69,7 @@ type MatchRow = {
 export type HomeReadyMode = {
   accent: string;
   description: string;
-  id: 'setlv' | 'soulmate' | 'normal' | 'rank' | 'team';
+  id: 'setlove' | 'soulmate' | 'normal' | 'rank' | 'team';
   label: string;
 };
 
@@ -92,14 +92,13 @@ export type MatchedSet = {
   createdAt: string;
   heroNames: string[];
   id: string;
-  kind: 'Set LV' | 'Tri kỉ' | 'Normal' | 'Rank' | 'Team Rank';
+  kind: 'Set Love' | 'Tri kỉ' | 'Normal' | 'Rank' | 'Team Rank';
   meta: string;
   name: string;
   profileId?: string;
   rankName?: string;
   roleNames: string[];
   status: MatchedSetStatus;
-  statusLabel: string;
   subtitle: string;
   unreadCount?: number;
 };
@@ -114,13 +113,13 @@ export type HomeDashboard = {
 export const homeReadyModes: HomeReadyMode[] = [
   {
     accent: '#C679FF',
-    description: 'Vào set nhanh với người đã match.',
-    id: 'setlv',
-    label: 'Set LV',
+    description: 'Ưu tiên kết nối tình cảm, tìm người hợp vibe.',
+    id: 'setlove',
+    label: 'Set Love',
   },
   {
     accent: '#FF7AD9',
-    description: 'Ưu tiên match chơi lâu dài, thân thiết.',
+    description: 'Tìm đồng đội thân thiết, đồng hành lâu dài.',
     id: 'soulmate',
     label: 'Tri kỉ',
   },
@@ -279,7 +278,7 @@ function mapMatchRow(
   const kind = resolveMatchedKind(habits, index);
 
   return {
-    actionLabel: kind === 'Team Rank' ? 'Join lobby' : 'Vào set',
+    actionLabel: kind === 'Team Rank' ? 'Vào lobby' : 'Vào set',
     avatarUrl: mediaUrl(otherProfile.avatar_media_id),
     conversationId: conversation?.id,
     createdAt: row.created_at,
@@ -292,8 +291,6 @@ function mapMatchRow(
     rankName: first(gameProfile?.ranks)?.name ?? undefined,
     roleNames,
     status: index === 0 ? 'ready' : index % 3 === 0 ? 'idle' : 'online',
-    statusLabel:
-      index === 0 ? 'Sẵn sàng' : index % 3 === 0 ? 'Chờ phản hồi' : 'Online',
     subtitle: buildSubtitle({
       gameProfile,
       rankName: first(gameProfile?.ranks)?.name,
@@ -314,7 +311,7 @@ function resolveMatchedKind(
     return 'Rank';
   if (goals.includes('ổn định') || goals.includes('lâu')) return 'Tri kỉ';
   if (index % 5 === 4) return 'Team Rank';
-  if (index % 2 === 0) return 'Set LV';
+  if (index % 2 === 0) return 'Set Love';
   return 'Normal';
 }
 
@@ -337,11 +334,22 @@ function buildMatchedMeta(
   lastMessageAt: string | null | undefined,
 ) {
   const timePreset = habits?.online_time_presets?.[0];
-  const channel = habits?.communication_channels?.[0];
+  const channel = compactCommunicationChannel(
+    habits?.communication_channels?.[0],
+  );
   if (timePreset && channel) return `${timePreset} · ${channel}`;
   if (timePreset) return `Thường online ${timePreset}`;
   if (lastMessageAt) return 'Đã có hội thoại';
-  return 'Đã match thành công';
+  return 'Đã kết nối với bạn';
+}
+
+function compactCommunicationChannel(channel: string | undefined) {
+  if (!channel) return undefined;
+  const normalized = channel.toLocaleLowerCase('vi');
+  if (normalized.includes('voice')) return 'Có voice';
+  if (normalized.includes('chat') || normalized.includes('ping'))
+    return 'Chat là chính';
+  return channel;
 }
 
 function displayNameFromSession(session: AuthSession | null) {
@@ -399,13 +407,12 @@ const previewMatchedSets: MatchedSet[] = [
     heroNames: ['Aya', 'Helen', 'Annette'],
     id: 'preview-1',
     kind: 'Tri kỉ',
-    meta: 'Tối · Voice khi cần',
+    meta: 'Tối · Có voice',
     name: 'Minh Anh',
     profileId: homePreviewProfileId,
     rankName: 'Cao Thủ',
     roleNames: ['Trợ Thủ'],
     status: 'ready',
-    statusLabel: 'Sẵn sàng',
     subtitle: 'Cao Thủ · Trợ Thủ · Global',
     unreadCount: 1,
   },
@@ -415,26 +422,24 @@ const previewMatchedSets: MatchedSet[] = [
     heroNames: ['Nakroth', 'Aoi', 'Keera'],
     id: 'preview-2',
     kind: 'Rank',
-    meta: 'Leo rank nghiêm túc · Ping/chat là chính',
+    meta: 'Rank nghiêm túc',
     name: 'Khoa Jungle',
     rankName: 'Chiến Tướng',
     roleNames: ['Đi Rừng'],
     status: 'online',
-    statusLabel: 'Online',
     subtitle: 'Chiến Tướng · Đi Rừng · Global',
   },
   {
-    actionLabel: 'Join lobby',
+    actionLabel: 'Vào lobby',
     createdAt: new Date().toISOString(),
     heroNames: ['Liliana', 'Yue', 'Lorion'],
     id: 'preview-3',
     kind: 'Team Rank',
-    meta: 'Team 4/5 · thiếu Mid call map',
+    meta: 'Team 4/5 · Thiếu Mid',
     name: 'Team Sao Băng',
     rankName: 'Đại Cao Thủ',
     roleNames: ['Đường Giữa'],
     status: 'idle',
-    statusLabel: 'Chờ phản hồi',
-    subtitle: 'Đại Cao Thủ · Team Rank · cần Mid',
+    subtitle: 'Đại Cao Thủ · Đường Giữa · Global',
   },
 ];

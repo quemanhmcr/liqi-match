@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { fireEvent } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 import HomeDashboardScreen from '@/features/home/screens/HomeDashboardScreen';
@@ -37,16 +38,17 @@ jest.mock('@/features/home/home-dashboard-service', () => ({
       {
         actionLabel: 'Vào set',
         createdAt: '2026-07-07T00:00:00Z',
-        heroNames: ['Aya', 'Helen'],
+        heroNames: ['Aya', 'Helen', 'Annette', 'Alice'],
         id: 'match-1',
         kind: 'Tri kỉ',
-        meta: 'Tối · Voice khi cần',
+        meta: 'Tối · Có voice',
         name: 'Minh Anh',
+        profileId: 'minh-anh',
         rankName: 'Cao Thủ',
         roleNames: ['Trợ Thủ'],
         status: 'ready',
-        statusLabel: 'Sẵn sàng',
         subtitle: 'Cao Thủ · Trợ Thủ · Global',
+        unreadCount: 1,
       },
     ],
     preview: false,
@@ -64,16 +66,17 @@ jest.mock('@/features/home/home-dashboard-service', () => ({
       {
         actionLabel: 'Vào set',
         createdAt: '2026-07-07T00:00:00Z',
-        heroNames: ['Aya', 'Helen'],
+        heroNames: ['Aya', 'Helen', 'Annette', 'Alice'],
         id: 'match-1',
         kind: 'Tri kỉ',
-        meta: 'Tối · Voice khi cần',
+        meta: 'Tối · Có voice',
         name: 'Minh Anh',
+        profileId: 'minh-anh',
         rankName: 'Cao Thủ',
         roleNames: ['Trợ Thủ'],
         status: 'ready',
-        statusLabel: 'Sẵn sàng',
         subtitle: 'Cao Thủ · Trợ Thủ · Global',
+        unreadCount: 1,
       },
     ],
     preview: false,
@@ -81,13 +84,13 @@ jest.mock('@/features/home/home-dashboard-service', () => ({
   homeReadyModes: [
     {
       accent: '#C679FF',
-      description: 'Vào set nhanh với người đã match.',
-      id: 'setlv',
-      label: 'Set LV',
+      description: 'Ưu tiên kết nối tình cảm, tìm người hợp vibe.',
+      id: 'setlove',
+      label: 'Set Love',
     },
     {
       accent: '#FF7AD9',
-      description: 'Ưu tiên match chơi lâu dài, thân thiết.',
+      description: 'Tìm đồng đội thân thiết, đồng hành lâu dài.',
       id: 'soulmate',
       label: 'Tri kỉ',
     },
@@ -118,19 +121,93 @@ describe('HomeDashboardScreen', () => {
     mockNotificationUnseenCount = 3;
   });
 
-  it('renders the dashboard shell with the account unread indicator', async () => {
-    const { getAllByText, getByTestId, getByText } = await renderWithProviders(
-      <HomeDashboardScreen />,
-    );
+  it('renders a compact decision-first dashboard with explicit semantics', async () => {
+    const {
+      getAllByText,
+      getByLabelText,
+      getByTestId,
+      getByText,
+      queryByText,
+    } = await renderWithProviders(<HomeDashboardScreen />);
 
     expect(getByTestId('home-notification-unread-dot')).toBeTruthy();
     expect(getByText('Xin chào,')).toBeTruthy();
+    expect(getByText('1 match mới')).toBeTruthy();
     expect(getByText('Sẵn sàng vào set?')).toBeTruthy();
-    expect(getByText('Đã match thành công')).toBeTruthy();
-    expect(getByText('Set LV')).toBeTruthy();
+    expect(getByText('Chưa sẵn sàng')).toBeTruthy();
+    expect(getByText('Mood · Set Love')).toBeTruthy();
+    expect(getByText('Những người đã match')).toBeTruthy();
     expect(getAllByText('Tri kỉ').length).toBeGreaterThan(0);
-    expect(getAllByText('Rank').length).toBeGreaterThan(0);
+    expect(getByText('Thường')).toBeTruthy();
+    expect(getByText('Xếp hạng')).toBeTruthy();
+    expect(getByTestId('home-ready-mode-grid')).toBeTruthy();
+    expect(
+      getByTestId('home-ready-mode-icon-setlove-heart-outline'),
+    ).toBeTruthy();
+    expect(
+      getByTestId('home-ready-mode-icon-soulmate-handshake-outline'),
+    ).toBeTruthy();
+    expect(
+      getByTestId('home-match-kind-icon-Tri kỉ-handshake-outline'),
+    ).toBeTruthy();
+    const heroBackgroundImage = getByTestId('home-ready-hero-background');
+    expect(heroBackgroundImage.props.resizeMode).toBe('cover');
+    const heroBackgroundStyle = StyleSheet.flatten(
+      heroBackgroundImage.props.style,
+    );
+    expect(heroBackgroundStyle).toMatchObject({
+      height: '100%',
+      left: 0,
+      opacity: 0.72,
+      position: 'absolute',
+      top: 0,
+      transform: [{ scale: 1.18 }, { translateX: -18 }],
+      width: '100%',
+    });
+    expect(heroBackgroundStyle.bottom).toBeUndefined();
+    expect(heroBackgroundStyle.right).toBeUndefined();
+    expect(
+      StyleSheet.flatten(getByTestId('home-ready-hero-content').props.style),
+    ).toMatchObject({
+      minHeight: 166,
+      padding: 12,
+      position: 'relative',
+    });
+    expect(queryByText('Đội xếp hạng')).toBeNull();
     expect(getAllByText('Minh Anh').length).toBeGreaterThan(0);
+    expect(getByText('+1')).toBeTruthy();
+    expect(getByLabelText('Nhắn tin với Minh Anh, 1 tin mới')).toBeTruthy();
+    expect(getByText('Tối · Có voice').props).toMatchObject({
+      adjustsFontSizeToFit: true,
+      minimumFontScale: 0.86,
+      numberOfLines: 1,
+    });
+    expect(queryByText('Idle')).toBeNull();
+    expect(queryByText('Normal')).toBeNull();
+    expect(queryByText('Đã match thành công')).toBeNull();
+  });
+
+  it('uses one explicit ready action and keeps the selected mood visible', async () => {
+    const { getByLabelText, getByText } = await renderWithProviders(
+      <HomeDashboardScreen />,
+    );
+
+    fireEvent.press(getByLabelText('Bật sẵn sàng'));
+
+    await waitFor(() => {
+      expect(getByLabelText('Tắt sẵn sàng')).toBeTruthy();
+      expect(getByText('Đang sẵn sàng')).toBeTruthy();
+      expect(getByText('Đang bật · Set Love')).toBeTruthy();
+    });
+
+    fireEvent.press(getByLabelText('Xếp hạng'));
+
+    await waitFor(() => {
+      expect(getByText('Đang bật · Xếp hạng')).toBeTruthy();
+      expect(getByLabelText('Xếp hạng').props.accessibilityState).toEqual({
+        selected: true,
+      });
+    });
   });
 
   it('hides the unread dot when the account summary is fully seen', async () => {

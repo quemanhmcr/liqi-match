@@ -1,4 +1,4 @@
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
@@ -9,7 +9,6 @@ import {
   Image,
   Pressable,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   Text as RNText,
   View,
@@ -51,6 +50,15 @@ import {
   type MatchedSetStatus,
 } from '../home-dashboard-service';
 import { homePreviewProfileId } from '../data/home-preview.fixture';
+import {
+  buildMatchedSetTags,
+  chatActionAccessibilityLabel,
+  formatMatchedConnectionCount,
+  homeReadyModeLabel,
+  selectPrimaryHomeReadyModes,
+  matchedSetKindLabel,
+  matchedSetStatusLabel,
+} from '../model/home-dashboard-view-model';
 
 const heroBackground =
   require('../../../../assets/anh_mau_3/background_hero_trang_chu.png') as number;
@@ -63,26 +71,69 @@ const avatarTeamSaoBang =
 
 const defaultMode: HomeReadyMode = homeReadyModes[0] ?? {
   accent: '#C679FF',
-  description: 'Vào set nhanh với người đã match.',
-  id: 'setlv',
-  label: 'Set LV',
+  description: 'Ưu tiên kết nối tình cảm, tìm người hợp vibe.',
+  id: 'setlove',
+  label: 'Set Love',
 };
 
-const modeIcons: Record<HomeReadyMode['id'], keyof typeof Ionicons.glyphMap> = {
-  normal: 'shield-checkmark-outline',
-  rank: 'trophy-outline',
-  setlv: 'sparkles-outline',
-  soulmate: 'heart-outline',
-  team: 'people-outline',
+const primaryReadyModes = selectPrimaryHomeReadyModes(homeReadyModes);
+
+type HomeSemanticIcon =
+  | { family: 'ionicons'; name: keyof typeof Ionicons.glyphMap }
+  | {
+      family: 'material-community';
+      name: keyof typeof MaterialCommunityIcons.glyphMap;
+    };
+
+const modeIcons: Record<HomeReadyMode['id'], HomeSemanticIcon> = {
+  normal: { family: 'ionicons', name: 'shield-checkmark-outline' },
+  rank: { family: 'ionicons', name: 'trophy-outline' },
+  setlove: { family: 'ionicons', name: 'heart-outline' },
+  soulmate: { family: 'material-community', name: 'handshake-outline' },
+  team: { family: 'ionicons', name: 'people-outline' },
 };
 
-const kindIcons: Record<MatchedSet['kind'], keyof typeof Ionicons.glyphMap> = {
-  Normal: 'shield-checkmark-outline',
-  Rank: 'trophy-outline',
-  'Set LV': 'sparkles-outline',
-  'Team Rank': 'people-outline',
-  'Tri kỉ': 'heart-outline',
+const kindIcons: Record<MatchedSet['kind'], HomeSemanticIcon> = {
+  Normal: { family: 'ionicons', name: 'shield-checkmark-outline' },
+  Rank: { family: 'ionicons', name: 'trophy-outline' },
+  'Set Love': { family: 'ionicons', name: 'heart-outline' },
+  'Team Rank': { family: 'ionicons', name: 'people-outline' },
+  'Tri kỉ': { family: 'material-community', name: 'handshake-outline' },
 };
+
+function SemanticModeIcon({
+  color,
+  icon,
+  size,
+  testID,
+}: {
+  color: string;
+  icon: HomeSemanticIcon;
+  size: number;
+  testID?: string;
+}) {
+  const semanticTestID = testID ? `${testID}-${icon.name}` : undefined;
+
+  if (icon.family === 'material-community') {
+    return (
+      <MaterialCommunityIcons
+        color={color}
+        name={icon.name}
+        size={size}
+        testID={semanticTestID}
+      />
+    );
+  }
+
+  return (
+    <Ionicons
+      color={color}
+      name={icon.name}
+      size={size}
+      testID={semanticTestID}
+    />
+  );
+}
 
 type MatchTone = {
   actionGradient: [string, string];
@@ -113,7 +164,7 @@ const matchTones: Record<MatchedSet['kind'], MatchTone> = {
     pillBg: 'rgba(21,169,229,0.11)',
     text: '#6BEAFF',
   },
-  'Set LV': {
+  'Set Love': {
     actionGradient: ['rgba(82,62,184,0.90)', 'rgba(74,118,178,0.86)'],
     border: 'rgba(176,119,255,0.30)',
     borderStrong: 'rgba(203,151,255,0.66)',
@@ -145,7 +196,7 @@ const matchTones: Record<MatchedSet['kind'], MatchTone> = {
 const matchGlowPresets: Record<MatchedSet['kind'], LiquidGlowPreset> = {
   Normal: matchedPurpleGlowSegments,
   Rank: rankCyanGlowSegments,
-  'Set LV': matchedPurpleGlowSegments,
+  'Set Love': matchedPurpleGlowSegments,
   'Team Rank': teamOrangeGlowSegments,
   'Tri kỉ': matchedPurpleGlowSegments,
 };
@@ -153,7 +204,7 @@ const matchGlowPresets: Record<MatchedSet['kind'], LiquidGlowPreset> = {
 const actionGlowPresets: Record<MatchedSet['kind'], LiquidGlowPreset> = {
   Normal: matchedPurpleGlowSegments,
   Rank: rankCyanGlowSegments,
-  'Set LV': ctaPurpleCyanGlowSegments,
+  'Set Love': ctaPurpleCyanGlowSegments,
   'Team Rank': teamOrangeGlowSegments,
   'Tri kỉ': ctaPurpleCyanGlowSegments,
 };
@@ -177,13 +228,12 @@ const templateMatchedSets: MatchedSet[] = [
     heroNames: ['Aya', 'Helen', 'Annette'],
     id: 'template-minh-anh',
     kind: 'Tri kỉ',
-    meta: 'Tối · Voice khi cần',
+    meta: 'Tối · Có voice',
     name: 'Minh Anh',
     profileId: homePreviewProfileId,
     rankName: 'Cao Thủ',
     roleNames: ['Trợ Thủ'],
     status: 'ready',
-    statusLabel: 'Sẵn sàng',
     subtitle: 'Cao Thủ · Trợ Thủ · Global',
     unreadCount: 1,
   },
@@ -193,27 +243,25 @@ const templateMatchedSets: MatchedSet[] = [
     heroNames: ['Nakroth', 'Aoi', 'Keera'],
     id: 'template-khoa-jungle',
     kind: 'Rank',
-    meta: 'Leo rank nghiêm túc · Ping/chat là chính',
+    meta: 'Rank nghiêm túc',
     name: 'Khoa Jungle',
     rankName: 'Chiến Tướng',
     roleNames: ['Đi Rừng'],
     status: 'online',
-    statusLabel: 'Online',
     subtitle: 'Chiến Tướng · Đi Rừng · Global',
   },
   {
-    actionLabel: 'Join lobby',
+    actionLabel: 'Vào lobby',
     createdAt: 'template-3',
     heroNames: ['Liliana', 'Yue', 'Lorion'],
     id: 'template-team-sao-bang',
     kind: 'Team Rank',
-    meta: 'Team 4/5 · thiếu Mid call map',
+    meta: 'Team 4/5 · Thiếu Mid',
     name: 'Team Sao Băng',
     rankName: 'Đại Cao Thủ',
     roleNames: ['Đường Giữa'],
     status: 'idle',
-    statusLabel: 'Chờ phản hồi',
-    subtitle: 'Đại Cao Thủ · Team Rank · cần Mid',
+    subtitle: 'Đại Cao Thủ · Đường Giữa · Global',
   },
 ];
 
@@ -237,7 +285,7 @@ export default function HomeDashboardScreen() {
   const hasUnreadNotifications =
     (notificationSummaryQuery.data?.unseenCount ?? 0) > 0;
   const [selectedModeId, setSelectedModeId] =
-    useState<HomeReadyMode['id']>('setlv');
+    useState<HomeReadyMode['id']>('setlove');
   const [readyEnabled, setReadyEnabled] = useState(false);
 
   const dashboardQuery = useQuery({
@@ -259,9 +307,10 @@ export default function HomeDashboardScreen() {
       homeReadyModes.find((mode) => mode.id === selectedModeId) ?? defaultMode,
     [selectedModeId],
   );
+  const selectedModeLabel = homeReadyModeLabel(selectedMode);
   const readyCopy = readyEnabled
-    ? `Đang bật ${selectedMode.label}`
-    : 'Bật sẵn sàng';
+    ? `Đang bật · ${selectedModeLabel}`
+    : `Mood · ${selectedModeLabel}`;
 
   const selectMode = (modeId: HomeReadyMode['id']) => {
     selectionImpact();
@@ -294,7 +343,7 @@ export default function HomeDashboardScreen() {
           <Avatar
             fallbackUri={dashboard.currentProfile.avatarFallbackUrl}
             name={dashboard.currentProfile.displayName}
-            size={54}
+            size={50}
             source={avatarKhoaJungle}
             uri={dashboard.currentProfile.avatarUrl}
           />
@@ -304,10 +353,10 @@ export default function HomeDashboardScreen() {
               {displayFirstName(dashboard.currentProfile.displayName)}
             </HomeText>
             <View style={styles.miniStatusPill}>
-              <View style={styles.statusDot} />
+              <Ionicons color="#75E8FF" name="link-outline" size={12} />
               <HomeText numberOfLines={1} style={styles.miniStatusText}>
                 {activeMatchCount
-                  ? `${activeMatchCount} set đã match`
+                  ? formatMatchedConnectionCount(activeMatchCount)
                   : dashboard.currentProfile.readySummary}
               </HomeText>
             </View>
@@ -328,10 +377,10 @@ export default function HomeDashboardScreen() {
             selectionImpact();
             router.push(appRoutes.notifications);
           }}
-          size={52}
+          size={42}
           style={styles.notificationButton}
         >
-          <Ionicons color="#F7F8FF" name="notifications-outline" size={21} />
+          <Ionicons color="#F7F8FF" name="notifications-outline" size={18} />
         </LiquidOrbButton>
       </View>
 
@@ -353,7 +402,7 @@ export default function HomeDashboardScreen() {
         baseStrokeOpacity={0.04}
         baseStrokeWidth={0.52}
         blurIntensity={36}
-        contentStyle={styles.readyBoard}
+        contentStyle={styles.readyBoardSurface}
         frameColors={[
           'rgba(210,151,255,0.14)',
           'rgba(255,255,255,0.020)',
@@ -371,16 +420,17 @@ export default function HomeDashboardScreen() {
           resizeMode="cover"
           source={heroBackground}
           style={styles.readyHeroImage}
+          testID="home-ready-hero-background"
         />
         <View pointerEvents="none" style={styles.readyBoardDarkTint} />
         <LinearGradient
           pointerEvents="none"
           colors={[
-            'rgba(5,8,20,0.18)',
-            'rgba(5,8,20,0.09)',
-            'rgba(5,8,20,0.02)',
+            'rgba(5,8,20,0.52)',
+            'rgba(5,8,20,0.20)',
+            'rgba(3,6,18,0.05)',
           ]}
-          locations={[0, 0.76, 1]}
+          locations={[0, 0.56, 1]}
           end={{ x: 1, y: 1 }}
           start={{ x: 0, y: 0 }}
           style={StyleSheet.absoluteFill}
@@ -403,111 +453,111 @@ export default function HomeDashboardScreen() {
           start={{ x: 0.08, y: 0.16 }}
           style={styles.readyBoardInnerReflection}
         />
-        <View style={styles.boardHeaderRow}>
-          <View style={styles.boardTitleBlock}>
-            <HomeText style={styles.eyebrow}>LIQI LOBBY</HomeText>
-            <HomeText numberOfLines={1} style={styles.boardTitle}>
-              Sẵn sàng vào set?
-            </HomeText>
+        <View style={styles.readyBoardContent} testID="home-ready-hero-content">
+          <View style={styles.boardHeaderRow}>
+            <View style={styles.boardTitleBlock}>
+              <HomeText style={styles.eyebrow}>LIQI LOBBY</HomeText>
+              <HomeText numberOfLines={1} style={styles.boardTitle}>
+                Sẵn sàng vào set?
+              </HomeText>
+            </View>
+            <View style={styles.liveBadge}>
+              <View
+                style={[styles.liveDot, readyEnabled && styles.liveDotActive]}
+              />
+              <HomeText style={styles.liveText}>
+                {readyEnabled ? 'Đang sẵn sàng' : 'Chưa sẵn sàng'}
+              </HomeText>
+            </View>
           </View>
-          <View style={styles.liveBadge}>
-            <View
-              style={[styles.liveDot, readyEnabled && styles.liveDotActive]}
-            />
-            <HomeText style={styles.liveText}>
-              {readyEnabled ? 'Ready' : 'Idle'}
-            </HomeText>
+
+          <HomeText numberOfLines={2} style={styles.boardSubtitle}>
+            Chọn mood và bật trạng thái để tìm người vào set.
+          </HomeText>
+
+          <View style={styles.modeGrid} testID="home-ready-mode-grid">
+            {primaryReadyModes.map((mode) => {
+              const selected = mode.id === selectedModeId;
+              const displayLabel = homeReadyModeLabel(mode);
+              return (
+                <LiquidChip
+                  accessibilityLabel={displayLabel}
+                  accessibilityState={{ selected }}
+                  contentStyle={[
+                    styles.modeChip,
+                    selected && styles.modeChipSelected,
+                  ]}
+                  icon={
+                    <SemanticModeIcon
+                      color={selected ? 'rgba(247,248,255,0.88)' : mode.accent}
+                      icon={modeIcons[mode.id]}
+                      size={11}
+                      testID={`home-ready-mode-icon-${mode.id}`}
+                    />
+                  }
+                  key={mode.id}
+                  onPress={() => selectMode(mode.id)}
+                  selected={selected}
+                  textStyle={[
+                    styles.modeLabel,
+                    selected && styles.modeLabelSelected,
+                  ]}
+                >
+                  {displayLabel}
+                </LiquidChip>
+              );
+            })}
           </View>
-        </View>
 
-        <HomeText numberOfLines={2} style={styles.boardSubtitle}>
-          Chọn mood chơi hôm nay để các tài khoản đã match biết bạn đang muốn
-          vào set kiểu nào.
-        </HomeText>
-
-        <ScrollView
-          contentContainerStyle={styles.modeRailContent}
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={styles.modeRail}
-        >
-          {homeReadyModes.map((mode) => {
-            const selected = mode.id === selectedModeId;
-            return (
-              <LiquidChip
-                accessibilityLabel={mode.label}
-                accessibilityState={{ selected }}
-                contentStyle={[
-                  styles.modeChip,
-                  selected && styles.modeChipSelected,
-                ]}
-                icon={
-                  <Ionicons
-                    color={selected ? 'rgba(247,248,255,0.88)' : mode.accent}
-                    name={modeIcons[mode.id]}
-                    size={12}
-                  />
-                }
-                key={mode.id}
-                onPress={() => selectMode(mode.id)}
-                selected={selected}
-                textStyle={[
-                  styles.modeLabel,
-                  selected && styles.modeLabelSelected,
-                ]}
-              >
-                {mode.label}
-              </LiquidChip>
-            );
-          })}
-        </ScrollView>
-
-        <View style={styles.readyActionRow}>
-          <View style={styles.readyCopyBlock}>
-            <HomeText numberOfLines={1} style={styles.readyCopy}>
-              {readyCopy}
-            </HomeText>
-            <HomeText numberOfLines={2} style={styles.readyDescription}>
-              {selectedMode.description}
-            </HomeText>
+          <View style={styles.readyActionRow}>
+            <View style={styles.readyCopyBlock}>
+              <HomeText numberOfLines={1} style={styles.readyCopy}>
+                {readyCopy}
+              </HomeText>
+              <HomeText numberOfLines={2} style={styles.readyDescription}>
+                {selectedMode.description}
+              </HomeText>
+            </View>
+            <LiquidButton
+              accessibilityLabel={
+                readyEnabled ? 'Tắt sẵn sàng' : 'Bật sẵn sàng'
+              }
+              contentStyle={styles.primaryActionGradient}
+              glowPreset={ctaPurpleCyanGlowSegments}
+              gradientColors={
+                readyEnabled
+                  ? [
+                      'rgba(136,84,218,0.90)',
+                      'rgba(78,96,210,0.90)',
+                      'rgba(68,154,190,0.86)',
+                    ]
+                  : [
+                      'rgba(142,86,218,0.90)',
+                      'rgba(78,82,200,0.90)',
+                      'rgba(70,142,188,0.86)',
+                    ]
+              }
+              gradientLocations={readyEnabled ? [0, 0.5, 1] : [0, 0.52, 1]}
+              onPress={toggleReady}
+              radius={22}
+              state={readyEnabled ? 'active' : 'idle'}
+              style={[
+                styles.primaryAction,
+                readyEnabled && styles.primaryActionActive,
+              ]}
+              withShadow={false}
+            >
+              <HomeText style={styles.primaryActionText}>
+                {readyEnabled ? 'Tắt sẵn sàng' : 'Bật sẵn sàng'}
+              </HomeText>
+              <Ionicons
+                color="#FFFFFF"
+                name={readyEnabled ? 'close-circle-outline' : 'power-outline'}
+                size={16}
+                style={styles.actionIconForeground}
+              />
+            </LiquidButton>
           </View>
-          <LiquidButton
-            accessibilityLabel={readyEnabled ? 'Tắt sẵn sàng' : 'Bật sẵn sàng'}
-            contentStyle={styles.primaryActionGradient}
-            glowPreset={ctaPurpleCyanGlowSegments}
-            gradientColors={
-              readyEnabled
-                ? [
-                    'rgba(136,84,218,0.90)',
-                    'rgba(78,96,210,0.90)',
-                    'rgba(68,154,190,0.86)',
-                  ]
-                : [
-                    'rgba(142,86,218,0.90)',
-                    'rgba(78,82,200,0.90)',
-                    'rgba(70,142,188,0.86)',
-                  ]
-            }
-            gradientLocations={readyEnabled ? [0, 0.5, 1] : [0, 0.52, 1]}
-            onPress={toggleReady}
-            radius={28}
-            state={readyEnabled ? 'active' : 'idle'}
-            style={[
-              styles.primaryAction,
-              readyEnabled && styles.primaryActionActive,
-            ]}
-            withShadow={false}
-          >
-            <HomeText style={styles.primaryActionText}>
-              {readyEnabled ? 'Đang bật' : 'Bật ngay'}
-            </HomeText>
-            <Ionicons
-              color="#FFFFFF"
-              name="arrow-forward"
-              size={18}
-              style={styles.actionIconForeground}
-            />
-          </LiquidButton>
         </View>
       </LiquidGlassSurface>
 
@@ -517,8 +567,9 @@ export default function HomeDashboardScreen() {
             <ActivityIndicator color="#C679FF" />
           ) : null
         }
-        label="MATCHED"
-        title="Đã match thành công"
+        label="KẾT NỐI"
+        style={styles.matchesSectionHeader}
+        title="Những người đã match"
       />
 
       {matchedSetsToRender.length ? (
@@ -543,10 +594,20 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
   const chipVariant = chipVariantForKind(set.kind);
   const buttonVariant = buttonVariantForKind(set.kind);
   const profileId = profileIdForMatchedSet(set, index);
+  const displayKind = matchedSetKindLabel(set.kind);
+  const displayStatus = matchedSetStatusLabel(set.status);
+  const tags = buildMatchedSetTags({
+    heroNames: set.heroNames,
+    roleNames: set.roleNames,
+  });
+  const chatAccessibilityLabel = chatActionAccessibilityLabel(
+    set.name,
+    set.unreadCount,
+  );
 
   return (
     <Pressable
-      accessibilityLabel={`${set.name}, ${set.kind}`}
+      accessibilityLabel={`${set.name}, ${displayKind}`}
       accessibilityRole="button"
       onPress={selectionImpact}
       style={({ pressed }) => [
@@ -586,8 +647,8 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
         <View pointerEvents="none" style={styles.matchCardDarkTint} />
         <LinearGradient
           colors={[
-            'rgba(255,255,255,0.095)',
-            'rgba(255,255,255,0.018)',
+            'rgba(255,255,255,0.080)',
+            'rgba(255,255,255,0.016)',
             'rgba(3,7,20,0.28)',
           ]}
           start={{ x: 0, y: 0 }}
@@ -607,12 +668,6 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
           start={{ x: 0.22, y: 0.05 }}
           style={styles.matchCardInnerReflection}
         />
-        {set.unreadCount ? (
-          <LiquidBadge style={styles.unreadPillFloating}>
-            {set.unreadCount}
-          </LiquidBadge>
-        ) : null}
-
         <View style={styles.matchCardTop}>
           <View style={styles.matchAvatarWrap}>
             <Pressable
@@ -628,7 +683,7 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
             >
               <Avatar
                 name={set.name}
-                size={58}
+                size={54}
                 source={avatarSource}
                 uri={set.avatarUrl}
               />
@@ -648,31 +703,30 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
               </HomeText>
               <LiquidChip
                 icon={
-                  <Ionicons
+                  <SemanticModeIcon
                     color={tone.text}
-                    name={kindIcons[set.kind]}
-                    size={14}
+                    icon={kindIcons[set.kind]}
+                    size={13}
+                    testID={`home-match-kind-icon-${set.kind}`}
                   />
                 }
                 style={[
                   styles.kindPill,
-                  set.unreadCount ? styles.kindPillUnreadOffset : undefined,
                   { backgroundColor: tone.pillBg, borderColor: tone.border },
                 ]}
                 textStyle={[styles.kindText, { color: tone.text }]}
                 variant={chipVariant}
               >
-                {set.kind}
+                {displayKind}
               </LiquidChip>
             </View>
-            <HomeText numberOfLines={1} style={styles.matchSubtitle}>
-              {set.subtitle || 'Đã match thành công'}
+            <HomeText style={styles.matchSubtitle}>
+              {set.subtitle || 'Đã kết nối với bạn'}
             </HomeText>
 
-            <View style={styles.matchTagsRow}>
-              {[...set.heroNames.slice(0, 3), ...set.roleNames.slice(0, 1)]
-                .slice(0, 4)
-                .map((label) => (
+            {tags.length ? (
+              <View style={styles.matchTagsRow}>
+                {tags.map((label) => (
                   <LiquidChip
                     density="tag"
                     key={label}
@@ -683,7 +737,8 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
                     {label}
                   </LiquidChip>
                 ))}
-            </View>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -700,10 +755,15 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
                 numberOfLines={1}
                 style={[styles.statusLabel, { color: statusStyle.text }]}
               >
-                {set.statusLabel}
+                {displayStatus}
               </HomeText>
-              <View style={styles.footerDivider} />
-              <HomeText numberOfLines={1} style={styles.matchMeta}>
+              <HomeText style={styles.footerSeparator}>·</HomeText>
+              <HomeText
+                adjustsFontSizeToFit
+                minimumFontScale={0.86}
+                numberOfLines={1}
+                style={styles.matchMeta}
+              >
                 {set.meta}
               </HomeText>
             </View>
@@ -711,10 +771,21 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
 
           <View style={styles.cardActions}>
             <LiquidOrbButton
-              accessibilityLabel="Nhắn tin"
+              accessibilityLabel={chatAccessibilityLabel}
+              badge={
+                set.unreadCount ? (
+                  <LiquidBadge size="sm" style={styles.chatUnreadBadge}>
+                    {set.unreadCount}
+                  </LiquidBadge>
+                ) : undefined
+              }
+              badgeStyle={styles.chatUnreadBadgeHost}
               glowPreset={actionGlowPreset}
-              onPress={selectionImpact}
-              size={37}
+              onPress={(event) => {
+                event.stopPropagation();
+                selectionImpact();
+              }}
+              size={31}
               style={[
                 styles.secondaryAction,
                 { borderColor: tone.border, shadowColor: tone.text },
@@ -732,8 +803,11 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
               contentStyle={styles.cardPrimaryActionGradient}
               glowPreset={actionGlowPreset}
               gradientColors={tone.actionGradient}
-              onPress={impactLight}
-              radius={21}
+              onPress={(event) => {
+                event.stopPropagation();
+                impactLight();
+              }}
+              radius={19}
               style={[styles.cardPrimaryAction, { shadowColor: tone.text }]}
               variant={buttonVariant}
               withShadow={false}
@@ -975,7 +1049,7 @@ const styles = StyleSheet.create({
     zIndex: 0,
   },
   readyBoardDarkTint: {
-    backgroundColor: 'rgba(3,6,18,0.038)',
+    backgroundColor: 'rgba(3,6,18,0.06)',
     bottom: 0,
     left: 0,
     position: 'absolute',
@@ -1029,31 +1103,31 @@ const styles = StyleSheet.create({
     borderColor: '#06101E',
     borderRadius: 99,
     borderWidth: 3,
-    bottom: 5,
-    height: 16,
-    left: 5,
+    bottom: 4,
+    height: 14,
+    left: 4,
     position: 'absolute',
-    width: 16,
+    width: 14,
   },
-  boardHeaderRow: { minHeight: 58, position: 'relative' },
+  boardHeaderRow: { minHeight: 42, position: 'relative' },
   boardSubtitle: {
-    color: '#B9C0D5',
-    fontSize: 12,
+    color: '#D1D7E8',
+    fontSize: 11,
     fontWeight: '500',
-    letterSpacing: -0.05,
-    lineHeight: 17,
-    marginTop: 7,
-    maxWidth: 276,
+    letterSpacing: -0.04,
+    lineHeight: 15,
+    marginTop: 1,
+    maxWidth: 246,
   },
   boardTitle: {
     ...liquidTypography.heroTitle,
     fontWeight: '700',
-    letterSpacing: -0.26,
-    lineHeight: 24,
-    marginTop: 6,
-    textShadowColor: 'rgba(255,255,255,0.12)',
+    letterSpacing: -0.24,
+    lineHeight: 23,
+    marginTop: 3,
+    textShadowColor: 'rgba(255,255,255,0.10)',
     textShadowOffset: { height: 0, width: 0 },
-    textShadowRadius: 4,
+    textShadowRadius: 3,
   },
   boardTitleBlock: { minWidth: 0, paddingRight: 0 },
   bottomFade: {
@@ -1065,11 +1139,18 @@ const styles = StyleSheet.create({
     right: 0,
   },
   actionIconForeground: { zIndex: 2 },
+  chatUnreadBadge: {
+    borderRadius: 8,
+    height: 16,
+    minWidth: 16,
+    paddingHorizontal: 0,
+  },
+  chatUnreadBadgeHost: { right: -2, top: -2 },
   cardActions: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 7,
-    marginLeft: 7,
+    gap: 8,
+    marginLeft: 4,
   },
   cardHalo: {
     borderRadius: 27,
@@ -1100,36 +1181,41 @@ const styles = StyleSheet.create({
     top: -8,
   },
   cardPrimaryAction: {
-    borderRadius: 21,
-    elevation: 3,
-    minWidth: 82,
+    borderRadius: 19,
+    elevation: 2,
+    minWidth: 68,
     overflow: 'visible',
     position: 'relative',
     shadowColor: '#C679FF',
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
   },
   cardPrimaryActionGradient: {
     alignItems: 'center',
-    borderColor: 'rgba(255,255,255,0.105)',
-    borderRadius: 21,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 19,
     borderWidth: 1,
     justifyContent: 'center',
+    minHeight: 30,
     overflow: 'hidden',
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     zIndex: 2,
-    minHeight: 35,
-    paddingHorizontal: 13,
-    paddingVertical: 7,
   },
   cardPrimaryActionText: {
     color: '#FFFFFF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: -0.1,
+    letterSpacing: -0.08,
     zIndex: 2,
   },
-  cardStatusDot: { borderRadius: 99, height: 8, marginRight: 5, width: 8 },
+  cardStatusDot: {
+    borderRadius: 99,
+    height: 8,
+    marginRight: 5,
+    width: 8,
+  },
   emptyBody: {
     color: '#A8AFC6',
     fontSize: 12,
@@ -1206,15 +1292,15 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.22,
   },
-  footerDivider: {
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    height: 15,
-    marginHorizontal: 7,
-    width: 1,
+  footerSeparator: {
+    color: 'rgba(226,232,255,0.52)',
+    fontSize: 10,
+    fontWeight: '700',
+    marginHorizontal: 5,
   },
   greeting: {
     ...liquidTypography.screenGreeting,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
   },
   greetingBlock: { flex: 1, minWidth: 0 },
@@ -1222,20 +1308,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
-    gap: 11,
+    gap: 10,
     minWidth: 0,
   },
   kindPill: {
     alignItems: 'center',
-    borderRadius: 18,
+    borderRadius: 16,
     borderWidth: 1,
     flexDirection: 'row',
     flexShrink: 0,
-    gap: 6,
-    maxWidth: 112,
+    gap: 5,
+    maxWidth: 124,
     overflow: 'hidden',
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
   },
   kindPillSheen: {
     borderRadius: 18,
@@ -1246,19 +1332,17 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  kindPillUnreadOffset: { marginRight: 19 },
-  kindText: { fontSize: 10, fontWeight: '700', zIndex: 2 },
+  kindText: { fontSize: 9, fontWeight: '700', zIndex: 2 },
   liveBadge: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.065)',
-    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 10,
-    minWidth: 58,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    gap: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
     position: 'absolute',
     right: 0,
     top: 0,
@@ -1266,11 +1350,11 @@ const styles = StyleSheet.create({
   liveDot: {
     backgroundColor: '#AEB7D0',
     borderRadius: 99,
-    height: 9,
-    width: 9,
+    height: 7,
+    width: 7,
   },
   liveDotActive: { backgroundColor: '#5DFFB3' },
-  liveText: { color: '#DDE6FF', fontSize: 12, fontWeight: '600' },
+  liveText: { color: '#DDE6FF', fontSize: 10, fontWeight: '600' },
   matchAvatarWrap: { position: 'relative' },
   matchCardPressable: {
     borderRadius: 30,
@@ -1282,11 +1366,11 @@ const styles = StyleSheet.create({
   matchCard: {
     backgroundColor: 'rgba(9,11,24,0.58)',
     borderRadius: 27,
-    minHeight: 122,
+    minHeight: 102,
     overflow: 'hidden',
-    paddingBottom: 15,
-    paddingHorizontal: 10,
-    paddingTop: 10,
+    paddingBottom: 8,
+    paddingHorizontal: 8,
+    paddingTop: 8,
   },
   matchCardFrame: {
     borderRadius: 28,
@@ -1301,7 +1385,7 @@ const styles = StyleSheet.create({
   matchCardSheen: {
     height: 46,
     left: 0,
-    opacity: 0.075,
+    opacity: 0.06,
     position: 'absolute',
     right: 0,
     top: 0,
@@ -1309,7 +1393,7 @@ const styles = StyleSheet.create({
   matchCardInnerReflection: {
     bottom: 0,
     left: 0,
-    opacity: 0.1,
+    opacity: 0.08,
     position: 'absolute',
     right: 0,
     top: 0,
@@ -1340,21 +1424,24 @@ const styles = StyleSheet.create({
     right: 70,
     top: 0,
   },
-  matchCardTop: { alignItems: 'flex-start', flexDirection: 'row', gap: 10 },
+  matchCardTop: { alignItems: 'flex-start', flexDirection: 'row', gap: 8 },
   matchFooter: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 7,
-    marginTop: 8,
+    gap: 4,
+    marginTop: 4,
   },
-  matchList: { gap: 9, marginTop: 12 },
+  matchList: { gap: 8, marginTop: 9 },
+  matchesSectionHeader: { marginTop: 9 },
   matchMainInfo: { flex: 1, minWidth: 0, paddingTop: 1 },
   matchMeta: {
-    color: 'rgba(168,176,200,0.76)',
+    color: 'rgba(214,220,237,0.90)',
     flex: 1,
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: -0.08,
+    flexShrink: 1,
+    fontSize: 9,
+    fontWeight: '600',
+    letterSpacing: -0.03,
+    lineHeight: 13,
   },
   matchMetaBlock: { flex: 1, minWidth: 0 },
   matchName: {
@@ -1368,46 +1455,49 @@ const styles = StyleSheet.create({
   matchNameRow: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 7,
-    minHeight: 28,
+    gap: 6,
+    minHeight: 26,
   },
   matchSubtitle: {
-    color: 'rgba(220,226,255,0.58)',
-    fontSize: 11,
+    color: 'rgba(226,232,255,0.72)',
+    fontSize: 10,
     fontWeight: '500',
-    letterSpacing: -0.04,
+    letterSpacing: -0.03,
+    lineHeight: 14,
     marginTop: 1,
   },
   matchTagsRow: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
+    flexWrap: 'wrap',
     gap: 4,
-    marginTop: 6,
+    marginTop: 4,
     minWidth: 0,
   },
   miniStatusPill: {
     alignItems: 'center',
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.13)',
     borderRadius: 999,
     borderWidth: 1,
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 5,
+    gap: 6,
+    marginTop: 3,
     maxWidth: '100%',
-    paddingHorizontal: 9,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
   },
-  miniStatusText: { color: '#F0F3FF', fontSize: 12, fontWeight: '600' },
+  miniStatusText: { color: '#F0F3FF', fontSize: 11, fontWeight: '600' },
   modeChip: {
     alignItems: 'center',
     borderRadius: 15,
+    flex: 1,
     flexDirection: 'row',
-    gap: 6,
+    gap: 3,
     justifyContent: 'center',
-    minHeight: 31,
-    paddingHorizontal: 9,
+    minHeight: 27,
+    minWidth: 0,
+    paddingHorizontal: 2,
     shadowColor: '#B073FF',
     shadowOffset: { height: 0, width: 0 },
     shadowOpacity: 0,
@@ -1435,38 +1525,34 @@ const styles = StyleSheet.create({
   },
   modeGrid: {
     flexDirection: 'row',
-    flexWrap: 'nowrap',
-    gap: 8,
-    marginTop: 18,
+    gap: 4,
+    marginTop: 5,
   },
-  modeRail: {
-    marginHorizontal: -18,
-    marginTop: 12,
+  modeLabel: {
+    color: '#CBD3E7',
+    fontSize: 9.5,
+    fontWeight: '600',
+    letterSpacing: -0.08,
   },
-  modeRailContent: {
-    gap: 7,
-    paddingHorizontal: 18,
-  },
-  modeLabel: { color: '#BAC3DA', fontSize: 10, fontWeight: '600' },
   modeLabelSelected: { color: 'rgba(255,255,255,0.90)', fontWeight: '700' },
   notificationButton: {
     alignItems: 'center',
-    borderRadius: 26,
-    height: 52,
+    borderRadius: 21,
+    height: 42,
     justifyContent: 'center',
-    marginLeft: 10,
+    marginLeft: 8,
     overflow: 'visible',
     shadowColor: '#FFFFFF',
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 15,
-    width: 52,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    width: 42,
   },
   notificationDot: {
     backgroundColor: '#FF4F95',
     borderRadius: 99,
-    height: 13,
-    width: 13,
+    height: 10,
+    width: 10,
   },
   previewBanner: {
     alignItems: 'center',
@@ -1483,15 +1569,15 @@ const styles = StyleSheet.create({
   previewText: { color: '#FFD9A8', flex: 1, fontSize: 12, fontWeight: '700' },
   pressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
   primaryAction: {
-    borderRadius: 28,
-    minWidth: 104,
+    borderRadius: 22,
+    elevation: 2,
+    minWidth: 114,
     overflow: 'visible',
     position: 'relative',
     shadowColor: '#9E77FF',
     shadowOffset: { height: 0, width: 0 },
-    elevation: 4,
-    shadowOpacity: 0.14,
-    shadowRadius: 13,
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
   },
   primaryActionActive: {},
   primaryActionEdgeLine: {
@@ -1515,23 +1601,23 @@ const styles = StyleSheet.create({
   },
   primaryActionGradient: {
     alignItems: 'center',
-    borderColor: 'rgba(255,255,255,0.17)',
-    borderRadius: 28,
+    borderColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 22,
     borderWidth: 1,
     flexDirection: 'row',
-    overflow: 'hidden',
-    zIndex: 2,
-    gap: 10,
+    gap: 6,
     justifyContent: 'center',
-    minHeight: 35,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
+    minHeight: 32,
+    overflow: 'hidden',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    zIndex: 2,
   },
   primaryActionText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: -0.08,
+    letterSpacing: -0.04,
     zIndex: 2,
   },
   readyActionRow: {
@@ -1539,28 +1625,33 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.05)',
     borderTopWidth: 1,
     flexDirection: 'row',
-    gap: 8,
-    marginTop: 14,
-    paddingTop: 10,
+    gap: 6,
+    marginTop: 5,
+    paddingTop: 5,
   },
-  readyBoard: {
+  readyBoardContent: {
+    minHeight: 166,
+    padding: 12,
+    position: 'relative',
+  },
+  readyBoardSurface: {
     backgroundColor: 'rgba(7,10,23,0.52)',
-    borderRadius: 31,
-    minHeight: 236,
+    borderRadius: 27,
+    minHeight: 166,
     overflow: 'hidden',
+    padding: 0,
     zIndex: 2,
-    padding: 17,
   },
   readyBoardBorder: {
     borderRadius: 28,
-    marginTop: 18,
+    elevation: 7,
+    marginTop: 10,
     overflow: 'visible',
     position: 'relative',
     shadowColor: '#000000',
     shadowOffset: { height: 12, width: 0 },
-    elevation: 7,
-    shadowOpacity: 0.18,
-    shadowRadius: 28,
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
   },
   readyBoardEdgeSweep: {
     backgroundColor: 'rgba(100,230,255,0.23)',
@@ -1589,26 +1680,27 @@ const styles = StyleSheet.create({
   },
   readyCopy: {
     color: '#F7F8FF',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
-    letterSpacing: -0.04,
+    letterSpacing: -0.03,
     lineHeight: 15,
   },
   readyCopyBlock: { flex: 1, minWidth: 0 },
   readyDescription: {
-    color: '#A8AFC6',
-    fontSize: 10,
+    color: '#C4CBDE',
+    fontSize: 9,
     fontWeight: '500',
-    marginTop: 3,
+    lineHeight: 12,
+    marginTop: 1,
   },
   readyHeroImage: {
-    bottom: 0,
     height: '100%',
-    opacity: 0.52,
+    left: 0,
+    opacity: 0.72,
     position: 'absolute',
-    right: -14,
     top: 0,
-    width: '74%',
+    transform: [{ scale: 1.18 }, { translateX: -18 }],
+    width: '100%',
   },
   root: { backgroundColor: liquidColors.background.base, flex: 1 },
   safe: { flex: 1 },
@@ -1619,15 +1711,15 @@ const styles = StyleSheet.create({
   secondaryAction: {
     alignItems: 'center',
     backgroundColor: 'transparent',
-    borderRadius: 21,
-    height: 37,
+    borderRadius: 16,
+    height: 31,
     justifyContent: 'center',
     overflow: 'visible',
     position: 'relative',
     shadowOffset: { height: 0, width: 0 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    width: 37,
+    shadowOpacity: 0.04,
+    shadowRadius: 5,
+    width: 31,
   },
   secondaryActionIcon: { zIndex: 3 },
   secondaryActionSurface: {
@@ -1660,15 +1752,9 @@ const styles = StyleSheet.create({
     letterSpacing: -0.22,
     marginTop: 5,
   },
-  softTag: { flexShrink: 1 },
+  softTag: { flexShrink: 0 },
   softTagText: { fontSize: 9, fontWeight: '600', letterSpacing: -0.02 },
-  statusDot: {
-    backgroundColor: '#5DFFB3',
-    borderRadius: 99,
-    height: 11,
-    width: 11,
-  },
-  statusLabel: { fontSize: 11, fontWeight: '700', maxWidth: 72 },
+  statusLabel: { fontSize: 9, fontWeight: '700', maxWidth: 62 },
   statusMetaRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -1715,42 +1801,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: 2,
-  },
-  unreadPillFloating: {
-    alignItems: 'center',
-    borderBottomLeftRadius: 15,
-    borderColor: 'rgba(255,255,255,0.14)',
-    borderTopRightRadius: 27,
-    borderWidth: 1,
-    height: 26,
-    justifyContent: 'center',
-    minWidth: 26,
-    overflow: 'hidden',
-    paddingHorizontal: 8,
-    position: 'absolute',
-    right: -1,
-    top: -1,
-    zIndex: 4,
-  },
-  unreadPillSheen: {
-    bottom: 0,
-    left: 0,
-    opacity: 0.42,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  unreadText: {
-    color: 'rgba(255,255,255,0.88)',
-    fontSize: 12,
-    fontWeight: '700',
+    marginTop: 0,
   },
   userName: {
     ...liquidTypography.screenName,
+    fontSize: 23,
     fontWeight: '700',
-    letterSpacing: -0.36,
-    lineHeight: 30,
+    letterSpacing: -0.3,
+    lineHeight: 27,
     marginTop: 0,
   },
 });

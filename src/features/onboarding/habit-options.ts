@@ -1,6 +1,9 @@
+export type TimePreset = 'Sáng' | 'Trưa' | 'Chiều' | 'Tối' | 'Khuya';
+export type Seriousness = 'Thoải mái' | 'Cân bằng' | 'Cạnh tranh';
+
 export type HabitPayload = {
   communication_channels: string[];
-  online_time_presets: string[];
+  online_time_presets: TimePreset[];
   decision_style: string;
   session_length: string;
   team_goals: string[];
@@ -12,8 +15,11 @@ export type HabitPayload = {
   comeback_response: string;
 };
 
-export type TimePreset = 'Sáng' | 'Trưa' | 'Chiều' | 'Tối' | 'Khuya';
-export type Seriousness = 'Thoải mái' | 'Cân bằng' | 'Cạnh tranh';
+export type TimePresetWindow = {
+  /** Minutes after local midnight. Values above 1440 cross midnight. */
+  endMinute: number;
+  startMinute: number;
+};
 
 export const communicationChannels = [
   'Voice chủ động',
@@ -98,6 +104,19 @@ export const timePresets: Record<TimePreset, string> = {
   Chiều: '14:00-18:00',
   Tối: '18:00-24:00',
   Khuya: '22:00-03:00',
+};
+
+/**
+ * Coarse recurring local-time windows captured during onboarding.
+ * Match treats these as a soft availability signal until users can choose
+ * explicit weekdays or create a time-bound Match intent.
+ */
+export const timePresetWindows: Record<TimePreset, TimePresetWindow> = {
+  Sáng: { startMinute: 6 * 60, endMinute: 11 * 60 },
+  Trưa: { startMinute: 11 * 60, endMinute: 14 * 60 },
+  Chiều: { startMinute: 14 * 60, endMinute: 18 * 60 },
+  Tối: { startMinute: 18 * 60, endMinute: 24 * 60 },
+  Khuya: { startMinute: 22 * 60, endMinute: 27 * 60 },
 };
 
 export const seriousnessDescriptions: Record<Seriousness, string> = {

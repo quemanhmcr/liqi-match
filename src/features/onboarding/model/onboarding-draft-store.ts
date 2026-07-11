@@ -1,3 +1,4 @@
+import type { HabitPayload } from '../habit-options';
 import { create } from 'zustand';
 
 export type ProfileGender = 'male' | 'female' | 'hidden';
@@ -12,7 +13,7 @@ export type OnboardingSnapshot = {
   rankId: string;
   laneIds: string[];
   heroIds: string[];
-  habits: Record<string, unknown>;
+  habits: HabitPayload | null;
   mediaDraft: { avatar: boolean; cover: boolean; wallCount: number };
 };
 
@@ -22,7 +23,7 @@ function createInitialSnapshot(): OnboardingSnapshot {
     rankId: 'master',
     laneIds: ['jungle'],
     heroIds: ['edras', 'goverra', 'heino'],
-    habits: {},
+    habits: null,
     mediaDraft: { avatar: false, cover: false, wallCount: 0 },
   };
 }

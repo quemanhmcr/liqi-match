@@ -103,5 +103,39 @@ describe('completeOnboardingProfile', () => {
         session,
       }),
     );
+
+    const request = mockSupabaseRest.mock.calls[0]?.[1] as {
+      body: {
+        payload: {
+          availability_slots: {
+            day_of_week: number;
+            ends_at: string;
+            starts_at: string;
+          }[];
+        };
+      };
+    };
+    expect(request.body.payload.availability_slots).toHaveLength(7);
+    expect(request.body.payload.availability_slots).toEqual(
+      expect.arrayContaining([
+        { day_of_week: 0, starts_at: '18:00:00', ends_at: '23:59:59' },
+        { day_of_week: 6, starts_at: '18:00:00', ends_at: '23:59:59' },
+      ]),
+    );
+  });
+
+  it('fails before calling the backend when the habits step is missing', async () => {
+    await expect(
+      completeOnboardingProfile(session, {
+        profileBasics: { displayName: 'Liqi Pro', gender: 'hidden' },
+        rankId: 'master',
+        laneIds: ['jungle'],
+        heroIds: ['edras', 'goverra', 'heino'],
+        habits: null,
+        mediaDraft: { avatar: false, cover: false, wallCount: 0 },
+      }),
+    ).rejects.toThrow('Dữ liệu thói quen chưa hoàn tất');
+
+    expect(mockSupabaseRest).not.toHaveBeenCalled();
   });
 });
