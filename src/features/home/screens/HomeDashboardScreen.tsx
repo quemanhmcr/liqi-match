@@ -32,6 +32,7 @@ import {
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { useNotificationInboxSummary } from '@/entities/notifications';
 import {
   ctaPurpleCyanGlowSegments,
   heroGlowSegments,
@@ -232,6 +233,9 @@ function selectionImpact() {
 
 export default function HomeDashboardScreen() {
   const { session } = useAuth();
+  const notificationSummaryQuery = useNotificationInboxSummary(session);
+  const hasUnreadNotifications =
+    (notificationSummaryQuery.data?.unseenCount ?? 0) > 0;
   const [selectedModeId, setSelectedModeId] =
     useState<HomeReadyMode['id']>('setlv');
   const [readyEnabled, setReadyEnabled] = useState(false);
@@ -312,7 +316,14 @@ export default function HomeDashboardScreen() {
 
         <LiquidOrbButton
           accessibilityLabel="Thông báo"
-          badge={<View style={styles.notificationDot} />}
+          badge={
+            hasUnreadNotifications ? (
+              <View
+                style={styles.notificationDot}
+                testID="home-notification-unread-dot"
+              />
+            ) : undefined
+          }
           onPress={() => {
             selectionImpact();
             router.push(appRoutes.notifications);

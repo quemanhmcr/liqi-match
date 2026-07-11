@@ -5,6 +5,14 @@ import { appRoutes } from '@/app-shell/navigation/routes';
 import HomeDashboardScreen from '@/features/home/screens/HomeDashboardScreen';
 import { renderWithProviders } from '@/test/render-with-providers';
 
+let mockNotificationUnseenCount = 3;
+
+jest.mock('@/entities/notifications', () => ({
+  useNotificationInboxSummary: () => ({
+    data: { unseenCount: mockNotificationUnseenCount },
+  }),
+}));
+
 jest.mock('expo-router', () => ({
   router: {
     push: jest.fn(),
@@ -107,7 +115,33 @@ jest.mock('@/features/home/home-dashboard-service', () => ({
 describe('HomeDashboardScreen', () => {
   beforeEach(() => {
     mockExpoRouter.router.push.mockClear();
+    mockNotificationUnseenCount = 3;
   });
+
+  it('renders the dashboard shell with the account unread indicator', async () => {
+    const { getAllByText, getByTestId, getByText } = await renderWithProviders(
+      <HomeDashboardScreen />,
+    );
+
+    expect(getByTestId('home-notification-unread-dot')).toBeTruthy();
+    expect(getByText('Xin chào,')).toBeTruthy();
+    expect(getByText('Sẵn sàng vào set?')).toBeTruthy();
+    expect(getByText('Đã match thành công')).toBeTruthy();
+    expect(getByText('Set LV')).toBeTruthy();
+    expect(getAllByText('Tri kỉ').length).toBeGreaterThan(0);
+    expect(getAllByText('Rank').length).toBeGreaterThan(0);
+    expect(getAllByText('Minh Anh').length).toBeGreaterThan(0);
+  });
+
+  it('hides the unread dot when the account summary is fully seen', async () => {
+    mockNotificationUnseenCount = 0;
+    const { queryByTestId } = await renderWithProviders(
+      <HomeDashboardScreen />,
+    );
+
+    expect(queryByTestId('home-notification-unread-dot')).toBeNull();
+  });
+
   it('opens notifications from the header bell', async () => {
     const { getByLabelText } = await renderWithProviders(
       <HomeDashboardScreen />,
@@ -118,19 +152,5 @@ describe('HomeDashboardScreen', () => {
     expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
       appRoutes.notifications,
     );
-  });
-
-  it('renders the matched-sets home dashboard shell', async () => {
-    const { getAllByText, getByText } = await renderWithProviders(
-      <HomeDashboardScreen />,
-    );
-
-    expect(getByText('Xin chào,')).toBeTruthy();
-    expect(getByText('Sẵn sàng vào set?')).toBeTruthy();
-    expect(getByText('Đã match thành công')).toBeTruthy();
-    expect(getByText('Set LV')).toBeTruthy();
-    expect(getAllByText('Tri kỉ').length).toBeGreaterThan(0);
-    expect(getAllByText('Rank').length).toBeGreaterThan(0);
-    expect(getAllByText('Minh Anh').length).toBeGreaterThan(0);
   });
 });
