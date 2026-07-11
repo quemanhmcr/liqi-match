@@ -1,5 +1,14 @@
-import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  jest,
+} from '@jest/globals';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, waitFor } from '@testing-library/react-native';
+import type { ReactElement } from 'react';
 
 import {
   mockNotificationInboxRepository,
@@ -10,6 +19,27 @@ import {
   renderWithProviders,
   testAuthSession,
 } from '@/test/render-with-providers';
+
+const notificationTestQueryClients = new Set<QueryClient>();
+
+afterEach(() => {
+  for (const queryClient of notificationTestQueryClients) queryClient.clear();
+  notificationTestQueryClients.clear();
+});
+
+function renderNotificationWithProviders(ui: ReactElement) {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { gcTime: Infinity, retry: false },
+      queries: { gcTime: Infinity, retry: false },
+    },
+  });
+  notificationTestQueryClients.add(queryClient);
+
+  return renderWithProviders(
+    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+  );
+}
 
 type FocusEffect = () => undefined | void | (() => void);
 let mockFocusEffect: FocusEffect | undefined;
@@ -33,7 +63,7 @@ describe('NotificationsScreen', () => {
 
   it('maps the production-shaped mock and marks it seen only after focus', async () => {
     const { findByText, getAllByText, getByText, queryByLabelText, unmount } =
-      await renderWithProviders(<NotificationsScreen />);
+      await renderNotificationWithProviders(<NotificationsScreen />);
 
     expect(await findByText('3 thông báo mới')).toBeTruthy();
     expect(getByText('Thông báo')).toBeTruthy();
@@ -60,7 +90,7 @@ describe('NotificationsScreen', () => {
 
   it('empties the unread filter when the focused inbox becomes seen', async () => {
     const { findByLabelText, findByText, getByText, unmount } =
-      await renderWithProviders(<NotificationsScreen />);
+      await renderNotificationWithProviders(<NotificationsScreen />);
 
     expect(await findByText('3 thông báo mới')).toBeTruthy();
     fireEvent.press(await findByLabelText('Lọc Chưa đọc'));
