@@ -1,3 +1,4 @@
+/** Edge-runtime HTTP primitives; product decisions do not belong here. */
 export const jsonHeaders = {
   'content-type': 'application/json; charset=utf-8',
   'x-content-type-options': 'nosniff',

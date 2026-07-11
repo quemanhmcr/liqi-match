@@ -1,3 +1,4 @@
+/** Pure media constraints shared by upload use cases. */
 export const allowedMimeTypes = new Set([
   'image/jpeg',
   'image/png',

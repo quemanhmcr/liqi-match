@@ -17,15 +17,11 @@ export class BasicImageMediaProcessor implements MediaProcessor {
     expectedMimeType: string,
   ): MediaValidationResult {
     const detectedMimeType = detectImageMime(bytes);
-
-    if (!detectedMimeType) {
+    if (!detectedMimeType)
       return { ok: false, error: 'unsupported_magic_bytes' };
-    }
-
     if (detectedMimeType !== expectedMimeType) {
       return { ok: false, detectedMimeType, error: 'mime_mismatch' };
     }
-
     return { ok: true, detectedMimeType };
   }
 }
@@ -34,7 +30,6 @@ export function detectImageMime(bytes: Uint8Array): string | undefined {
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
     return 'image/jpeg';
   }
-
   if (
     bytes[0] === 0x89 &&
     bytes[1] === 0x50 &&
@@ -43,7 +38,6 @@ export function detectImageMime(bytes: Uint8Array): string | undefined {
   ) {
     return 'image/png';
   }
-
   if (
     bytes[0] === 0x52 &&
     bytes[1] === 0x49 &&
@@ -56,6 +50,5 @@ export function detectImageMime(bytes: Uint8Array): string | undefined {
   ) {
     return 'image/webp';
   }
-
   return undefined;
 }
