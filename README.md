@@ -117,12 +117,17 @@ npx expo config
 - `src/entities`: shared product concepts used by more than one feature.
 - `src/shared`: reusable components, config, theme, hooks, services, types, and utilities.
 - `src/test`: test setup and provider helpers only. Colocate tests with their feature or app shell; never place tests inside `src/app`.
+- `supabase/functions`: thin Edge Function adapters, endpoint-owned handlers, and a layered shared kernel.
+- `cloudflare/media-worker`: domain/application/infrastructure/transport layers with a single composition root.
 
 The `@/*` alias maps to `src/*` in TypeScript and Jest.
 
 See [mobile frontend architecture](docs/architecture/mobile-frontend.md) for
 route ownership, dependency rules, adding a page/tab, and the parallel work
 workflow.
+
+See [backend architecture](docs/architecture/backend.md) for service ownership,
+dependency boundaries, migration rules, and parallel backend workflow.
 
 ## CNG Policy
 

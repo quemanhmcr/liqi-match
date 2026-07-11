@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { detectImageMime } from '../src/media-processor';
+import { detectImageMime } from '../src/domain/media/media-processor';
 
 describe('detectImageMime', () => {
   it('detects jpeg from the file header without requiring end-of-image bytes', () => {

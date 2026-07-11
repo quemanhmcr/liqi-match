@@ -1,3 +1,4 @@
+/** Cloudflare R2 adapter. Keep storage protocol details out of endpoint policy. */
 type PresignPutInput = {
   objectKey: string;
   contentType: string;
