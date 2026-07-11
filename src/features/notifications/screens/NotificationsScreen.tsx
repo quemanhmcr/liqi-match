@@ -1,11 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Image,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text as RNText,
@@ -16,6 +15,12 @@ import {
 } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import {
+  useMarkNotificationInboxSeen,
+  useMarkNotificationRead,
+  useNotificationInboxFeed,
+} from '@/entities/notifications';
+import { useAuth } from '@/shared/auth/auth-context';
 import {
   LiquidButton,
   LiquidCard,
@@ -32,11 +37,13 @@ import {
 
 import {
   notificationFilters,
-  notificationMockItems,
   type NotificationFilterId,
+} from '../data/notification.fixture';
+import {
+  mapNotificationToViewModel,
   type NotificationItem,
   type NotificationTone,
-} from '../data/notification.fixture';
+} from '../model/notification-view-model';
 
 type GradientColors = readonly [string, string, ...string[]];
 type IconName = keyof typeof Ionicons.glyphMap;
@@ -195,36 +202,55 @@ function NotificationText(props: TextProps) {
 }
 
 export function NotificationsScreen() {
+  const { session } = useAuth();
   const [activeFilter, setActiveFilter] = useState<NotificationFilterId>('all');
-  const [readIds, setReadIds] = useState(
-    () =>
-      new Set(
-        notificationMockItems
-          .filter((item) => item.isRead)
-          .map((item) => item.id),
-      ),
-  );
+  const acknowledgedWatermarkRef = useRef<string | null>(null);
+  const inboxQuery = useNotificationInboxFeed(session);
+  const { mutate: markInboxSeen } = useMarkNotificationInboxSeen(session);
+  const { mutate: markNotificationRead } = useMarkNotificationRead(session);
+  const inboxPages = inboxQuery.data?.pages;
+  const firstPage = inboxPages?.[0];
+  const unseenCount = firstPage?.unseenCount ?? 0;
+  const latestWatermark = firstPage?.latestWatermark ?? null;
+  const latestWatermarkKey = latestWatermark
+    ? `${latestWatermark.occurredAt}:${latestWatermark.id}`
+    : null;
 
   const notifications = useMemo(
     () =>
-      notificationMockItems.map((item) => ({
-        ...item,
-        isRead: readIds.has(item.id),
-      })),
-    [readIds],
+      (inboxPages ?? []).flatMap((page) =>
+        page.items.map((notification) =>
+          mapNotificationToViewModel(notification),
+        ),
+      ),
+    [inboxPages],
   );
-  const unreadCount = notifications.filter((item) => !item.isRead).length;
   const filteredNotifications = notifications.filter((item) => {
     if (activeFilter === 'all') return true;
-    if (activeFilter === 'unread') return !item.isRead;
+    if (activeFilter === 'unread') return !item.isSeen;
     return item.category === activeFilter;
   });
   const groupedNotifications = groupNotifications(filteredNotifications);
 
-  const markAllAsRead = () => {
-    selectionImpact();
-    setReadIds(new Set(notificationMockItems.map((item) => item.id)));
-  };
+  useEffect(() => {
+    acknowledgedWatermarkRef.current = null;
+  }, [session?.user.id]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!latestWatermark || !latestWatermarkKey || unseenCount === 0) return;
+      if (acknowledgedWatermarkRef.current === latestWatermarkKey) return;
+
+      acknowledgedWatermarkRef.current = latestWatermarkKey;
+      markInboxSeen(latestWatermark, {
+        onError: () => {
+          acknowledgedWatermarkRef.current = null;
+        },
+      });
+    }, [markInboxSeen, latestWatermark, latestWatermarkKey, unseenCount]),
+  );
+
+  const hasResolvedFeed = Boolean(inboxQuery.data);
 
   return (
     <LiquidScreen
@@ -232,17 +258,25 @@ export function NotificationsScreen() {
       withBottomNavPadding={false}
       withHeader={false}
     >
-      <NotificationTopBar onMarkAllRead={markAllAsRead} />
-      <NotificationSummaryCard unreadCount={unreadCount} />
+      <NotificationTopBar />
+      <NotificationSummaryCard
+        error={inboxQuery.isError && !hasResolvedFeed}
+        loading={inboxQuery.isPending && !hasResolvedFeed}
+        unreadCount={unseenCount}
+      />
       <NotificationFilterBar
         activeFilter={activeFilter}
         onSelect={(filter) => {
           selectionImpact();
           setActiveFilter(filter);
         }}
-        unreadCount={unreadCount}
+        unreadCount={unseenCount}
       />
-      {groupedNotifications.length ? (
+      {inboxQuery.isPending && !hasResolvedFeed ? (
+        <NotificationLoadingState />
+      ) : inboxQuery.isError && !hasResolvedFeed ? (
+        <NotificationErrorState onRetry={() => void inboxQuery.refetch()} />
+      ) : groupedNotifications.length ? (
         groupedNotifications.map(([group, items]) => (
           <View
             key={group}
@@ -256,7 +290,11 @@ export function NotificationsScreen() {
             </NotificationText>
             <View style={styles.timelineList}>
               {items.map((item) => (
-                <NotificationCard item={item} key={item.id} />
+                <NotificationCard
+                  item={item}
+                  key={item.id}
+                  onAction={() => markNotificationRead(item.id)}
+                />
               ))}
             </View>
           </View>
@@ -264,14 +302,41 @@ export function NotificationsScreen() {
       ) : (
         <NotificationEmptyState />
       )}
-      <NotificationText style={styles.endText}>
-        Đã tải hết thông báo
-      </NotificationText>
+      {hasResolvedFeed ? (
+        inboxQuery.hasNextPage ? (
+          <LiquidButton
+            accessibilityLabel={
+              inboxQuery.isFetchNextPageError
+                ? 'Thử tải thêm thông báo'
+                : 'Tải thêm thông báo'
+            }
+            contentStyle={styles.loadMoreButtonContent}
+            disabled={inboxQuery.isFetchingNextPage}
+            glowIntensity="low"
+            onPress={() => void inboxQuery.fetchNextPage()}
+            radius={17}
+            style={styles.loadMoreButton}
+            textStyle={styles.actionButtonText}
+            variant="secondary"
+            withShadow={false}
+          >
+            {inboxQuery.isFetchingNextPage
+              ? 'Đang tải…'
+              : inboxQuery.isFetchNextPageError
+                ? 'Thử tải thêm'
+                : 'Tải thêm'}
+          </LiquidButton>
+        ) : (
+          <NotificationText style={styles.endText}>
+            Đã tải hết thông báo
+          </NotificationText>
+        )
+      ) : null}
     </LiquidScreen>
   );
 }
 
-function NotificationTopBar({ onMarkAllRead }: { onMarkAllRead: () => void }) {
+function NotificationTopBar() {
   return (
     <View style={styles.topBar}>
       <LiquidOrbButton
@@ -297,38 +362,34 @@ function NotificationTopBar({ onMarkAllRead }: { onMarkAllRead: () => void }) {
       <NotificationText numberOfLines={1} style={styles.screenTitle}>
         Thông báo
       </NotificationText>
-      <Pressable
-        accessibilityLabel="Đánh dấu tất cả thông báo là đã đọc"
-        accessibilityRole="button"
-        android_ripple={null}
-        onPress={onMarkAllRead}
-        style={({ pressed }) => [
-          styles.markReadPill,
-          pressed && styles.pressed,
-        ]}
-      >
-        <LinearGradient
-          colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.035)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <Ionicons color="#E4E9FF" name="checkmark-circle-outline" size={13} />
-        <NotificationText numberOfLines={1} style={styles.markReadText}>
-          Đã đọc hết
-        </NotificationText>
-      </Pressable>
+      <View style={styles.topBarSpacer} />
     </View>
   );
 }
 
-function NotificationSummaryCard({ unreadCount }: { unreadCount: number }) {
-  const title = unreadCount
-    ? `${unreadCount} thông báo mới`
-    : 'Không còn thông báo mới';
-  const subtitle = unreadCount
-    ? 'Đừng bỏ lỡ những cập nhật quan trọng.'
-    : 'Bạn đã xử lý xong các cập nhật gần nhất.';
+function NotificationSummaryCard({
+  error,
+  loading,
+  unreadCount,
+}: {
+  error: boolean;
+  loading: boolean;
+  unreadCount: number;
+}) {
+  const title = loading
+    ? 'Đang đồng bộ thông báo'
+    : error
+      ? 'Chưa thể tải thông báo'
+      : unreadCount
+        ? `${unreadCount} thông báo mới`
+        : 'Không còn thông báo mới';
+  const subtitle = loading
+    ? 'Dữ liệu mới nhất đang được chuẩn bị.'
+    : error
+      ? 'Kết nối chưa ổn định, hãy thử lại.'
+      : unreadCount
+        ? 'Đừng bỏ lỡ những cập nhật quan trọng.'
+        : 'Bạn đã xử lý xong các cập nhật gần nhất.';
 
   return (
     <LiquidCard
@@ -429,7 +490,13 @@ function NotificationFilterBar({
   );
 }
 
-function NotificationCard({ item }: { item: NotificationItem }) {
+function NotificationCard({
+  item,
+  onAction,
+}: {
+  item: NotificationItem;
+  onAction: () => void;
+}) {
   const tone = toneSpecs[item.visual.tone];
   const isDetailed = isDetailedNotification(item);
   const isCompact = !isDetailed;
@@ -453,7 +520,7 @@ function NotificationCard({ item }: { item: NotificationItem }) {
         glowIntensity="low"
         glowPreset={tone.glow}
         radius={isCompact ? 16 : 18}
-        style={[styles.notificationCard, item.isRead && styles.readCard]}
+        style={[styles.notificationCard, item.isSeen && styles.readCard]}
         surfaceBackground={tone.background}
         withInnerReflection
       >
@@ -465,7 +532,11 @@ function NotificationCard({ item }: { item: NotificationItem }) {
             {item.timeLabel}
           </NotificationText>
         </View>
-        <NotificationAccessory compact={isCompact} item={item} />
+        <NotificationAccessory
+          compact={isCompact}
+          item={item}
+          onAction={onAction}
+        />
         <Ionicons
           color="rgba(217,224,255,0.48)"
           name="chevron-forward"
@@ -603,9 +674,11 @@ function NotificationVisual({
 function NotificationAccessory({
   compact,
   item,
+  onAction,
 }: {
   compact: boolean;
   item: NotificationItem;
+  onAction: () => void;
 }) {
   if (item.action) {
     const tone = toneSpecs[item.action.tone];
@@ -619,7 +692,10 @@ function NotificationAccessory({
         glowIntensity="low"
         glowPreset={tone.glow}
         gradientColors={tone.actionGradient}
-        onPress={selectionImpact}
+        onPress={() => {
+          selectionImpact();
+          onAction();
+        }}
         radius={compact ? 15 : 18}
         style={[styles.actionButton, compact && styles.actionButtonCompact]}
         textStyle={styles.actionButtonText}
@@ -684,6 +760,68 @@ function PreviewAvatarStack({
         />
       ))}
     </View>
+  );
+}
+
+function NotificationLoadingState() {
+  return (
+    <LiquidCard
+      contentStyle={styles.emptyContent}
+      density="large"
+      glowIntensity="low"
+      radius={24}
+      style={styles.emptyCard}
+      withInnerReflection={false}
+    >
+      <Ionicons
+        color="rgba(220,226,255,0.70)"
+        name="cloud-download-outline"
+        size={28}
+      />
+      <NotificationText style={styles.emptyTitle}>
+        Đang tải thông báo
+      </NotificationText>
+      <NotificationText style={styles.emptyBody}>
+        LiQi đang đồng bộ inbox mới nhất của bạn.
+      </NotificationText>
+    </LiquidCard>
+  );
+}
+
+function NotificationErrorState({ onRetry }: { onRetry: () => void }) {
+  return (
+    <LiquidCard
+      contentStyle={styles.emptyContent}
+      density="large"
+      glowIntensity="low"
+      radius={24}
+      style={styles.emptyCard}
+      withInnerReflection={false}
+    >
+      <Ionicons
+        color="rgba(255,184,107,0.82)"
+        name="cloud-offline-outline"
+        size={28}
+      />
+      <NotificationText style={styles.emptyTitle}>
+        Không tải được thông báo
+      </NotificationText>
+      <NotificationText style={styles.emptyBody}>
+        Kiểm tra kết nối rồi thử lại nhé.
+      </NotificationText>
+      <LiquidButton
+        accessibilityLabel="Thử tải lại thông báo"
+        contentStyle={styles.retryButtonContent}
+        onPress={onRetry}
+        radius={16}
+        style={styles.retryButton}
+        textStyle={styles.actionButtonText}
+        variant="secondary"
+        withShadow={false}
+      >
+        Thử lại
+      </LiquidButton>
+    </LiquidCard>
   );
 }
 
@@ -927,28 +1065,22 @@ const styles = StyleSheet.create({
   groupBlockToday: {
     marginTop: 8,
   },
+  loadMoreButton: {
+    alignSelf: 'center',
+    marginTop: 20,
+    minWidth: 112,
+  },
+  loadMoreButtonContent: {
+    minHeight: 34,
+    paddingHorizontal: 14,
+    paddingVertical: 5,
+  },
   groupTitle: {
     color: 'rgba(220,226,248,0.52)',
     fontSize: 11,
     fontWeight: '500',
     letterSpacing: -0.22,
     marginBottom: 9,
-  },
-  markReadPill: {
-    alignItems: 'center',
-    borderColor: 'rgba(255,255,255,0.10)',
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: 4,
-    minHeight: 29,
-    overflow: 'hidden',
-    paddingHorizontal: 7,
-  },
-  markReadText: {
-    color: 'rgba(232,236,255,0.82)',
-    fontSize: 10,
-    fontWeight: '500',
   },
   messageBlock: {
     gap: 2,
@@ -998,6 +1130,15 @@ const styles = StyleSheet.create({
   },
   readCard: {
     opacity: 0.86,
+  },
+  retryButton: {
+    marginTop: 14,
+    minWidth: 84,
+  },
+  retryButtonContent: {
+    minHeight: 32,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
   },
   rewardLabel: {
     color: 'rgba(245,248,255,0.76)',
@@ -1115,4 +1256,5 @@ const styles = StyleSheet.create({
     minHeight: 46,
     position: 'relative',
   },
+  topBarSpacer: { height: 36, width: 36 },
 });
