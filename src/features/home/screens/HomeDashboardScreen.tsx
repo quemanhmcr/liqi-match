@@ -313,7 +313,10 @@ export default function HomeDashboardScreen() {
         <LiquidOrbButton
           accessibilityLabel="Thông báo"
           badge={<View style={styles.notificationDot} />}
-          onPress={selectionImpact}
+          onPress={() => {
+            selectionImpact();
+            router.push(appRoutes.notifications);
+          }}
           size={52}
           style={styles.notificationButton}
         >

@@ -21,6 +21,7 @@ export const appRoutes = {
     profileSetup: '/profile-setup',
     rank: '/rank',
   },
+  notifications: '/notifications',
   profile: {
     blocked: '/profile/settings/blocked',
     detail: (userId: string) =>

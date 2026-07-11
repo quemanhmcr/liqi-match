@@ -1,7 +1,19 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+import { fireEvent } from '@testing-library/react-native';
 
+import { appRoutes } from '@/app-shell/navigation/routes';
 import HomeDashboardScreen from '@/features/home/screens/HomeDashboardScreen';
 import { renderWithProviders } from '@/test/render-with-providers';
+
+jest.mock('expo-router', () => ({
+  router: {
+    push: jest.fn(),
+  },
+}));
+
+const mockExpoRouter = jest.requireMock('expo-router') as {
+  router: { push: ReturnType<typeof jest.fn> };
+};
 
 jest.mock('@/features/home/home-dashboard-service', () => ({
   buildPreviewHomeDashboard: () => ({
@@ -93,6 +105,21 @@ jest.mock('@/features/home/home-dashboard-service', () => ({
 }));
 
 describe('HomeDashboardScreen', () => {
+  beforeEach(() => {
+    mockExpoRouter.router.push.mockClear();
+  });
+  it('opens notifications from the header bell', async () => {
+    const { getByLabelText } = await renderWithProviders(
+      <HomeDashboardScreen />,
+    );
+
+    fireEvent.press(getByLabelText('Thông báo'));
+
+    expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.notifications,
+    );
+  });
+
   it('renders the matched-sets home dashboard shell', async () => {
     const { getAllByText, getByText } = await renderWithProviders(
       <HomeDashboardScreen />,
