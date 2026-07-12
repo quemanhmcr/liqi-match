@@ -24,6 +24,13 @@ const mockExpoRouter = jest.requireMock('expo-router') as {
   router: { push: ReturnType<typeof jest.fn> };
 };
 
+async function renderHomeDashboard() {
+  const result = await renderWithProviders(<HomeDashboardScreen />);
+  expect(await result.findByText('Synced')).toBeTruthy();
+  expect(result.queryClient.isFetching()).toBe(0);
+  return result;
+}
+
 jest.mock('@/features/home/home-dashboard-service', () => ({
   buildPreviewHomeDashboard: () => ({
     activeMatchCount: 1,
@@ -56,8 +63,8 @@ jest.mock('@/features/home/home-dashboard-service', () => ({
   fetchHomeDashboard: jest.fn(async () => ({
     activeMatchCount: 1,
     currentProfile: {
-      displayName: 'Test Player',
-      handle: 'Test Player',
+      displayName: 'Synced Player',
+      handle: 'Synced Player',
       rankName: 'Cao Thủ',
       readySummary: '1 set đã match',
       roleNames: ['Đi Rừng'],
@@ -128,7 +135,7 @@ describe('HomeDashboardScreen', () => {
       getByTestId,
       getByText,
       queryByText,
-    } = await renderWithProviders(<HomeDashboardScreen />);
+    } = await renderHomeDashboard();
 
     expect(getByTestId('home-notification-unread-dot')).toBeTruthy();
     expect(getByText('Xin chào,')).toBeTruthy();
@@ -188,11 +195,9 @@ describe('HomeDashboardScreen', () => {
   });
 
   it('uses one explicit ready action and keeps the selected mood visible', async () => {
-    const { getByLabelText, getByText } = await renderWithProviders(
-      <HomeDashboardScreen />,
-    );
+    const { getByLabelText, getByText } = await renderHomeDashboard();
 
-    fireEvent.press(getByLabelText('Bật sẵn sàng'));
+    await fireEvent.press(getByLabelText('Bật sẵn sàng'));
 
     await waitFor(() => {
       expect(getByLabelText('Tắt sẵn sàng')).toBeTruthy();
@@ -200,7 +205,7 @@ describe('HomeDashboardScreen', () => {
       expect(getByText('Đang bật · Set Love')).toBeTruthy();
     });
 
-    fireEvent.press(getByLabelText('Xếp hạng'));
+    await fireEvent.press(getByLabelText('Xếp hạng'));
 
     await waitFor(() => {
       expect(getByText('Đang bật · Xếp hạng')).toBeTruthy();
@@ -212,19 +217,15 @@ describe('HomeDashboardScreen', () => {
 
   it('hides the unread dot when the account summary is fully seen', async () => {
     mockNotificationUnseenCount = 0;
-    const { queryByTestId } = await renderWithProviders(
-      <HomeDashboardScreen />,
-    );
+    const { queryByTestId } = await renderHomeDashboard();
 
     expect(queryByTestId('home-notification-unread-dot')).toBeNull();
   });
 
   it('opens notifications from the header bell', async () => {
-    const { getByLabelText } = await renderWithProviders(
-      <HomeDashboardScreen />,
-    );
+    const { getByLabelText } = await renderHomeDashboard();
 
-    fireEvent.press(getByLabelText('Thông báo'));
+    await fireEvent.press(getByLabelText('Thông báo'));
 
     expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
       appRoutes.notifications,

@@ -1,8 +1,6 @@
 module.exports = {
-  preset: 'jest-expo',
-  setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
-  testMatch: ['<rootDir>/src/**/*.test.ts', '<rootDir>/src/**/*.test.tsx'],
-  moduleNameMapper: {
-    '^@/(.*)$': '<rootDir>/src/$1',
-  },
+  projects: [
+    '<rootDir>/jest.unit.config.js',
+    '<rootDir>/jest.native.config.js',
+  ],
 };

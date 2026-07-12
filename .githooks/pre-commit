@@ -1,0 +1,20 @@
+#!/bin/sh
+set -eu
+
+# The main Git worktree is the Liqi primary review workspace. Implementation
+# commits belong in managed task worktrees or separate clean publishable worktrees.
+git_dir=$(git rev-parse --absolute-git-dir)
+common_dir=$(git rev-parse --path-format=absolute --git-common-dir)
+
+git_dir=$(cd "$git_dir" && pwd -P)
+common_dir=$(cd "$common_dir" && pwd -P)
+
+if [ "$git_dir" = "$common_dir" ] && [ "${LIQI_ALLOW_PRIMARY_COMMIT:-0}" != "1" ]; then
+  echo "Commit blocked: this is the Liqi Primary review workspace."
+  echo "Create implementation work with: npm run task:start -- <type/name>"
+  echo "Use a separate clean worktree for publishable commits."
+  echo "Recovery-only override: LIQI_ALLOW_PRIMARY_COMMIT=1 git commit ..."
+  exit 1
+fi
+
+exit 0

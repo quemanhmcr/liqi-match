@@ -39,8 +39,8 @@ export function renderDiscoverScreen(
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {
-      mutations: { gcTime: 0, retry: false },
-      queries: { gcTime: 0, retry: false, staleTime: Infinity },
+      mutations: { gcTime: Infinity, retry: false },
+      queries: { gcTime: Infinity, retry: false, staleTime: Infinity },
     },
   });
 

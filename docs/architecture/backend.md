@@ -106,6 +106,8 @@ Every authorization or state-machine change ships with pgTAP coverage.
 
 ## Parallel-development workflow
 
+Create local task worktrees through the [deterministic worktree workflow](worktree-workflow.md). Plain `git worktree add` is not sufficient when the primary review working tree is newer than `HEAD`.
+
 Use one branch and Git worktree per task. A normal endpoint task should touch
 one endpoint folder and its tests. A Worker policy task should remain in
 `domain/application`; an adapter task should remain in `infrastructure`.

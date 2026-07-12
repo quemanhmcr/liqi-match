@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
@@ -17,19 +18,29 @@ export const testAuthSession: AuthSession = {
   },
 };
 
-export function renderWithProviders(
+export async function renderWithProviders(
   ui: ReactElement,
   { session = testAuthSession }: { session?: AuthSession | null } = {},
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {
+      mutations: { gcTime: Infinity, retry: false },
       queries: { gcTime: Infinity, retry: false },
     },
   });
 
-  return render(
-    <AuthStateProvider initialSession={session}>
-      <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
-    </AuthStateProvider>,
+  const renderResult = await render(
+    <SafeAreaProvider
+      initialMetrics={{
+        frame: { height: 800, width: 400, x: 0, y: 0 },
+        insets: { bottom: 0, left: 0, right: 0, top: 0 },
+      }}
+    >
+      <AuthStateProvider initialSession={session}>
+        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+      </AuthStateProvider>
+    </SafeAreaProvider>,
   );
+
+  return { ...renderResult, queryClient };
 }

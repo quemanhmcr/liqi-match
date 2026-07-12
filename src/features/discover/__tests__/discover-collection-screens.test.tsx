@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { act, fireEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
@@ -11,8 +11,6 @@ import { renderDiscoverScreen } from './discover-test-utils';
 import { DiscoverMatchesScreen } from '../screens/DiscoverMatchesScreen';
 import { DiscoverSetsScreen } from '../screens/DiscoverSetsScreen';
 import { DiscoverVibesScreen } from '../screens/DiscoverVibesScreen';
-
-jest.setTimeout(15_000);
 
 jest.mock('expo-blur', () => ({ BlurView: 'BlurView' }));
 
@@ -132,10 +130,10 @@ describe('Discover child collection screens', () => {
     expect(queryByText('Đang hot')).toBeNull();
     expect(queryByText('Tìm kiếm và lọc cục bộ')).toBeNull();
 
-    fireEvent.press(getByLabelText('Lọc danh sách theo Không toxic'));
+    await fireEvent.press(getByLabelText('Lọc danh sách theo Không toxic'));
     await waitFor(() => expect(getByText('2 vibe đang nổi')).toBeTruthy());
 
-    fireEvent.changeText(
+    await fireEvent.changeText(
       getByLabelText('Tìm trong danh sách Khám phá'),
       'tri ki cuoi tuan',
     );
@@ -144,14 +142,14 @@ describe('Discover child collection screens', () => {
       expect(queryByText('Đấu thường chill')).toBeNull();
     });
 
-    fireEvent.press(getByLabelText('Mở sắp xếp'));
+    await fireEvent.press(getByLabelText('Mở sắp xếp'));
     await waitFor(() =>
       expect(getByLabelText('Sắp xếp theo Mới nhất')).toBeTruthy(),
     );
-    fireEvent.press(getByLabelText('Sắp xếp theo Mới nhất'));
+    await fireEvent.press(getByLabelText('Sắp xếp theo Mới nhất'));
     await waitFor(() => expect(getByText('Mới nhất')).toBeTruthy());
 
-    fireEvent.press(getByLabelText('Quay lại Khám phá'));
+    await fireEvent.press(getByLabelText('Quay lại Khám phá'));
     expect(mockRouter.router.back).toHaveBeenCalledTimes(1);
   });
 
@@ -227,27 +225,23 @@ describe('Discover child collection screens', () => {
     );
     expect(queryByText('Tìm kiếm và lọc cục bộ')).toBeNull();
 
-    fireEvent.press(getByLabelText('Lọc danh sách theo Không toxic'));
+    await fireEvent.press(getByLabelText('Lọc danh sách theo Không toxic'));
     await waitFor(() => {
       expect(getByText('3 người phù hợp')).toBeTruthy();
       expect(getByText('An Nhi ADC')).toBeTruthy();
       expect(queryByText('Lyra Mid')).toBeNull();
     });
-
-    await act(async () => {
-      fireEvent.press(getByLabelText('Mời vào An Nhi ADC'));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    await fireEvent.press(getByLabelText('Mời vào An Nhi ADC'));
     await waitFor(() => expect(getByText('Đã mời')).toBeTruthy());
 
-    fireEvent.press(getByLabelText('Xem hồ sơ Nam Support'));
+    await fireEvent.press(getByLabelText('Xem hồ sơ Nam Support'));
     await waitFor(() => {
       expect(getByLabelText('Xem hồ sơ Nam Support')).toBeTruthy();
       expect(queryByText('Đang xem')).toBeNull();
     });
 
     expect(queryByText('Nhắn tin')).toBeNull();
-    fireEvent.press(getByLabelText('Nhắn An Nhi ADC'));
+    await fireEvent.press(getByLabelText('Nhắn An Nhi ADC'));
     expect(mockRouter.router.push).toHaveBeenCalledWith(
       appRoutes.main.messages,
     );
@@ -262,7 +256,7 @@ describe('Discover child collection screens', () => {
     expect(getByText(/4 set phù hợp/)).toBeTruthy();
     expect(getByText('Leo rank 5v5')).toBeTruthy();
 
-    fireEvent.changeText(getByLabelText('Tìm kiếm set'), 'tro thu');
+    await fireEvent.changeText(getByLabelText('Tìm kiếm set'), 'tro thu');
     await waitFor(() => {
       expect(getByText(/2 set phù hợp/)).toBeTruthy();
       expect(getByText('Duo Rừng + Trợ Thủ')).toBeTruthy();
@@ -270,22 +264,22 @@ describe('Discover child collection screens', () => {
       expect(queryByText('Team Sao Băng')).toBeNull();
     });
 
-    fireEvent.press(getByLabelText('Xóa tìm kiếm set'));
+    await fireEvent.press(getByLabelText('Xóa tìm kiếm set'));
     await waitFor(() => {
       expect(getByLabelText('Tìm kiếm set').props.value).toBe('');
       expect(getByText(/4 set phù hợp/)).toBeTruthy();
     });
-    fireEvent.press(getByLabelText('Lọc Set theo Team Rank'));
+    await fireEvent.press(getByLabelText('Lọc Set theo Team Rank'));
     await waitFor(() => expect(getByText(/2 set phù hợp/)).toBeTruthy());
 
-    fireEvent.press(getByLabelText('Sắp xếp danh sách set'));
+    await fireEvent.press(getByLabelText('Sắp xếp danh sách set'));
     await waitFor(() =>
       expect(getByLabelText('Sắp xếp theo Sắp đủ người')).toBeTruthy(),
     );
-    fireEvent.press(getByLabelText('Sắp xếp theo Sắp đủ người'));
+    await fireEvent.press(getByLabelText('Sắp xếp theo Sắp đủ người'));
     await waitFor(() => expect(getByText('Sắp đủ người')).toBeTruthy());
 
-    fireEvent.press(getByLabelText('Quay lại Khám phá'));
+    await fireEvent.press(getByLabelText('Quay lại Khám phá'));
     expect(mockRouter.router.back).toHaveBeenCalledTimes(1);
   });
 });

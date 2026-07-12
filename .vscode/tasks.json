@@ -1,0 +1,57 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Liqi: Show repository context",
+      "type": "shell",
+      "command": "npm run repo:context",
+      "problemMatcher": [],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      }
+    },
+    {
+      "label": "Liqi: Start managed task",
+      "type": "shell",
+      "command": "npm run task:start -- ${input:taskBranch}",
+      "problemMatcher": []
+    },
+    {
+      "label": "Liqi: Check task",
+      "type": "shell",
+      "command": "npm run task:check",
+      "problemMatcher": []
+    },
+    {
+      "label": "Liqi: List managed tasks",
+      "type": "shell",
+      "command": "npm run task:list",
+      "problemMatcher": []
+    },
+    {
+      "label": "Liqi: Review task overlay",
+      "type": "shell",
+      "command": "npm run task:review -- ${input:taskWorktreePath}",
+      "problemMatcher": []
+    },
+    {
+      "label": "Liqi: Finish managed task",
+      "type": "shell",
+      "command": "npm run task:finish -- ${input:taskWorktreePath}",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "taskBranch",
+      "type": "promptString",
+      "description": "Task branch, for example feat/profile-badges"
+    },
+    {
+      "id": "taskWorktreePath",
+      "type": "promptString",
+      "description": "Absolute managed worktree path"
+    }
+  ]
+}

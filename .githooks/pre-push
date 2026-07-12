@@ -1,11 +1,43 @@
 #!/bin/sh
 
+zero=0000000000000000000000000000000000000000
+
 while read local_ref local_sha remote_ref remote_sha
 do
   if [ "$remote_ref" = "refs/heads/main" ]; then
     echo "Direct push to main is blocked."
     echo "Create a feature branch and open a Pull Request instead."
     exit 1
+  fi
+
+  case "$remote_ref" in
+    refs/liqi/*)
+      echo "Push blocked: refs/liqi/* are local workflow metadata."
+      exit 1
+      ;;
+  esac
+
+  case "$local_ref" in
+    refs/heads/*)
+      branch=${local_ref#refs/heads/}
+      if [ "$(git config --bool --get "branch.$branch.liqiLocalOnly" 2>/dev/null)" = "true" ]; then
+        echo "Push blocked: '$branch' is a local snapshot worktree branch."
+        echo "Overlay it into the primary review workspace; do not push the aggregate snapshot ancestry."
+        exit 1
+      fi
+      ;;
+  esac
+
+  if [ "$local_sha" != "$zero" ]; then
+    range=$local_sha
+    if [ "$remote_sha" != "$zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+      range="$remote_sha..$local_sha"
+    fi
+    if git log --format=%B "$range" 2>/dev/null | grep -q '^Liqi-Snapshot: true$'; then
+      echo "Push blocked: the commits include a Liqi local integration snapshot."
+      echo "Rebase the task commits onto a clean publishable branch before pushing."
+      exit 1
+    fi
   fi
 done
 

@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "worktreeRoot": "..",
+  "worktreeNamePrefix": "liqi-",
+  "snapshotRefPrefix": "refs/liqi/snapshots",
+  "metadataDirectory": "liqi-worktrees",
+  "source": {
+    "untrackedPolicy": "allowlist",
+    "allow": [
+      ".github/**",
+      ".vscode/**",
+      "public/**",
+      "plugins/**",
+      "config/**",
+      ".githooks/**",
+      "assets/**",
+      "cloudflare/**",
+      "docs/**",
+      "patches/**",
+      "scripts/**",
+      "src/**",
+      "supabase/**",
+      "*.cjs",
+      "*.js",
+      "*.json",
+      "*.lock",
+      "*.md",
+      "*.mjs",
+      "*.toml",
+      "*.ts",
+      "*.tsx",
+      "*.yaml",
+      "*.yml",
+      ".eslint*",
+      ".npmrc",
+      ".nvmrc",
+      ".prettier*"
+    ],
+    "deny": [
+      ".expo/**",
+      ".liqi-worktree/**",
+      ".tmp-*/**",
+      ".tmp-worktree-*.json",
+      "android/**",
+      "coverage/**",
+      "debug-artifacts/**",
+      "dist/**",
+      "ios/**",
+      "node_modules/**",
+      "scripts/*.backup-*",
+      "**/*.bak",
+      "**/*.log",
+      "**/*.tmp"
+    ],
+    "warnFileBytes": 10485760,
+    "maxFileBytes": 104857600
+  },
+  "environment": {
+    "files": [
+      {
+        "path": ".env.local",
+        "mode": "copy",
+        "required": false
+      }
+    ]
+  },
+  "dependencies": {
+    "manager": "npm",
+    "installCommand": [
+      "npm",
+      "ci",
+      "--prefer-offline",
+      "--no-audit",
+      "--no-fund"
+    ],
+    "healthModules": [
+      "expo/package.json",
+      "jest/package.json",
+      "typescript/package.json",
+      "@testing-library/react-native/package.json"
+    ],
+    "lockfiles": ["package-lock.json"]
+  },
+  "health": {
+    "typescript": true,
+    "expoConfig": true,
+    "jestConfigs": [
+      "jest.config.js",
+      "jest.unit.config.js",
+      "jest.native.config.js"
+    ],
+    "dependencyTree": true
+  },
+  "overlay": {
+    "runHealthCheck": true,
+    "runTestPolicy": true,
+    "runRelatedTests": true,
+    "runTypecheck": false
+  },
+  "retention": {
+    "days": 7
+  }
+}
