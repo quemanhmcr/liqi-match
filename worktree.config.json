@@ -39,6 +39,7 @@
       ".expo/**",
       ".liqi-worktree/**",
       ".tmp-*/**",
+      ".tmp-worktree-*.json",
       "android/**",
       "coverage/**",
       "debug-artifacts/**",

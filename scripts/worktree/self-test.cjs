@@ -103,6 +103,7 @@ try {
   fs.rmSync(path.join(primary, 'delete-me.txt'));
   write(primary, 'src/untracked.ts', 'export const value = 1;\n');
   write(primary, 'node_modules/ignored.txt', 'artifact\n');
+  write(primary, '.tmp-worktree-probe-create.json', '{\"transient\":true}\n');
   write(primary, '.env.local', 'SECRET=self-test\n');
 
   const created = parseJsonOutput(
@@ -127,6 +128,8 @@ try {
     throw new Error('untracked source missing');
   if (exists(task, 'node_modules/ignored.txt'))
     throw new Error('ignored artifact copied');
+  if (exists(task, '.tmp-worktree-probe-create.json'))
+    throw new Error('transient machine output copied into snapshot');
   if (read(task, '.env.local') !== 'SECRET=self-test\n')
     throw new Error('env allowlist copy failed');
   if (git(task, 'status', '--porcelain').stdout.trim())
@@ -140,6 +143,36 @@ try {
     ).stdout.trim() !== 'true'
   ) {
     throw new Error('local-only branch marker missing');
+  }
+  const preCommit = path.resolve(
+    __dirname,
+    '..',
+    '..',
+    '.githooks',
+    'pre-commit',
+  );
+  const primaryCommitGuard = spawnSync('sh', [preCommit], {
+    cwd: primary,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (
+    primaryCommitGuard.status === 0 ||
+    !`${primaryCommitGuard.stdout}${primaryCommitGuard.stderr}`.includes(
+      'Primary review workspace',
+    )
+  ) {
+    throw new Error('pre-commit hook did not block the primary workspace');
+  }
+  const taskCommitGuard = spawnSync('sh', [preCommit], {
+    cwd: task,
+    encoding: 'utf8',
+    windowsHide: true,
+  });
+  if (taskCommitGuard.status !== 0) {
+    throw new Error(
+      `pre-commit hook blocked a managed task worktree\n${taskCommitGuard.stdout}${taskCommitGuard.stderr}`,
+    );
   }
 
   write(task, 'tracked.txt', 'task change\n');

@@ -66,7 +66,10 @@
     "dev:android:clear": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-android.ps1 -ClearMetroCache",
     "dev:android:takeover": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-android.ps1 -ForceTakeoverPort",
     "dev:android:cold": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/dev-android.ps1 -ColdBoot",
-    "prepare:git": "git config core.hooksPath .githooks",
+    "repo:setup": "git config core.hooksPath .githooks && node scripts/repository-context.cjs",
+    "repo:context": "node scripts/repository-context.cjs",
+    "repository:check": "node scripts/check-repository-contract.cjs",
+    "prepare:git": "npm run repo:setup",
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
@@ -106,7 +109,14 @@
     "worktree:cleanup": "node scripts/worktree/worktree-cli.cjs cleanup",
     "worktree:doctor": "node scripts/worktree/worktree-cli.cjs doctor",
     "worktree:list": "node scripts/worktree/worktree-cli.cjs list",
-    "worktree:self-test": "node scripts/worktree/self-test.cjs"
+    "worktree:self-test": "node scripts/worktree/self-test.cjs",
+    "task:start": "node scripts/worktree/worktree-cli.cjs create",
+    "task:inspect": "node scripts/worktree/worktree-cli.cjs doctor",
+    "task:list": "node scripts/worktree/worktree-cli.cjs list",
+    "task:check": "npm run repository:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
+    "task:review": "node scripts/worktree/worktree-cli.cjs overlay",
+    "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
+    "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup"
   },
   "overrides": {
     "xcode": {

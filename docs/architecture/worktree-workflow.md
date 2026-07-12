@@ -4,6 +4,21 @@ The primary workspace is a shared review and integration surface. Its working tr
 
 This workflow packages that mutable source state into a local Git snapshot without moving the primary branch, changing the primary index or committing environment secrets.
 
+## Repository discovery contract
+
+The workflow is surfaced through repository entry points rather than relying on a task prompt or oral reminder:
+
+- `CONTRIBUTING.md` defines the engineering agreement;
+- `docs/architecture/README.md` maps changes to owners and architecture documents;
+- `AGENTS.md` gives coding tools the same mandatory lifecycle;
+- `npm run repo:context` identifies the current checkout role;
+- human-facing `task:*` scripts describe start, inspect, check, review, undo and finish;
+- VS Code tasks expose the same lifecycle in the command palette;
+- pre-commit and pre-push hooks block the two highest-risk mistakes;
+- `npm run repository:check` and CI prevent these entry points from silently drifting.
+
+The lower-level `worktree:*` scripts remain compatible for infrastructure debugging, but normal documentation uses the task lifecycle names.
+
 ## Mental model
 
 The workflow has four separate layers:
@@ -20,7 +35,7 @@ Task branches created by this workflow are local-only. They contain the aggregat
 From the primary workspace:
 
 ```bash
-npm run worktree:create -- fix/chat-autofollow
+npm run task:start -- fix/chat-autofollow
 ```
 
 The command:
@@ -44,13 +59,13 @@ fix/chat-autofollow -> ../liqi-chat-autofollow
 Use an explicit path when needed:
 
 ```bash
-npm run worktree:create -- fix/chat-autofollow --path C:/project/liqi-chat-autofollow-v2
+npm run task:start -- fix/chat-autofollow --path C:/project/liqi-chat-autofollow-v2
 ```
 
 For source-only diagnostics, dependency installation and health checks can be skipped explicitly:
 
 ```bash
-npm run worktree:create -- chore/worktree-probe --skip-install --skip-health
+npm run task:start -- chore/worktree-probe --skip-install --skip-health
 ```
 
 A normal development worktree should use the default full bootstrap.
@@ -86,13 +101,13 @@ The manifest records:
 Inspect a worktree:
 
 ```bash
-npm run worktree:doctor -- C:/project/liqi-chat-autofollow
+npm run task:inspect -- C:/project/liqi-chat-autofollow
 ```
 
 List managed worktrees:
 
 ```bash
-npm run worktree:list
+npm run task:list
 ```
 
 ## Commit task changes locally
@@ -112,7 +127,7 @@ Do not push this branch. After primary review, publishable commits must be creat
 Run from any workspace:
 
 ```bash
-npm run worktree:overlay -- C:/project/liqi-chat-autofollow
+npm run task:review -- C:/project/liqi-chat-autofollow
 ```
 
 The command:
@@ -135,7 +150,7 @@ A smoke failure leaves the verified overlay in place for inspection and prints t
 Skip smoke only for workflow diagnostics:
 
 ```bash
-npm run worktree:overlay -- C:/project/liqi-chat-autofollow --skip-smoke
+npm run task:review -- C:/project/liqi-chat-autofollow --skip-smoke
 ```
 
 ## Roll back an overlay
@@ -143,7 +158,7 @@ npm run worktree:overlay -- C:/project/liqi-chat-autofollow --skip-smoke
 Each overlay prints an id and command:
 
 ```bash
-npm run worktree:rollback -- overlay-20260712T030028Z-595195
+npm run task:undo -- overlay-20260712T030028Z-595195
 ```
 
 Rollback is guarded too. It proceeds only when primary paths still match the state written by that overlay. If another developer changed one of those files after overlay, rollback stops rather than overwriting newer work.
@@ -157,7 +172,7 @@ Backups and overlay manifests are retained according to `worktree.config.json`.
 After review and handoff:
 
 ```bash
-npm run worktree:cleanup -- C:/project/liqi-chat-autofollow
+npm run task:finish -- C:/project/liqi-chat-autofollow
 ```
 
 Cleanup:
@@ -172,13 +187,13 @@ Cleanup:
 If Node, Expo, Jest, Java or Gradle processes still reference the worktree, stop them first. Deliberate termination is available with:
 
 ```bash
-npm run worktree:cleanup -- C:/project/liqi-chat-autofollow --kill-processes
+npm run task:finish -- C:/project/liqi-chat-autofollow --kill-processes
 ```
 
 A dirty worktree is rejected by default. To archive committed and uncommitted state before forced cleanup:
 
 ```bash
-npm run worktree:cleanup -- C:/project/liqi-chat-autofollow --force
+npm run task:finish -- C:/project/liqi-chat-autofollow --force
 ```
 
 ## Dependency strategy

@@ -3,6 +3,20 @@
 Production-ready Expo SDK 56 foundation for the Liqi Match mobile app, including
 the app shell, onboarding, profile and preview dashboard foundations.
 
+## Start Here
+
+This is not a conventional single-working-tree repository. The primary workspace is a review/integration surface; feature implementation belongs in a managed task worktree.
+
+```bash
+npm run repo:context
+```
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for the task lifecycle and [the repository architecture map](docs/architecture/README.md) before changing code. From primary, the normal first implementation command is:
+
+```bash
+npm run task:start -- feat/descriptive-task-name
+```
+
 ## Requirements
 
 - Node.js 24 LTS. This repo includes `.nvmrc` with `24` and `package.json` enforces `>=24 <25`.
@@ -21,12 +35,10 @@ npm install
 Enable repository Git hooks on this machine:
 
 ```bash
-npm run prepare:git
+npm run repo:setup
 ```
 
-The committed `pre-push` hook blocks accidental direct pushes to `main`. It is a local safety guard only; CI remains the source of truth.
-
-It also blocks managed local snapshot branches, because their ancestry contains the aggregate primary review state and is not publishable.
+The committed hooks block commits in the primary review workspace, accidental direct pushes to `main`, and pushes of managed local snapshot branches. They are local safety guards; CI remains the source of truth.
 
 Create local env config:
 
@@ -114,29 +126,29 @@ npx expo config
 
 Use the fast unit/native lanes and changed-test workflow described in [mobile testing architecture](docs/architecture/testing.md).
 
-## Deterministic Worktrees
+## Managed Task Lifecycle
 
 The primary workspace is review/integration only and may contain source newer than `HEAD`. Create task worktrees through the managed snapshot workflow rather than plain `git worktree add`:
 
 ```bash
-npm run worktree:create -- fix/chat-autofollow
+npm run task:start -- fix/chat-autofollow
 ```
 
-After committing the task patch locally:
+After committing the task patch locally, return to the primary workspace:
 
 ```bash
-npm run worktree:overlay -- C:/project/liqi-chat-autofollow
+npm run task:review -- C:/project/liqi-chat-autofollow
 ```
 
 The overlay checks primary path checksums twice, backs up affected files, applies additions/modifications/deletions exactly, runs targeted smoke checks and prints a rollback command.
 
-After handoff:
+After handoff, from the primary workspace:
 
 ```bash
-npm run worktree:cleanup -- C:/project/liqi-chat-autofollow
+npm run task:finish -- C:/project/liqi-chat-autofollow
 ```
 
-See [deterministic worktree and primary review workflow](docs/architecture/worktree-workflow.md) for source classification, env/dependency bootstrap, rollback, retention and local-only branch rules.
+See [the managed task and primary review workflow](docs/architecture/worktree-workflow.md) for source classification, env/dependency bootstrap, rollback, retention and local-only branch rules.
 
 ## Project Structure
 

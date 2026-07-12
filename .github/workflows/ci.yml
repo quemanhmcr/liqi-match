@@ -45,6 +45,9 @@ jobs:
       - name: Check formatting
         run: npm run format:check
 
+      - name: Check repository operating contract
+        run: npm run repository:check
+
       - name: Check architecture boundaries
         run: npm run architecture:check
 
