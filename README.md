@@ -109,6 +109,8 @@ npx expo-doctor
 npx expo config
 ```
 
+Use the fast unit/native lanes and changed-test workflow described in [mobile testing architecture](docs/architecture/testing.md).
+
 ## Project Structure
 
 - `src/app`: Expo Router route adapters and nested layouts only; never put screen UI or service logic here.

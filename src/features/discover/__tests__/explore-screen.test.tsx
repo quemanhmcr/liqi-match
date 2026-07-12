@@ -6,7 +6,7 @@ import {
   it,
   jest,
 } from '@jest/globals';
-import { act, fireEvent, waitFor, within } from '@testing-library/react-native';
+import { fireEvent, waitFor, within } from '@testing-library/react-native';
 import { Dimensions, processColor, StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
@@ -16,8 +16,6 @@ import { resetDiscoverState } from '../model/discover-store';
 import { resetMockDiscoverData } from '../services/discover-service';
 import { renderDiscoverScreen } from './discover-test-utils';
 import { ExploreScreen } from '../screens/ExploreScreen';
-
-jest.setTimeout(15_000);
 
 jest.mock('expo-blur', () => ({ BlurView: 'BlurView' }));
 
@@ -296,19 +294,11 @@ describe('ExploreScreen', () => {
       expect(getByText('7 kết quả')).toBeTruthy();
       expect(getByLabelText('Xin vào Duo Rừng + Trợ Thủ')).toBeTruthy();
     });
-
-    await act(async () => {
-      fireEvent.press(getByLabelText('Xin vào Duo Rừng + Trợ Thủ'));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    fireEvent.press(getByLabelText('Xin vào Duo Rừng + Trợ Thủ'));
     await waitFor(() => {
       expect(getByText('Đã gửi')).toBeTruthy();
     });
-
-    await act(async () => {
-      fireEvent.press(getByLabelText('Mời vào Khoa Jungle'));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    fireEvent.press(getByLabelText('Mời vào Khoa Jungle'));
     await waitFor(() => {
       expect(getByText('Đã mời')).toBeTruthy();
     });

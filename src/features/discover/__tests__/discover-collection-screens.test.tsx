@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { act, fireEvent, waitFor } from '@testing-library/react-native';
+import { fireEvent, waitFor } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
@@ -11,8 +11,6 @@ import { renderDiscoverScreen } from './discover-test-utils';
 import { DiscoverMatchesScreen } from '../screens/DiscoverMatchesScreen';
 import { DiscoverSetsScreen } from '../screens/DiscoverSetsScreen';
 import { DiscoverVibesScreen } from '../screens/DiscoverVibesScreen';
-
-jest.setTimeout(15_000);
 
 jest.mock('expo-blur', () => ({ BlurView: 'BlurView' }));
 
@@ -233,11 +231,7 @@ describe('Discover child collection screens', () => {
       expect(getByText('An Nhi ADC')).toBeTruthy();
       expect(queryByText('Lyra Mid')).toBeNull();
     });
-
-    await act(async () => {
-      fireEvent.press(getByLabelText('Mời vào An Nhi ADC'));
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    });
+    fireEvent.press(getByLabelText('Mời vào An Nhi ADC'));
     await waitFor(() => expect(getByText('Đã mời')).toBeTruthy());
 
     fireEvent.press(getByLabelText('Xem hồ sơ Nam Support'));

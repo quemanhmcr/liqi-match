@@ -43,6 +43,8 @@
   "devDependencies": {
     "@emnapi/core": "^1.11.1",
     "@emnapi/runtime": "^1.11.1",
+    "@swc/core": "^1.15.43",
+    "@swc/jest": "^0.2.39",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
@@ -75,8 +77,8 @@
     "typecheck": "tsc --noEmit",
     "architecture:check": "node scripts/check-architecture.cjs && npm run backend:architecture:check",
     "backend:architecture:check": "node scripts/check-backend-architecture.cjs",
-    "test": "jest --watch",
-    "test:ci": "jest --runInBand --ci",
+    "test": "node scripts/run-jest.cjs --watch --onlyChanged",
+    "test:ci": "npm run test:full",
     "supabase:start": "supabase start",
     "supabase:reset": "supabase db reset",
     "supabase:lint": "supabase db lint",
@@ -86,6 +88,15 @@
     "cloudflare:media:typecheck": "npm --prefix cloudflare/media-worker run typecheck",
     "cloudflare:media:test": "npm --prefix cloudflare/media-worker test",
     "cloudflare:media:dry-run": "npm --prefix cloudflare/media-worker run deploy:dry-run",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "test:unit": "node scripts/run-jest.cjs --config jest.unit.config.js",
+    "test:unit:watch": "node scripts/run-jest.cjs --config jest.unit.config.js --watch --onlyChanged",
+    "test:native": "node scripts/run-jest.cjs --config jest.native.config.js",
+    "test:native:watch": "node scripts/run-jest.cjs --config jest.native.config.js --watch --onlyChanged",
+    "test:changed": "node scripts/run-jest.cjs --changedSince=HEAD",
+    "test:failed": "node scripts/run-jest.cjs --onlyFailures",
+    "test:full": "npm run test:policy && npm run test:unit && npm run test:native",
+    "test:related": "node scripts/run-jest.cjs --findRelatedTests",
+    "test:policy": "node scripts/check-test-policy.cjs"
   }
 }

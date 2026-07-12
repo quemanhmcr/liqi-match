@@ -23,6 +23,7 @@ export function renderWithProviders(
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {
+      mutations: { gcTime: Infinity, retry: false },
       queries: { gcTime: Infinity, retry: false },
     },
   });
