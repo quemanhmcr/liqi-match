@@ -29,6 +29,7 @@ export type LiquidBottomNavProps<
   onPress?: (key: Item['key'], event: GestureResponderEvent) => void;
   renderIcon: (item: Item, active: boolean) => ReactNode;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
 export function LiquidBottomNav<
@@ -42,24 +43,28 @@ export function LiquidBottomNav<
   onPress,
   renderIcon,
   style,
+  testID,
 }: LiquidBottomNavProps<Item>) {
   return (
     <LiquidGlassSurface
+      backgroundSlot={
+        <LinearGradient
+          colors={['rgba(255,255,255,0.050)', 'rgba(255,255,255,0.010)']}
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        />
+      }
       baseStrokeOpacity={0.042}
       baseStrokeWidth={0.54}
       blurIntensity={22}
       contentStyle={styles.surface}
       radius={24}
       style={[styles.shell, !floating && styles.inlineShell, style]}
+      testID={testID}
       variant="nav"
       withInnerReflection={false}
       withShadow={false}
     >
-      <LinearGradient
-        colors={['rgba(255,255,255,0.050)', 'rgba(255,255,255,0.010)']}
-        pointerEvents="none"
-        style={StyleSheet.absoluteFill}
-      />
       {items.map((item) => {
         const active = item.key === activeKey;
         return (
@@ -68,6 +73,7 @@ export function LiquidBottomNav<
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
             android_ripple={null}
+            collapsable={false}
             key={item.key}
             onLongPress={(event) => onLongPress?.(item.key, event)}
             onPress={(event) => onPress?.(item.key, event)}
@@ -76,16 +82,8 @@ export function LiquidBottomNav<
               active && styles.itemActive,
               pressed && styles.pressed,
             ]}
+            testID={testID ? `${testID}-item-${item.key}` : undefined}
           >
-            {active ? (
-              <LinearGradient
-                colors={['rgba(106,101,255,0.070)', 'rgba(56,215,255,0.020)']}
-                end={{ x: 1, y: 1 }}
-                pointerEvents="none"
-                start={{ x: 0, y: 0 }}
-                style={StyleSheet.absoluteFill}
-              />
-            ) : null}
             {renderIcon(item, active)}
             <Text
               maxFontSizeMultiplier={1}
@@ -111,15 +109,17 @@ const styles = StyleSheet.create({
   item: {
     alignItems: 'center',
     borderRadius: 17,
-    flex: 1,
+    flexBasis: 0,
+    flexGrow: 1,
+    flexShrink: 1,
     gap: 2,
-    minWidth: 0,
     justifyContent: 'center',
     minHeight: 34,
-    overflow: 'hidden',
+    minWidth: 0,
     paddingVertical: 1.5,
   },
   itemActive: {
+    backgroundColor: 'rgba(86,105,255,0.055)',
     borderColor: 'rgba(103,232,255,0.090)',
     borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#67E8FF',
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   labelActive: { color: 'rgba(255,255,255,0.90)', fontWeight: '700' },
-  pressed: { opacity: 0.82, transform: [{ scale: 0.985 }] },
+  pressed: { opacity: 0.82 },
   shell: {
     alignSelf: 'center',
     bottom: 14,
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 3,
-    width: '100%',
     padding: 4,
+    width: '100%',
   },
 });
