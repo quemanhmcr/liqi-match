@@ -8,6 +8,7 @@
     "untrackedPolicy": "allowlist",
     "allow": [
       ".github/**",
+      ".vscode/**",
       "public/**",
       "plugins/**",
       "config/**",
