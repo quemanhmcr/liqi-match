@@ -52,7 +52,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
     scheme: 'liqimatch',
     version: '1.0.0',
     orientation: 'portrait',
-    userInterfaceStyle: 'automatic',
+    backgroundColor: '#030711',
+    userInterfaceStyle: 'dark',
     icon: './assets/images/icon.png',
     ios: {
       ...config.ios,

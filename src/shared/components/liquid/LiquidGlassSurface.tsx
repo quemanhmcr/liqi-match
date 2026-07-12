@@ -113,6 +113,13 @@ function scaleEdgeGlowSegments(
   }));
 }
 
+export function shouldUseNativeLiquidBlur(
+  platform: typeof Platform.OS,
+  hasBlurTarget: boolean,
+) {
+  return platform !== 'android' || hasBlurTarget;
+}
+
 export type LiquidGlassSurfaceProps = {
   backgroundSlot?: ReactNode;
   baseStrokeColor?: string;
@@ -133,6 +140,7 @@ export type LiquidGlassSurfaceProps = {
   reducedGlass?: boolean;
   style?: StyleProp<ViewStyle>;
   surfaceBackground?: string;
+  testID?: string;
   tint?: BlurViewProps['tint'];
   variant?: LiquidSurfaceVariant;
   width?: number;
@@ -162,6 +170,7 @@ export function LiquidGlassSurface({
   reducedGlass,
   style,
   surfaceBackground,
+  testID,
   tint = 'dark',
   variant = 'card',
   width,
@@ -175,6 +184,10 @@ export function LiquidGlassSurface({
   const contextReducedGlass = useLiquidReducedGlass();
   const resolvedRadius = radius ?? defaults.radius;
   const resolvedBlurTarget = blurTarget ?? contextBlurTarget;
+  const shouldUseNativeBlur = shouldUseNativeLiquidBlur(
+    Platform.OS,
+    Boolean(resolvedBlurTarget),
+  );
   const resolvedBlurMethod =
     Platform.OS === 'android' && resolvedBlurTarget
       ? (blurMethod ?? 'dimezisBlurViewSdk31Plus')
@@ -215,6 +228,7 @@ export function LiquidGlassSurface({
         { borderRadius: resolvedRadius, height, width },
         style,
       ]}
+      testID={testID}
     >
       <LinearGradient
         colors={frameColors ?? defaults.frameColors}
@@ -235,21 +249,39 @@ export function LiquidGlassSurface({
             width={width}
           />
         ) : null}
-        <BlurView
-          blurMethod={resolvedBlurMethod}
-          blurTarget={resolvedBlurTarget}
-          intensity={resolvedBlurIntensity}
+        <View
+          collapsable={false}
           style={[
             styles.surface,
             fixedFillStyle,
-            {
-              backgroundColor: resolvedSurfaceBackground,
-              borderRadius: Math.max(resolvedRadius - 1, 0),
-            },
+            { borderRadius: Math.max(resolvedRadius - 1, 0) },
             contentStyle,
           ]}
-          tint={tint}
+          testID={testID ? `${testID}-content` : undefined}
         >
+          {shouldUseNativeBlur ? (
+            <BlurView
+              blurMethod={resolvedBlurMethod}
+              blurTarget={resolvedBlurTarget}
+              intensity={resolvedBlurIntensity}
+              pointerEvents="none"
+              style={[
+                styles.backdrop,
+                { backgroundColor: resolvedSurfaceBackground },
+              ]}
+              testID={testID ? `${testID}-backdrop` : undefined}
+              tint={tint}
+            />
+          ) : (
+            <View
+              pointerEvents="none"
+              style={[
+                styles.backdrop,
+                { backgroundColor: resolvedSurfaceBackground },
+              ]}
+              testID={testID ? `${testID}-backdrop` : undefined}
+            />
+          )}
           {withSurfaceTint ? (
             <View pointerEvents="none" style={styles.surfaceTint} />
           ) : null}
@@ -267,13 +299,20 @@ export function LiquidGlassSurface({
             />
           ) : null}
           {children}
-        </BlurView>
+        </View>
       </LinearGradient>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  backdrop: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
   frame: {
     overflow: 'visible',
     padding: 1,
