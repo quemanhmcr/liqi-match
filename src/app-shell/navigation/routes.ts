@@ -18,6 +18,13 @@ export const appRoutes = {
     messages: '/messages',
     profile: '/profile',
   },
+  messages: {
+    detail: (conversationId: string) =>
+      ({
+        pathname: '/messages/[conversationId]',
+        params: { conversationId },
+      }) as const,
+  },
   onboarding: {
     habits: '/habits',
     heroSelection: '/hero-selection',

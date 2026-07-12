@@ -1,5 +1,6 @@
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { AuthStateProvider } from '@/shared/auth/auth-context';
 import { queryClient } from '@/shared/lib/query-client';
@@ -10,8 +11,12 @@ import { queryClient } from '@/shared/lib/query-client';
  */
 export function AppProviders({ children }: PropsWithChildren) {
   return (
-    <AuthStateProvider>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-    </AuthStateProvider>
+    <KeyboardProvider>
+      <AuthStateProvider>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </AuthStateProvider>
+    </KeyboardProvider>
   );
 }
