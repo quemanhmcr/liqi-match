@@ -65,9 +65,19 @@ if (!scripts['repo:setup']?.includes('core.hooksPath .githooks')) {
 
 requireText('README.md', [
   /CONTRIBUTING\.md/,
+  /docs\/architecture\/README\.md/,
+  /npm ci/,
   /npm run repo:context/,
   /npm run task:start/,
+  /npm run task:check/,
+  /must not be pushed/i,
 ]);
+const readme = read('README.md');
+if (/expo\.dev\/artifacts|Build ID:/i.test(readme)) {
+  failures.push(
+    'README.md: transient build IDs and artifact URLs belong in operational records, not the repository entry point',
+  );
+}
 requireText('CONTRIBUTING.md', [
   /primary workspace/i,
   /managed task worktree/i,
@@ -108,6 +118,11 @@ requireText('.githooks/pre-commit', [
 requireText('.githooks/pre-push', [/local snapshot worktree branch/]);
 
 const worktreeConfig = JSON.parse(read('worktree.config.json') || '{}');
+if (!worktreeConfig.source?.allow?.includes('.vscode/**')) {
+  failures.push(
+    'worktree.config.json: source.allow must classify committed VS Code repository tasks',
+  );
+}
 if (!worktreeConfig.source?.deny?.includes('.tmp-worktree-*.json')) {
   failures.push(
     'worktree.config.json: source.deny must exclude transient .tmp-worktree-*.json output',
@@ -115,6 +130,25 @@ if (!worktreeConfig.source?.deny?.includes('.tmp-worktree-*.json')) {
 }
 
 try {
+  const branch = execFileSync('git', ['branch', '--show-current'], {
+    cwd: root,
+    encoding: 'utf8',
+    windowsHide: true,
+  }).trim();
+  let managedLocalOnly = false;
+  if (branch) {
+    try {
+      managedLocalOnly =
+        execFileSync(
+          'git',
+          ['config', '--bool', '--get', `branch.${branch}.liqiLocalOnly`],
+          { cwd: root, encoding: 'utf8', windowsHide: true },
+        ).trim() === 'true';
+    } catch {
+      managedLocalOnly = false;
+    }
+  }
+
   const stages = execFileSync(
     'git',
     ['ls-files', '--stage', '.githooks/pre-commit', '.githooks/pre-push'],
@@ -124,10 +158,10 @@ try {
     const line = stages
       .split(/\r?\n/)
       .find((entry) => entry.endsWith(`\t${hook}`));
-    // A newly overlaid hook is intentionally untracked in the mutable primary
-    // review workspace. Clean publishable branches and CI have a stage entry,
-    // where executable mode remains enforceable.
-    if (line && !line.startsWith('100755 ')) {
+    // A newly overlaid hook is intentionally untracked in mutable primary, and
+    // an aggregate local snapshot can normalize its mode on Windows. Clean
+    // publishable branches and CI remain responsible for enforcing 100755.
+    if (!managedLocalOnly && line && !line.startsWith('100755 ')) {
       failures.push(`${hook}: Git executable mode must be 100755`);
     }
   }

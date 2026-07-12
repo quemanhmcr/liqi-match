@@ -102,6 +102,7 @@ try {
   write(primary, 'tracked.txt', 'primary wip\n');
   fs.rmSync(path.join(primary, 'delete-me.txt'));
   write(primary, 'src/untracked.ts', 'export const value = 1;\n');
+  write(primary, '.vscode/tasks.json', '{\"version\":\"2.0.0\"}\n');
   write(primary, 'node_modules/ignored.txt', 'artifact\n');
   write(primary, '.tmp-worktree-probe-create.json', '{\"transient\":true}\n');
   write(primary, '.env.local', 'SECRET=self-test\n');
@@ -126,6 +127,8 @@ try {
     throw new Error('tracked deletion was restored');
   if (!exists(task, 'src/untracked.ts'))
     throw new Error('untracked source missing');
+  if (!exists(task, '.vscode/tasks.json'))
+    throw new Error('repository VS Code tasks missing');
   if (exists(task, 'node_modules/ignored.txt'))
     throw new Error('ignored artifact copied');
   if (exists(task, '.tmp-worktree-probe-create.json'))
