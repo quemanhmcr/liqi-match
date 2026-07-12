@@ -5,6 +5,7 @@ import HeroSelectionScreen from '@/features/onboarding/screens/HeroSelectionScre
 import { renderWithProviders } from '@/test/render-with-providers';
 
 jest.mock('react-native-safe-area-context', () => ({
+  SafeAreaProvider: ({ children }: { children: React.ReactNode }) => children,
   SafeAreaView: ({ children }: { children: React.ReactNode }) => children,
   useSafeAreaInsets: () => ({ bottom: 0, left: 0, right: 0, top: 0 }),
 }));

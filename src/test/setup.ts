@@ -1,6 +1,22 @@
 import { jest } from '@jest/globals';
 import type { ReactNode } from 'react';
 
+jest.mock('expo-blur', () => {
+  const ReactActual = jest.requireActual<typeof import('react')>('react');
+  const { View: MockView } =
+    jest.requireActual<typeof import('react-native')>('react-native');
+  const MockBlurView = ReactActual.forwardRef(
+    ({ children, ...props }: { children?: ReactNode }, _ref) =>
+      ReactActual.createElement(MockView, props, children),
+  );
+
+  return {
+    __esModule: true,
+    BlurTargetView: MockBlurView,
+    BlurView: MockBlurView,
+  };
+});
+
 jest.mock('@shopify/react-native-skia', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
   const { View: MockView } =
