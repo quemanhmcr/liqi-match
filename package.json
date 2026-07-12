@@ -97,6 +97,13 @@
     "test:failed": "node scripts/run-jest.cjs --onlyFailures",
     "test:full": "npm run test:policy && npm run test:unit && npm run test:native",
     "test:related": "node scripts/run-jest.cjs --findRelatedTests",
-    "test:policy": "node scripts/check-test-policy.cjs"
+    "test:policy": "node scripts/check-test-policy.cjs",
+    "security:audit": "npm audit --audit-level=moderate",
+    "test:native:handles": "jest --config jest.native.config.js --runInBand --detectOpenHandles"
+  },
+  "overrides": {
+    "xcode": {
+      "uuid": "11.1.1"
+    }
   }
 }

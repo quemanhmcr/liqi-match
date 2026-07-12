@@ -72,7 +72,9 @@ describe('notification inbox hooks', () => {
     expect(await findByText('feed:3')).toBeTruthy();
     expect(await findByText('summary:3')).toBeTruthy();
 
-    fireEvent.press(await findByLabelText('Test mark notification inbox seen'));
+    await fireEvent.press(
+      await findByLabelText('Test mark notification inbox seen'),
+    );
 
     expect(await findByText('feed:0')).toBeTruthy();
     expect(await findByText('summary:0')).toBeTruthy();

@@ -36,7 +36,7 @@ describe('primary tab contract', () => {
       selected: true,
     });
 
-    fireEvent.press(getByLabelText('Tin nhắn'));
+    await fireEvent.press(getByLabelText('Tin nhắn'));
 
     expect(onSelect).toHaveBeenCalledWith('messages');
   });

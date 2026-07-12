@@ -102,6 +102,7 @@ npm run web
 ```bash
 npm run format:check
 npm run architecture:check
+npm run security:audit
 npm run lint
 npm run typecheck
 npm run test:ci

@@ -26,7 +26,7 @@ describe('ProfileMediaScreen', () => {
       <ProfileMediaScreen />,
     );
 
-    fireEvent.press(getByLabelText('Chọn ảnh đại diện'));
+    await fireEvent.press(getByLabelText('Chọn ảnh đại diện'));
 
     await waitFor(() => {
       expect(getByText('Thêm ảnh đại diện')).toBeTruthy();
@@ -36,11 +36,13 @@ describe('ProfileMediaScreen', () => {
   });
 
   it('submits the connected profile flow', async () => {
-    const { getByText } = await renderWithProviders(<ProfileMediaScreen />);
+    const { findByText, getByText } = await renderWithProviders(
+      <ProfileMediaScreen />,
+    );
 
-    fireEvent.press(getByText('Tạo hồ sơ'));
+    await fireEvent.press(getByText('Tạo hồ sơ'));
 
-    expect(getByText('Tạo hồ sơ')).toBeTruthy();
-    expect(getByText('Quay lại')).toBeTruthy();
+    expect(await findByText('Hồ sơ đã sẵn sàng')).toBeTruthy();
+    expect(getByText('Đang đưa bạn vào trang chính.')).toBeTruthy();
   });
 });

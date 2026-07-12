@@ -23,7 +23,10 @@ describe('ProfileSetupScreen', () => {
       <ProfileSetupScreen />,
     );
 
-    fireEvent.changeText(getByPlaceholderText('Nhập tên của bạn'), 'Liqi Pro');
+    await fireEvent.changeText(
+      getByPlaceholderText('Nhập tên của bạn'),
+      'Liqi Pro',
+    );
 
     await waitFor(() => {
       expect(getByText('8/20')).toBeTruthy();

@@ -145,21 +145,21 @@ describe('ExploreScreen', () => {
       expect(within(vibeContent).getByText(card.interestedLabel)).toBeTruthy();
     }
 
-    fireEvent.press(getByLabelText('Xem tất cả Vibe hot tối nay'));
+    await fireEvent.press(getByLabelText('Xem tất cả Vibe hot tối nay'));
     await waitFor(() =>
       expect(mockExpoRouter.router.push).toHaveBeenLastCalledWith(
         appRoutes.discover.vibes,
       ),
     );
 
-    fireEvent.press(getByLabelText('Xem tất cả Set đang cần người'));
+    await fireEvent.press(getByLabelText('Xem tất cả Set đang cần người'));
     await waitFor(() =>
       expect(mockExpoRouter.router.push).toHaveBeenLastCalledWith(
         appRoutes.discover.sets,
       ),
     );
 
-    fireEvent.press(getByLabelText('Xem tất cả Hợp vibe với bạn'));
+    await fireEvent.press(getByLabelText('Xem tất cả Hợp vibe với bạn'));
     await waitFor(() =>
       expect(mockExpoRouter.router.push).toHaveBeenLastCalledWith(
         appRoutes.discover.matches,
@@ -187,7 +187,7 @@ describe('ExploreScreen', () => {
     expect(getByText('7 kết quả')).toBeTruthy();
     expect(queryByTestId('discover-filter-count')).toBeNull();
 
-    fireEvent.press(getByLabelText('Lọc Khám phá theo Rank'));
+    await fireEvent.press(getByLabelText('Lọc Khám phá theo Rank'));
     await waitFor(() => {
       expect(getByText('4 kết quả')).toBeTruthy();
       expect(
@@ -195,7 +195,7 @@ describe('ExploreScreen', () => {
       ).toBeTruthy();
     });
 
-    fireEvent.press(getByLabelText('Ẩn bộ lọc Khám phá'));
+    await fireEvent.press(getByLabelText('Ẩn bộ lọc Khám phá'));
     await waitFor(() => {
       expect(queryByLabelText('Lọc Khám phá theo Rank')).toBeNull();
       expect(queryByText('4 kết quả')).toBeNull();
@@ -207,7 +207,7 @@ describe('ExploreScreen', () => {
       ).toBeTruthy();
     });
 
-    fireEvent.press(getByLabelText('Mở bộ lọc Khám phá'));
+    await fireEvent.press(getByLabelText('Mở bộ lọc Khám phá'));
     await waitFor(() => {
       expect(getByLabelText('Lọc Khám phá theo Rank')).toBeTruthy();
       expect(getByText('4 kết quả')).toBeTruthy();
@@ -222,7 +222,10 @@ describe('ExploreScreen', () => {
       await renderDiscoverScreen(<ExploreScreen />, safeAreaMetrics);
 
     expect(getByText('Hot hôm nay')).toBeTruthy();
-    fireEvent.changeText(getByLabelText('Tìm trong Khám phá'), 'giua duong');
+    await fireEvent.changeText(
+      getByLabelText('Tìm trong Khám phá'),
+      'giua duong',
+    );
 
     await waitFor(() => {
       expect(getByText('Team Sao Băng')).toBeTruthy();
@@ -231,18 +234,21 @@ describe('ExploreScreen', () => {
       expect(queryByText('Hot hôm nay')).toBeNull();
     });
 
-    fireEvent.press(getByLabelText('Xoá tìm kiếm Khám phá'));
+    await fireEvent.press(getByLabelText('Xoá tìm kiếm Khám phá'));
     await waitFor(() => {
       expect(getByText('Duo Rừng + Trợ Thủ')).toBeTruthy();
       expect(getByText('Hot hôm nay')).toBeTruthy();
     });
 
-    fireEvent.changeText(getByLabelText('Tìm trong Khám phá'), 'khong ton tai');
+    await fireEvent.changeText(
+      getByLabelText('Tìm trong Khám phá'),
+      'khong ton tai',
+    );
     await waitFor(() => {
       expect(getByText('Không có kết quả phù hợp')).toBeTruthy();
     });
 
-    fireEvent.press(getByLabelText('Đặt lại tìm kiếm Khám phá'));
+    await fireEvent.press(getByLabelText('Đặt lại tìm kiếm Khám phá'));
     await waitFor(() => {
       expect(getByText('Duo Rừng + Trợ Thủ')).toBeTruthy();
     });
@@ -254,7 +260,7 @@ describe('ExploreScreen', () => {
 
     expect(getByText('7 kết quả')).toBeTruthy();
 
-    fireEvent.press(getByLabelText('Lọc Khám phá theo Rank'));
+    await fireEvent.press(getByLabelText('Lọc Khám phá theo Rank'));
     await waitFor(() => {
       expect(getByText('4 kết quả')).toBeTruthy();
       expect(
@@ -262,7 +268,7 @@ describe('ExploreScreen', () => {
       ).toMatchObject({ selected: true });
     });
 
-    fireEvent.press(getByLabelText('Lọc Khám phá theo Mic on'));
+    await fireEvent.press(getByLabelText('Lọc Khám phá theo Mic on'));
     await waitFor(() => {
       expect(getByText('3 kết quả')).toBeTruthy();
       expect(getByText('Leo rank đêm')).toBeTruthy();
@@ -273,7 +279,7 @@ describe('ExploreScreen', () => {
       ).toMatchObject({ selected: true });
     });
 
-    fireEvent.press(getByLabelText('Lọc Khám phá theo Mic on'));
+    await fireEvent.press(getByLabelText('Lọc Khám phá theo Mic on'));
     await waitFor(() => {
       expect(getByText('4 kết quả')).toBeTruthy();
       expect(
@@ -281,7 +287,7 @@ describe('ExploreScreen', () => {
       ).toMatchObject({ selected: false });
     });
 
-    fireEvent.press(getByLabelText('Lọc Khám phá theo Không toxic'));
+    await fireEvent.press(getByLabelText('Lọc Khám phá theo Không toxic'));
     await waitFor(() => {
       expect(getByText('1 kết quả')).toBeTruthy();
       expect(getByText('Khoa Jungle')).toBeTruthy();
@@ -289,16 +295,16 @@ describe('ExploreScreen', () => {
       expect(queryByText('Minh Anh')).toBeNull();
     });
 
-    fireEvent.press(getByLabelText('Lọc Khám phá theo Tất cả'));
+    await fireEvent.press(getByLabelText('Lọc Khám phá theo Tất cả'));
     await waitFor(() => {
       expect(getByText('7 kết quả')).toBeTruthy();
       expect(getByLabelText('Xin vào Duo Rừng + Trợ Thủ')).toBeTruthy();
     });
-    fireEvent.press(getByLabelText('Xin vào Duo Rừng + Trợ Thủ'));
+    await fireEvent.press(getByLabelText('Xin vào Duo Rừng + Trợ Thủ'));
     await waitFor(() => {
       expect(getByText('Đã gửi')).toBeTruthy();
     });
-    fireEvent.press(getByLabelText('Mời vào Khoa Jungle'));
+    await fireEvent.press(getByLabelText('Mời vào Khoa Jungle'));
     await waitFor(() => {
       expect(getByText('Đã mời')).toBeTruthy();
     });
@@ -311,14 +317,14 @@ describe('ExploreScreen', () => {
     );
 
     const vibe = getByLabelText('Chọn vibe Leo rank đêm');
-    fireEvent.press(vibe);
+    await fireEvent.press(vibe);
     await waitFor(() => {
       expect(
         getByLabelText('Chọn vibe Leo rank đêm').props.accessibilityState,
       ).toMatchObject({ selected: true });
     });
 
-    fireEvent.press(getByLabelText('Nhắn Khoa Jungle'));
+    await fireEvent.press(getByLabelText('Nhắn Khoa Jungle'));
     expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
       appRoutes.main.messages,
     );

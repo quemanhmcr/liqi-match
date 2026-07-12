@@ -7,7 +7,7 @@ import {
   jest,
 } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 
 import {
@@ -74,7 +74,9 @@ describe('NotificationsScreen', () => {
     expect(getByText('Đã tải hết thông báo')).toBeTruthy();
     expect(queryByLabelText('Đánh dấu tất cả thông báo là đã đọc')).toBeNull();
 
-    mockFocusEffect?.();
+    await act(async () => {
+      mockFocusEffect?.();
+    });
 
     await waitFor(() => {
       expect(getByText('Không còn thông báo mới')).toBeTruthy();
@@ -93,12 +95,14 @@ describe('NotificationsScreen', () => {
       await renderNotificationWithProviders(<NotificationsScreen />);
 
     expect(await findByText('3 thông báo mới')).toBeTruthy();
-    fireEvent.press(await findByLabelText('Lọc Chưa đọc'));
+    await fireEvent.press(await findByLabelText('Lọc Chưa đọc'));
 
     expect(getByText('Minh Anh')).toBeTruthy();
     expect(getByText('Khoa Jungle')).toBeTruthy();
 
-    mockFocusEffect?.();
+    await act(async () => {
+      mockFocusEffect?.();
+    });
 
     await waitFor(() => {
       expect(getByText('Không có thông báo trong mục này')).toBeTruthy();

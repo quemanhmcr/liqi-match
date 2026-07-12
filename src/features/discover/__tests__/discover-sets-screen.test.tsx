@@ -83,18 +83,18 @@ describe('DiscoverSetsScreen', () => {
     expect(getByTestId('discover-set-card-team-late-night')).toBeTruthy();
     expect(queryByText('Tin nhắn')).toBeNull();
 
-    fireEvent.press(getByLabelText('Mở chi tiết Team Sao Băng'));
+    await fireEvent.press(getByLabelText('Mở chi tiết Team Sao Băng'));
     await waitFor(() => {
       expect(useDiscoverStore.getState().selectedSetId).toBe('team-sao-bang');
     });
 
-    fireEvent.press(getByLabelText('Xem set Team Sao Băng'));
+    await fireEvent.press(getByLabelText('Xem set Team Sao Băng'));
     await waitFor(() => {
       expect(getByLabelText('Xem set Team Sao Băng')).toBeTruthy();
       expect(queryByText('Đang xem')).toBeNull();
     });
 
-    fireEvent.press(getByLabelText('Quay lại Khám phá'));
+    await fireEvent.press(getByLabelText('Quay lại Khám phá'));
     expect(mockExpoRouter.router.back).toHaveBeenCalledTimes(1);
   });
 
@@ -108,7 +108,7 @@ describe('DiscoverSetsScreen', () => {
     expect(getByTestId('discover-sets-filter-row')).toBeTruthy();
     expect(queryByTestId('discover-sets-filter-toggle')).toBeNull();
 
-    fireEvent.press(getByLabelText('Lọc Set theo Team Rank'));
+    await fireEvent.press(getByLabelText('Lọc Set theo Team Rank'));
     await waitFor(() => {
       expect(
         getByLabelText('Lọc Set theo Team Rank').props.accessibilityState,
@@ -147,12 +147,12 @@ describe('DiscoverSetsScreen', () => {
       getByLabelText('Lọc Set theo Mic on').props.accessibilityState,
     ).toMatchObject({ selected: true });
 
-    fireEvent.changeText(getByLabelText('Tìm kiếm set'), 'tro thu');
+    await fireEvent.changeText(getByLabelText('Tìm kiếm set'), 'tro thu');
     await waitFor(() => {
       expect(getByLabelText('Tìm kiếm set').props.value).toBe('tro thu');
     });
 
-    fireEvent.press(getByLabelText('Lọc Set theo Team Rank'));
+    await fireEvent.press(getByLabelText('Lọc Set theo Team Rank'));
     await waitFor(() => {
       expect(
         getByLabelText('Lọc Set theo Team Rank').props.accessibilityState,
@@ -170,7 +170,7 @@ describe('DiscoverSetsScreen', () => {
         createSafeAreaMetrics(390),
       );
 
-    fireEvent.changeText(getByLabelText('Tìm kiếm set'), 'tro thu');
+    await fireEvent.changeText(getByLabelText('Tìm kiếm set'), 'tro thu');
     await waitFor(() => {
       expect(getByText('Duo Rừng + Trợ Thủ')).toBeTruthy();
       expect(getByText('Leo rank 5v5')).toBeTruthy();
@@ -178,20 +178,20 @@ describe('DiscoverSetsScreen', () => {
       expect(queryByText('Team late night')).toBeNull();
     });
 
-    fireEvent.press(getByLabelText('Xóa tìm kiếm set'));
+    await fireEvent.press(getByLabelText('Xóa tìm kiếm set'));
     await waitFor(() => {
       expect(getByTestId('discover-set-card-team-sao-bang')).toBeTruthy();
     });
 
-    fireEvent.press(getByTestId('discover-sets-sort-toggle'));
+    await fireEvent.press(getByTestId('discover-sets-sort-toggle'));
     await waitFor(() => {
       expect(getByLabelText('Sắp xếp theo Mới mở')).toBeTruthy();
     });
-    fireEvent.press(getByLabelText('Sắp xếp theo Mới mở'));
+    await fireEvent.press(getByLabelText('Sắp xếp theo Mới mở'));
     await waitFor(() => {
       expect(getByText('Mới mở')).toBeTruthy();
     });
-    fireEvent.press(getByLabelText('Xin vào Leo rank 5v5'));
+    await fireEvent.press(getByLabelText('Xin vào Leo rank 5v5'));
     await waitFor(() => {
       expect(getByText('Đã gửi')).toBeTruthy();
     });

@@ -25,12 +25,14 @@ describe('HeroSelectionScreen', () => {
   });
 
   it('keeps exactly three selected heroes when selecting another hero', async () => {
-    const { getByText } = await renderWithProviders(<HeroSelectionScreen />);
+    const { getByLabelText, getByText } = await renderWithProviders(
+      <HeroSelectionScreen />,
+    );
 
-    fireEvent.press(getByText('Billow'));
+    await fireEvent.press(getByText('Billow'));
 
     expect(getByText(/Đã chọn 3\/3/)).toBeTruthy();
-    expect(getByText('Billow')).toBeTruthy();
+    expect(getByLabelText('Xoá tướng Billow')).toBeTruthy();
   });
 
   it('keeps the selected hero tray stable when fewer than three heroes are selected', async () => {
@@ -38,7 +40,7 @@ describe('HeroSelectionScreen', () => {
       <HeroSelectionScreen />,
     );
 
-    fireEvent.press(getByLabelText('Xoá tướng Edras'));
+    await fireEvent.press(getByLabelText('Xoá tướng Edras'));
 
     await waitFor(() => {
       expect(getByText(/Đã chọn 2\/3/)).toBeTruthy();

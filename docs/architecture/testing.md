@@ -26,6 +26,8 @@ Files ending in `.test.tsx` run through `jest-expo` and React Native Testing Lib
 
 Use this lane for user-visible component contracts, providers, routing adapters and Expo-coupled integrations. Do not move pure business rules into screen tests.
 
+React Native Testing Library 14 uses asynchronous React 19 helpers. Always await `render`, `fireEvent`, `act`, `unmount` and supported `userEvent` interactions. Do not wrap `fireEvent` in another `act`; RNTL already owns that boundary. Prefer `userEvent` when the full native interaction sequence matters, and retain awaited `fireEvent` for focused component contracts where speed and direct handler intent are explicit.
+
 ```bash
 npm run test:native
 npm run test:native:watch
@@ -78,9 +80,16 @@ npm run test:full
 
 - committed `describe.only`, `it.only` or `test.only`;
 - per-file `jest.setTimeout(...)` used to hide slow tests;
-- real `setTimeout` sleeps wrapped in promises.
+- real `setTimeout` sleeps wrapped in promises;
+- unawaited RNTL `render`, `fireEvent` or `act` calls.
 
-Use fake timers, injected clocks, controlled promises or observable state instead of wall-clock waits.
+Use fake timers, injected clocks, controlled promises or observable state instead of wall-clock waits. For TanStack Query tests, disable retries, use `gcTime: Infinity`, isolate a QueryClient per test and await a visible success/error state rather than internal scheduler timing.
+
+Use the open-handle diagnostic only when a suite leaks resources because it intentionally runs serially:
+
+```bash
+npm run test:native:handles
+```
 
 Recommended budgets:
 
@@ -100,3 +109,5 @@ References:
 - [Expo unit testing](https://docs.expo.dev/develop/unit-testing/)
 - [React Native testing overview](https://reactnative.dev/docs/testing-overview)
 - [React Native Testing Library async utilities](https://callstack.github.io/react-native-testing-library/docs/api/misc/async)
+- [React Native Testing Library act guide](https://callstack.github.io/react-native-testing-library/docs/advanced/understanding-act)
+- [TanStack Query testing guide](https://tanstack.com/query/latest/docs/framework/react/guides/testing)
