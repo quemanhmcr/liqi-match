@@ -23,7 +23,9 @@ function requireText(file, patterns) {
   const content = read(file);
   for (const pattern of patterns) {
     if (!pattern.test(content)) {
-      failures.push(`${file}: missing contract marker ${pattern}`);
+      failures.push(
+        `${file}: missing repository entry-point marker ${pattern}`,
+      );
     }
   }
 }
@@ -68,9 +70,7 @@ requireText('README.md', [
   /docs\/architecture\/README\.md/,
   /npm ci/,
   /npm run repo:context/,
-  /npm run task:start/,
   /npm run task:check/,
-  /must not be pushed/i,
 ]);
 const readme = read('README.md');
 if (/expo\.dev\/artifacts|Build ID:/i.test(readme)) {
@@ -81,14 +81,15 @@ if (/expo\.dev\/artifacts|Build ID:/i.test(readme)) {
 requireText('CONTRIBUTING.md', [
   /primary workspace/i,
   /managed task worktree/i,
+  /normal Git branch or worktree/i,
   /npm run task:check/,
   /Liqi-Snapshot: true/,
 ]);
 requireText('AGENTS.md', [
   /npm run repo:context/,
-  /npm run task:start/,
-  /npm run task:review/,
-  /must not be pushed/i,
+  /managed task worktree/i,
+  /normal clean Git worktree/i,
+  /local-only/i,
 ]);
 requireText('docs/architecture/README.md', [
   /Change ownership map/,
@@ -171,10 +172,10 @@ try {
 
 if (failures.length) {
   console.error(
-    `Repository contract check failed (${failures.length} issue${failures.length === 1 ? '' : 's'}):`,
+    `Repository entry-point check failed (${failures.length} issue${failures.length === 1 ? '' : 's'}):`,
   );
   for (const failure of failures) console.error(`- ${failure}`);
   process.exitCode = 1;
 } else {
-  console.log('Repository operating contract check passed.');
+  console.log('Repository entry-point check passed.');
 }

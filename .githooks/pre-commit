@@ -11,8 +11,8 @@ common_dir=$(cd "$common_dir" && pwd -P)
 
 if [ "$git_dir" = "$common_dir" ] && [ "${LIQI_ALLOW_PRIMARY_COMMIT:-0}" != "1" ]; then
   echo "Commit blocked: this is the Liqi Primary review workspace."
-  echo "Create implementation work with: npm run task:start -- <type/name>"
-  echo "Use a separate clean worktree for publishable commits."
+  echo "Use another branch/worktree for commit-ready work."
+  echo "Managed option: npm run task:start -- <type/name>"
   echo "Recovery-only override: LIQI_ALLOW_PRIMARY_COMMIT=1 git commit ..."
   exit 1
 fi

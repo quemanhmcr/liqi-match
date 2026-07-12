@@ -117,11 +117,9 @@ reviews it because tab order, URLs and accessibility are product-wide behavior.
 
 ## Parallel-development workflow
 
-Create local task worktrees through the [deterministic worktree workflow](worktree-workflow.md). Plain `git worktree add` is not sufficient when the primary review working tree is newer than `HEAD`.
+Use the [worktree decision guide](worktree-workflow.md) when choosing between a managed snapshot worktree and a normal Git worktree. Prefer an understood, current baseline and preserve local state before destructive operations.
 
-Treat the primary workspace as review/integration only. Each task starts from a
-small branch (for example `feature/discover-filters`) and, when concurrent work
-is local, its own Git worktree. Feature PRs should change only their feature
+For parallel feature work, a small branch (for example `feature/discover-filters`) in its own worktree usually keeps ownership clearer. Feature PRs should change only their feature
 folder plus new route adapters/tests. Shell, entity and shared changes are
 separate, small PRs with their owners as reviewers.
 

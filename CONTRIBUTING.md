@@ -1,103 +1,111 @@
 # Contributing to Liqi Match
 
-This repository uses a deliberate two-surface development model:
+This guide describes approaches that have worked well in this repository. It is a reference for making trade-offs, not a substitute for understanding the task.
 
-- the **primary workspace** is a mutable review and integration surface;
-- implementation happens in a **managed task worktree** created from an exact snapshot of that surface.
+## Engineering principles
 
-This is a repository invariant, not a per-task preference. Do not start feature work with plain `git worktree add`, a copied directory, or a new branch in the primary workspace.
+Prefer workflows that keep changes:
 
-## First five minutes
+- attributable to an owner;
+- easy to review and test;
+- recoverable before destructive Git operations;
+- isolated from unrelated WIP;
+- free of secrets and generated artifacts.
 
-From any checkout, identify its role:
+These principles matter more than following one exact command sequence.
+
+## Choose a checkout strategy
+
+Start by inspecting the checkout:
 
 ```bash
 npm run repo:context
 ```
 
-From the primary workspace, start a task:
+Then choose the simplest option that fits the work.
+
+### Managed task worktree
+
+Useful for parallel, risky or long-running local tasks, especially when exact snapshotting, isolated dependencies, review overlays and automatic archives are valuable.
 
 ```bash
 npm run task:start -- feat/descriptive-task-name
 cd ../liqi-descriptive-task-name
 ```
 
-Then read the architecture map and the document for the area you own:
+Managed branches include local snapshot ancestry. The pre-push hook blocks them because they are not publishable history; move the owned patch to a clean branch before pushing.
 
-- [Repository architecture map](docs/architecture/README.md)
-- [Mobile frontend architecture](docs/architecture/mobile-frontend.md)
-- [Backend architecture](docs/architecture/backend.md)
-- [Testing architecture](docs/architecture/testing.md)
-- [Managed task workflow](docs/architecture/worktree-workflow.md)
+### Normal Git branch or worktree
 
-## Task lifecycle
-
-The human-facing commands are named after the task lifecycle. The `worktree:*` commands remain lower-level infrastructure aliases.
+Often preferable for a small change, an already-clean baseline or a branch intended to become a pull request directly.
 
 ```bash
-npm run task:start -- fix/chat-autofollow
-npm run repo:context
+git fetch origin
+git worktree add ../liqi-small-fix -b fix/small-fix origin/main
+```
+
+A normal worktree does not provide Liqi snapshot manifests, overlay rollback or automatic cleanup archives, so the developer owns those decisions.
+
+### Primary workspace
+
+Primary is commonly kept close to `origin/main` for navigation, smoke testing and temporary review. The pre-commit hook blocks normal commits there, which keeps commit-ready work in another checkout. Temporary local edits are acceptable when their purpose and recovery path are understood.
+
+Before a destructive reset or clean, inspect and preserve unexpected state.
+
+## Use the task tools selectively
+
+The `task:*` commands form a complete workflow, but each command is also a tool that can be used when it adds value:
+
+```bash
 npm run task:inspect
+npm run task:list
 npm run task:check
 npm run task:review -- C:/project/liqi-chat-autofollow
 npm run task:undo -- <overlay-id>
 npm run task:finish -- C:/project/liqi-chat-autofollow
 ```
 
-### Start
+- `task:inspect` explains a managed checkout and validates its manifest.
+- `task:check` runs the broad repository quality suite.
+- `task:review` creates an optional checksum-verified primary overlay.
+- `task:undo` restores an overlay when its guarded checks still match.
+- `task:finish` archives and removes a managed task when it is no longer needed.
 
-`task:start` captures tracked changes, tracked deletions and approved untracked source from the primary workspace without moving its branch, `HEAD` or real index. It copies allowlisted local environment files separately, installs dependencies and verifies the checkout.
+A pull-request review, branch diff or device smoke test may be more appropriate than a primary overlay. Use judgment.
 
-Managed task branches contain a local aggregate snapshot in their ancestry. They are intentionally local-only and must never be pushed.
+## Architecture and tests
 
-### Implement
+Read the architecture map and the document nearest to the code you are changing:
 
-Keep the task worktree focused on one owned change. Follow the dependency and ownership rules in the relevant architecture document. Add or update tests beside the owning feature or service.
+- [Repository architecture map](docs/architecture/README.md)
+- [Mobile frontend architecture](docs/architecture/mobile-frontend.md)
+- [Backend architecture](docs/architecture/backend.md)
+- [Testing architecture](docs/architecture/testing.md)
+- [Worktree toolbox](docs/architecture/worktree-workflow.md)
 
-Commit the task patch locally in the managed worktree. The worktree must be clean before review overlay.
+Architecture documents describe the current design and reasons behind it. When a task exposes a better design, explain the trade-off and update the relevant code, checks and documentation together.
 
-### Check
-
-Run the repository definition of done:
+Run checks proportional to the change during development, then use the broader suite before handoff when practical:
 
 ```bash
 npm run task:check
 ```
 
-For a smaller loop, use the specific lane described in [testing architecture](docs/architecture/testing.md), then run the full task check before handoff.
+## Tool-enforced safety boundaries
 
-### Review
+A few constraints are intentionally harder because violating them can corrupt history, leak secrets or destroy work:
 
-Run review and cleanup commands from the primary workspace, not from inside the worktree being removed.
+- managed branches containing `Liqi-Snapshot: true` ancestry cannot be pushed;
+- direct pushes to `main` are blocked;
+- primary commits are blocked unless the recovery override is deliberately set;
+- secrets, credentials and private keys do not belong in Git-visible source or `EXPO_PUBLIC_*` variables;
+- unknown local state should be archived before destructive reset or cleanup;
+- `node_modules` should not be copied or junctioned between worktrees because it can silently mismatch the lockfile.
 
-`task:review` overlays only the committed task diff into the primary review workspace. It verifies primary checksums before writing, backs up affected paths, verifies the applied bytes and runs targeted smoke checks.
-
-Review the change in the primary workspace. Use the emitted `task:undo` command when the overlay must be reverted.
-
-### Finish
-
-`task:finish` archives the task manifest, patch, commit list and Git bundle before removing the worktree, local task branch and hidden snapshot ref.
-
-Publishable commits must be created on a clean branch that does not descend from a `Liqi-Snapshot: true` commit.
-
-## Repository invariants
-
-- Never implement or commit feature work in the primary workspace.
-- Never push a managed task branch or any `refs/liqi/*` ref.
-- Never copy or junction `node_modules` between worktrees.
-- Never bypass untracked-source classification by copying the repository directory.
-- Never put secrets in Git-visible source or `EXPO_PUBLIC_*` variables.
-- Never place product logic in Expo Router route adapters.
-- Never cross feature or backend ownership boundaries through deep imports.
-
-The Git hooks, repository contract check, architecture checks and CI enforce the high-risk parts of this agreement.
-
-## Break-glass behavior
-
-The primary pre-commit guard can be bypassed only for repository recovery with:
+The primary commit guard has a recovery override:
 
 ```bash
 LIQI_ALLOW_PRIMARY_COMMIT=1 git commit ...
 ```
 
-A normal feature, fix or refactor is not a recovery event. Prefer creating a managed task worktree or a separate clean publishable worktree instead.
+Use it only when the developer understands why the normal guard is inappropriate for that recovery operation.
