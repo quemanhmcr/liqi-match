@@ -99,7 +99,14 @@
     "test:related": "node scripts/run-jest.cjs --findRelatedTests",
     "test:policy": "node scripts/check-test-policy.cjs",
     "security:audit": "npm audit --audit-level=moderate",
-    "test:native:handles": "jest --config jest.native.config.js --runInBand --detectOpenHandles"
+    "test:native:handles": "jest --config jest.native.config.js --runInBand --detectOpenHandles",
+    "worktree:create": "node scripts/worktree/worktree-cli.cjs create",
+    "worktree:overlay": "node scripts/worktree/worktree-cli.cjs overlay",
+    "worktree:rollback": "node scripts/worktree/worktree-cli.cjs rollback",
+    "worktree:cleanup": "node scripts/worktree/worktree-cli.cjs cleanup",
+    "worktree:doctor": "node scripts/worktree/worktree-cli.cjs doctor",
+    "worktree:list": "node scripts/worktree/worktree-cli.cjs list",
+    "worktree:self-test": "node scripts/worktree/self-test.cjs"
   },
   "overrides": {
     "xcode": {

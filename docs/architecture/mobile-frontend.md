@@ -117,6 +117,8 @@ reviews it because tab order, URLs and accessibility are product-wide behavior.
 
 ## Parallel-development workflow
 
+Create local task worktrees through the [deterministic worktree workflow](worktree-workflow.md). Plain `git worktree add` is not sufficient when the primary review working tree is newer than `HEAD`.
+
 Treat the primary workspace as review/integration only. Each task starts from a
 small branch (for example `feature/discover-filters`) and, when concurrent work
 is local, its own Git worktree. Feature PRs should change only their feature

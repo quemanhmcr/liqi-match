@@ -57,6 +57,9 @@ jobs:
       - name: Test
         run: npm run test:ci
 
+      - name: Worktree workflow self-test
+        run: npm run worktree:self-test
+
       - name: Web export smoke test
         run: npx expo export --platform web
 

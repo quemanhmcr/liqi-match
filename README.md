@@ -26,6 +26,8 @@ npm run prepare:git
 
 The committed `pre-push` hook blocks accidental direct pushes to `main`. It is a local safety guard only; CI remains the source of truth.
 
+It also blocks managed local snapshot branches, because their ancestry contains the aggregate primary review state and is not publishable.
+
 Create local env config:
 
 ```bash
@@ -111,6 +113,30 @@ npx expo config
 ```
 
 Use the fast unit/native lanes and changed-test workflow described in [mobile testing architecture](docs/architecture/testing.md).
+
+## Deterministic Worktrees
+
+The primary workspace is review/integration only and may contain source newer than `HEAD`. Create task worktrees through the managed snapshot workflow rather than plain `git worktree add`:
+
+```bash
+npm run worktree:create -- fix/chat-autofollow
+```
+
+After committing the task patch locally:
+
+```bash
+npm run worktree:overlay -- C:/project/liqi-chat-autofollow
+```
+
+The overlay checks primary path checksums twice, backs up affected files, applies additions/modifications/deletions exactly, runs targeted smoke checks and prints a rollback command.
+
+After handoff:
+
+```bash
+npm run worktree:cleanup -- C:/project/liqi-chat-autofollow
+```
+
+See [deterministic worktree and primary review workflow](docs/architecture/worktree-workflow.md) for source classification, env/dependency bootstrap, rollback, retention and local-only branch rules.
 
 ## Project Structure
 
