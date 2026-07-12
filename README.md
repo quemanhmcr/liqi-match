@@ -1,26 +1,28 @@
 # Liqi Match
 
-Liqi Match is an Expo SDK 56 React Native application with an Expo Router mobile client, Supabase Edge Functions and a Cloudflare media worker. The repository is structured for parallel development with explicit ownership boundaries, deterministic task worktrees and checksum-verified review overlays.
+Liqi Match is an Expo SDK 56 React Native application with an Expo Router mobile client, Supabase Edge Functions and a Cloudflare media worker. The repository supports parallel development through explicit ownership boundaries, normal Git workflows and optional deterministic worktree helpers.
 
 ## Start here
 
-This is not a conventional single-working-tree repository. Every checkout has an operating role, and that role determines what work is safe there.
+Liqi Match supports several Git working styles. The repository tools are there to make common operations safer and more reproducible, not to replace engineering judgment.
 
 ```bash
 npm run repo:context
 ```
 
-- **Primary review workspace:** review and integration only. Do not implement or commit feature work here.
-- **Managed task worktree:** implement, test and locally commit one owned task here.
-- **Clean publishable branch:** create remote-ready commits here only after review; it must not descend from a local snapshot commit.
+This command reports what kind of checkout you are in and which tools are available. A typical setup has:
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) and the [repository architecture map](docs/architecture/README.md) before changing code. From the primary workspace, start implementation with:
+- a **primary workspace**, usually kept near the latest `origin/main` for reading, smoke testing and temporary review;
+- a **managed task worktree**, useful when a task benefits from an exact snapshot, isolated dependencies, guarded overlay and automatic recovery archive;
+- a **normal branch or Git worktree**, often simpler for small changes or for creating publishable commits.
+
+Choose the lightest workflow that preserves ownership, reviewability and recovery. For parallel, risky or long-running local work, the managed helper is a strong default:
 
 ```bash
 npm run task:start -- feat/descriptive-task-name
 ```
 
-Do not replace this command with plain `git worktree add`, a copied repository directory or a new feature branch inside the primary workspace.
+For a small change, a normal clean branch/worktree from current `origin/main` is also reasonable. Avoid placing commit-ready implementation directly in primary because the committed hook intentionally blocks primary commits.
 
 ## Requirements
 
@@ -50,9 +52,31 @@ Use `npm ci`, not `npm install`, for a clean checkout. It keeps local dependency
 
 The committed hooks block commits in the primary review workspace, direct pushes to `main`, pushes of managed local snapshot branches and pushes of `refs/liqi/*`. CI remains the final enforcement layer.
 
-## Managed task lifecycle
+## Primary workspace guidance
 
-### 1. Start from primary
+Keeping primary clean and close to `origin/main` makes its Git status useful and gives new tasks a predictable reference point. Treat this as the preferred default rather than a ritual to perform blindly.
+
+A normal refresh looks like:
+
+```bash
+git fetch --prune origin
+git status --short --branch
+git reset --hard origin/main
+```
+
+Before resetting, understand any local changes and preserve work that has an owner. Preview destructive cleanup with `git clean -nd`; do not use `git clean -fd` on unknown files.
+
+Primary can be temporarily dirty for review, diagnostics or recovery. The important question is whether the state is intentional, attributable and recoverable. A managed `task:review` overlay provides a checksum-guarded rollback command:
+
+```bash
+npm run task:undo -- <overlay-id>
+```
+
+When `main` advances during an active task, developers can choose the integration strategy that best fits the change: rebase a normal branch, transplant the owned patch to a fresh worktree, or recreate a managed task baseline. Do not move mixed WIP back into primary merely to satisfy an old snapshot.
+
+## Managed task workflow example
+
+### 1. Start an isolated task
 
 Use a descriptive Conventional Commit-style branch name such as `feat/...`, `fix/...`, `refactor/...` or `docs/...`:
 
@@ -60,7 +84,7 @@ Use a descriptive Conventional Commit-style branch name such as `feat/...`, `fix
 npm run task:start -- fix/chat-autofollow
 ```
 
-The command snapshots the exact Git-visible primary state, copies allowlisted local environment files separately, installs dependencies and validates the new worktree. It prints the generated worktree path when ready.
+The command snapshots the current Git-visible source, copies allowlisted local environment files separately, installs dependencies and validates the new worktree. It is most useful when exact local reproducibility and recovery matter. Inspect unexpected primary changes before using them as a task baseline.
 
 ### 2. Implement in the task worktree
 
@@ -85,7 +109,7 @@ Managed task branches contain local aggregate snapshot ancestry. **They are loca
 npm run task:check
 ```
 
-This runs the repository contract, formatting, frontend and backend architecture checks, dependency audit, lint, TypeScript and the complete unit/native Jest suite.
+This runs the repository entry-point check, formatting, frontend and backend architecture checks, dependency audit, lint, TypeScript and the complete unit/native Jest suite.
 
 Run additional area-specific checks when the task changes those surfaces:
 
@@ -107,7 +131,7 @@ npm run supabase:test
 npm run supabase:types
 ```
 
-### 4. Review from primary
+### 4. Optionally review through primary
 
 After the task worktree is clean and its patch is committed, return to the primary workspace:
 
@@ -115,15 +139,15 @@ After the task worktree is clean and its patch is committed, return to the prima
 npm run task:review -- C:/project/liqi-chat-autofollow
 ```
 
-The review transaction verifies primary checksums before writing, backs up affected paths, applies the committed task diff byte-for-byte, verifies the result and runs targeted smoke checks. It prints a guarded rollback command such as:
+The optional review transaction verifies primary checksums before writing, backs up affected paths, applies the committed task diff byte-for-byte, verifies the result and runs targeted smoke checks. It prints a guarded rollback command such as:
 
 ```bash
 npm run task:undo -- <overlay-id>
 ```
 
-### 5. Finish from primary
+### 5. Restore or clean up when useful
 
-After review and handoff:
+After an overlay review, the emitted `task:undo` command is the safest way to restore the prior primary state. When a managed worktree is no longer useful:
 
 ```bash
 npm run task:finish -- C:/project/liqi-chat-autofollow
@@ -131,7 +155,7 @@ npm run task:finish -- C:/project/liqi-chat-autofollow
 
 Cleanup archives the manifest, patch, commit list and Git bundle before removing the managed worktree, local task branch and hidden snapshot ref.
 
-See [the managed task and primary review workflow](docs/architecture/worktree-workflow.md) for snapshot classification, conflict detection, rollback, retention, process cleanup and publishable-branch rules.
+See [the worktree toolbox and decision guide](docs/architecture/worktree-workflow.md) for choosing between managed and normal worktrees, plus snapshot, rollback and recovery details.
 
 ## Daily development commands
 
@@ -202,25 +226,25 @@ Build IDs and artifact URLs are operational outputs and intentionally do not liv
 
 ## Documentation map
 
-- [Contributing and task lifecycle](CONTRIBUTING.md)
+- [Contribution guidance](CONTRIBUTING.md)
 - [Repository architecture map](docs/architecture/README.md)
 - [Mobile frontend architecture](docs/architecture/mobile-frontend.md)
 - [Backend architecture](docs/architecture/backend.md)
 - [Testing architecture](docs/architecture/testing.md)
 - [Security contracts](docs/architecture/security.md)
-- [Managed worktree workflow](docs/architecture/worktree-workflow.md)
+- [Worktree toolbox and decision guide](docs/architecture/worktree-workflow.md)
 - [Android development-client runbook](docs/android-dev-client-runbook.md)
 - [Liquid Glass design system](docs/liquid-glass-design-system.md)
 - [Product and service contracts](docs/contracts/)
 - [Architecture decision records](docs/adr/)
 
-When documentation and code disagree, stop and resolve the contract in the same task rather than silently bypassing it.
+When documentation and code disagree, investigate which one is stale, explain the trade-off and update the useful source of truth rather than following either mechanically.
 
 ## Fast recovery
 
 ```bash
-npm run repo:context            # Confirm what this checkout is allowed to do
-npm run task:inspect            # Validate a managed task worktree
+npm run repo:context            # Understand the current checkout and available tools
+npm run task:inspect            # Inspect and validate a managed task worktree
 npm run task:list               # List active managed worktrees
 npm run start:clear             # Clear Metro state
 npm run dev:android:cold        # Recover a stale emulator snapshot

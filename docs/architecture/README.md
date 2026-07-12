@@ -1,6 +1,6 @@
 # Repository architecture map
 
-This file is the navigation surface for engineers entering the codebase. The repository is organized around explicit ownership, stable public APIs and a managed task lifecycle.
+This file is a navigation surface for engineers entering the codebase. The repository is organized around explicit ownership and stable public APIs; checkout strategy is chosen according to the task.
 
 ## Before reading implementation code
 
@@ -10,13 +10,13 @@ Run:
 npm run repo:context
 ```
 
-The command tells you whether the current checkout is the primary review workspace, a managed task worktree, or an unmanaged/publishable checkout. Feature implementation belongs in a managed task worktree created with:
+The command tells you whether the current checkout is primary, a managed task worktree or an unmanaged/publishable checkout. Use that information to choose a normal Git worktree, a managed snapshot worktree or another isolated checkout. The managed option is:
 
 ```bash
 npm run task:start -- <type/descriptive-name>
 ```
 
-The complete operating agreement is in [CONTRIBUTING.md](../../CONTRIBUTING.md). The transaction and recovery details are in [worktree workflow](worktree-workflow.md).
+General contribution guidance is in [CONTRIBUTING.md](../../CONTRIBUTING.md). Worktree choices, transaction details and recovery notes are in the [worktree toolbox](worktree-workflow.md).
 
 ## Change ownership map
 
@@ -43,17 +43,16 @@ Backend adapters follow the same principle: transport and platform entry points 
 
 Automated architecture checks encode these boundaries. A boundary change requires an architectural decision, documentation update and matching checker update in the same task.
 
-## Default task sequence
+## Example reasoning sequence
 
 ```text
-repo:context
-  -> task:start
-  -> read owning architecture document
-  -> implement and commit locally
-  -> task:check
-  -> task:review
-  -> primary review
-  -> task:finish
+understand the task and current checkout
+  -> identify ownership and nearby concurrent work
+  -> choose the lightest recoverable checkout strategy
+  -> read the relevant architecture context
+  -> implement and run proportionate checks
+  -> review on the surface that exposes the real risks
+  -> publish or hand off with clear history and validation notes
 ```
 
-The package script names are intentionally visible in `package.json`, editor tasks and CI so the workflow can be inferred without a separate prompt or oral handoff.
+Managed `task:*` scripts and editor tasks remain discoverable for work that benefits from their snapshot, overlay and archive features. They are tools within this reasoning process, not the process itself.

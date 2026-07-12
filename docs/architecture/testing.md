@@ -45,7 +45,7 @@ CI calls the same lane through `npm run test:ci`.
 
 ## Development workflow
 
-Inside a task worktree whose baseline represents the primary workspace snapshot:
+Inside a task branch or worktree, use the feedback loop that matches its baseline:
 
 ```bash
 npm test
@@ -59,7 +59,7 @@ To test one or more implementation files through Jest's dependency graph:
 npm run test:related -- src/features/messages/model/chat-timeline.ts
 ```
 
-`npm test` watches only tests related to changed files. `test:changed` is intended for task worktrees where `HEAD` is the local snapshot baseline.
+`npm test` watches only tests related to changed files. `test:changed` is most useful when `HEAD` is a meaningful baseline for the task, including managed snapshot worktrees.
 
 The runner caps Jest at four workers by default. This avoids CPU and memory contention on the shared review machine. Override it only for profiling:
 

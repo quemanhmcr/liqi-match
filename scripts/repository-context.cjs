@@ -86,14 +86,14 @@ function main() {
   let contract =
     'Use this checkout only for a clean publishable branch or diagnostics; task snapshot guarantees are not active.';
   let next = [
-    'From the primary review workspace: npm run task:start -- <type/name>',
+    'Managed option from primary: npm run task:start -- <type/name>',
     'Read docs/architecture/README.md before changing an ownership boundary.',
   ];
 
   if (manifest) {
     role = 'managed-task-worktree';
     contract =
-      'Implement and commit only the owned task patch here. This snapshot branch is local-only and must not be pushed.';
+      'This managed snapshot branch is local-only and cannot be pushed. Keep the task patch focused, or move it to a clean publishable branch when ready.';
     next = [
       'npm run task:inspect',
       'npm run task:check',
@@ -103,7 +103,7 @@ function main() {
   } else if (isPrimary) {
     role = 'primary-review-workspace';
     contract =
-      'Review and integration only. Do not implement or commit feature work in this checkout.';
+      'Common use: baseline, diagnostics and temporary review. Primary commits are blocked; use another checkout for commit-ready work.';
     next = [
       'npm run task:start -- <type/descriptive-name>',
       'npm run task:list',
@@ -162,7 +162,7 @@ function main() {
     console.log(`Task snapshot: ${result.managedTask.snapshot}`);
     console.log(`Primary: ${result.managedTask.primary}`);
   }
-  console.log(`Contract: ${contract}`);
+  console.log(`Guidance: ${contract}`);
   console.log('Next:');
   for (const command of next) console.log(`  ${command}`);
   if (result.activeTasks.length) {

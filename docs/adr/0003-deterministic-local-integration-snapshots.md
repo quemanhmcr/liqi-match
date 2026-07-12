@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted.
+Accepted for the snapshot, overlay and recovery mechanics. This ADR explains why the tooling exists; it does not require every task to use a managed worktree.
 
 ## Context
 
@@ -45,7 +45,7 @@ Cleanup archives a Git bundle and binary patch before removing the worktree, tas
 ### Positive
 
 - New worktrees reproduce tracked changes, deletions, renames and allowed untracked source exactly.
-- Primary review can remain a shared mutable workspace.
+- Primary review can preserve intentional mutable state when that state is understood and recoverable.
 - Snapshot creation does not alter the primary branch or index.
 - Source classification is repository policy rather than per-developer judgment.
 - Environment secrets stay outside Git objects.

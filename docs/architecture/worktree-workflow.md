@@ -1,246 +1,160 @@
-# Deterministic Worktree and Primary Review Workflow
+# Worktree Toolbox and Decision Guide
 
-The primary workspace is a shared review and integration surface. Its working tree can contain tracked modifications, tracked deletions and untracked source that are newer than `HEAD`. A normal `git worktree add` therefore cannot reproduce the project currently under review.
+Liqi Match includes managed worktree tooling because local development sometimes involves several concurrent changes, native dependencies and expensive recovery. The tooling is an option for those situations, not a requirement that every developer solve every task the same way.
 
-This workflow packages that mutable source state into a local Git snapshot without moving the primary branch, changing the primary index or committing environment secrets.
+## Start with the problem
 
-## Repository discovery contract
+Before choosing a Git workflow, ask:
 
-The workflow is surfaced through repository entry points rather than relying on a task prompt or oral reminder:
+- Is another developer or process changing nearby files?
+- Does the task need a directly publishable branch?
+- Would an exact local snapshot or automatic recovery archive be valuable?
+- Is the current primary state understood and attributable?
+- How expensive would it be to recreate the environment or resolve accidental mixing?
 
-- `CONTRIBUTING.md` defines the engineering agreement;
-- `docs/architecture/README.md` maps changes to owners and architecture documents;
-- `AGENTS.md` gives coding tools the same mandatory lifecycle;
-- `npm run repo:context` identifies the current checkout role;
-- human-facing `task:*` scripts describe start, inspect, check, review, undo and finish;
-- VS Code tasks expose the same lifecycle in the command palette;
-- pre-commit and pre-push hooks block the two highest-risk mistakes;
-- `npm run repository:check` and CI prevent these entry points from silently drifting.
+Choose the lightest approach that answers those risks.
 
-The lower-level `worktree:*` scripts remain compatible for infrastructure debugging, but normal documentation uses the task lifecycle names.
+## Available approaches
 
-## Mental model
+| Approach              | Works well when                                                                      | Trade-offs                                                                    |
+| --------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------- |
+| Managed task worktree | Parallel, risky or long-running local work; exact snapshot and rollback are valuable | Local snapshot ancestry is not publishable; bootstrap and cleanup are heavier |
+| Normal Git worktree   | Small or medium task from a clean remote baseline; branch may become the PR directly | No Liqi manifest, overlay guard or automatic recovery bundle                  |
+| Separate clone        | Strong process/environment isolation is more important than disk usage               | Slower setup and duplicated repository metadata                               |
+| Primary workspace     | Reading, diagnostics, smoke testing and temporary review                             | Normal commits are blocked; long-lived mixed WIP makes ownership unclear      |
 
-The workflow has four separate layers:
+## Primary as a useful default
 
-1. **Source snapshot**: Git-visible source is captured through a temporary index, a local commit object and a hidden `refs/liqi/snapshots/*` ref.
-2. **Environment bootstrap**: ignored local files such as `.env.local` are copied from an explicit allowlist and checksummed outside the snapshot commit.
-3. **Dependency bootstrap**: each worktree receives a clean, verified dependency tree. A pre-existing `node_modules` directory is never considered proof that dependencies are valid.
-4. **Primary overlay transaction**: only the committed task diff is applied to the primary review workspace after checksum guards, backup and a second concurrent-change check.
+A clean primary near `origin/main` is convenient because `git status` remains meaningful and new work has an obvious reference point.
 
-Task branches created by this workflow are local-only. They contain the aggregate local snapshot in their ancestry and must not be pushed. The repository pre-push hook blocks both the branch marker and the snapshot commit trailer.
+```bash
+git fetch --prune origin
+git status --short --branch
+git reset --hard origin/main
+```
 
-## Create a task worktree
+This sequence is appropriate only after local changes are understood. A dirty primary is not automatically wrong: it may be an intentional review, diagnostic experiment or interrupted recovery. Preserve unknown work before resetting or cleaning it.
 
-From the primary workspace:
+Preview untracked cleanup first:
+
+```bash
+git clean -nd
+```
+
+## Managed task worktrees
+
+Create one when the additional safety is worth the ceremony:
 
 ```bash
 npm run task:start -- fix/chat-autofollow
 ```
 
-The command:
+The helper currently:
 
-1. validates every untracked, non-ignored path against `worktree.config.json`;
-2. creates a temporary Git index seeded from primary `HEAD`;
-3. captures tracked modifications, deletions, renames and allowed untracked source;
-4. creates a hidden local snapshot commit and ref without changing primary `HEAD` or its real index;
-5. creates and locks the task worktree and local-only branch;
-6. copies allowlisted environment files without adding them to Git objects;
-7. runs the configured dependency install;
-8. validates package resolution, TypeScript config, Jest config and Expo config;
-9. writes the same manifest to the worktree and the shared Git metadata directory.
+1. classifies non-ignored untracked paths through `worktree.config.json`;
+2. writes an exact snapshot using a temporary Git index;
+3. leaves primary branch, `HEAD` and real index untouched;
+4. creates a locked local branch and linked worktree;
+5. copies allowlisted environment files outside Git objects;
+6. installs and checks an independent dependency tree;
+7. stores manifests in the worktree and shared Git metadata.
 
-Default worktree paths use the final branch segment:
-
-```text
-fix/chat-autofollow -> ../liqi-chat-autofollow
-```
-
-Use an explicit path when needed:
-
-```bash
-npm run task:start -- fix/chat-autofollow --path C:/project/liqi-chat-autofollow-v2
-```
-
-For source-only diagnostics, dependency installation and health checks can be skipped explicitly:
-
-```bash
-npm run task:start -- chore/worktree-probe --skip-install --skip-health
-```
-
-A normal development worktree should use the default full bootstrap.
-
-## Untracked source policy
-
-Tracked files are always represented exactly, including deletions. Untracked files use a fail-closed policy:
-
-- paths matching `source.allow` are included;
-- paths matching `source.deny` are excluded;
-- an untracked path matching neither list stops creation;
-- oversized untracked files stop creation unless the configured limit is updated deliberately.
-
-Repository `.gitignore` remains the first artifact boundary. The workflow config is the explicit second boundary for non-ignored files.
-
-When a new source root is introduced, update `worktree.config.json` in the same architectural change. Do not bypass classification by copying the primary directory manually.
-
-## Manifest and health
-
-The manifest records:
-
-- primary branch and `HEAD`;
-- snapshot commit, tree and hidden ref;
-- task branch and worktree path;
-- SHA-256 for every checked-out source file;
-- Git blob, mode and size metadata;
-- tracked deletions from primary `HEAD`;
-- included, excluded and oversized untracked paths;
-- environment checksums;
-- dependency and health-check results;
-- source-ready and total bootstrap timings.
-
-Inspect a worktree:
+Inspect or list managed worktrees with:
 
 ```bash
 npm run task:inspect -- C:/project/liqi-chat-autofollow
-```
-
-List managed worktrees:
-
-```bash
 npm run task:list
 ```
 
-## Commit task changes locally
+The managed branch includes a `Liqi-Snapshot: true` ancestor. That is a technical property, not a judgment about the quality of the task. The pre-push hook blocks the branch because aggregate local snapshot history should not become remote project history.
 
-Develop and commit only the task patch in the managed worktree. The snapshot commit is already the branch baseline.
+## Normal Git worktrees
 
-Before overlay, the task worktree must be clean:
+A normal worktree is often simpler when the baseline is clean and the branch is intended to be publishable:
 
 ```bash
-git status --short
+git fetch origin
+git worktree add ../liqi-small-fix -b fix/small-fix origin/main
 ```
 
-Do not push this branch. After primary review, publishable commits must be created on a clean branch that does not contain a `Liqi-Snapshot: true` ancestor.
+The developer is responsible for dependency setup, untracked files, recovery and cleanup. This is a valid trade-off for straightforward work.
 
-## Overlay into primary review
+## When `main` advances
 
-Run from any workspace:
+There is no single correct response. Depending on task size and conflict risk, a developer may:
+
+- rebase a normal branch;
+- merge current `origin/main` into a publishable branch;
+- create a fresh worktree and transplant the owned commits or patch;
+- continue isolated implementation temporarily, then refresh before handoff.
+
+Managed overlay metadata intentionally refuses to write when primary `HEAD` no longer matches its original snapshot. Rather than making primary stale, use a fresh baseline or review the patch by another method.
+
+## Review options
+
+A primary overlay is one review tool, not the definition of review.
 
 ```bash
 npm run task:review -- C:/project/liqi-chat-autofollow
 ```
 
-The command:
-
-1. requires a clean managed task worktree;
-2. computes the exact diff from snapshot commit to task `HEAD`;
-3. expands renames into explicit old-path deletion and new-path write operations;
-4. compares every task path in primary against its snapshot SHA-256;
-5. stops before writing if primary `HEAD`, branch or any task path changed;
-6. backs up the current primary state under Git common metadata;
-7. repeats the checksum guard immediately before applying;
-8. applies task files byte-for-byte, including additions and deletions;
-9. verifies every resulting checksum;
-10. if a configured lockfile changed, performs a clean dependency bootstrap on primary;
-11. runs worktree health, test policy and related tests for changed source files;
-12. emits a rollback command.
-
-A smoke failure leaves the verified overlay in place for inspection and prints the rollback command. An apply or checksum failure rolls back automatically.
-
-Skip smoke only for workflow diagnostics:
+It requires a clean managed task, verifies branch/`HEAD` and path checksums, backs up affected paths, applies the task diff byte-for-byte, runs configured smoke checks and emits a guarded rollback id.
 
 ```bash
-npm run task:review -- C:/project/liqi-chat-autofollow --skip-smoke
+npm run task:undo -- <overlay-id>
 ```
 
-## Roll back an overlay
+Other valid review approaches include:
 
-Each overlay prints an id and command:
+- reading the branch diff;
+- opening a draft pull request from a clean publishable branch;
+- running the task worktree directly on a device;
+- creating a temporary normal integration worktree;
+- pairing with the task owner.
 
-```bash
-npm run task:undo -- overlay-20260712T030028Z-595195
-```
+Choose the review surface that reveals the relevant risks.
 
-Rollback is guarded too. It proceeds only when primary paths still match the state written by that overlay. If another developer changed one of those files after overlay, rollback stops rather than overwriting newer work.
+## Cleanup and recovery
 
-When the overlay changed a dependency lockfile, rollback also reinstalls the dependency tree from the restored lockfile before reporting success.
-
-Backups and overlay manifests are retained according to `worktree.config.json`.
-
-## Cleanup
-
-After review and handoff:
+Managed cleanup can archive and remove a task:
 
 ```bash
 npm run task:finish -- C:/project/liqi-chat-autofollow
 ```
 
-Cleanup:
+A dirty managed worktree is rejected by default. `--force` archives committed and uncommitted state before removal; `--kill-processes` deliberately stops known processes that still reference the path.
 
-1. checks for processes whose command lines still reference the worktree;
-2. archives the manifest, commit list, binary patch and Git bundle;
-3. removes the linked worktree and its dependency/cache directories;
-4. deletes the local task branch and hidden snapshot ref;
-5. removes branch-local workflow markers;
-6. prunes stale Git worktree metadata and expired archives.
+When any workspace contains unexpected state:
 
-If Node, Expo, Jest, Java or Gradle processes still reference the worktree, stop them first. Deliberate termination is available with:
+1. inventory tracked, deleted and untracked paths;
+2. identify likely owners and active processes;
+3. create a Git bundle, snapshot or filesystem archive;
+4. verify that the important state is recoverable;
+5. only then reset, clean or remove the workspace.
 
-```bash
-npm run task:finish -- C:/project/liqi-chat-autofollow --kill-processes
-```
+This sequence is more important than which worktree command created the checkout.
 
-A dirty worktree is rejected by default. To archive committed and uncommitted state before forced cleanup:
+## Tool behavior versus team judgment
 
-```bash
-npm run task:finish -- C:/project/liqi-chat-autofollow --force
-```
+The managed implementation has strict internal guarantees because snapshotting and rollback need deterministic behavior. Those implementation guarantees should not be confused with a requirement that every contributor use the managed lifecycle.
 
-## Dependency strategy
+Tool-enforced boundaries currently include:
 
-The current production default remains:
+- managed snapshot branches cannot be pushed;
+- direct pushes to `main` are blocked;
+- primary commits require an explicit recovery override;
+- overlay and rollback stop when checksums no longer match;
+- unclassified source stops managed snapshot creation.
 
-```bash
-npm ci --prefer-offline --no-audit --no-fund
-```
+Everything else in this guide is decision support. Developers are expected to understand the task, choose an appropriate workflow and explain unusual trade-offs.
 
-This is slower than source snapshotting but deterministic: it validates `package.json` against `package-lock.json`, removes any existing dependency tree and performs a frozen install. Global npm cache is shared automatically.
+## Dependency note
 
-Do not copy or junction `node_modules` between worktrees. A directory that merely exists can be incomplete or based on a different lockfile.
+Each checkout should have a dependency tree consistent with its lockfile. The managed helper uses a clean verified install. Avoid copying or junctioning `node_modules` between worktrees because existence does not prove compatibility.
 
-The workflow is package-manager aware through config so pnpm can be piloted later. A pnpm migration must separately prove Expo SDK, development builds, config plugins, `patch-package`, Jest, EAS and CI behavior. Its content-addressable store is attractive for many concurrent worktrees, but package-manager migration is not coupled to source snapshot safety.
+## Maintainer verification
 
-## Performance targets
-
-Measure source and dependency phases separately:
-
-- source snapshot, checkout, manifest and env bootstrap: under 5 seconds for the current repository;
-- source-equivalent checksum: mandatory before the worktree is reported ready;
-- related tests: runnable immediately after dependency health passes;
-- full ready time with npm: recorded, not hidden; optimize through npm cache or a separately validated package-manager migration;
-- overlay conflict detection: before any primary write;
-- rollback: one command and checksum verified;
-- cleanup: leaves no managed worktree, local task branch or snapshot ref.
-
-The create manifest stores actual timings so package-manager decisions can use repository measurements rather than assumptions.
-
-## Workflow regression test
-
-The CI self-test creates a temporary repository and verifies:
-
-- tracked modification capture;
-- tracked deletion capture;
-- allowed untracked source capture;
-- ignored artifact exclusion;
-- environment copy;
-- local-only pre-push blocking;
-- concurrent primary edit rejection;
-- exact add, modify, delete and rename overlay;
-- unrelated primary state preservation;
-- guarded rollback;
-- archive, branch, ref and worktree cleanup.
-
-Run it locally:
+The workflow self-test covers snapshot capture, untracked classification, environment copy, push protection, concurrent-change rejection, exact overlay, guarded rollback and cleanup archives:
 
 ```bash
 npm run worktree:self-test
@@ -251,6 +165,4 @@ npm run worktree:self-test
 - [Git worktree documentation](https://git-scm.com/docs/git-worktree)
 - [Git commit-tree documentation](https://git-scm.com/docs/git-commit-tree)
 - [Git update-ref documentation](https://git-scm.com/docs/git-update-ref)
-- [Git read-tree documentation](https://git-scm.com/docs/git-read-tree)
 - [npm ci documentation](https://docs.npmjs.com/cli/v11/commands/npm-ci/)
-- [pnpm motivation and content-addressable store](https://pnpm.io/motivation)
