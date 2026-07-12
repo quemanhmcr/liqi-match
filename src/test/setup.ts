@@ -17,6 +17,14 @@ jest.mock('expo-blur', () => {
   };
 });
 
+jest.mock('react-native-reanimated', () =>
+  jest.requireActual('react-native-reanimated/mock'),
+);
+
+jest.mock('react-native-keyboard-controller', () =>
+  jest.requireActual('react-native-keyboard-controller/jest'),
+);
+
 jest.mock('@shopify/react-native-skia', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
   const { View: MockView } =
