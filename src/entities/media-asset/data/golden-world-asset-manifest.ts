@@ -1,75 +1,71 @@
 import rawManifest from '../../../../assets/simulation/asset-manifest.v1.json';
 
-import { createAssetKey, type AssetKey } from '../asset-key';
+import {
+  GOLDEN_ASSET_KEYS,
+  GOLDEN_ASSET_REQUIREMENTS,
+  GOLDEN_PROFILE_IDS,
+  type AssetKey,
+  type SimulatedAssetKind,
+  type SimulatedAssetState,
+} from '@/entities/simulation';
+
+import { createAssetKey, isAssetKey } from '../asset-key';
 import { createAssetManifest } from '../asset-manifest';
 import { createAssetResolver } from '../asset-resolver';
 import type {
   AssetFormat,
-  AssetKind,
   AssetManifestEntry,
+  AssetManifestUsage,
+  AssetOwnerKind,
+  AssetPlaceholderVariant,
 } from '../asset-types';
+import { bundledModuleByAssetKey } from './generated-bundled-modules';
 
-const bundledModuleByKey = {
-  'asset:v1/library/avatar/cozy-gamer':
-    require('../../../../assets/simulation/golden-world/avatars/cozy-gamer.png') as number,
-  'asset:v1/library/avatar/cyber-girl':
-    require('../../../../assets/simulation/golden-world/avatars/cyber-girl.png') as number,
-  'asset:v1/library/avatar/dark-fighter':
-    require('../../../../assets/simulation/golden-world/avatars/dark-fighter.png') as number,
-  'asset:v1/library/avatar/ice-prince':
-    require('../../../../assets/simulation/golden-world/avatars/ice-prince.png') as number,
-  'asset:v1/library/avatar/lavender-mage':
-    require('../../../../assets/simulation/golden-world/avatars/lavender-mage.png') as number,
-  'asset:v1/library/avatar/pink-carry':
-    require('../../../../assets/simulation/golden-world/avatars/pink-carry.png') as number,
-  'asset:v1/library/avatar/pink-support':
-    require('../../../../assets/simulation/golden-world/avatars/pink-support.png') as number,
-  'asset:v1/library/avatar/silver-assassin':
-    require('../../../../assets/simulation/golden-world/avatars/silver-assassin.png') as number,
-  'asset:v1/library/vibe/duo-support':
-    require('../../../../assets/simulation/golden-world/artwork/vibe-duo-support.png') as number,
-  'asset:v1/library/vibe/late-night-rank':
-    require('../../../../assets/simulation/golden-world/artwork/vibe-late-night-rank.png') as number,
-  'asset:v1/library/vibe/team-needs-mid':
-    require('../../../../assets/simulation/golden-world/artwork/vibe-team-needs-mid.png') as number,
-  'asset:v1/message/khoa-build-1/image/primary':
-    require('../../../../assets/anh_mau2/heroes/nakroth.webp') as number,
-  'asset:v1/profile/khoa-jungle/avatar':
-    require('../../../../assets/simulation/golden-world/avatars/khoa-jungle.png') as number,
-  'asset:v1/profile/minh-anh/avatar':
-    require('../../../../assets/simulation/golden-world/avatars/minh-anh.png') as number,
-  'asset:v1/set/duo-jungle-support/artwork':
-    require('../../../../assets/simulation/golden-world/artwork/set-duo-jungle-support.png') as number,
-  'asset:v1/set/team-sao-bang/artwork':
-    require('../../../../assets/simulation/golden-world/artwork/set-team-sao-bang.png') as number,
-} as const;
-
+type RawBundledSource = { path: string; type: 'bundled' };
+type RawPlaceholderSource = {
+  type: 'placeholder';
+  variant: AssetPlaceholderVariant;
+};
 type RawManifestEntry = {
-  byteSize: number;
+  altText?: string;
+  byteSize?: number;
   format: AssetFormat;
   height: number;
   key: string;
-  kind: AssetKind;
+  kind: SimulatedAssetKind;
   ownerId?: string;
-  source: { path: string; type: 'bundled' };
+  ownerKind?: AssetOwnerKind;
+  simulationState?: SimulatedAssetState;
+  source: RawBundledSource | RawPlaceholderSource;
+  usage?: AssetManifestUsage;
   width: number;
 };
 
 const entries = (rawManifest.entries as RawManifestEntry[]).map(
   (entry): AssetManifestEntry => {
     const key = createAssetKey(entry.key);
-    const module = bundledModuleByKey[key as keyof typeof bundledModuleByKey];
-    if (module === undefined) {
-      throw new Error(`Missing Metro module registration for ${key}`);
-    }
+    const source =
+      entry.source.type === 'placeholder'
+        ? entry.source
+        : {
+            module:
+              bundledModuleByAssetKey[
+                key as keyof typeof bundledModuleByAssetKey
+              ] ?? missingMetroModule(key),
+            type: 'bundled' as const,
+          };
     return {
+      altText: entry.altText,
       byteSize: entry.byteSize,
       format: entry.format,
       height: entry.height,
       key,
       kind: entry.kind,
       ownerId: entry.ownerId,
-      source: { module, type: 'bundled' },
+      ownerKind: entry.ownerKind,
+      simulationState: entry.simulationState,
+      source,
+      usage: entry.usage,
       width: entry.width,
     };
   },
@@ -84,75 +80,142 @@ export const goldenWorldAssetResolver = createAssetResolver({
   manifest: goldenWorldAssetManifest,
 });
 
+const profileAvatar = (
+  profileId: keyof typeof GOLDEN_ASSET_REQUIREMENTS.profiles,
+) => {
+  const profile = GOLDEN_ASSET_REQUIREMENTS.profiles[profileId];
+  if (!profile) {
+    throw new Error(`Unknown Golden World profile requirement: ${profileId}`);
+  }
+  const key = profile.avatar;
+  if (!key) {
+    throw new Error(`Golden profile has no avatar requirement: ${profileId}`);
+  }
+  return key;
+};
+
 export const goldenWorldAssetKeys = {
+  legacy: {
+    buildNakroth: createAssetKey('asset:shared:legacy-build-nakroth'),
+    roleJungle: createAssetKey('asset:shared:legacy-role-jungle'),
+  },
   library: {
     avatars: {
-      cozyGamer: createAssetKey('asset:v1/library/avatar/cozy-gamer'),
-      cyberGirl: createAssetKey('asset:v1/library/avatar/cyber-girl'),
-      darkFighter: createAssetKey('asset:v1/library/avatar/dark-fighter'),
-      icePrince: createAssetKey('asset:v1/library/avatar/ice-prince'),
-      lavenderMage: createAssetKey('asset:v1/library/avatar/lavender-mage'),
-      pinkCarry: createAssetKey('asset:v1/library/avatar/pink-carry'),
-      pinkSupport: createAssetKey('asset:v1/library/avatar/pink-support'),
-      silverAssassin: createAssetKey('asset:v1/library/avatar/silver-assassin'),
-    },
-    vibes: {
-      duoSupport: createAssetKey('asset:v1/library/vibe/duo-support'),
-      lateNightRank: createAssetKey('asset:v1/library/vibe/late-night-rank'),
-      teamNeedsMid: createAssetKey('asset:v1/library/vibe/team-needs-mid'),
+      cozyGamer: profileAvatar(GOLDEN_PROFILE_IDS.quanViewer),
+      cyberGirl: profileAvatar(GOLDEN_PROFILE_IDS.linhMid),
+      darkFighter: profileAvatar(GOLDEN_PROFILE_IDS.huyCaptain),
+      icePrince: profileAvatar(GOLDEN_PROFILE_IDS.namSlayer),
+      lavenderMage: profileAvatar(GOLDEN_PROFILE_IDS.anMage),
+      pinkCarry: profileAvatar(GOLDEN_PROFILE_IDS.vyCarry),
+      pinkSupport: profileAvatar(GOLDEN_PROFILE_IDS.trangCarry),
+      silverAssassin: profileAvatar(GOLDEN_PROFILE_IDS.ducFlex),
     },
   },
   messages: {
-    khoaBuildPrimary: createAssetKey(
-      'asset:v1/message/khoa-build-1/image/primary',
-    ),
+    buildAya: GOLDEN_ASSET_KEYS.buildAya,
+    khoaBuildPrimary: createAssetKey('asset:shared:legacy-build-nakroth'),
+    lobby: GOLDEN_ASSET_KEYS.messageLobby,
+    victory: GOLDEN_ASSET_KEYS.messageVictory,
   },
   profiles: {
-    khoaJungleAvatar: createAssetKey('asset:v1/profile/khoa-jungle/avatar'),
-    minhAnhAvatar: createAssetKey('asset:v1/profile/minh-anh/avatar'),
+    anMageAvatar: profileAvatar(GOLDEN_PROFILE_IDS.anMage),
+    ducFlexAvatar: profileAvatar(GOLDEN_PROFILE_IDS.ducFlex),
+    huyCaptainAvatar: profileAvatar(GOLDEN_PROFILE_IDS.huyCaptain),
+    khoaJungleAvatar: profileAvatar(GOLDEN_PROFILE_IDS.khoaJungle),
+    linhMidAvatar: profileAvatar(GOLDEN_PROFILE_IDS.linhMid),
+    minhAnhAvatar: profileAvatar(GOLDEN_PROFILE_IDS.minhAnh),
+    namSlayerAvatar: profileAvatar(GOLDEN_PROFILE_IDS.namSlayer),
+    phucJungleAvatar: profileAvatar(GOLDEN_PROFILE_IDS.phucJungle),
+    quanViewerAvatar: profileAvatar(GOLDEN_PROFILE_IDS.quanViewer),
+    trangCarryAvatar: profileAvatar(GOLDEN_PROFILE_IDS.trangCarry),
+    vyCarryAvatar: profileAvatar(GOLDEN_PROFILE_IDS.vyCarry),
+  },
+  scenario: {
+    quanPendingCover: createAssetKey('asset:profile:quan-viewer:cover-pending'),
   },
   sets: {
-    duoJungleSupportArtwork: createAssetKey(
-      'asset:v1/set/duo-jungle-support/artwork',
-    ),
-    teamSaoBangArtwork: createAssetKey('asset:v1/set/team-sao-bang/artwork'),
+    demVioletArtwork: GOLDEN_ASSET_KEYS.setDemViolet,
+    duoJungleSupportArtwork: GOLDEN_ASSET_KEYS.setMacroLab,
+    macroLabArtwork: GOLDEN_ASSET_KEYS.setMacroLab,
+    saoBangArtwork: GOLDEN_ASSET_KEYS.setSaoBang,
+    teamSaoBangArtwork: GOLDEN_ASSET_KEYS.setSaoBang,
+  },
+  shared: {
+    avatarFallback: GOLDEN_ASSET_KEYS.avatarFallback,
+    roleSupport: GOLDEN_ASSET_KEYS.roleSupport,
+  },
+  vibes: {
+    duoSupport: GOLDEN_ASSET_KEYS.vibeSocial,
+    lateNightRank: GOLDEN_ASSET_KEYS.vibeRank,
+    rank: GOLDEN_ASSET_KEYS.vibeRank,
+    social: GOLDEN_ASSET_KEYS.vibeSocial,
+    team: GOLDEN_ASSET_KEYS.vibeTeam,
+    teamNeedsMid: GOLDEN_ASSET_KEYS.vibeTeam,
   },
 } as const;
 
 export const legacyAssetKeyAliases: Readonly<Record<string, AssetKey>> = {
-  'avatar:black-fighter': goldenWorldAssetKeys.library.avatars.darkFighter,
-  'avatar:blonde-mage': goldenWorldAssetKeys.library.avatars.lavenderMage,
-  'avatar:cozy-gamer': goldenWorldAssetKeys.library.avatars.cozyGamer,
-  'avatar:cyber-girl': goldenWorldAssetKeys.library.avatars.cyberGirl,
-  'avatar:energetic-carry': goldenWorldAssetKeys.library.avatars.pinkCarry,
-  'avatar:ice-prince': goldenWorldAssetKeys.library.avatars.icePrince,
-  'avatar:pink-support': goldenWorldAssetKeys.library.avatars.pinkSupport,
-  'avatar:silver-assassin': goldenWorldAssetKeys.library.avatars.silverAssassin,
-  'avatar-cozy-gamer': goldenWorldAssetKeys.library.avatars.cozyGamer,
-  'avatar-cyber-girl': goldenWorldAssetKeys.library.avatars.cyberGirl,
-  'avatar-dark-fighter': goldenWorldAssetKeys.library.avatars.darkFighter,
-  'avatar-ice-prince': goldenWorldAssetKeys.library.avatars.icePrince,
+  'asset:v1/library/avatar/cozy-gamer':
+    goldenWorldAssetKeys.profiles.quanViewerAvatar,
+  'asset:v1/library/avatar/cyber-girl':
+    goldenWorldAssetKeys.profiles.linhMidAvatar,
+  'asset:v1/library/avatar/dark-fighter':
+    goldenWorldAssetKeys.profiles.huyCaptainAvatar,
+  'asset:v1/library/avatar/ice-prince':
+    goldenWorldAssetKeys.profiles.namSlayerAvatar,
+  'asset:v1/library/avatar/lavender-mage':
+    goldenWorldAssetKeys.profiles.anMageAvatar,
+  'asset:v1/library/avatar/pink-carry':
+    goldenWorldAssetKeys.profiles.vyCarryAvatar,
+  'asset:v1/library/avatar/pink-support':
+    goldenWorldAssetKeys.profiles.trangCarryAvatar,
+  'asset:v1/library/avatar/silver-assassin':
+    goldenWorldAssetKeys.profiles.ducFlexAvatar,
+  'asset:v1/message/khoa-build-1/image/primary':
+    goldenWorldAssetKeys.legacy.buildNakroth,
+  'asset:v1/profile/khoa-jungle/avatar':
+    goldenWorldAssetKeys.profiles.khoaJungleAvatar,
+  'asset:v1/profile/minh-anh/avatar':
+    goldenWorldAssetKeys.profiles.minhAnhAvatar,
+  'asset:v1/set/duo-jungle-support/artwork':
+    goldenWorldAssetKeys.sets.macroLabArtwork,
+  'asset:v1/set/team-sao-bang/artwork':
+    goldenWorldAssetKeys.sets.saoBangArtwork,
+  'avatar:black-fighter': goldenWorldAssetKeys.profiles.huyCaptainAvatar,
+  'avatar:blonde-mage': goldenWorldAssetKeys.profiles.anMageAvatar,
+  'avatar:cozy-gamer': goldenWorldAssetKeys.profiles.quanViewerAvatar,
+  'avatar:cyber-girl': goldenWorldAssetKeys.profiles.linhMidAvatar,
+  'avatar:energetic-carry': goldenWorldAssetKeys.profiles.vyCarryAvatar,
+  'avatar:ice-prince': goldenWorldAssetKeys.profiles.namSlayerAvatar,
+  'avatar:pink-support': goldenWorldAssetKeys.profiles.trangCarryAvatar,
+  'avatar:silver-assassin': goldenWorldAssetKeys.profiles.ducFlexAvatar,
+  'avatar-cozy-gamer': goldenWorldAssetKeys.profiles.quanViewerAvatar,
+  'avatar-cyber-girl': goldenWorldAssetKeys.profiles.linhMidAvatar,
+  'avatar-dark-fighter': goldenWorldAssetKeys.profiles.huyCaptainAvatar,
+  'avatar-ice-prince': goldenWorldAssetKeys.profiles.namSlayerAvatar,
   'avatar-khoa-jungle': goldenWorldAssetKeys.profiles.khoaJungleAvatar,
-  'avatar-lavender-mage': goldenWorldAssetKeys.library.avatars.lavenderMage,
+  'avatar-lavender-mage': goldenWorldAssetKeys.profiles.anMageAvatar,
   'avatar-minh-anh': goldenWorldAssetKeys.profiles.minhAnhAvatar,
-  'avatar-pink-carry': goldenWorldAssetKeys.library.avatars.pinkCarry,
-  'avatar-pink-support': goldenWorldAssetKeys.library.avatars.pinkSupport,
-  'avatar-silver-assassin': goldenWorldAssetKeys.library.avatars.silverAssassin,
-  'build:nakroth': goldenWorldAssetKeys.messages.khoaBuildPrimary,
-  'set-duo-jungle-support': goldenWorldAssetKeys.sets.duoJungleSupportArtwork,
-  'set-team-sao-bang': goldenWorldAssetKeys.sets.teamSaoBangArtwork,
-  'team:sao-bang': goldenWorldAssetKeys.sets.teamSaoBangArtwork,
-  'vibe-duo-support': goldenWorldAssetKeys.library.vibes.duoSupport,
-  'vibe-late-night-rank': goldenWorldAssetKeys.library.vibes.lateNightRank,
-  'vibe-team-needs-mid': goldenWorldAssetKeys.library.vibes.teamNeedsMid,
+  'avatar-pink-carry': goldenWorldAssetKeys.profiles.vyCarryAvatar,
+  'avatar-pink-support': goldenWorldAssetKeys.profiles.trangCarryAvatar,
+  'avatar-silver-assassin': goldenWorldAssetKeys.profiles.ducFlexAvatar,
+  'build:nakroth': goldenWorldAssetKeys.legacy.buildNakroth,
+  'role:jungle': goldenWorldAssetKeys.legacy.roleJungle,
+  'set-duo-jungle-support': goldenWorldAssetKeys.sets.macroLabArtwork,
+  'set-team-sao-bang': goldenWorldAssetKeys.sets.saoBangArtwork,
+  'team:sao-bang': goldenWorldAssetKeys.sets.saoBangArtwork,
+  'vibe-duo-support': goldenWorldAssetKeys.vibes.social,
+  'vibe-late-night-rank': goldenWorldAssetKeys.vibes.rank,
+  'vibe-team-needs-mid': goldenWorldAssetKeys.vibes.team,
 };
 
 export function canonicalAssetKey(
   key: AssetKey | string,
 ): AssetKey | undefined {
-  return typeof key === 'string' && key.startsWith('asset:v1/')
-    ? createAssetKey(key)
-    : legacyAssetKeyAliases[key];
+  return (
+    legacyAssetKeyAliases[key] ??
+    (isAssetKey(key) ? createAssetKey(key) : undefined)
+  );
 }
 
 export function resolveGoldenWorldAssetSource(key: AssetKey | string) {
@@ -164,7 +227,8 @@ export function resolveGoldenWorldAssetSource(key: AssetKey | string) {
 
 export function requireGoldenWorldAssetSource(key: AssetKey | string) {
   const source = resolveGoldenWorldAssetSource(key);
-  if (!source) throw new Error(`Unknown Golden World asset: ${key}`);
+  if (!source)
+    throw new Error(`Unknown or unavailable Golden World asset: ${key}`);
   return source;
 }
 
@@ -179,4 +243,8 @@ export function requireGoldenWorldBundledModule(
     throw new Error(`Golden World asset is not bundled: ${key}`);
   }
   return resolved.source as number;
+}
+
+function missingMetroModule(key: AssetKey): never {
+  throw new Error(`Missing Metro module registration for ${key}`);
 }

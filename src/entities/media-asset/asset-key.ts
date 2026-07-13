@@ -1,86 +1,74 @@
-const assetKeyPrefix = 'asset:v1/' as const;
-const idPattern = '[a-z0-9]+(?:-[a-z0-9]+)*';
-const profilePattern = new RegExp(
-  `^${assetKeyPrefix}profile/(${idPattern})/(avatar|cover)$`,
-);
-const setPattern = new RegExp(`^${assetKeyPrefix}set/(${idPattern})/artwork$`);
-const messagePattern = new RegExp(
-  `^${assetKeyPrefix}message/(${idPattern})/image/(${idPattern})$`,
-);
-const libraryPattern = new RegExp(
-  `^${assetKeyPrefix}library/(${idPattern})/(${idPattern})$`,
-);
+import { AssetKeySchema, assetKey, type AssetKey } from '@/entities/simulation';
 
-declare const assetKeyBrand: unique symbol;
-
-export type AssetKey = string & { readonly [assetKeyBrand]: true };
+export type { AssetKey } from '@/entities/simulation';
 
 export type ParsedAssetKey =
   | {
       key: AssetKey;
-      ownerId: string;
+      ownerId: `profile:${string}`;
       scope: 'profile';
-      slot: 'avatar' | 'cover';
+      slot: string;
     }
-  | { key: AssetKey; ownerId: string; scope: 'set'; slot: 'artwork' }
-  | { key: AssetKey; ownerId: string; scope: 'message'; slot: string }
-  | { key: AssetKey; ownerId: undefined; scope: 'library'; slot: string };
+  | {
+      key: AssetKey;
+      ownerId: `set:${string}`;
+      scope: 'set';
+      slot: string;
+    }
+  | {
+      key: AssetKey;
+      ownerId: undefined;
+      scope: 'message' | 'shared' | 'vibe';
+      slot: string;
+    }
+  | {
+      key: AssetKey;
+      ownerId: undefined;
+      scope: 'other';
+      slot: string;
+    };
 
 export function isAssetKey(value: string): value is AssetKey {
-  return (
-    profilePattern.test(value) ||
-    setPattern.test(value) ||
-    messagePattern.test(value) ||
-    libraryPattern.test(value)
-  );
+  return AssetKeySchema.safeParse(value).success;
 }
 
 export function createAssetKey(value: string): AssetKey {
-  if (!isAssetKey(value)) {
-    throw new Error(
-      `Invalid AssetKey "${value}". Expected asset:v1/{profile|set|message|library}/...`,
-    );
-  }
-  return value;
+  return assetKey(value);
 }
 
 export function parseAssetKey(key: AssetKey): ParsedAssetKey {
-  const profile = profilePattern.exec(key);
-  if (profile?.[1] && profile[2]) {
+  const [, scope, id, ...tail] = key.split(':');
+  const slot = tail.join(':');
+
+  if (scope === 'profile' && id && slot) {
     return {
       key,
-      ownerId: profile[1],
-      scope: 'profile',
-      slot: profile[2] as 'avatar' | 'cover',
+      ownerId: `profile:${id}`,
+      scope,
+      slot,
     };
   }
-
-  const set = setPattern.exec(key);
-  if (set?.[1]) {
-    return { key, ownerId: set[1], scope: 'set', slot: 'artwork' };
-  }
-
-  const message = messagePattern.exec(key);
-  if (message?.[1] && message[2]) {
+  if (scope === 'set' && id && slot) {
     return {
       key,
-      ownerId: message[1],
-      scope: 'message',
-      slot: message[2],
+      ownerId: `set:${id}`,
+      scope,
+      slot,
     };
   }
-
-  const library = libraryPattern.exec(key);
-  if (library?.[1] && library[2]) {
+  if ((scope === 'message' || scope === 'shared' || scope === 'vibe') && id) {
     return {
       key,
       ownerId: undefined,
-      scope: 'library',
-      slot: `${library[1]}/${library[2]}`,
+      scope,
+      slot: [id, ...tail].join(':'),
     };
   }
 
-  throw new Error(
-    `AssetKey passed compile-time validation but cannot be parsed: ${key}`,
-  );
+  return {
+    key,
+    ownerId: undefined,
+    scope: 'other',
+    slot: key.slice('asset:'.length),
+  };
 }

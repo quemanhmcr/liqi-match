@@ -18,7 +18,7 @@ function fixtureSource(assetKey: string): ImageSourcePropType {
 
 const buildAssets = {
   jungleIcon: fixtureSource('role:jungle'),
-  nakroth: fixtureSource('asset:v1/message/khoa-build-1/image/primary'),
+  nakroth: fixtureSource('asset:shared:legacy-build-nakroth'),
 };
 
 const avatars = {
@@ -28,8 +28,8 @@ const avatars = {
   cyberGirl: fixtureSource('avatar:cyber-girl'),
   energeticCarry: fixtureSource('avatar:energetic-carry'),
   icePrince: fixtureSource('avatar:ice-prince'),
-  khoaJungle: fixtureSource('asset:v1/profile/khoa-jungle/avatar'),
-  minhAnh: fixtureSource('asset:v1/profile/minh-anh/avatar'),
+  khoaJungle: fixtureSource('asset:profile:khoa-jungle:avatar'),
+  minhAnh: fixtureSource('asset:profile:minh-anh:avatar'),
 };
 
 const minhAnhMessages: readonly ChatMessage[] = [

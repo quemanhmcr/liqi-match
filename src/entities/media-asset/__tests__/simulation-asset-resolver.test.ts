@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
+import type { SimulatedAssetState } from '@/entities/simulation';
 import type { AssetCacheDriver } from '@/shared/assets/asset-cache-driver';
 
 import { createAssetKey } from '../asset-key';
@@ -11,8 +12,9 @@ import {
   type AssetSimulationRuntimePort,
 } from '../simulation-asset-resolver';
 
-const bundledKey = createAssetKey('asset:v1/profile/minh-anh/avatar');
-const remoteKey = createAssetKey('asset:v1/profile/khoa-jungle/avatar');
+const bundledKey = createAssetKey('asset:profile:minh-anh:avatar');
+const remoteKey = createAssetKey('asset:profile:khoa-jungle:avatar');
+const pendingKey = createAssetKey('asset:profile:quan-viewer:cover-pending');
 
 function manifest() {
   return createAssetManifest({
@@ -22,7 +24,9 @@ function manifest() {
         height: 512,
         key: bundledKey,
         kind: 'avatar',
-        ownerId: 'minh-anh',
+        ownerId: 'profile:minh-anh',
+        ownerKind: 'profile',
+        simulationState: 'available',
         source: { module: 1, type: 'bundled' },
         width: 512,
       },
@@ -31,9 +35,23 @@ function manifest() {
         height: 512,
         key: remoteKey,
         kind: 'avatar',
-        ownerId: 'khoa-jungle',
+        ownerId: 'profile:khoa-jungle',
+        ownerKind: 'profile',
+        simulationState: 'available',
         source: { type: 'remote', url: 'https://cdn.example/khoa.webp' },
         width: 512,
+      },
+      {
+        format: 'webp',
+        height: 900,
+        key: pendingKey,
+        kind: 'cover',
+        ownerId: 'profile:quan-viewer',
+        ownerKind: 'profile',
+        simulationState: 'unassociated',
+        source: { module: 2, type: 'bundled' },
+        usage: 'scenario',
+        width: 1600,
       },
     ],
     generatedAt: '2026-07-13T00:00:00.000Z',
@@ -59,6 +77,11 @@ function runtime() {
   let directive: Parameters<
     Parameters<AssetSimulationRuntimePort['execute']>[1]
   >[0]['fault'] = null;
+  const assets: Record<string, { state: SimulatedAssetState }> = {
+    [bundledKey]: { state: 'available' },
+    [remoteKey]: { state: 'available' },
+    [pendingKey]: { state: 'unassociated' },
+  };
   const operations: { operation: string; scope?: string }[] = [];
 
   const port: AssetSimulationRuntimePort = {
@@ -71,7 +94,7 @@ function runtime() {
       directive = null;
       return task({ fault: current, network });
     },
-    readDebugState: () => ({ controller: { network } }),
+    readDebugState: () => ({ controller: { network }, world: { assets } }),
     registerResetParticipant(next) {
       participant = next;
       return () => {
@@ -90,6 +113,9 @@ function runtime() {
     resetCache: () => participant?.reset(),
     schedulePartialFailure(code: string) {
       directive = { code, kind: 'partial_failure', retryable: true };
+    },
+    setAssetState(key: string, state: SimulatedAssetState) {
+      assets[key] = { state };
     },
     setNetwork(next: 'offline' | 'online') {
       network = next;
@@ -131,6 +157,35 @@ describe('simulation asset resolver adapter', () => {
     expect(resolver.resolve(remoteKey).state).toBe('ready');
   });
 
+  it('projects canonical world states and preserves identity through association', () => {
+    const current = runtime();
+    const resolver = createSimulationAssetResolver({
+      manifest: manifest(),
+      runtime: current.port,
+    });
+
+    expect(resolver.resolve(pendingKey)).toMatchObject({
+      key: pendingKey,
+      state: 'uploaded-but-unassociated',
+    });
+    current.setAssetState(pendingKey, 'available');
+    expect(resolver.resolve(pendingKey)).toMatchObject({
+      key: pendingKey,
+      state: 'ready',
+    });
+
+    current.setAssetState(bundledKey, 'missing');
+    expect(resolver.resolve(bundledKey)).toMatchObject({
+      source: undefined,
+      state: 'missing',
+    });
+    current.setAssetState(bundledKey, 'corrupt');
+    expect(resolver.resolve(bundledKey)).toMatchObject({
+      source: undefined,
+      state: 'corrupt',
+    });
+  });
+
   it('maps media association failure to uploaded-but-unassociated', async () => {
     const current = runtime();
     const resolver = createSimulationAssetResolver({
@@ -155,18 +210,21 @@ describe('simulation asset resolver adapter', () => {
     [assetSimulationFaultCodes.corrupt, 'corrupt'],
     [assetSimulationFaultCodes.missing, 'missing'],
     [assetSimulationFaultCodes.remoteUnavailable, 'offline-unavailable'],
-  ])('maps %s to %s', async (code, expected) => {
-    const current = runtime();
-    const resolver = createSimulationAssetResolver({
-      manifest: manifest(),
-      runtime: current.port,
-    });
-    current.schedulePartialFailure(code);
+  ])(
+    'maps transient fault %s to %s ahead of available world state',
+    async (code, expected) => {
+      const current = runtime();
+      const resolver = createSimulationAssetResolver({
+        manifest: manifest(),
+        runtime: current.port,
+      });
+      current.schedulePartialFailure(code);
 
-    expect((await resolver.resolveWithSimulation(remoteKey)).state).toBe(
-      expected,
-    );
-  });
+      expect((await resolver.resolveWithSimulation(remoteKey)).state).toBe(
+        expected,
+      );
+    },
+  );
 
   it('registers a non-snapshotted after-world cache reset participant', async () => {
     const current = runtime();

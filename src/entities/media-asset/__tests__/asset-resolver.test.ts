@@ -13,9 +13,9 @@ import type {
   AssetSimulationSnapshot,
 } from '../asset-types';
 
-const bundledKey = createAssetKey('asset:v1/profile/minh-anh/avatar');
-const remoteKey = createAssetKey('asset:v1/profile/khoa-jungle/avatar');
-const uploadKey = createAssetKey('asset:v1/profile/minh-anh/cover');
+const bundledKey = createAssetKey('asset:profile:minh-anh:avatar');
+const remoteKey = createAssetKey('asset:profile:khoa-jungle:avatar');
+const uploadKey = createAssetKey('asset:profile:minh-anh:cover');
 
 const entries: readonly AssetManifestEntry[] = [
   {
@@ -23,7 +23,7 @@ const entries: readonly AssetManifestEntry[] = [
     height: 512,
     key: bundledKey,
     kind: 'avatar',
-    ownerId: 'minh-anh',
+    ownerId: 'profile:minh-anh',
     source: { module: 101, type: 'bundled' },
     width: 512,
   },
@@ -32,7 +32,7 @@ const entries: readonly AssetManifestEntry[] = [
     height: 720,
     key: remoteKey,
     kind: 'avatar',
-    ownerId: 'khoa-jungle',
+    ownerId: 'profile:khoa-jungle',
     source: { type: 'remote', url: 'https://cdn.example/avatar.webp' },
     width: 720,
   },
@@ -154,7 +154,7 @@ describe('AssetResolver', () => {
         height: 1200,
         key: uploadKey,
         kind: 'cover',
-        ownerId: 'minh-anh',
+        ownerId: 'profile:minh-anh',
         source: { type: 'local-uri', uri: 'file:///draft/cover.jpg' },
         width: 1600,
       },
@@ -185,7 +185,7 @@ describe('AssetResolver', () => {
 
   it('returns a stable missing contract for unknown keys', () => {
     const { resolver } = setup();
-    const unknown = createAssetKey('asset:v1/profile/unknown/avatar');
+    const unknown = createAssetKey('asset:profile:unknown:avatar');
 
     expect(resolver.resolve(unknown)).toEqual({
       fallback: 'media-neutral',

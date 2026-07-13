@@ -1,228 +1,559 @@
 {
   "budgets": {
     "maxBytesByKind": {
-      "avatar": 3000000,
-      "cover": 4500000,
-      "message-image": 4500000,
-      "set-artwork": 3000000
+      "avatar": 400000,
+      "build-preview": 50000,
+      "cover": 350000,
+      "message-image": 250000,
+      "message-video": 5000000,
+      "role-icon": 400000,
+      "set-artwork": 350000,
+      "shared-fallback": 0,
+      "vibe-artwork": 350000,
+      "wall": 250000
     },
-    "maxTotalBundledBytes": 35000000
+    "maxTotalBundledBytes": 6000000
   },
   "entries": [
     {
-      "byteSize": 383435,
-      "format": "png",
+      "altText": "Ảnh đại diện mặc định",
+      "format": "webp",
       "height": 512,
-      "key": "asset:v1/profile/minh-anh/avatar",
-      "kind": "avatar",
-      "ownerId": "minh-anh",
-      "sha256": "301b8796f4683dff8fc940c9fe63436c3100dee733e03d7d6483bb1af06a3101",
+      "key": "asset:shared:avatar-fallback",
+      "kind": "shared-fallback",
+      "ownerId": "shared:avatar-fallback",
+      "ownerKind": "shared",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/minh-anh.png",
-        "type": "bundled"
+        "type": "placeholder",
+        "variant": "avatar-neutral"
       },
+      "usage": "golden-world",
       "width": 512
     },
     {
-      "byteSize": 375363,
-      "format": "png",
-      "height": 512,
-      "key": "asset:v1/profile/khoa-jungle/avatar",
+      "altText": "Ảnh đại diện An Mage",
+      "key": "asset:profile:an-mage:avatar",
       "kind": "avatar",
-      "ownerId": "khoa-jungle",
-      "sha256": "0b547e79eea8d6acffc135f50a6ae83ab454168f18c761ebb6c978ff3aee1c73",
+      "ownerId": "profile:an-mage",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/khoa-jungle.png",
+        "path": "assets/simulation/golden-world/avatars/lavender-mage.webp",
         "type": "bundled"
       },
+      "usage": "golden-world",
+      "byteSize": 293712,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "eb75bac079be2ee76f56cdb3e89e5eca05087cff0754724520b6c479176b4a04",
+      "width": 10753
+    },
+    {
+      "altText": "Ảnh đại diện Đức Flex",
+      "key": "asset:profile:duc-flex:avatar",
+      "kind": "avatar",
+      "ownerId": "profile:duc-flex",
+      "ownerKind": "profile",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/silver-assassin.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 190316,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "a067e9e237bfc6c4fb34b6fc6b0c6548be8baf79ecc34221dd7e9e71ed7bd34a",
+      "width": 10753
+    },
+    {
+      "altText": "Ảnh đại diện Huy Captain",
+      "key": "asset:profile:huy-captain:avatar",
+      "kind": "avatar",
+      "ownerId": "profile:huy-captain",
+      "ownerKind": "profile",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/dark-fighter.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 181658,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "f7fb12b0dcb40e9aa379703cb52748cab68c98037a5e057bd414bf0f0394a486",
+      "width": 10753
+    },
+    {
+      "altText": "Ảnh đại diện Khoa Jungle",
+      "key": "asset:profile:khoa-jungle:avatar",
+      "kind": "avatar",
+      "ownerId": "profile:khoa-jungle",
+      "ownerKind": "profile",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/khoa-jungle.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 29984,
+      "format": "webp",
+      "height": 512,
+      "sha256": "9ba944534495d971d3b6a5881dee8fcc8b4790a0401e72861b9c00648aca520d",
       "width": 512
     },
     {
-      "byteSize": 2139297,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/library/avatar/pink-support",
+      "altText": "Ảnh đại diện Linh Mid",
+      "key": "asset:profile:linh-mid:avatar",
       "kind": "avatar",
-      "sha256": "143311e5072cd6162ea70b61c24f1fd83acde8d9ab7f52479645d08fa6cd6760",
+      "ownerId": "profile:linh-mid",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/pink-support.png",
+        "path": "assets/simulation/golden-world/avatars/cyber-girl.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 209038,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "954a174a52427c536f2c17b9ebda520f682aaee9af4e3dafc2af7154488d2b56",
+      "width": 10753
     },
     {
-      "byteSize": 2216524,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/library/avatar/silver-assassin",
+      "altText": "Ảnh đại diện Minh Anh",
+      "key": "asset:profile:minh-anh:avatar",
       "kind": "avatar",
-      "sha256": "979988cd9c314cddb40e22f244fb97cda09c41a0ae97227fa73cd0d665dce074",
+      "ownerId": "profile:minh-anh",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/silver-assassin.png",
+        "path": "assets/simulation/golden-world/avatars/minh-anh.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 31300,
+      "format": "webp",
+      "height": 512,
+      "sha256": "2580b422096f6d2b6652b07e60b6b4a1ce50e533053090fec403ebcd90cd2798",
+      "width": 512
     },
     {
-      "byteSize": 2600790,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/library/avatar/lavender-mage",
+      "altText": "Ảnh đại diện Nam Slayer",
+      "key": "asset:profile:nam-slayer:avatar",
       "kind": "avatar",
-      "sha256": "a1ac5b523891bae2e684507b5c3c84862a659f4bd9556ffe7aa22fea317eb7ee",
+      "ownerId": "profile:nam-slayer",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/lavender-mage.png",
+        "path": "assets/simulation/golden-world/avatars/ice-prince.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 270058,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "081fc57c78a9e77e14a7f963c0683c97255b0629dc3ffcbe5475d04e98e4a878",
+      "width": 10753
     },
     {
-      "byteSize": 2192434,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/library/avatar/dark-fighter",
+      "altText": "Ảnh đại diện Phúc Jungle",
+      "key": "asset:profile:phuc-jungle:avatar",
       "kind": "avatar",
-      "sha256": "587e7a2fee101b57ecc2811c41e6a45ea4663b45f1f32bd8fddb543444d9fe71",
+      "ownerId": "profile:phuc-jungle",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/dark-fighter.png",
+        "path": "assets/simulation/golden-world/avatars/phuc-jungle.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 36370,
+      "format": "webp",
+      "height": 512,
+      "sha256": "bb5a08b8e2b9e2aead704389b83f2535de2e0f26027beb2c1e91c6f59af0801f",
+      "width": 10753
     },
     {
-      "byteSize": 2387889,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/library/avatar/cyber-girl",
+      "altText": "Ảnh đại diện Quân",
+      "key": "asset:profile:quan-viewer:avatar",
       "kind": "avatar",
-      "sha256": "9da1b309775a2abdfd4d3a86af0b928e327b987583af54557c6c3bd391ac95c9",
+      "ownerId": "profile:quan-viewer",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/cyber-girl.png",
+        "path": "assets/simulation/golden-world/avatars/cozy-gamer.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 159118,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "980c851e8cade64ebb3b3504e1d32f40b97db9eff4a3fc5edd068f27303e114c",
+      "width": 10753
     },
     {
-      "byteSize": 2341156,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/library/avatar/pink-carry",
+      "altText": "Ảnh đại diện Trang Carry",
+      "key": "asset:profile:trang-carry:avatar",
       "kind": "avatar",
-      "sha256": "e924a93c35610ea9bcf3f0ed5899627950dd5bc2c9bcba4e685de7d132dc94da",
+      "ownerId": "profile:trang-carry",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/pink-carry.png",
+        "path": "assets/simulation/golden-world/avatars/pink-support.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 182858,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "12782ac345e622bf6367d74f064819863117d703495f9608107af22b9b2eb127",
+      "width": 10753
     },
     {
-      "byteSize": 2506527,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/library/avatar/ice-prince",
+      "altText": "Ảnh đại diện Vy Carry",
+      "key": "asset:profile:vy-carry:avatar",
       "kind": "avatar",
-      "sha256": "b637fe45c246fbc8a941de084db50725add4f3e0f1df6590f6bcb501630f8f31",
+      "ownerId": "profile:vy-carry",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/ice-prince.png",
+        "path": "assets/simulation/golden-world/avatars/pink-carry.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 227204,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "2e1474a2cbeae6a8635a2f44bf78a3eb576d48200917e5bfce59fe9b848ce92a",
+      "width": 10753
     },
     {
-      "byteSize": 2163396,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/library/avatar/cozy-gamer",
-      "kind": "avatar",
-      "sha256": "9030af8cf000eda6febbffb33eed6ee3170b2474d32ac92a0f777c1b31751353",
+      "altText": "Ảnh bìa của Quân",
+      "key": "asset:profile:quan-viewer:cover",
+      "kind": "cover",
+      "ownerId": "profile:quan-viewer",
+      "ownerKind": "profile",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/avatars/cozy-gamer.png",
+        "path": "assets/simulation/golden-world/covers/quan-viewer.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 61072,
+      "format": "webp",
+      "height": 1600,
+      "sha256": "42aa36476de27730903ab7bae20857dad745a457b53b4014fe944388d45eabd9",
+      "width": 10753
     },
     {
-      "byteSize": 2040706,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/set/team-sao-bang/artwork",
+      "altText": "Ảnh bìa của Minh Anh",
+      "key": "asset:profile:minh-anh:cover",
+      "kind": "cover",
+      "ownerId": "profile:minh-anh",
+      "ownerKind": "profile",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/covers/minh-anh.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 116400,
+      "format": "webp",
+      "height": 1600,
+      "sha256": "90a36ddafc43cef8daafa815a9c603e43b7b5a76ce04881bf969b4ba8698b81f",
+      "width": 10753
+    },
+    {
+      "altText": "Ảnh bìa của Khoa Jungle",
+      "key": "asset:profile:khoa-jungle:cover",
+      "kind": "cover",
+      "ownerId": "profile:khoa-jungle",
+      "ownerKind": "profile",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/covers/khoa-jungle.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 144698,
+      "format": "webp",
+      "height": 1600,
+      "sha256": "623d3c7c418c91c58302881a327321d3855d73a894f9c5ab5491030e30816712",
+      "width": 10753
+    },
+    {
+      "altText": "Khoảnh khắc rank của Quân",
+      "key": "asset:profile:quan-viewer:wall:0",
+      "kind": "wall",
+      "ownerId": "profile:quan-viewer",
+      "ownerKind": "profile",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/walls/quan-viewer-rank.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 25098,
+      "format": "webp",
+      "height": 1024,
+      "sha256": "57df2d1c05302ff2534a54eb8e7b4915cf8db4727ee6fe68a658ff15240ca1ed",
+      "width": 10753
+    },
+    {
+      "altText": "Ảnh đội hình của Quân",
+      "key": "asset:profile:quan-viewer:wall:1",
+      "kind": "wall",
+      "ownerId": "profile:quan-viewer",
+      "ownerKind": "profile",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/walls/quan-viewer-team.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 88494,
+      "format": "webp",
+      "height": 1024,
+      "sha256": "4a50daffbb69dae4119c9581915a1c143075d1908e30bb467ee4c96b7afd40e0",
+      "width": 10753
+    },
+    {
+      "altText": "Ảnh bìa đã upload nhưng chưa associate của Quân",
+      "key": "asset:profile:quan-viewer:cover-pending",
+      "kind": "cover",
+      "ownerId": "profile:quan-viewer",
+      "ownerKind": "profile",
+      "simulationState": "unassociated",
+      "source": {
+        "path": "assets/simulation/golden-world/covers/quan-viewer-pending.webp",
+        "type": "bundled"
+      },
+      "usage": "scenario",
+      "byteSize": 99670,
+      "format": "webp",
+      "height": 1600,
+      "sha256": "a8a1cc8b204065be2cee0fd457cca6b4e5ae6696ff54f6e1985c8379e380503b",
+      "width": 10753
+    },
+    {
+      "altText": "Artwork set Đêm Violet",
+      "key": "asset:set:dem-violet:artwork",
       "kind": "set-artwork",
-      "ownerId": "team-sao-bang",
-      "sha256": "5b62f4461987e265309c7aacda8cfe1207b8f816a01f660ac8c89b54642c857a",
+      "ownerId": "set:dem-violet",
+      "ownerKind": "set",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/artwork/set-team-sao-bang.png",
+        "path": "assets/simulation/golden-world/artwork/set-dem-violet.webp",
         "type": "bundled"
       },
-      "width": 1254
+      "usage": "golden-world",
+      "byteSize": 119500,
+      "format": "webp",
+      "height": 1024,
+      "sha256": "1f11e6df62e57de148a332551d102ecbdc68ded09ba6aac16aefc40d68334ef9",
+      "width": 10753
     },
     {
-      "byteSize": 2219454,
-      "format": "png",
-      "height": 1254,
-      "key": "asset:v1/set/duo-jungle-support/artwork",
+      "altText": "Artwork Team Sao Băng",
+      "key": "asset:set:sao-bang:artwork",
       "kind": "set-artwork",
-      "ownerId": "duo-jungle-support",
-      "sha256": "2467970d590d5b746d12b4e1828ff4150914323b3e0eca4702330b53d0a02dda",
+      "ownerId": "set:sao-bang",
+      "ownerKind": "set",
+      "simulationState": "available",
       "source": {
-        "path": "assets/simulation/golden-world/artwork/set-duo-jungle-support.png",
+        "path": "assets/simulation/golden-world/artwork/set-team-sao-bang.webp",
         "type": "bundled"
       },
-      "width": 1254
-    },
-    {
-      "byteSize": 2170847,
-      "format": "png",
+      "usage": "golden-world",
+      "byteSize": 137062,
+      "format": "webp",
       "height": 1254,
-      "key": "asset:v1/library/vibe/late-night-rank",
-      "kind": "set-artwork",
-      "sha256": "4afe2062de0c370611f5597a8d162bae49cacbd5a27b0be30e663c976428dbf4",
-      "source": {
-        "path": "assets/simulation/golden-world/artwork/vibe-late-night-rank.png",
-        "type": "bundled"
-      },
-      "width": 1254
+      "sha256": "00a7c32910bda8e2c4e72e19f9651b862985f29161a00136ca27361efa2d973d",
+      "width": 10753
     },
     {
-      "byteSize": 2229591,
-      "format": "png",
+      "altText": "Artwork Macro Lab",
+      "key": "asset:set:macro-lab:artwork",
+      "kind": "set-artwork",
+      "ownerId": "set:macro-lab",
+      "ownerKind": "set",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/set-duo-jungle-support.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 168396,
+      "format": "webp",
       "height": 1254,
-      "key": "asset:v1/library/vibe/duo-support",
-      "kind": "set-artwork",
-      "sha256": "ca60fd0fa6f9c865208e8a9483fdb1310ba51f3af17b6881a19d0258be46cfa7",
-      "source": {
-        "path": "assets/simulation/golden-world/artwork/vibe-duo-support.png",
-        "type": "bundled"
-      },
-      "width": 1254
+      "sha256": "b6299ce0142c0b46f168472b725a8d1e8b9eb22f4755905aed8306add6aeae41",
+      "width": 10753
     },
     {
-      "byteSize": 2271134,
-      "format": "png",
+      "altText": "Không khí leo rank",
+      "key": "asset:vibe:rank:artwork",
+      "kind": "vibe-artwork",
+      "ownerId": "shared:vibe-rank",
+      "ownerKind": "shared",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/vibe-late-night-rank.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 169200,
+      "format": "webp",
       "height": 1254,
-      "key": "asset:v1/library/vibe/team-needs-mid",
-      "kind": "set-artwork",
-      "sha256": "d067ee44cd4347ae3f9e3de3c6abeb5a993bb5c0a6d3473212131e6cd5fa0228",
-      "source": {
-        "path": "assets/simulation/golden-world/artwork/vibe-team-needs-mid.png",
-        "type": "bundled"
-      },
-      "width": 1254
+      "sha256": "57910af3d5086e8f10d37f4bbf3861ef77032cb28a2f2064ccc68dcba33b8d93",
+      "width": 10753
     },
     {
-      "byteSize": 3438,
+      "altText": "Không khí duo xã hội",
+      "key": "asset:vibe:social:artwork",
+      "kind": "vibe-artwork",
+      "ownerId": "shared:vibe-social",
+      "ownerKind": "shared",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/vibe-duo-support.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 192768,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "45838793464483e9b505bac4aef52518cd1c316ee793a38f2b542d86e64af874",
+      "width": 10753
+    },
+    {
+      "altText": "Không khí tuyển team",
+      "key": "asset:vibe:team:artwork",
+      "kind": "vibe-artwork",
+      "ownerId": "shared:vibe-team",
+      "ownerKind": "shared",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/vibe-team-needs-mid.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 206722,
+      "format": "webp",
+      "height": 1254,
+      "sha256": "ed575912d21e3b3b91015cb1988f262436583b55f9afb18344077e68c51da8b7",
+      "width": 10753
+    },
+    {
+      "altText": "Ảnh combat cuối trận",
+      "key": "asset:message:victory-photo",
+      "kind": "message-image",
+      "ownerId": "message:vy-carry:1",
+      "ownerKind": "message",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/messages/victory-photo.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 80240,
+      "format": "webp",
+      "height": 1200,
+      "sha256": "5a34cd1d9e6c21a9786e931f8907475c848cfc2e79cc888f4a60cbac0c543c71",
+      "width": 10753
+    },
+    {
+      "altText": "Ảnh lobby chờ team",
+      "key": "asset:message:lobby-screenshot",
+      "kind": "message-image",
+      "ownerId": "shared:unused-message-preview",
+      "ownerKind": "shared",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/simulation/golden-world/messages/lobby-screenshot.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 65180,
+      "format": "webp",
+      "height": 1200,
+      "sha256": "8ea8ca2eeef90d1f7e85508d11110d39be5fcae52108098bd2a70d97c5e4b424",
+      "width": 10753
+    },
+    {
+      "altText": "Build Aya support",
+      "key": "asset:message:build-aya",
+      "kind": "build-preview",
+      "ownerId": "message:minh-anh:5",
+      "ownerKind": "message",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/anh_mau2/heroes/aya.webp",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 3070,
       "format": "webp",
       "height": 100,
-      "key": "asset:v1/message/khoa-build-1/image/primary",
-      "kind": "message-image",
-      "ownerId": "khoa-build-1",
-      "sha256": "e9f109edaf9d3d7e05830b8976469c3b135fa4e7242da4ae6ca8828331fb5d06",
+      "sha256": "a0733ddb628e531ddfb265e099eea57d559815a8c8697cf91b341dd23d99ed44",
+      "width": 10753
+    },
+    {
+      "altText": "Biểu tượng Trợ Thủ",
+      "key": "asset:shared:role-support",
+      "kind": "role-icon",
+      "ownerId": "shared:role-support",
+      "ownerKind": "shared",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/anh_mau2/lane-icons/support.png",
+        "type": "bundled"
+      },
+      "usage": "golden-world",
+      "byteSize": 304275,
+      "format": "png",
+      "height": 512,
+      "sha256": "cc610824080c4d02fa7a15822c5fd5c70cce915b9eae831d96169a08e952262e",
+      "width": 512
+    },
+    {
+      "altText": "Build Nakroth dùng trong fixture cũ",
+      "key": "asset:shared:legacy-build-nakroth",
+      "kind": "build-preview",
+      "ownerId": "shared:legacy-build-nakroth",
+      "ownerKind": "shared",
+      "simulationState": "available",
       "source": {
         "path": "assets/anh_mau2/heroes/nakroth.webp",
         "type": "bundled"
       },
+      "usage": "legacy-library",
+      "byteSize": 3438,
+      "format": "webp",
+      "height": 100,
+      "sha256": "e9f109edaf9d3d7e05830b8976469c3b135fa4e7242da4ae6ca8828331fb5d06",
       "width": 10753
+    },
+    {
+      "altText": "Biểu tượng Đi Rừng dùng trong fixture cũ",
+      "key": "asset:shared:legacy-role-jungle",
+      "kind": "role-icon",
+      "ownerId": "shared:legacy-role-jungle",
+      "ownerKind": "shared",
+      "simulationState": "available",
+      "source": {
+        "path": "assets/anh_mau2/lane-icons/jungle.png",
+        "type": "bundled"
+      },
+      "usage": "legacy-library",
+      "byteSize": 289439,
+      "format": "png",
+      "height": 512,
+      "sha256": "1268c75e3f3c79399a19629e52254f5f6ca6e16e9a45c1a535753d8b05be3d86",
+      "width": 512
     }
   ],
-  "generatedAt": "2026-07-13T07:00:00.000Z",
+  "generatedAt": "2026-07-13T07:25:00.000Z",
   "version": 1
 }

@@ -74,9 +74,9 @@ const avatarAssetKeyByConversationId: Record<string, string | undefined> = {
   'cozy-helen': 'avatar:cozy-gamer',
   'cyber-violet': 'avatar:cyber-girl',
   'huy-hoang': 'avatar:black-fighter',
-  'khoa-jungle': 'asset:v1/profile/khoa-jungle/avatar',
+  'khoa-jungle': 'asset:profile:khoa-jungle:avatar',
   lorian: 'avatar:ice-prince',
-  'minh-anh': 'asset:v1/profile/minh-anh/avatar',
+  'minh-anh': 'asset:profile:minh-anh:avatar',
   'quoc-bao': 'avatar:blonde-mage',
   'team-sao-bang': 'team:sao-bang',
 };

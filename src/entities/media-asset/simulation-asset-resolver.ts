@@ -1,3 +1,4 @@
+import type { SimulatedAssetState } from '@/entities/simulation';
 import type { AssetCacheDriver } from '@/shared/assets/asset-cache-driver';
 
 import type { AssetKey } from './asset-key';
@@ -43,6 +44,15 @@ type AssetSimulationOperationContext = {
   network: AssetSimulationNetworkState;
 };
 
+type AssetSimulationDebugState = {
+  controller: { network: AssetSimulationNetworkState };
+  world?: {
+    assets?: Readonly<
+      Record<string, { state: SimulatedAssetState } | undefined>
+    >;
+  };
+};
+
 export interface AssetSimulationRuntimePort {
   execute<TResult>(
     input: {
@@ -54,9 +64,7 @@ export interface AssetSimulationRuntimePort {
       context: AssetSimulationOperationContext,
     ) => Promise<TResult> | TResult,
   ): Promise<TResult>;
-  readDebugState(): {
-    controller: { network: AssetSimulationNetworkState };
-  };
+  readDebugState(): AssetSimulationDebugState;
   registerResetParticipant(participant: {
     key: string;
     phase: 'after-world';
@@ -96,14 +104,21 @@ export function createSimulationAssetResolver(input: {
     reset: () => resolver.invalidate(),
   });
 
+  function resolve(key: AssetKey) {
+    const physical = resolver.resolve(key);
+    const worldState =
+      input.runtime.readDebugState().world?.assets?.[key]?.state;
+    return worldState ? applyWorldState(physical, worldState) : physical;
+  }
+
   async function resolveWithSimulation(key: AssetKey, signal?: AbortSignal) {
     try {
       return await input.runtime.execute(
         { operation: assetSimulationOperations.resolve, scope: key, signal },
-        ({ fault }) => applyDirective(resolver, key, fault),
+        ({ fault }) => applyDirective(resolver, resolve, key, fault),
       );
     } catch (error) {
-      if (isOfflineSimulationError(error)) return resolver.resolve(key);
+      if (isOfflineSimulationError(error)) return resolve(key);
       throw error;
     }
   }
@@ -114,8 +129,8 @@ export function createSimulationAssetResolver(input: {
         await input.runtime.execute(
           { operation: assetSimulationOperations.load, scope: key },
           async ({ fault }) => {
-            const directed = applyDirective(resolver, key, fault);
-            if (directed.state !== 'ready') return;
+            const directed = applyDirective(resolver, resolve, key, fault);
+            if (isUnavailableForLoad(directed.state)) return;
             await resolver.preload([key]);
           },
         );
@@ -133,40 +148,66 @@ export function createSimulationAssetResolver(input: {
       unregisterResetParticipant();
     },
     preload,
+    resolve,
     resolveWithSimulation,
   };
 }
 
 function applyDirective(
   resolver: MutableAssetResolver,
+  resolve: (key: AssetKey) => ResolvedAsset,
   key: AssetKey,
   fault: AssetSimulationDirective,
 ): ResolvedAsset {
-  if (!fault) return resolver.resolve(key);
+  if (!fault) return resolve(key);
   if (fault.kind === 'partial_response') {
     return fault.limit === 0 || fault.ratio === 0
-      ? overrideState(resolver.resolve(key), 'missing', true)
-      : resolver.resolve(key);
+      ? overrideState(resolve(key), 'missing', true, false)
+      : resolve(key);
   }
 
   switch (fault.code) {
     case assetSimulationFaultCodes.corrupt:
       resolver.markLoadFailure(key, 'corrupt');
-      return resolver.resolve(key);
+      return overrideState(resolve(key), 'corrupt', false, false);
     case assetSimulationFaultCodes.missing:
       resolver.markLoadFailure(key, 'missing');
-      return resolver.resolve(key);
+      return overrideState(resolve(key), 'missing', true, false);
     case assetSimulationFaultCodes.remoteUnavailable:
-      return overrideState(resolver.resolve(key), 'offline-unavailable', true);
+      return overrideState(resolve(key), 'offline-unavailable', true, false);
     case assetSimulationFaultCodes.mediaAssociationFailed: {
       const current = resolver.resolve(key);
       if (current.entry) {
         resolver.upsertRuntimeAsset(current.entry, 'uploaded-but-unassociated');
       }
-      return resolver.resolve(key);
+      return overrideState(
+        resolve(key),
+        'uploaded-but-unassociated',
+        true,
+        true,
+      );
     }
     default:
-      return resolver.resolve(key);
+      return resolve(key);
+  }
+}
+
+function applyWorldState(
+  current: ResolvedAsset,
+  state: SimulatedAssetState,
+): ResolvedAsset {
+  switch (state) {
+    case 'available':
+      return current.state === 'uploaded-but-unassociated' &&
+        current.entry?.simulationState === 'unassociated'
+        ? overrideState(current, 'ready', false, true)
+        : current;
+    case 'corrupt':
+      return overrideState(current, 'corrupt', false, false);
+    case 'missing':
+      return overrideState(current, 'missing', true, false);
+    case 'unassociated':
+      return overrideState(current, 'uploaded-but-unassociated', true, true);
   }
 }
 
@@ -174,8 +215,18 @@ function overrideState(
   current: ResolvedAsset,
   state: AssetResolutionState,
   retryable: boolean,
+  exposeSource: boolean,
 ): ResolvedAsset {
-  return { ...current, retryable, state };
+  return {
+    ...current,
+    retryable,
+    source: exposeSource ? current.source : undefined,
+    state,
+  };
+}
+
+function isUnavailableForLoad(state: AssetResolutionState) {
+  return ['corrupt', 'missing', 'offline-unavailable'].includes(state);
 }
 
 function isOfflineSimulationError(error: unknown) {
