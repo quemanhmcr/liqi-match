@@ -1,0 +1,9 @@
+{
+  "groups": [
+    {
+      "paths": ["assets/images/expo-logo.png", "assets/images/splash-icon.png"],
+      "reason": "Expo starter app icon and splash slots intentionally require separate stable paths."
+    }
+  ],
+  "version": 1
+}

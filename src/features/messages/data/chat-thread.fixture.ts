@@ -1,5 +1,6 @@
 import type { ImageSourcePropType } from 'react-native';
 
+import { resolveMessageAsset } from './message-assets';
 import type { ChatMessage, ChatThread } from '../model/chat-message';
 
 function fixtureTimestamp(hour: number, minute: number, dayOffset = 0) {
@@ -9,30 +10,26 @@ function fixtureTimestamp(hour: number, minute: number, dayOffset = 0) {
   return date.toISOString();
 }
 
+function fixtureSource(assetKey: string): ImageSourcePropType {
+  const source = resolveMessageAsset({ assetKey, kind: 'fixture' });
+  if (!source) throw new Error(`Unknown message fixture asset: ${assetKey}`);
+  return source;
+}
+
 const buildAssets = {
-  jungleIcon:
-    require('../../../../assets/anh_mau2/lane-icons/jungle.png') as ImageSourcePropType,
-  nakroth:
-    require('../../../../assets/anh_mau2/heroes/nakroth.webp') as ImageSourcePropType,
+  jungleIcon: fixtureSource('role:jungle'),
+  nakroth: fixtureSource('asset:v1/message/khoa-build-1/image/primary'),
 };
 
 const avatars = {
-  blackFighter:
-    require('../../../../assets/features/messages/avatars/04_avatar_black_haired_dark_fighter.png') as ImageSourcePropType,
-  blondeMage:
-    require('../../../../assets/features/messages/avatars/03_avatar_blonde_lavender_mage.png') as ImageSourcePropType,
-  cozyGamer:
-    require('../../../../assets/features/messages/avatars/08_avatar_cozy_gamer_girl.png') as ImageSourcePropType,
-  cyberGirl:
-    require('../../../../assets/features/messages/avatars/05_avatar_purple_cyber_girl.png') as ImageSourcePropType,
-  energeticCarry:
-    require('../../../../assets/features/messages/avatars/06_avatar_energetic_pink_carry.png') as ImageSourcePropType,
-  icePrince:
-    require('../../../../assets/features/messages/avatars/07_avatar_ice_prince.png') as ImageSourcePropType,
-  pinkSupport:
-    require('../../../../assets/features/messages/avatars/01_avatar_pink_support_mage.png') as ImageSourcePropType,
-  silverAssassin:
-    require('../../../../assets/features/messages/avatars/02_avatar_silver_mask_assassin.png') as ImageSourcePropType,
+  blackFighter: fixtureSource('avatar:black-fighter'),
+  blondeMage: fixtureSource('avatar:blonde-mage'),
+  cozyGamer: fixtureSource('avatar:cozy-gamer'),
+  cyberGirl: fixtureSource('avatar:cyber-girl'),
+  energeticCarry: fixtureSource('avatar:energetic-carry'),
+  icePrince: fixtureSource('avatar:ice-prince'),
+  khoaJungle: fixtureSource('asset:v1/profile/khoa-jungle/avatar'),
+  minhAnh: fixtureSource('asset:v1/profile/minh-anh/avatar'),
 };
 
 const minhAnhMessages: readonly ChatMessage[] = [
@@ -188,7 +185,7 @@ const threads: Record<string, ChatThread> = {
     status: 'Hoạt động hôm qua',
   },
   'khoa-jungle': {
-    avatar: avatars.silverAssassin,
+    avatar: avatars.khoaJungle,
     id: 'khoa-jungle',
     isOnline: true,
     kind: 'Bạn bè',
@@ -205,7 +202,7 @@ const threads: Record<string, ChatThread> = {
     status: 'Hoạt động 1 giờ trước',
   },
   'minh-anh': {
-    avatar: avatars.pinkSupport,
+    avatar: avatars.minhAnh,
     firstUnreadMessageId: 'minh-7',
     id: 'minh-anh',
     isOnline: true,

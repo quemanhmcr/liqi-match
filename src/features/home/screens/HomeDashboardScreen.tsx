@@ -33,6 +33,10 @@ import {
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { useNotificationInboxSummary } from '@/entities/notifications';
 import {
+  goldenWorldAssetKeys,
+  requireGoldenWorldBundledModule,
+} from '@/entities/media-asset';
+import {
   ctaPurpleCyanGlowSegments,
   heroGlowSegments,
   matchedPurpleGlowSegments,
@@ -60,12 +64,15 @@ import {
 
 const heroBackground =
   require('../../../../assets/anh_mau_3/background_hero_trang_chu.png') as number;
-const avatarMinhAnh =
-  require('../../../../assets/anh_mau_3/avatar_minh_anh_support.png') as number;
-const avatarKhoaJungle =
-  require('../../../../assets/anh_mau_3/avatar_khoa_jungle_assassin.png') as number;
-const avatarTeamSaoBang =
-  require('../../../../assets/anh_mau_3/avatar_team_sao_bang_emblem.png') as number;
+const avatarMinhAnh = requireGoldenWorldBundledModule(
+  goldenWorldAssetKeys.profiles.minhAnhAvatar,
+);
+const avatarKhoaJungle = requireGoldenWorldBundledModule(
+  goldenWorldAssetKeys.profiles.khoaJungleAvatar,
+);
+const avatarTeamSaoBang = requireGoldenWorldBundledModule(
+  goldenWorldAssetKeys.sets.teamSaoBangArtwork,
+);
 
 const defaultMode: HomeReadyMode = homeReadyModes[0] ?? {
   accent: '#C679FF',

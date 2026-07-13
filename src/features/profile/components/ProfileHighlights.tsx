@@ -8,6 +8,10 @@ import {
 } from 'react-native';
 
 import {
+  goldenWorldAssetKeys,
+  requireGoldenWorldBundledModule,
+} from '@/entities/media-asset';
+import {
   LiquidBadge,
   LiquidCard,
   LiquidOrbButton,
@@ -24,11 +28,14 @@ import {
 import { ProfileSectionHeader } from './ProfileSectionHeader';
 import { ProfileText } from './ProfileShared';
 
-const reviewAvatarMinhAnh =
-  require('../../../../assets/anh_mau_3/avatar_minh_anh_support.png') as ImageSourcePropType;
-const reviewAvatars = [
+const reviewAvatarMinhAnh = requireGoldenWorldBundledModule(
+  goldenWorldAssetKeys.profiles.minhAnhAvatar,
+);
+const reviewAvatars: readonly ImageSourcePropType[] = [
   reviewAvatarMinhAnh,
-  require('../../../../assets/anh_mau_3/avatar_khoa_jungle_assassin.png') as ImageSourcePropType,
+  requireGoldenWorldBundledModule(
+    goldenWorldAssetKeys.profiles.khoaJungleAvatar,
+  ),
 ];
 
 export function ProfileHighlights({ mode }: { mode: 'self' | 'other' }) {

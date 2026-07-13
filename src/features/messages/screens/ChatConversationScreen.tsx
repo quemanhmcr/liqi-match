@@ -34,6 +34,10 @@ import { KeyboardController } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import {
+  goldenWorldAssetKeys,
+  requireGoldenWorldBundledModule,
+} from '@/entities/media-asset';
 import { ChatComposerDock } from '../components/ChatComposerDock';
 import {
   ChatKeyboardScrollView,
@@ -114,8 +118,9 @@ import {
   type ChatRepository,
 } from '../services/chat-repository';
 
-const teamEmblem =
-  require('../../../../assets/anh_mau_3/avatar_team_sao_bang_emblem.png') as ImageSourcePropType;
+const teamEmblem = requireGoldenWorldBundledModule(
+  goldenWorldAssetKeys.sets.teamSaoBangArtwork,
+);
 
 export type ChatConversationScreenProps = {
   conversationId?: string;
