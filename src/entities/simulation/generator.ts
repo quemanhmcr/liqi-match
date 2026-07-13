@@ -4,13 +4,12 @@ import {
   LANE_CATALOG,
   RANK_CATALOG,
   type GenderId,
-  type HeroId,
   type LaneSlug,
   type RankId,
 } from '@/entities/player-profile';
 
 import { createGoldenWorldSnapshot } from './golden-world';
-import { profileId, type ProfileId } from './identity';
+import { profileId } from './identity';
 import {
   SimulationWorldSnapshotSchema,
   type SimulatedDiscoverFacet,

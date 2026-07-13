@@ -8,7 +8,6 @@ import {
   type ScenarioId,
 } from './identity';
 import {
-  GOLDEN_ASSET_KEYS,
   GOLDEN_CONVERSATION_IDS,
   GOLDEN_PROFILE_IDS,
   GOLDEN_SET_IDS,
