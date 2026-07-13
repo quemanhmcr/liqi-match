@@ -1,9 +1,5 @@
 import { z } from 'zod';
-import {
-  AccountIdSchema,
-  PlayerIdSchema,
-  ProfileIdSchema,
-} from '../identity/semantic-ids';
+import { PlayerIdSchema, ProfileIdSchema } from '../identity/semantic-ids';
 
 export const PlayerLifecycleStateV1Schema = z.enum([
   'registered',
@@ -16,16 +12,15 @@ export const PlayerLifecycleStateV1Schema = z.enum([
 
 export const PlayerLifecycleSnapshotV1Schema = z
   .object({
-    accountId: AccountIdSchema,
     playerId: PlayerIdSchema,
     profileId: ProfileIdSchema,
     state: PlayerLifecycleStateV1Schema,
+    version: z.number().int().positive(),
     discoverable: z.boolean(),
     messagingAllowed: z.boolean(),
-    profileVersion: z.number().int().nonnegative(),
-    version: z.number().int().positive(),
     updatedAt: z.string().datetime({ offset: true }),
   })
+  .strict()
   .superRefine((snapshot, context) => {
     if (snapshot.state !== 'active' && snapshot.discoverable) {
       context.addIssue({

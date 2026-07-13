@@ -17,11 +17,13 @@
     "No semantic ID may be replaced with a generic userId or id at an inter-service boundary.",
     "Existing enum values and required fields cannot be removed in v1.",
     "Event type strings are immutable and versioned.",
-    "Unknown additive fields must be ignored by consumers."
+    "Exact provider interfaces reject undeclared semantic fields; additive fields require provider and affected-consumer approval."
   ],
   "providerFixtures": [
     "authenticated-principal-valid.json",
     "authenticated-principal-expired.json",
+    "player-profile-version.json",
+    "player-identity-mapping.json",
     "player-lifecycle-onboarding.json",
     "player-lifecycle-active.json",
     "player-lifecycle-suspended.json",
