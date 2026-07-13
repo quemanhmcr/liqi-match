@@ -176,7 +176,7 @@ export function projectSimulationFaultToRuntime(
       }
     }
     return {
-      code: 'media_unavailable',
+      code: 'remote_asset_unavailable',
       details: { assetKey: fault.assetKey },
       kind: 'partial_failure',
       retryable: true,

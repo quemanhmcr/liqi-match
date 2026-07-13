@@ -78,6 +78,33 @@ describe('Senior 1 world / Senior 2 runtime adapter', () => {
     );
   });
 
+  it('maps media faults to the asset resolver operation and error vocabulary', () => {
+    const mediaFault = {
+      activatesAt: '2026-07-13T02:00:00.000Z',
+      assetKey: 'asset:profile:quan-viewer:cover-pending',
+      id: 'fault:test:media-unavailable',
+      kind: 'media-unavailable' as const,
+      target: 'media' as const,
+    };
+
+    expect(projectSimulationFaultToRuntime(mediaFault)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'remote_asset_unavailable',
+          kind: 'partial_failure',
+          operation: SIMULATION_OPERATION_IDS.media.resolveAsset,
+          scope: mediaFault.assetKey,
+        }),
+        expect.objectContaining({
+          code: 'remote_asset_unavailable',
+          kind: 'partial_failure',
+          operation: SIMULATION_OPERATION_IDS.media.loadAsset,
+          scope: mediaFault.assetKey,
+        }),
+      ]),
+    );
+  });
+
   it('commits a canonical message through a domain lens and runtime validation', async () => {
     const current = runtime();
     current.advanceClock(60_000);
