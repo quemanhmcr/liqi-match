@@ -1,0 +1,11 @@
+{
+  "accountId": "01000000-0000-4000-8000-000000000012",
+  "playerId": "20000000-0000-4000-8000-000000000012",
+  "profileId": "30000000-0000-4000-8000-000000000012",
+  "state": "active",
+  "discoverable": true,
+  "messagingAllowed": true,
+  "profileVersion": 1,
+  "version": 2,
+  "updatedAt": "2026-07-14T08:02:00.000Z"
+}
