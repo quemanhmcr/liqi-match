@@ -13,7 +13,9 @@ describe('ProfileSetupScreen', () => {
     expect(getByText('Tạo hồ sơ')).toBeTruthy();
     expect(getByText('Tên hiển thị')).toBeTruthy();
     expect(getByPlaceholderText('Nhập tên của bạn')).toBeTruthy();
-    expect(getByLabelText('Chọn giới tính Nam')).toBeTruthy();
+    expect(
+      getByLabelText('Chọn giới tính Nam').props.accessibilityState.selected,
+    ).toBe(false);
     expect(getByText('Tiếp tục')).toBeTruthy();
     expect(getByText('Để sau')).toBeTruthy();
   });

@@ -11,6 +11,8 @@ import {
 
 export const ONBOARDING_DRAFT_VERSION = 1;
 
+export type ProfileGender = 'male' | 'female' | 'hidden';
+
 export type OnboardingStatus =
   'not_started' | 'in_progress' | 'media_pending' | 'completed';
 
@@ -30,7 +32,7 @@ export type OnboardingDraftData = {
   pendingMediaSelection?: PendingMediaSelection;
   profileBasics?: {
     displayName?: string;
-    gender?: 'male' | 'female' | 'hidden';
+    gender?: ProfileGender;
   };
   rankId?: string;
 };
@@ -198,6 +200,19 @@ export async function updatePersistedOnboardingDraft(
 
     return next;
   });
+}
+
+export async function savePersistedOnboardingStep(
+  patch: Partial<OnboardingDraftData>,
+  nextStep: OnboardingStep,
+) {
+  return updatePersistedOnboardingDraft((current) => ({
+    ...current,
+    currentStep: nextStep,
+    data: { ...current.data, ...patch },
+    status: current.status === 'not_started' ? 'in_progress' : current.status,
+    updatedAt: nowIso(),
+  }));
 }
 
 export async function patchPersistedOnboardingDraftData(

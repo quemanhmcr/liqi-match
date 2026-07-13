@@ -3,3 +3,9 @@ export {
   completeOnboardingProfile,
   hasCompletedOnboarding,
 } from './services/onboarding-profile-service';
+export {
+  clearActivePersistedOnboardingDraft,
+  hydratePersistedOnboardingDraft,
+  usePersistedOnboardingDraftStore,
+} from './model/persisted-onboarding-draft';
+export { recoverInterruptedOnboardingMediaQueue } from './model/onboarding-media-queue';

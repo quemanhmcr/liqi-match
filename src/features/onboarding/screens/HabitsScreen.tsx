@@ -26,7 +26,10 @@ import {
   type Seriousness,
   type TimePreset,
 } from '@/features/onboarding/habit-options';
-import { updateOnboardingSnapshot } from '../model/onboarding-draft-store';
+import {
+  savePersistedOnboardingStep,
+  usePersistedOnboardingDraftStore,
+} from '../model/persisted-onboarding-draft';
 
 const MAX_COMMUNICATION_CHANNELS = 2;
 const MAX_TEAM_GOALS = 2;
@@ -53,7 +56,7 @@ type MultiSectionProps = {
 type SingleSectionProps = {
   onSelect: (value: string) => void;
   options: readonly string[];
-  selected: string;
+  selected?: string;
   subtitle?: string;
   title: string;
 };
@@ -166,47 +169,64 @@ function TimeSection({
 }
 
 export default function HabitsScreen() {
-  const [communication, setCommunication] = useState<string[]>([
-    communicationChannels[1]!,
-    communicationChannels[3]!,
-  ]);
-  const [onlineTimes, setOnlineTimes] = useState<TimePreset[]>([
-    (Object.keys(timePresets) as TimePreset[])[3]!,
-  ]);
-  const [decisionStyle, setDecisionStyle] = useState<string>(
-    decisionStyles[2]!,
+  const persistedHabits = usePersistedOnboardingDraftStore(
+    (state) => state.envelope?.data.habits,
   );
-  const [sessionLength, setSessionLength] = useState<string>(
-    sessionLengths[1]!,
+  const [communication, setCommunication] = useState<string[]>(
+    persistedHabits?.communication_channels ?? [],
   );
-  const [goals, setGoals] = useState<string[]>([teamGoals[0]!, teamGoals[5]!]);
-  const [seriousness, setSeriousness] = useState<Seriousness>(
-    (Object.keys(seriousnessDescriptions) as Seriousness[])[1]!,
+  const [onlineTimes, setOnlineTimes] = useState<TimePreset[]>(
+    (persistedHabits?.online_time_presets ?? []).filter(isTimePreset),
   );
-  const [strategies, setStrategies] = useState<string[]>([
-    strategyStyles[1]!,
-    strategyStyles[2]!,
-  ]);
-  const [atmospheres, setAtmospheres] = useState<string[]>([
-    teamAtmospheres[3]!,
-  ]);
-  const [feedbackStyle, setFeedbackStyle] = useState<string>(
-    feedbackStyles[1]!,
+  const [decisionStyle, setDecisionStyle] = useState<string | undefined>(
+    persistedHabits?.decision_style,
   );
-  const [lossResponse, setLossResponse] = useState<string>(lossResponses[1]!);
-  const [comebackResponse, setComebackResponse] = useState<string>(
-    comebackResponses[2]!,
+  const [sessionLength, setSessionLength] = useState<string | undefined>(
+    persistedHabits?.session_length,
   );
+  const [goals, setGoals] = useState<string[]>(
+    persistedHabits?.team_goals ?? [],
+  );
+  const [seriousness, setSeriousness] = useState<Seriousness | undefined>(
+    isSeriousness(persistedHabits?.seriousness)
+      ? persistedHabits.seriousness
+      : undefined,
+  );
+  const [strategies, setStrategies] = useState<string[]>(
+    persistedHabits?.strategy_styles ?? [],
+  );
+  const [atmospheres, setAtmospheres] = useState<string[]>(
+    persistedHabits?.team_atmospheres ?? [],
+  );
+  const [feedbackStyle, setFeedbackStyle] = useState<string | undefined>(
+    persistedHabits?.feedback_style,
+  );
+  const [lossResponse, setLossResponse] = useState<string | undefined>(
+    persistedHabits?.loss_response,
+  );
+  const [comebackResponse, setComebackResponse] = useState<string | undefined>(
+    persistedHabits?.comeback_response,
+  );
+  const [saving, setSaving] = useState(false);
 
-  const canContinue =
-    communication.length > 0 &&
-    onlineTimes.length > 0 &&
-    goals.length > 0 &&
-    strategies.length > 0 &&
-    atmospheres.length > 0;
+  const payload = useMemo<HabitPayload | null>(() => {
+    if (
+      communication.length === 0 ||
+      onlineTimes.length === 0 ||
+      !decisionStyle ||
+      !sessionLength ||
+      goals.length === 0 ||
+      !seriousness ||
+      strategies.length === 0 ||
+      atmospheres.length === 0 ||
+      !feedbackStyle ||
+      !lossResponse ||
+      !comebackResponse
+    ) {
+      return null;
+    }
 
-  const payload = useMemo<HabitPayload>(
-    () => ({
+    return {
       comeback_response: comebackResponse,
       communication_channels: communication,
       decision_style: decisionStyle,
@@ -218,40 +238,43 @@ export default function HabitsScreen() {
       strategy_styles: strategies,
       team_atmospheres: atmospheres,
       team_goals: goals,
-    }),
-    [
-      atmospheres,
-      comebackResponse,
-      communication,
-      decisionStyle,
-      feedbackStyle,
-      goals,
-      lossResponse,
-      onlineTimes,
-      seriousness,
-      sessionLength,
-      strategies,
-    ],
-  );
+    };
+  }, [
+    atmospheres,
+    comebackResponse,
+    communication,
+    decisionStyle,
+    feedbackStyle,
+    goals,
+    lossResponse,
+    onlineTimes,
+    seriousness,
+    sessionLength,
+    strategies,
+  ]);
 
-  const submit = () => {
-    if (!canContinue) return;
-    updateOnboardingSnapshot({ habits: payload });
-    router.push(appRoutes.onboarding.profileMedia);
+  const submit = async () => {
+    if (!payload || saving) return;
+    setSaving(true);
+    try {
+      await savePersistedOnboardingStep({ habits: payload }, 'profile_media');
+      router.push(appRoutes.onboarding.profileMedia);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const goBack = () => {
     router.back();
   };
-
   return (
     <OnboardingCinematicShell
       contentContainerStyle={styles.content}
       footer={
         <View>
           <OnboardingPrimaryButton
-            disabled={!canContinue}
-            onPress={submit}
+            disabled={!payload || saving}
+            onPress={() => void submit()}
             tone="cyan"
           >
             Tiếp tục
@@ -318,7 +341,9 @@ export default function HabitsScreen() {
         onSelect={(value) => setSeriousness(value as Seriousness)}
         options={Object.keys(seriousnessDescriptions)}
         selected={seriousness}
-        subtitle={seriousnessDescriptions[seriousness]}
+        subtitle={
+          seriousness ? seriousnessDescriptions[seriousness] : undefined
+        }
         title="Mức độ nghiêm túc"
       />
 
@@ -372,6 +397,17 @@ export default function HabitsScreen() {
         title="Khi trận đấu bất lợi"
       />
     </OnboardingCinematicShell>
+  );
+}
+
+function isTimePreset(value: string): value is TimePreset {
+  return Object.prototype.hasOwnProperty.call(timePresets, value);
+}
+
+function isSeriousness(value: string | undefined): value is Seriousness {
+  return Boolean(
+    value &&
+    Object.prototype.hasOwnProperty.call(seriousnessDescriptions, value),
   );
 }
 

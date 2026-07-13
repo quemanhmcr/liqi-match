@@ -11,10 +11,10 @@ import {
 } from '@/features/onboarding/components/OnboardingCinematic';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import {
-  getOnboardingSnapshot,
-  updateOnboardingSnapshot,
+  savePersistedOnboardingStep,
   type ProfileGender,
-} from '../model/onboarding-draft-store';
+  usePersistedOnboardingDraftStore,
+} from '../model/persisted-onboarding-draft';
 
 const MAX_NAME_LENGTH = 20;
 
@@ -45,29 +45,53 @@ const genderOptions = [
 }[];
 
 export default function ProfileSetupScreen() {
-  const initialBasics = getOnboardingSnapshot().profileBasics;
-  const [displayName, setDisplayName] = useState(initialBasics.displayName);
-  const [gender, setGender] = useState<ProfileGender>(initialBasics.gender);
+  const initialBasics = usePersistedOnboardingDraftStore(
+    (state) => state.envelope?.data.profileBasics,
+  );
+  const [displayName, setDisplayName] = useState(
+    initialBasics?.displayName ?? '',
+  );
+  const [gender, setGender] = useState<ProfileGender | undefined>(
+    initialBasics?.gender,
+  );
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const saveAndContinue = (skipName = false) => {
-    const nextName = skipName ? '' : displayName.trim();
-    updateOnboardingSnapshot({
-      profileBasics: {
-        displayName: nextName,
-        gender,
-      },
-    });
-    router.push(appRoutes.onboarding.rank);
+  const saveAndContinue = async (skipName = false) => {
+    if (!gender || saving) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      await savePersistedOnboardingStep(
+        {
+          profileBasics: {
+            displayName: skipName ? '' : displayName.trim(),
+            gender,
+          },
+        },
+        'rank',
+      );
+      router.push(appRoutes.onboarding.rank);
+    } catch {
+      setSaveError('Không thể lưu tiến độ. Vui lòng thử lại.');
+      setSaving(false);
+    }
   };
 
   return (
     <OnboardingCinematicShell
       footer={
         <View>
-          <OnboardingPrimaryButton onPress={() => saveAndContinue()}>
+          <OnboardingPrimaryButton
+            disabled={!gender || saving}
+            onPress={() => void saveAndContinue()}
+          >
             Tiếp tục
           </OnboardingPrimaryButton>
-          <OnboardingSecondaryAction onPress={() => saveAndContinue(true)}>
+          <OnboardingSecondaryAction
+            disabled={!gender || saving}
+            onPress={() => void saveAndContinue(true)}
+          >
             Để sau
           </OnboardingSecondaryAction>
         </View>
@@ -168,6 +192,7 @@ export default function ProfileSetupScreen() {
             })}
           </View>
         </OnboardingSection>
+        {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
       </View>
     </OnboardingCinematicShell>
   );
@@ -181,6 +206,12 @@ const styles = StyleSheet.create({
     color: 'rgba(222,228,251,0.34)',
     fontSize: 10.8,
     fontWeight: '500',
+  },
+  error: {
+    color: '#FF9AAB',
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
   },
   genderCard: {
     borderRadius: 19,

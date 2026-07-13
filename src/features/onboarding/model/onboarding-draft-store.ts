@@ -1,59 +1,81 @@
 import type { HabitPayload } from '../habit-options';
-import { create } from 'zustand';
+import {
+  getPersistedOnboardingDraft,
+  patchPersistedOnboardingDraftData,
+  type ProfileGender,
+} from './persisted-onboarding-draft';
 
-export type ProfileGender = 'male' | 'female' | 'hidden';
+export type { ProfileGender } from './persisted-onboarding-draft';
 
 export type ProfileBasics = {
   displayName: string;
-  gender: ProfileGender;
+  gender?: ProfileGender;
 };
 
 export type OnboardingSnapshot = {
+  habits: HabitPayload | null;
+  heroIds: string[];
+  laneIds: string[];
+  mediaDraft: { avatar: boolean; cover: boolean; wallCount: number };
   profileBasics: ProfileBasics;
   rankId: string;
-  laneIds: string[];
-  heroIds: string[];
-  habits: HabitPayload | null;
-  mediaDraft: { avatar: boolean; cover: boolean; wallCount: number };
 };
 
-function createInitialSnapshot(): OnboardingSnapshot {
-  return {
-    profileBasics: { displayName: '', gender: 'male' },
-    rankId: 'master',
-    laneIds: ['jungle'],
-    heroIds: ['edras', 'goverra', 'heino'],
-    habits: null,
-    mediaDraft: { avatar: false, cover: false, wallCount: 0 },
-  };
-}
+let legacyMediaDraft = { avatar: false, cover: false, wallCount: 0 };
 
-type OnboardingDraftState = {
-  reset: () => void;
-  snapshot: OnboardingSnapshot;
-  update: (patch: Partial<OnboardingSnapshot>) => void;
-};
-
-const useOnboardingDraftStore = create<OnboardingDraftState>((set) => ({
-  reset: () => set({ snapshot: createInitialSnapshot() }),
-  snapshot: createInitialSnapshot(),
-  update: (patch) =>
-    set((state) => ({ snapshot: { ...state.snapshot, ...patch } })),
-}));
-
-/** Imperative API keeps individual step screens independent of store plumbing. */
-export function updateOnboardingSnapshot(patch: Partial<OnboardingSnapshot>) {
-  useOnboardingDraftStore.getState().update(patch);
-}
-
+/**
+ * Transitional compatibility for the media completion screen. Core onboarding
+ * screens now write only to the persisted account-scoped draft.
+ */
 export function getOnboardingSnapshot(): OnboardingSnapshot {
-  return useOnboardingDraftStore.getState().snapshot;
+  try {
+    const data = getPersistedOnboardingDraft().data;
+    return {
+      habits: data.habits ?? null,
+      heroIds: data.heroIds ?? [],
+      laneIds: data.laneIds ?? [],
+      mediaDraft: legacyMediaDraft,
+      profileBasics: {
+        displayName: data.profileBasics?.displayName ?? '',
+        gender: data.profileBasics?.gender,
+      },
+      rankId: data.rankId ?? '',
+    };
+  } catch {
+    return emptySnapshot();
+  }
+}
+
+export function updateOnboardingSnapshot(patch: Partial<OnboardingSnapshot>) {
+  if (patch.mediaDraft) legacyMediaDraft = patch.mediaDraft;
+
+  const corePatch = {
+    habits: patch.habits ?? undefined,
+    heroIds: patch.heroIds,
+    laneIds: patch.laneIds,
+    profileBasics: patch.profileBasics,
+    rankId: patch.rankId,
+  };
+  if (Object.values(corePatch).some((value) => value !== undefined)) {
+    void patchPersistedOnboardingDraftData(corePatch);
+  }
 }
 
 export function resetOnboardingSnapshot() {
-  useOnboardingDraftStore.getState().reset();
+  legacyMediaDraft = { avatar: false, cover: false, wallCount: 0 };
 }
 
 export function dbSlug(value: string) {
   return value.replace(/-/g, '_');
+}
+
+function emptySnapshot(): OnboardingSnapshot {
+  return {
+    habits: null,
+    heroIds: [],
+    laneIds: [],
+    mediaDraft: legacyMediaDraft,
+    profileBasics: { displayName: '' },
+    rankId: '',
+  };
 }

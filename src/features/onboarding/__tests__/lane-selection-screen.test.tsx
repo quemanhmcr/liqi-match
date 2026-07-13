@@ -9,6 +9,7 @@ describe('LaneSelectionScreen', () => {
     expect(getByText('Bước 3/6')).toBeTruthy();
     expect(getByText('Chọn lane của bạn')).toBeTruthy();
     expect(getByText('Đi rừng')).toBeTruthy();
+    expect(getByText('Đã chọn 0/2 lane')).toBeTruthy();
     expect(getByText('Tiếp tục')).toBeTruthy();
     expect(getByText('Quay lại')).toBeTruthy();
   });

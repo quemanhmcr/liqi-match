@@ -9,7 +9,10 @@ import {
   OnboardingSecondaryAction,
 } from '@/features/onboarding/components/OnboardingCinematic';
 import { appRoutes } from '@/app-shell/navigation/routes';
-import { updateOnboardingSnapshot } from '../model/onboarding-draft-store';
+import {
+  savePersistedOnboardingStep,
+  usePersistedOnboardingDraftStore,
+} from '../model/persisted-onboarding-draft';
 
 const ranks = [
   ['bronze', 'Đồng', 'Vừa bắt đầu, ưu tiên set vui và học map.'],
@@ -40,11 +43,21 @@ const ranks = [
 ] as const;
 
 export default function RankSelectionScreen() {
-  const [selected, setSelected] = useState('master');
+  const persistedRankId = usePersistedOnboardingDraftStore(
+    (state) => state.envelope?.data.rankId,
+  );
+  const [selected, setSelected] = useState<string | undefined>(persistedRankId);
+  const [saving, setSaving] = useState(false);
 
-  const submit = () => {
-    updateOnboardingSnapshot({ rankId: selected });
-    router.push(appRoutes.onboarding.lane);
+  const submit = async () => {
+    if (!selected || saving) return;
+    setSaving(true);
+    try {
+      await savePersistedOnboardingStep({ rankId: selected }, 'lane');
+      router.push(appRoutes.onboarding.lane);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const goBack = () => {
@@ -60,7 +73,10 @@ export default function RankSelectionScreen() {
       tone="purple"
       footer={
         <View>
-          <OnboardingPrimaryButton onPress={submit}>
+          <OnboardingPrimaryButton
+            disabled={!selected || saving}
+            onPress={() => void submit()}
+          >
             Tiếp tục
           </OnboardingPrimaryButton>
           <OnboardingSecondaryAction onPress={goBack}>

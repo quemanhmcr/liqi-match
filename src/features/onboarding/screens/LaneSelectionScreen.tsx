@@ -9,7 +9,10 @@ import {
   OnboardingSecondaryAction,
 } from '@/features/onboarding/components/OnboardingCinematic';
 import { appRoutes } from '@/app-shell/navigation/routes';
-import { updateOnboardingSnapshot } from '../model/onboarding-draft-store';
+import {
+  savePersistedOnboardingStep,
+  usePersistedOnboardingDraftStore,
+} from '../model/persisted-onboarding-draft';
 
 const lanes = [
   [
@@ -24,22 +27,32 @@ const lanes = [
 ] as const;
 
 export default function LaneSelectionScreen() {
-  const [selected, setSelected] = useState<string[]>(['jungle']);
+  const persistedLaneIds = usePersistedOnboardingDraftStore(
+    (state) => state.envelope?.data.laneIds,
+  );
+  const [selected, setSelected] = useState<string[]>(persistedLaneIds ?? []);
+  const [saving, setSaving] = useState(false);
 
   const toggleLane = (id: string) => {
     setSelected((current) => {
-      if (current.includes(id))
-        return current.length === 1
-          ? current
-          : current.filter((item) => item !== id);
+      if (current.includes(id)) return current.filter((item) => item !== id);
       if (current.length >= 2) return [current[0]!, id];
       return [...current, id];
     });
   };
 
-  const submit = () => {
-    updateOnboardingSnapshot({ laneIds: selected });
-    router.push(appRoutes.onboarding.heroSelection);
+  const submit = async () => {
+    if (selected.length < 1 || selected.length > 2 || saving) return;
+    setSaving(true);
+    try {
+      await savePersistedOnboardingStep(
+        { laneIds: selected },
+        'hero_selection',
+      );
+      router.push(appRoutes.onboarding.heroSelection);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const goBack = () => {
@@ -55,7 +68,11 @@ export default function LaneSelectionScreen() {
       tone="cyan"
       footer={
         <View>
-          <OnboardingPrimaryButton onPress={submit} tone="cyan">
+          <OnboardingPrimaryButton
+            disabled={selected.length < 1 || selected.length > 2 || saving}
+            onPress={() => void submit()}
+            tone="cyan"
+          >
             Tiếp tục
           </OnboardingPrimaryButton>
           <OnboardingSecondaryAction onPress={goBack}>
