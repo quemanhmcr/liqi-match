@@ -1,5 +1,6 @@
 {
   "budgets": {
+    "maxDimension": 4096,
     "maxBytesByKind": {
       "avatar": 400000,
       "build-preview": 50000,
@@ -47,7 +48,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "eb75bac079be2ee76f56cdb3e89e5eca05087cff0754724520b6c479176b4a04",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh đại diện Đức Flex",
@@ -65,7 +66,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "a067e9e237bfc6c4fb34b6fc6b0c6548be8baf79ecc34221dd7e9e71ed7bd34a",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh đại diện Huy Captain",
@@ -83,7 +84,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "f7fb12b0dcb40e9aa379703cb52748cab68c98037a5e057bd414bf0f0394a486",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh đại diện Khoa Jungle",
@@ -119,7 +120,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "954a174a52427c536f2c17b9ebda520f682aaee9af4e3dafc2af7154488d2b56",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh đại diện Minh Anh",
@@ -155,7 +156,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "081fc57c78a9e77e14a7f963c0683c97255b0629dc3ffcbe5475d04e98e4a878",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh đại diện Phúc Jungle",
@@ -173,7 +174,7 @@
       "format": "webp",
       "height": 512,
       "sha256": "bb5a08b8e2b9e2aead704389b83f2535de2e0f26027beb2c1e91c6f59af0801f",
-      "width": 10753
+      "width": 512
     },
     {
       "altText": "Ảnh đại diện Quân",
@@ -191,7 +192,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "980c851e8cade64ebb3b3504e1d32f40b97db9eff4a3fc5edd068f27303e114c",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh đại diện Trang Carry",
@@ -209,7 +210,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "12782ac345e622bf6367d74f064819863117d703495f9608107af22b9b2eb127",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh đại diện Vy Carry",
@@ -227,7 +228,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "2e1474a2cbeae6a8635a2f44bf78a3eb576d48200917e5bfce59fe9b848ce92a",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh bìa của Quân",
@@ -243,9 +244,9 @@
       "usage": "golden-world",
       "byteSize": 61072,
       "format": "webp",
-      "height": 1600,
+      "height": 900,
       "sha256": "42aa36476de27730903ab7bae20857dad745a457b53b4014fe944388d45eabd9",
-      "width": 10753
+      "width": 1600
     },
     {
       "altText": "Ảnh bìa của Minh Anh",
@@ -261,9 +262,9 @@
       "usage": "golden-world",
       "byteSize": 116400,
       "format": "webp",
-      "height": 1600,
+      "height": 900,
       "sha256": "90a36ddafc43cef8daafa815a9c603e43b7b5a76ce04881bf969b4ba8698b81f",
-      "width": 10753
+      "width": 1600
     },
     {
       "altText": "Ảnh bìa của Khoa Jungle",
@@ -279,9 +280,9 @@
       "usage": "golden-world",
       "byteSize": 144698,
       "format": "webp",
-      "height": 1600,
+      "height": 900,
       "sha256": "623d3c7c418c91c58302881a327321d3855d73a894f9c5ab5491030e30816712",
-      "width": 10753
+      "width": 1600
     },
     {
       "altText": "Khoảnh khắc rank của Quân",
@@ -299,7 +300,7 @@
       "format": "webp",
       "height": 1024,
       "sha256": "57df2d1c05302ff2534a54eb8e7b4915cf8db4727ee6fe68a658ff15240ca1ed",
-      "width": 10753
+      "width": 1024
     },
     {
       "altText": "Ảnh đội hình của Quân",
@@ -317,7 +318,7 @@
       "format": "webp",
       "height": 1024,
       "sha256": "4a50daffbb69dae4119c9581915a1c143075d1908e30bb467ee4c96b7afd40e0",
-      "width": 10753
+      "width": 1024
     },
     {
       "altText": "Ảnh bìa đã upload nhưng chưa associate của Quân",
@@ -333,9 +334,9 @@
       "usage": "scenario",
       "byteSize": 99670,
       "format": "webp",
-      "height": 1600,
+      "height": 900,
       "sha256": "a8a1cc8b204065be2cee0fd457cca6b4e5ae6696ff54f6e1985c8379e380503b",
-      "width": 10753
+      "width": 1600
     },
     {
       "altText": "Artwork set Đêm Violet",
@@ -353,7 +354,7 @@
       "format": "webp",
       "height": 1024,
       "sha256": "1f11e6df62e57de148a332551d102ecbdc68ded09ba6aac16aefc40d68334ef9",
-      "width": 10753
+      "width": 1024
     },
     {
       "altText": "Artwork Team Sao Băng",
@@ -371,7 +372,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "00a7c32910bda8e2c4e72e19f9651b862985f29161a00136ca27361efa2d973d",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Artwork Macro Lab",
@@ -389,7 +390,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "b6299ce0142c0b46f168472b725a8d1e8b9eb22f4755905aed8306add6aeae41",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Không khí leo rank",
@@ -407,7 +408,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "57910af3d5086e8f10d37f4bbf3861ef77032cb28a2f2064ccc68dcba33b8d93",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Không khí duo xã hội",
@@ -425,7 +426,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "45838793464483e9b505bac4aef52518cd1c316ee793a38f2b542d86e64af874",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Không khí tuyển team",
@@ -443,7 +444,7 @@
       "format": "webp",
       "height": 1254,
       "sha256": "ed575912d21e3b3b91015cb1988f262436583b55f9afb18344077e68c51da8b7",
-      "width": 10753
+      "width": 1254
     },
     {
       "altText": "Ảnh combat cuối trận",
@@ -459,9 +460,9 @@
       "usage": "golden-world",
       "byteSize": 80240,
       "format": "webp",
-      "height": 1200,
+      "height": 675,
       "sha256": "5a34cd1d9e6c21a9786e931f8907475c848cfc2e79cc888f4a60cbac0c543c71",
-      "width": 10753
+      "width": 1200
     },
     {
       "altText": "Ảnh lobby chờ team",
@@ -477,9 +478,9 @@
       "usage": "golden-world",
       "byteSize": 65180,
       "format": "webp",
-      "height": 1200,
+      "height": 675,
       "sha256": "8ea8ca2eeef90d1f7e85508d11110d39be5fcae52108098bd2a70d97c5e4b424",
-      "width": 10753
+      "width": 1200
     },
     {
       "altText": "Build Aya support",
@@ -497,7 +498,7 @@
       "format": "webp",
       "height": 100,
       "sha256": "a0733ddb628e531ddfb265e099eea57d559815a8c8697cf91b341dd23d99ed44",
-      "width": 10753
+      "width": 100
     },
     {
       "altText": "Biểu tượng Trợ Thủ",
@@ -533,7 +534,7 @@
       "format": "webp",
       "height": 100,
       "sha256": "e9f109edaf9d3d7e05830b8976469c3b135fa4e7242da4ae6ca8828331fb5d06",
-      "width": 10753
+      "width": 100
     },
     {
       "altText": "Biểu tượng Đi Rừng dùng trong fixture cũ",

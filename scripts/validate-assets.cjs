@@ -219,6 +219,17 @@ function validateMetadata(entry) {
   ) {
     errors.push(`Invalid dimensions for ${entry.key}`);
   }
+  const maxDimension = manifest.budgets?.maxDimension;
+  if (
+    !Number.isInteger(maxDimension) ||
+    maxDimension <= 0 ||
+    entry.width > maxDimension ||
+    entry.height > maxDimension
+  ) {
+    errors.push(
+      `Dimension budget exceeded for ${entry.key}: ${entry.width}x${entry.height} (max ${maxDimension ?? 'missing'})`,
+    );
+  }
   if (!extensionByFormat[entry.format]) {
     errors.push(`Unsupported format for ${entry.key}: ${entry.format}`);
   }
