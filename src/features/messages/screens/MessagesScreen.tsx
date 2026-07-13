@@ -41,10 +41,8 @@ import {
 } from '../model/message-surface-presenters';
 import { useChatRuntimeStore } from '../model/chat-runtime-store';
 import { useMessagesInboxQuery } from '../queries/messages-queries';
-import {
-  localChatRepository,
-  type ChatRepository,
-} from '../services/chat-repository';
+import { useMessagesServices } from '../runtime/MessagesServicesProvider';
+import type { ChatRepository } from '../services/chat-repository';
 
 const inboxFilters: readonly {
   id: MessageInboxFilter;
@@ -142,10 +140,10 @@ function compareActivity(
   return (right.activityAt ?? '').localeCompare(left.activityAt ?? '');
 }
 
-export function MessagesScreen({
-  clock = systemMessagesClock,
-  repository = localChatRepository,
-}: MessagesScreenProps = {}) {
+export function MessagesScreen(props: MessagesScreenProps = {}) {
+  const services = useMessagesServices();
+  const clock = props.clock ?? systemMessagesClock;
+  const repository = props.repository ?? services.repository;
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] =
     useState<MessageInboxFilter>('all');

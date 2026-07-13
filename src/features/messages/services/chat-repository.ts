@@ -484,10 +484,3 @@ export function createLocalChatRepository({
     },
   };
 }
-
-/**
- * Frontend composition point. The current implementation is deterministic and
- * local. A backend adapter only needs to implement ChatRepository and replace
- * this binding; screens consume the versioned contract, not fixture shapes.
- */
-export const localChatRepository: ChatRepository = createLocalChatRepository();

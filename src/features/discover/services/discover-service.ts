@@ -18,11 +18,10 @@ import {
   presentSet,
   presentVibe,
 } from '../model/discover-presenters';
-import { MockDiscoverRepository } from './discover-mock-repository';
-import type { DiscoverRequestContext } from './discover-repository';
-
-export const mockDiscoverRepository = new MockDiscoverRepository();
-const repository = mockDiscoverRepository;
+import type {
+  DiscoverRepository,
+  DiscoverRequestContext,
+} from './discover-repository';
 
 export function canonicalizeOverviewParams(params: DiscoverOverviewParams) {
   const parsed = DiscoverOverviewParamsSchema.parse(params);
@@ -61,6 +60,7 @@ export function canonicalizePlayerParams(params: DiscoverPlayerListParams) {
 }
 
 export async function fetchDiscoverOverview(
+  repository: DiscoverRepository,
   context: DiscoverRequestContext,
   params: DiscoverOverviewParams,
 ) {
@@ -71,18 +71,8 @@ export async function fetchDiscoverOverview(
   return presentOverview(response.data, response.meta.generatedAt);
 }
 
-export function getInitialDiscoverOverview(
-  context: DiscoverRequestContext,
-  params: DiscoverOverviewParams,
-) {
-  const response = mockDiscoverRepository.peekOverview(
-    context,
-    canonicalizeOverviewParams(params),
-  );
-  return presentOverview(response.data, response.meta.generatedAt);
-}
-
 export async function fetchDiscoverVibes(
+  repository: DiscoverRepository,
   context: DiscoverRequestContext,
   params: DiscoverVibeListParams,
 ) {
@@ -96,18 +86,8 @@ export async function fetchDiscoverVibes(
   };
 }
 
-export function getInitialDiscoverVibes(
-  context: DiscoverRequestContext,
-  params: DiscoverVibeListParams,
-) {
-  const response = mockDiscoverRepository.peekVibes(
-    context,
-    canonicalizeVibeParams(params),
-  );
-  return { ...response.data, items: response.data.items.map(presentVibe) };
-}
-
 export async function fetchDiscoverSets(
+  repository: DiscoverRepository,
   context: DiscoverRequestContext,
   params: DiscoverSetListParams,
 ) {
@@ -123,23 +103,8 @@ export async function fetchDiscoverSets(
   };
 }
 
-export function getInitialDiscoverSets(
-  context: DiscoverRequestContext,
-  params: DiscoverSetListParams,
-) {
-  const response = mockDiscoverRepository.peekSets(
-    context,
-    canonicalizeSetParams(params),
-  );
-  return {
-    ...response.data,
-    items: response.data.items.map((item) =>
-      presentSet(item, response.meta.generatedAt),
-    ),
-  };
-}
-
 export async function fetchDiscoverPlayers(
+  repository: DiscoverRepository,
   context: DiscoverRequestContext,
   params: DiscoverPlayerListParams,
 ) {
@@ -150,18 +115,8 @@ export async function fetchDiscoverPlayers(
   return { ...response.data, items: response.data.items.map(presentPlayer) };
 }
 
-export function getInitialDiscoverPlayers(
-  context: DiscoverRequestContext,
-  params: DiscoverPlayerListParams,
-) {
-  const response = mockDiscoverRepository.peekPlayers(
-    context,
-    canonicalizePlayerParams(params),
-  );
-  return { ...response.data, items: response.data.items.map(presentPlayer) };
-}
-
 export function requestDiscoverSetJoin(
+  repository: DiscoverRepository,
   context: DiscoverRequestContext,
   command: RequestSetJoinCommand,
 ) {
@@ -172,6 +127,7 @@ export function requestDiscoverSetJoin(
 }
 
 export function inviteDiscoverPlayer(
+  repository: DiscoverRepository,
   context: DiscoverRequestContext,
   command: InvitePlayerToSetCommand,
 ) {
@@ -179,8 +135,4 @@ export function inviteDiscoverPlayer(
     context,
     InvitePlayerToSetCommandSchema.parse(command),
   );
-}
-
-export function resetMockDiscoverData() {
-  mockDiscoverRepository.reset();
 }

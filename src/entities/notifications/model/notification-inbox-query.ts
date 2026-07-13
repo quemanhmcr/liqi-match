@@ -9,7 +9,7 @@ import {
 
 import type { AuthSession } from '@/shared/auth/auth-service';
 
-import { notificationInboxRepository } from '../data/notification-inbox.repository';
+import { useNotificationRepository } from '../runtime/NotificationRepositoryProvider';
 import {
   compareNotificationWatermarks,
   isAtOrBeforeNotificationWatermark,
@@ -33,6 +33,7 @@ export type NotificationInboxFeedData = InfiniteData<
 >;
 
 export function useNotificationInboxFeed(session: AuthSession | null) {
+  const notificationInboxRepository = useNotificationRepository();
   return useInfiniteQuery<
     NotificationInboxPage,
     Error,
@@ -57,6 +58,7 @@ export function useNotificationInboxFeed(session: AuthSession | null) {
 }
 
 export function useNotificationInboxSummary(session: AuthSession | null) {
+  const notificationInboxRepository = useNotificationRepository();
   return useQuery({
     enabled: Boolean(session),
     queryFn: ({ signal }) => {
@@ -71,6 +73,7 @@ export function useNotificationInboxSummary(session: AuthSession | null) {
 }
 
 export function useMarkNotificationInboxSeen(session: AuthSession | null) {
+  const notificationInboxRepository = useNotificationRepository();
   const queryClient = useQueryClient();
   const userId = session?.user.id ?? 'anonymous';
 
@@ -146,6 +149,7 @@ export function useMarkNotificationInboxSeen(session: AuthSession | null) {
 }
 
 export function useMarkNotificationRead(session: AuthSession | null) {
+  const notificationInboxRepository = useNotificationRepository();
   const queryClient = useQueryClient();
   const userId = session?.user.id ?? 'anonymous';
 

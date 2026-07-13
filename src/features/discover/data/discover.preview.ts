@@ -1,10 +1,11 @@
-import type { DiscoverRequestContext } from '../services/discover-repository';
 import {
-  getInitialDiscoverOverview,
-  getInitialDiscoverPlayers,
-  getInitialDiscoverSets,
-  getInitialDiscoverVibes,
-} from '../services/discover-service';
+  presentOverview,
+  presentPlayer,
+  presentSet,
+  presentVibe,
+} from '../model/discover-presenters';
+import { MockDiscoverRepository } from '../services/discover-mock-repository';
+import type { DiscoverRequestContext } from '../services/discover-repository';
 
 const context: DiscoverRequestContext = {
   locale: 'vi',
@@ -12,31 +13,45 @@ const context: DiscoverRequestContext = {
   timezone: 'Asia/Bangkok',
   viewerId: 'preview',
 };
-const overview = getInitialDiscoverOverview(context, {
+const repository = new MockDiscoverRepository();
+const overviewResponse = repository.peekOverview(context, {
   facetIds: [],
   previewLimit: 3,
   query: '',
 });
+const playerResponse = repository.peekPlayers(context, {
+  cursor: undefined,
+  facetIds: [],
+  limit: 50,
+  query: '',
+  sort: 'best_match',
+});
+const setResponse = repository.peekSets(context, {
+  cursor: undefined,
+  facetIds: [],
+  limit: 50,
+  query: '',
+  sort: 'best_match',
+});
+const vibeResponse = repository.peekVibes(context, {
+  cursor: undefined,
+  facetIds: [],
+  limit: 50,
+  query: '',
+  sort: 'popular',
+});
+const overview = presentOverview(
+  overviewResponse.data,
+  overviewResponse.meta.generatedAt,
+);
 
+/** Test/Storybook compatibility data. Runtime screens use injected repositories. */
 export const previewDiscoverData = {
-  allProfiles: getInitialDiscoverPlayers(context, {
-    facetIds: [],
-    limit: 50,
-    query: '',
-    sort: 'best_match',
-  }).items,
-  allSets: getInitialDiscoverSets(context, {
-    facetIds: [],
-    limit: 50,
-    query: '',
-    sort: 'best_match',
-  }).items,
-  allVibes: getInitialDiscoverVibes(context, {
-    facetIds: [],
-    limit: 50,
-    query: '',
-    sort: 'popular',
-  }).items,
+  allProfiles: playerResponse.data.items.map(presentPlayer),
+  allSets: setResponse.data.items.map((item) =>
+    presentSet(item, setResponse.meta.generatedAt),
+  ),
+  allVibes: vibeResponse.data.items.map(presentVibe),
   filterChips: overview.filterChips,
   metrics: overview.metrics,
   overview,

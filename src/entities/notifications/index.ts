@@ -18,3 +18,8 @@ export {
   useNotificationInboxFeed,
   useNotificationInboxSummary,
 } from './model/notification-inbox-query';
+export { MockNotificationInboxRepository } from './data/mock-notification-inbox.repository';
+export {
+  NotificationRepositoryProvider,
+  useNotificationRepository,
+} from './runtime/NotificationRepositoryProvider';

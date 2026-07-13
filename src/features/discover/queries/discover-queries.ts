@@ -17,63 +17,61 @@ import {
   fetchDiscoverPlayers,
   fetchDiscoverSets,
   fetchDiscoverVibes,
-  getInitialDiscoverOverview,
-  getInitialDiscoverPlayers,
-  getInitialDiscoverSets,
-  getInitialDiscoverVibes,
   inviteDiscoverPlayer,
   requestDiscoverSetJoin,
 } from '../services/discover-service';
 import type { DiscoverRequestContext } from '../services/discover-repository';
+import { useDiscoverRepository } from '../runtime/DiscoverRepositoryProvider';
 import { discoverQueryKeys } from './discover-query-keys';
 
 export function useDiscoverOverviewQuery(params: DiscoverOverviewParams) {
+  const repository = useDiscoverRepository();
   const context = useDiscoverRequestContext();
   const canonical = canonicalizeOverviewParams(params);
   return useQuery({
-    initialData: () => getInitialDiscoverOverview(context, canonical),
-    queryFn: () => fetchDiscoverOverview(context, canonical),
+    queryFn: () => fetchDiscoverOverview(repository, context, canonical),
     queryKey: discoverQueryKeys.overview(context.viewerId, canonical),
   });
 }
 
 export function useDiscoverVibesQuery(params: DiscoverVibeListParams) {
+  const repository = useDiscoverRepository();
   const context = useDiscoverRequestContext();
   const canonical = canonicalizeVibeParams(params);
   return useQuery({
-    initialData: () => getInitialDiscoverVibes(context, canonical),
-    queryFn: () => fetchDiscoverVibes(context, canonical),
+    queryFn: () => fetchDiscoverVibes(repository, context, canonical),
     queryKey: discoverQueryKeys.vibes(context.viewerId, canonical),
   });
 }
 
 export function useDiscoverSetsQuery(params: DiscoverSetListParams) {
+  const repository = useDiscoverRepository();
   const context = useDiscoverRequestContext();
   const canonical = canonicalizeSetParams(params);
   return useQuery({
-    initialData: () => getInitialDiscoverSets(context, canonical),
-    queryFn: () => fetchDiscoverSets(context, canonical),
+    queryFn: () => fetchDiscoverSets(repository, context, canonical),
     queryKey: discoverQueryKeys.sets(context.viewerId, canonical),
   });
 }
 
 export function useDiscoverPlayersQuery(params: DiscoverPlayerListParams) {
+  const repository = useDiscoverRepository();
   const context = useDiscoverRequestContext();
   const canonical = canonicalizePlayerParams(params);
   return useQuery({
-    initialData: () => getInitialDiscoverPlayers(context, canonical),
-    queryFn: () => fetchDiscoverPlayers(context, canonical),
+    queryFn: () => fetchDiscoverPlayers(repository, context, canonical),
     queryKey: discoverQueryKeys.players(context.viewerId, canonical),
   });
 }
 
 export function useRequestSetJoinMutation() {
+  const repository = useDiscoverRepository();
   const context = useDiscoverRequestContext();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ setId, version }: { setId: string; version?: number }) => {
       const mutationId = createMutationId('join', context.viewerId, setId);
-      return requestDiscoverSetJoin(context, {
+      return requestDiscoverSetJoin(repository, context, {
         clientMutationId: mutationId,
         expectedSetVersion: version,
         idempotencyKey: mutationId,
@@ -91,6 +89,7 @@ export function useRequestSetJoinMutation() {
 }
 
 export function useInvitePlayerMutation() {
+  const repository = useDiscoverRepository();
   const context = useDiscoverRequestContext();
   const queryClient = useQueryClient();
   return useMutation({
@@ -108,7 +107,7 @@ export function useInvitePlayerMutation() {
         context.viewerId,
         profileId,
       );
-      return inviteDiscoverPlayer(context, {
+      return inviteDiscoverPlayer(repository, context, {
         clientMutationId: mutationId,
         expectedSetVersion: version,
         idempotencyKey: mutationId,
@@ -154,6 +153,11 @@ export type DiscoverCollectionKind = 'matches' | 'sets' | 'vibes';
 export type DiscoverCollectionSortId =
   'best' | 'newest' | 'online' | 'popular' | 'ready';
 
+type DiscoverCollectionPage =
+  | Awaited<ReturnType<typeof fetchDiscoverPlayers>>
+  | Awaited<ReturnType<typeof fetchDiscoverSets>>
+  | Awaited<ReturnType<typeof fetchDiscoverVibes>>;
+
 export function useDiscoverCollectionQuery(
   kind: DiscoverCollectionKind,
   params: {
@@ -162,6 +166,7 @@ export function useDiscoverCollectionQuery(
     sort: DiscoverCollectionSortId;
   },
 ) {
+  const repository = useDiscoverRepository();
   const context = useDiscoverRequestContext();
   const vibeParams = canonicalizeVibeParams({
     facetIds: params.facetIds,
@@ -197,16 +202,15 @@ export function useDiscoverCollectionQuery(
           : 'best_match',
   });
 
-  return useQuery({
-    initialData: () => {
-      if (kind === 'vibes') return getInitialDiscoverVibes(context, vibeParams);
-      if (kind === 'sets') return getInitialDiscoverSets(context, setParams);
-      return getInitialDiscoverPlayers(context, playerParams);
-    },
+  return useQuery<DiscoverCollectionPage>({
     queryFn: () => {
-      if (kind === 'vibes') return fetchDiscoverVibes(context, vibeParams);
-      if (kind === 'sets') return fetchDiscoverSets(context, setParams);
-      return fetchDiscoverPlayers(context, playerParams);
+      if (kind === 'vibes') {
+        return fetchDiscoverVibes(repository, context, vibeParams);
+      }
+      if (kind === 'sets') {
+        return fetchDiscoverSets(repository, context, setParams);
+      }
+      return fetchDiscoverPlayers(repository, context, playerParams);
     },
     queryKey:
       kind === 'vibes'

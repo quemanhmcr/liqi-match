@@ -105,13 +105,12 @@ import {
   createSendChatTextCommand,
   MAX_CHAT_TEXT_LENGTH,
   normalizeChatText,
-  previewChatMessageTransport,
   type ChatMessageTransport,
   type ChatNetworkState,
 } from '../services/chat-message-transport';
+import { useMessagesServices } from '../runtime/MessagesServicesProvider';
 import {
   DEFAULT_CHAT_MESSAGE_PAGE_SIZE,
-  localChatRepository,
   type ChatRepository,
 } from '../services/chat-repository';
 
@@ -232,11 +231,11 @@ export function ChatConversationScreen(props: ChatConversationScreenProps) {
   );
 }
 
-function ChatConversationSession({
-  conversationId,
-  messageTransport = previewChatMessageTransport,
-  repository = localChatRepository,
-}: ChatConversationScreenProps) {
+function ChatConversationSession(props: ChatConversationScreenProps) {
+  const services = useMessagesServices();
+  const conversationId = props.conversationId;
+  const messageTransport = props.messageTransport ?? services.messageTransport;
+  const repository = props.repository ?? services.repository;
   const conversationKey = conversationId ?? '';
   const { bottom: bottomInset } = useSafeAreaInsets();
   const keyboardGeometry = useMemo(

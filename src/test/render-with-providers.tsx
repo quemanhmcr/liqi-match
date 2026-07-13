@@ -3,6 +3,9 @@ import { render } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ApplicationServiceProviders } from '@/app-shell/providers/ApplicationServiceProviders';
+import type { ApplicationServices } from '@/app-shell/runtime/application-services';
+import { createSimulationApplicationServices } from '@/app-shell/runtime/create-application-services';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
 
@@ -20,7 +23,10 @@ export const testAuthSession: AuthSession = {
 
 export async function renderWithProviders(
   ui: ReactElement,
-  { session = testAuthSession }: { session?: AuthSession | null } = {},
+  {
+    services = createSimulationApplicationServices(),
+    session = testAuthSession,
+  }: { services?: ApplicationServices; session?: AuthSession | null } = {},
 ) {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -37,7 +43,9 @@ export async function renderWithProviders(
       }}
     >
       <AuthStateProvider initialSession={session}>
-        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+        <ApplicationServiceProviders services={services}>
+          <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+        </ApplicationServiceProviders>
       </AuthStateProvider>
     </SafeAreaProvider>,
   );

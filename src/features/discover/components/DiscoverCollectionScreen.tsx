@@ -26,6 +26,8 @@ import {
 } from '@/shared/components/liquid';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
+import { DiscoverQueryState } from './DiscoverQueryState';
+
 import type {
   DiscoverFilterChip,
   DiscoverFilterId,
@@ -189,8 +191,8 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
     query: deferredQuery,
     sort: sortId,
   });
-  const items = collectionQuery.data.items;
-  const discoverFilterChips = filterOptionsQuery.data.filterChips;
+  const items = collectionQuery.data?.items ?? [];
+  const discoverFilterChips = filterOptionsQuery.data?.filterChips ?? [];
 
   const selectedSort =
     sortOptions[kind].find((option) => option.id === sortId) ?? defaultSort;
@@ -215,6 +217,18 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
     setSortId(defaultSort.id);
     setSortExpanded(false);
   };
+
+  if (!collectionQuery.data || !filterOptionsQuery.data) {
+    return (
+      <DiscoverQueryState
+        error={collectionQuery.error ?? filterOptionsQuery.error}
+        onRetry={() => {
+          void collectionQuery.refetch();
+          void filterOptionsQuery.refetch();
+        }}
+      />
+    );
+  }
 
   return (
     <View style={styles.screen} testID={`discover-collection-${kind}`}>

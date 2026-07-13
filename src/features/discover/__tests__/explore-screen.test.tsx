@@ -13,7 +13,6 @@ import { appRoutes } from '@/app-shell/navigation/routes';
 
 import { discoverVibeCards } from '../data/discover.mock';
 import { resetDiscoverState } from '../model/discover-store';
-import { resetMockDiscoverData } from '../services/discover-service';
 import { renderDiscoverScreen } from './discover-test-utils';
 import { ExploreScreen } from '../screens/ExploreScreen';
 
@@ -88,7 +87,6 @@ const expectBottomAnchoredContent = (style: Record<string, unknown>) => {
 
 beforeEach(() => {
   resetDiscoverState();
-  resetMockDiscoverData();
   mockExpoRouter.router.push.mockClear();
 });
 

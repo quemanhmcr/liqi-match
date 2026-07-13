@@ -26,6 +26,7 @@ import {
 import { liquidColors, liquidLayout } from '@/shared/theme/liquid-glass.tokens';
 
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
+import { DiscoverQueryState } from '../components/DiscoverQueryState';
 import type {
   DiscoverFilterChip,
   DiscoverFilterId,
@@ -120,13 +121,14 @@ export function ExploreScreen() {
     previewLimit: 3,
     query: deferredQuery,
   });
+  const overview = overviewQuery.data;
   const filteredContent = {
-    profiles: overviewQuery.data.profiles,
-    sets: overviewQuery.data.sets,
-    vibes: overviewQuery.data.vibes,
+    profiles: overview?.profiles ?? [],
+    sets: overview?.sets ?? [],
+    vibes: overview?.vibes ?? [],
   };
-  const discoverFilterChips = overviewQuery.data.filterChips;
-  const discoverMetricCards = overviewQuery.data.metrics;
+  const discoverFilterChips = overview?.filterChips ?? [];
+  const discoverMetricCards = overview?.metrics ?? [];
   const resultCount = countDiscoverResults(filteredContent);
   const hasResults = resultCount > 0;
   const activeFilterLabels = discoverFilterChips
@@ -134,6 +136,15 @@ export function ExploreScreen() {
     .map((chip) => chip.label);
   const criteriaActive = activeFilterIds.length > 0 || query.trim().length > 0;
   const searchUpdating = deferredQuery !== query;
+
+  if (!overview) {
+    return (
+      <DiscoverQueryState
+        error={overviewQuery.error}
+        onRetry={() => void overviewQuery.refetch()}
+      />
+    );
+  }
 
   return (
     <View style={styles.screen}>

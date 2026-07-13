@@ -6,7 +6,6 @@ import { appRoutes } from '@/app-shell/navigation/routes';
 
 import { discoverAllVibeCards } from '../data/discover.mock';
 import { resetDiscoverState } from '../model/discover-store';
-import { resetMockDiscoverData } from '../services/discover-service';
 import { renderDiscoverScreen } from './discover-test-utils';
 import { DiscoverMatchesScreen } from '../screens/DiscoverMatchesScreen';
 import { DiscoverSetsScreen } from '../screens/DiscoverSetsScreen';
@@ -68,7 +67,6 @@ function renderScreen(screen: React.ReactElement, width = 390) {
 
 beforeEach(() => {
   resetDiscoverState();
-  resetMockDiscoverData();
   mockRouter.router.back.mockClear();
   mockRouter.router.push.mockClear();
   Dimensions.set({

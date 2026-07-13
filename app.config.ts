@@ -2,6 +2,21 @@ import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 type AppVariant = 'development' | 'preview' | 'production';
 
+type ApplicationRuntimeMode = 'simulation' | 'api';
+
+function resolveApplicationRuntimeMode(
+  value: string | undefined,
+  variant: AppVariant,
+): ApplicationRuntimeMode {
+  if (value === 'simulation' || value === 'api') return value;
+  if (value !== undefined && value !== '') {
+    throw new Error(
+      `Invalid EXPO_PUBLIC_APPLICATION_RUNTIME_MODE "${value}". Expected simulation or api.`,
+    );
+  }
+  return variant === 'production' ? 'api' : 'simulation';
+}
+
 type VariantConfig = {
   name: string;
   applicationId: string;
@@ -43,6 +58,10 @@ function resolveVariant(value: string | undefined): AppVariant {
 export default ({ config }: ConfigContext): ExpoConfig => {
   const variant = resolveVariant(process.env.APP_VARIANT);
   const selectedConfig = variantConfig[variant];
+  const applicationRuntimeMode = resolveApplicationRuntimeMode(
+    process.env.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE,
+    variant,
+  );
 
   const resolvedConfig: ExpoConfig = {
     ...config,
@@ -107,6 +126,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.extra,
       appVariant: variant,
       publicEnv: {
+        applicationRuntimeMode,
         apiUrl: process.env.EXPO_PUBLIC_API_URL,
         mediaBaseUrl: process.env.EXPO_PUBLIC_MEDIA_BASE_URL,
         supabasePublishableKey:

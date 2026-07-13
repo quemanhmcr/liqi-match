@@ -2,6 +2,7 @@ import Constants from 'expo-constants';
 import { z } from 'zod';
 
 const publicEnvSchema = z.object({
+  EXPO_PUBLIC_APPLICATION_RUNTIME_MODE: z.enum(['simulation', 'api']),
   EXPO_PUBLIC_API_URL: z
     .string()
     .url('EXPO_PUBLIC_API_URL must be a valid URL.'),
@@ -37,6 +38,7 @@ export function parsePublicEnv(
 type ExpoExtra = {
   publicEnv?: {
     apiUrl?: string;
+    applicationRuntimeMode?: 'simulation' | 'api';
     mediaBaseUrl?: string;
     supabasePublishableKey?: string;
     supabaseUrl?: string;
@@ -48,6 +50,7 @@ const publicEnv = extra?.publicEnv;
 const devPublicEnv = __DEV__
   ? {
       apiUrl: 'http://127.0.0.1:3000',
+      applicationRuntimeMode: 'simulation' as const,
       mediaBaseUrl: 'http://127.0.0.1:3000',
       supabasePublishableKey: 'development-placeholder',
       supabaseUrl: 'http://127.0.0.1:54321',
@@ -57,6 +60,10 @@ const devPublicEnv = __DEV__
 // Every EXPO_PUBLIC_* variable is embedded in the client bundle. Never put secrets here.
 // Native dev clients can expose an empty process.env, so use app config extra as a fallback.
 export const env = parsePublicEnv({
+  EXPO_PUBLIC_APPLICATION_RUNTIME_MODE:
+    process.env.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE ??
+    publicEnv?.applicationRuntimeMode ??
+    devPublicEnv?.applicationRuntimeMode,
   EXPO_PUBLIC_API_URL:
     process.env.EXPO_PUBLIC_API_URL ??
     publicEnv?.apiUrl ??
