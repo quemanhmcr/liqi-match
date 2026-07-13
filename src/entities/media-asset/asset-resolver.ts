@@ -77,6 +77,15 @@ export function createAssetResolver(input: {
       return resolution(entry, 'offline-unavailable');
     }
 
+    if (entry.simulationState === 'missing') {
+      return resolution(entry, 'missing');
+    }
+    if (entry.simulationState === 'corrupt') {
+      return resolution(entry, 'corrupt');
+    }
+    if (entry.simulationState === 'unassociated') {
+      return resolution(entry, 'uploaded-but-unassociated');
+    }
     if (entry.lifecycle === 'recoverable-upload') {
       return resolution(entry, 'recoverable-upload');
     }
@@ -194,6 +203,9 @@ function resolution(
   entry: AssetManifestEntry,
   state: AssetResolutionState,
 ): ResolvedAsset {
+  const exposesSource = !['corrupt', 'missing', 'offline-unavailable'].includes(
+    state,
+  );
   return {
     entry,
     fallback: fallbackFor(entry),
@@ -202,8 +214,9 @@ function resolution(
       'loading',
       'offline-unavailable',
       'recoverable-upload',
+      'uploaded-but-unassociated',
     ].includes(state),
-    source: sourceFor(entry),
+    source: exposesSource ? sourceFor(entry) : undefined,
     state,
   };
 }
@@ -234,12 +247,18 @@ function fallbackFor(entry: AssetManifestEntry): AssetPlaceholderVariant {
   if (entry.source.type === 'placeholder') return entry.source.variant;
   switch (entry.kind) {
     case 'avatar':
+    case 'shared-fallback':
       return 'avatar-neutral';
     case 'cover':
+    case 'wall':
       return 'cover-neutral';
     case 'set-artwork':
       return 'set-neutral';
+    case 'build-preview':
     case 'message-image':
+    case 'message-video':
+    case 'role-icon':
+    case 'vibe-artwork':
       return 'media-neutral';
   }
 }

@@ -1,15 +1,31 @@
 # Media Asset Entity
 
-`AssetKey` is a stable domain identity. Features carry keys, never filesystem paths.
+`AssetKey` is the canonical identity exported by `@/entities/simulation`.
+Features carry keys, never filesystem paths or feature-owned lookup tables.
 
-Version 1 key convention:
+Canonical examples:
 
-- `asset:v1/profile/<profile-id>/avatar`
-- `asset:v1/profile/<profile-id>/cover`
-- `asset:v1/set/<set-id>/artwork`
-- `asset:v1/message/<message-id>/image/<slot>`
-- `asset:v1/library/<kind>/<slug>` for an explicitly declared reusable library item
+- `asset:profile:minh-anh:avatar`
+- `asset:profile:quan-viewer:cover`
+- `asset:profile:quan-viewer:wall:0`
+- `asset:set:sao-bang:artwork`
+- `asset:message:victory-photo`
+- `asset:shared:avatar-fallback`
 
-The resolver is synchronous for rendering and asynchronous for preload/invalidation. It consumes the shared simulation state through `AssetSimulationStateProvider`; it does not own a network or scenario controller.
+The versioned physical manifest maps those identities to bundled, local, remote,
+or placeholder sources. The resolver is synchronous for render decisions and
+asynchronous for preload/invalidation. Its simulation adapter consumes the shared
+runtime network, world state, fault controller and reset registry; it never owns
+a second clock, scenario or network controller.
 
-Key-specific invalidation clears the resolver's logical state. Global invalidation also clears the native Expo Image memory/disk caches. Remote content must use immutable or revisioned URLs because Expo Image exposes global, not selective, physical cache deletion.
+World states map to presentation-neutral resolver states:
+
+- `available` -> `ready`
+- `missing` -> `missing`
+- `corrupt` -> `corrupt`
+- `unassociated` -> `uploaded-but-unassociated`
+
+Key-specific invalidation clears logical resolver state. Global invalidation also
+clears Expo Image memory/disk caches. Remote assets must use immutable or
+revisioned URLs because Expo Image exposes global rather than selective physical
+cache deletion.

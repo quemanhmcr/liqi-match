@@ -1,8 +1,11 @@
-import type { AssetKey } from './asset-key';
+import type {
+  AssetKey,
+  SimulatedAssetKind,
+  SimulatedAssetState,
+} from '@/entities/simulation';
 
-export type AssetKind = 'avatar' | 'cover' | 'message-image' | 'set-artwork';
-
-export type AssetFormat = 'jpg' | 'png' | 'webp';
+export type AssetKind = SimulatedAssetKind;
+export type AssetFormat = 'jpg' | 'mp4' | 'png' | 'webp';
 
 export type AssetPlaceholderVariant =
   'avatar-neutral' | 'cover-neutral' | 'media-neutral' | 'set-neutral';
@@ -16,7 +19,12 @@ export type AssetManifestSource =
 export type AssetLifecycleState =
   'stable' | 'recoverable-upload' | 'uploaded-but-unassociated';
 
+export type AssetManifestUsage = 'golden-world' | 'legacy-library' | 'scenario';
+
+export type AssetOwnerKind = 'message' | 'profile' | 'set' | 'shared';
+
 export type AssetManifestEntry = {
+  altText?: string;
   byteSize?: number;
   format: AssetFormat;
   height: number;
@@ -24,7 +32,10 @@ export type AssetManifestEntry = {
   kind: AssetKind;
   lifecycle?: AssetLifecycleState;
   ownerId?: string;
+  ownerKind?: AssetOwnerKind;
+  simulationState?: SimulatedAssetState;
   source: AssetManifestSource;
+  usage?: AssetManifestUsage;
   width: number;
 };
 

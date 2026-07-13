@@ -4,15 +4,11 @@ import { resolveGoldenWorldAssetSource } from '@/entities/media-asset';
 
 import type { MessageAssetRef } from '../contracts/messages-contracts';
 
-const roleJungle =
-  require('../../../../assets/anh_mau2/lane-icons/jungle.png') as ImageSourcePropType;
-
 export function resolveMessageAsset(
   asset: MessageAssetRef | undefined,
 ): ImageSourcePropType | undefined {
   if (!asset) return undefined;
   if (asset.kind === 'remote') return { uri: asset.url };
-  if (asset.assetKey === 'role:jungle') return roleJungle;
   return resolveGoldenWorldAssetSource(asset.assetKey) as
     ImageSourcePropType | undefined;
 }
