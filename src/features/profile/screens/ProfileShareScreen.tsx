@@ -30,6 +30,7 @@ import {
   LiquidOrbButton,
 } from '@/shared/components/liquid';
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { useAssetResolver } from '@/entities/media-asset';
 import { useAuth } from '@/shared/auth/auth-context';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
@@ -38,6 +39,7 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 
 import { ProfileText } from '../components/ProfileShared';
+import { resolveProfileMedia } from '../model/profile-media';
 import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
 import type { ProfileViewModel } from '../services/profile-service';
 import { fetchProfileSettings } from '../services/profile-settings-service';
@@ -476,6 +478,11 @@ function SocialProfileCard({
   ratio: ShareRatio;
   template: ShareTemplate;
 }) {
+  const assetResolver = useAssetResolver();
+  const coverMedia = resolveProfileMedia(assetResolver, {
+    assetKey: profile.coverAssetKey,
+    uri: profile.coverUrl,
+  });
   const ratioStyle =
     ratio === 'square'
       ? styles.cardSquare
@@ -499,17 +506,17 @@ function SocialProfileCard({
       renderToHardwareTextureAndroid
       style={[styles.socialCard, ratioStyle]}
     >
-      {profile.coverUrl ? (
+      {coverMedia.source ? (
         <>
           <Image
             blurRadius={isMinimal ? 2 : 5}
             resizeMode="cover"
-            source={{ uri: profile.coverUrl }}
+            source={coverMedia.source}
             style={styles.cardCoverBlur}
           />
           <Image
             resizeMode="cover"
-            source={{ uri: profile.coverUrl }}
+            source={coverMedia.source}
             style={styles.cardCoverClarity}
           />
         </>
@@ -624,6 +631,12 @@ function SocialProfileCard({
 }
 
 function AvatarPoster({ profile }: { profile: ProfileViewModel }) {
+  const assetResolver = useAssetResolver();
+  const avatarMedia = resolveProfileMedia(assetResolver, {
+    assetKey: profile.avatarAssetKey,
+    uri: profile.avatarUrl ?? profile.avatarFallbackUrl,
+  });
+
   return (
     <LinearGradient
       colors={['rgba(142,92,255,0.92)', 'rgba(103,232,255,0.82)']}
@@ -632,11 +645,8 @@ function AvatarPoster({ profile }: { profile: ProfileViewModel }) {
       style={styles.avatarRingOuter}
     >
       <View style={styles.avatarRingInner}>
-        {profile.avatarUrl ? (
-          <Image
-            source={{ uri: profile.avatarUrl }}
-            style={styles.avatarImage}
-          />
+        {avatarMedia.source ? (
+          <Image source={avatarMedia.source} style={styles.avatarImage} />
         ) : (
           <ProfileText style={styles.avatarInitial}>
             {profile.displayName.charAt(0).toUpperCase() || 'L'}

@@ -163,6 +163,7 @@ export type ProfileViewModel = {
   statusLabel: string;
   statusValue: ProfileStatusValue;
   verified: boolean;
+  wallAssetKeys?: AssetKey[];
 };
 
 export type ProfileReferenceOption = {

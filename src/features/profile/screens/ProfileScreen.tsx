@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { usePreloadAssetSurface } from '@/entities/media-asset';
 import { LiquidButton, LiquidOrbButton } from '@/shared/components/liquid';
 import { useAuth } from '@/shared/auth/auth-context';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
@@ -29,6 +30,7 @@ export type ProfileScreenProps = {
 };
 
 export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
+  usePreloadAssetSurface('profile');
   const { session } = useAuth();
   const profileRepository = useProfileReadRepository();
   const openProfileEditor = () => {
@@ -127,7 +129,7 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
         onOpen={mode === 'self' ? openProfileEditor : undefined}
       />
       <ProfilePlayStyle tags={profile.playStyleTags} />
-      <ProfileHighlights mode={mode} />
+      <ProfileHighlights mode={mode} wallAssetKeys={profile.wallAssetKeys} />
     </LiquidScreen>
   );
 }

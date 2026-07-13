@@ -59,5 +59,6 @@ export function mapProfileViewModel(
     statusLabel: profile.status.label,
     statusValue: profile.status.value,
     verified: profile.verified,
+    wallAssetKeys: profile.wall.map((media) => media.assetKey),
   };
 }

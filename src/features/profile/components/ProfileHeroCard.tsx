@@ -1,16 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Image,
-  StyleSheet,
-  View,
-  type ImageSourcePropType,
-} from 'react-native';
+import { Image, StyleSheet, View } from 'react-native';
 
-import {
-  goldenWorldAssetKeys,
-  requireGoldenWorldBundledModule,
-} from '@/entities/media-asset';
+import { useAssetResolver } from '@/entities/media-asset';
 import {
   LiquidBadge,
   LiquidButton,
@@ -23,20 +15,12 @@ import {
   profileFantasyBlueGlowSegments,
 } from '@/shared/theme/liquid-glow.presets';
 
+import { resolveProfileMedia } from '../model/profile-media';
 import type { ProfileViewModel } from '../services/profile-service';
 import { ProfileStatsBar } from './ProfileStatsBar';
 import { ProfileText } from './ProfileShared';
 
 export type ProfileHeroMode = 'self' | 'other';
-
-const fallbackAvatar = requireGoldenWorldBundledModule(
-  goldenWorldAssetKeys.profiles.khoaJungleAvatar,
-);
-const fallbackMinhAnhAvatar = requireGoldenWorldBundledModule(
-  goldenWorldAssetKeys.profiles.minhAnhAvatar,
-);
-const heroArtwork =
-  require('../../../../assets/anh_mau_3/background_hero_trang_chu.png') as ImageSourcePropType;
 
 export type ProfileHeroCardProps = {
   mode: ProfileHeroMode;
@@ -57,18 +41,18 @@ export function ProfileHeroCard({
   profile,
   vibe,
 }: ProfileHeroCardProps) {
-  const avatarUri = profile.avatarUrl ?? profile.avatarFallbackUrl;
-  const avatarSource =
-    imageSource(avatarUri) ??
-    (isMinhAnhProfile(profile.displayName)
-      ? fallbackMinhAnhAvatar
-      : fallbackAvatar);
-  const uploadedCoverSource = imageSource(profile.coverUrl);
-  const hasUploadedCover = Boolean(uploadedCoverSource);
-  const heroSource = uploadedCoverSource ?? heroArtwork;
-  const heroImageStyle = hasUploadedCover
-    ? styles.heroCoverImage
-    : styles.heroArtwork;
+  const assetResolver = useAssetResolver();
+  const avatarMedia = resolveProfileMedia(assetResolver, {
+    assetKey: profile.avatarAssetKey,
+    uri: profile.avatarUrl ?? profile.avatarFallbackUrl,
+  });
+  const coverMedia = resolveProfileMedia(assetResolver, {
+    assetKey: profile.coverAssetKey,
+    uri: profile.coverUrl,
+  });
+  const avatarSource = avatarMedia.source;
+  const coverSource = coverMedia.source;
+  const hasUploadedCover = Boolean(coverSource);
   const meta = [
     profile.rankName ?? 'Cao Thủ',
     profile.roleNames.slice(0, 2).join(' / ') || 'Trợ Thủ',
@@ -110,17 +94,17 @@ export function ProfileHeroCard({
         start={{ x: 0, y: 0.42 }}
         style={StyleSheet.absoluteFill}
       />
-      <Image
-        blurRadius={hasUploadedCover ? 4 : 0}
-        resizeMode="cover"
-        source={heroSource}
-        style={heroImageStyle}
-      />
-      {hasUploadedCover ? (
+      {coverSource ? (
         <>
           <Image
+            blurRadius={4}
             resizeMode="cover"
-            source={heroSource}
+            source={coverSource}
+            style={styles.heroCoverImage}
+          />
+          <Image
+            resizeMode="cover"
+            source={coverSource}
             style={styles.heroCoverClarityImage}
           />
           <View pointerEvents="none" style={styles.uploadedCoverDimLayer} />
@@ -174,6 +158,12 @@ export function ProfileHeroCard({
         </>
       ) : (
         <>
+          <View
+            accessibilityLabel={`Ảnh bìa hồ sơ ${coverMedia.state}`}
+            pointerEvents="none"
+            style={styles.heroMediaFallback}
+            testID="profile-cover-fallback"
+          />
           <LinearGradient
             colors={[
               'rgba(3,6,18,0.96)',
@@ -255,7 +245,18 @@ export function ProfileHeroCard({
               start={{ x: 0, y: 0 }}
               style={styles.avatarRing}
             >
-              <Image source={avatarSource} style={styles.avatarImage} />
+              {avatarSource ? (
+                <Image source={avatarSource} style={styles.avatarImage} />
+              ) : (
+                <View
+                  accessibilityLabel={`Avatar hồ sơ ${avatarMedia.state}`}
+                  style={styles.avatarFallback}
+                >
+                  <ProfileText style={styles.avatarInitials}>
+                    {profile.displayName.trim().charAt(0).toUpperCase() || 'L'}
+                  </ProfileText>
+                </View>
+              )}
             </LinearGradient>
           </View>
 
@@ -401,18 +402,6 @@ function GenderBadge({ gender }: { gender: ProfileViewModel['gender'] }) {
   );
 }
 
-function imageSource(uri: string | undefined): ImageSourcePropType | undefined {
-  return uri ? { uri } : undefined;
-}
-
-function isMinhAnhProfile(displayName: string) {
-  return displayName
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .includes('minh anh');
-}
-
 const styles = StyleSheet.create({
   artPresence: {
     bottom: 26,
@@ -424,6 +413,19 @@ const styles = StyleSheet.create({
   },
   actionRow: { flexDirection: 'row', gap: 9, marginTop: 15 },
   avatarImage: { borderRadius: 33, height: 66, width: 66 },
+  avatarFallback: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(122,132,171,0.18)',
+    borderRadius: 33,
+    height: 66,
+    justifyContent: 'center',
+    width: 66,
+  },
+  avatarInitials: {
+    color: 'rgba(245,248,255,0.92)',
+    fontSize: 22,
+    fontWeight: '800',
+  },
   avatarRing: {
     alignItems: 'center',
     borderRadius: 37,
@@ -464,6 +466,10 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     transform: [{ scale: 1.006 }],
+  },
+  heroMediaFallback: {
+    ...StyleSheet.absoluteFill,
+    backgroundColor: 'rgba(38,44,78,0.18)',
   },
   heroCoverImage: {
     bottom: 82,

@@ -3,11 +3,25 @@ import { fireEvent, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { createAssetKey, type AssetResolver } from '@/entities/media-asset';
 import type { HomeDashboard } from '@/features/home/home-dashboard-service';
 import HomeDashboardScreen from '@/features/home/screens/HomeDashboardScreen';
 import { renderWithProviders } from '@/test/render-with-providers';
 
 let mockNotificationUnseenCount = 3;
+
+const unavailableAssetResolver: AssetResolver = {
+  async invalidate() {},
+  async preload() {},
+  resolve(key) {
+    return {
+      fallback: 'avatar-neutral',
+      key,
+      retryable: true,
+      state: 'offline-unavailable',
+    };
+  },
+};
 
 jest.mock('@/entities/notifications', () => {
   const actual = jest.requireActual(
@@ -63,9 +77,13 @@ const syncedDashboard: HomeDashboard = {
 async function renderHomeDashboard(
   getDashboard: () => Promise<HomeDashboard> = async () => syncedDashboard,
   waitForSuccess = true,
+  assetResolver?: AssetResolver,
 ) {
   const result = await renderWithProviders(<HomeDashboardScreen />, {
-    serviceOverrides: { homeRepository: { getDashboard } },
+    serviceOverrides: {
+      ...(assetResolver ? { assetResolver } : undefined),
+      homeRepository: { getDashboard },
+    },
   });
   if (waitForSuccess) {
     await result.findByText('Synced');
@@ -110,7 +128,7 @@ describe('HomeDashboardScreen', () => {
       getByTestId('home-match-kind-icon-Tri kỉ-handshake-outline'),
     ).toBeTruthy();
     const heroBackgroundImage = getByTestId('home-ready-hero-background');
-    expect(heroBackgroundImage.props.resizeMode).toBe('cover');
+    expect(getByLabelText('Nền sẵn sàng trung tính')).toBeTruthy();
     const heroBackgroundStyle = StyleSheet.flatten(
       heroBackgroundImage.props.style,
     );
@@ -182,6 +200,23 @@ describe('HomeDashboardScreen', () => {
     expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
       appRoutes.notifications,
     );
+  });
+
+  it('renders the explicit offline avatar state from the injected resolver', async () => {
+    const dashboard: HomeDashboard = {
+      ...syncedDashboard,
+      currentProfile: {
+        ...syncedDashboard.currentProfile,
+        avatarAssetKey: createAssetKey('asset:profile:test:avatar'),
+      },
+    };
+    const screen = await renderHomeDashboard(
+      async () => dashboard,
+      true,
+      unavailableAssetResolver,
+    );
+
+    expect(screen.getByLabelText('Avatar offline-unavailable')).toBeTruthy();
   });
 
   it('shows the repository error instead of silently rendering preview data', async () => {

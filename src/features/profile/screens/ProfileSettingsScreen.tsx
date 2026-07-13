@@ -15,6 +15,7 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 
+import { useAssetResolver } from '@/entities/media-asset';
 import { useAuth } from '@/shared/auth/auth-context';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import {
@@ -31,6 +32,7 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 
 import { ProfileText } from '../components/ProfileShared';
+import { resolveProfileMedia } from '../model/profile-media';
 import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
 import {
   deleteOwnAccount,
@@ -53,6 +55,7 @@ type SettingsMutationKey =
 export function ProfileSettingsScreen() {
   const { session, signOut } = useAuth();
   const profileRepository = useProfileReadRepository();
+  const assetResolver = useAssetResolver();
   const queryClient = useQueryClient();
   const [pendingKey, setPendingKey] = useState<SettingsMutationKey | null>(
     null,
@@ -77,6 +80,12 @@ export function ProfileSettingsScreen() {
   });
 
   const profile = profileQuery.data;
+  const profileAvatarSource = profile
+    ? resolveProfileMedia(assetResolver, {
+        assetKey: profile.avatarAssetKey,
+        uri: profile.avatarUrl ?? profile.avatarFallbackUrl,
+      }).source
+    : undefined;
   const accountSubtitle = useMemo(
     () => session?.user.email ?? compactUserId(session?.user.id),
     [session?.user.email, session?.user.id],
@@ -249,7 +258,7 @@ export function ProfileSettingsScreen() {
           accountSubtitle={accountSubtitle}
           displayName={profile.displayName}
           onPress={openProfile}
-          source={profile.avatarUrl ? { uri: profile.avatarUrl } : undefined}
+          source={profileAvatarSource}
           statusLabel={profile.statusLabel}
         />
       ) : (

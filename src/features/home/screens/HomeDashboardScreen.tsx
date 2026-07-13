@@ -33,8 +33,9 @@ import {
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { useNotificationInboxSummary } from '@/entities/notifications';
 import {
-  goldenWorldAssetKeys,
-  requireGoldenWorldBundledModule,
+  useAssetResolver,
+  usePreloadAssetSurface,
+  type AssetKey,
 } from '@/entities/media-asset';
 import {
   ctaPurpleCyanGlowSegments,
@@ -61,18 +62,6 @@ import {
   matchedSetKindLabel,
   matchedSetStatusLabel,
 } from '../model/home-dashboard-view-model';
-
-const heroBackground =
-  require('../../../../assets/anh_mau_3/background_hero_trang_chu.png') as number;
-const avatarMinhAnh = requireGoldenWorldBundledModule(
-  goldenWorldAssetKeys.profiles.minhAnhAvatar,
-);
-const avatarKhoaJungle = requireGoldenWorldBundledModule(
-  goldenWorldAssetKeys.profiles.khoaJungleAvatar,
-);
-const avatarTeamSaoBang = requireGoldenWorldBundledModule(
-  goldenWorldAssetKeys.sets.teamSaoBangArtwork,
-);
 
 const defaultMode: HomeReadyMode = homeReadyModes[0] ?? {
   accent: '#C679FF',
@@ -241,6 +230,7 @@ function selectionImpact() {
 }
 
 export default function HomeDashboardScreen() {
+  usePreloadAssetSurface('home');
   const { session } = useAuth();
   const homeRepository = useHomeRepository();
   const notificationSummaryQuery = useNotificationInboxSummary(session);
@@ -332,7 +322,7 @@ export default function HomeDashboardScreen() {
             fallbackUri={dashboard.currentProfile.avatarFallbackUrl}
             name={dashboard.currentProfile.displayName}
             size={50}
-            source={avatarKhoaJungle}
+            assetKey={dashboard.currentProfile.avatarAssetKey}
             uri={dashboard.currentProfile.avatarUrl}
           />
           <View style={styles.greetingBlock}>
@@ -402,9 +392,9 @@ export default function HomeDashboardScreen() {
         withInnerReflection={false}
         withShadow={false}
       >
-        <Image
-          resizeMode="cover"
-          source={heroBackground}
+        <View
+          accessibilityLabel="Nền sẵn sàng trung tính"
+          pointerEvents="none"
           style={styles.readyHeroImage}
           testID="home-ready-hero-background"
         />
@@ -560,8 +550,8 @@ export default function HomeDashboardScreen() {
 
       {matchedSetsToRender.length ? (
         <View style={styles.matchList}>
-          {matchedSetsToRender.map((set, index) => (
-            <MatchedSetCard index={index} key={set.id} set={set} />
+          {matchedSetsToRender.map((set) => (
+            <MatchedSetCard key={set.id} set={set} />
           ))}
         </View>
       ) : (
@@ -602,10 +592,9 @@ function HomeDashboardQueryState({
   );
 }
 
-function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
+function MatchedSetCard({ set }: { set: MatchedSet }) {
   const statusStyle = statusStyles[set.status];
   const tone = matchTones[set.kind];
-  const avatarSource = mockAvatarSource(set, index);
   const matchGlowPreset = matchGlowPresets[set.kind];
   const actionGlowPreset = actionGlowPresets[set.kind];
   const chipVariant = chipVariantForKind(set.kind);
@@ -704,7 +693,7 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
               <Avatar
                 name={set.name}
                 size={54}
-                source={avatarSource}
+                assetKey={set.avatarAssetKey}
                 uri={set.avatarUrl}
               />
             </Pressable>
@@ -882,29 +871,35 @@ function EmptyMatchedSets() {
 }
 
 function Avatar({
+  assetKey,
   fallbackUri,
   name,
   size,
-  source,
   uri,
 }: {
+  assetKey?: AssetKey;
   fallbackUri?: string;
   name: string;
   size: number;
-  source?: ImageSourcePropType;
   uri?: string;
 }) {
+  const assetResolver = useAssetResolver();
   const initials = getInitials(name);
   const [failedUri, setFailedUri] = useState<string | undefined>();
+  const [failedAssetKey, setFailedAssetKey] = useState<AssetKey | undefined>();
   const activeUri =
     uri && failedUri !== uri
       ? uri
       : fallbackUri && failedUri !== fallbackUri
         ? fallbackUri
         : undefined;
+  const resolvedAsset =
+    assetKey && failedAssetKey !== assetKey
+      ? assetResolver.resolve(assetKey)
+      : undefined;
   const imageSource: ImageSourcePropType | undefined = activeUri
     ? { uri: activeUri }
-    : source;
+    : (resolvedAsset?.source as ImageSourcePropType | undefined);
 
   return (
     <LinearGradient
@@ -919,7 +914,11 @@ function Avatar({
       {imageSource ? (
         <Image
           onError={() => {
-            if (activeUri) setFailedUri(activeUri);
+            if (activeUri) {
+              setFailedUri(activeUri);
+              return;
+            }
+            if (assetKey) setFailedAssetKey(assetKey);
           }}
           source={imageSource}
           style={{
@@ -930,6 +929,11 @@ function Avatar({
         />
       ) : (
         <View
+          accessibilityLabel={
+            assetKey
+              ? `Avatar ${resolvedAsset?.state ?? 'missing'}`
+              : `Avatar initials ${name}`
+          }
           style={[
             styles.avatarFallback,
             {
@@ -944,15 +948,6 @@ function Avatar({
       )}
     </LinearGradient>
   );
-}
-
-function mockAvatarSource(set: MatchedSet, index: number): ImageSourcePropType {
-  const normalized = `${set.id} ${set.name}`.toLowerCase();
-  if (normalized.includes('minh') || index === 0) return avatarMinhAnh;
-  if (normalized.includes('khoa') || index === 1) return avatarKhoaJungle;
-  if (normalized.includes('team') || normalized.includes('sao') || index === 2)
-    return avatarTeamSaoBang;
-  return index % 2 === 0 ? avatarMinhAnh : avatarKhoaJungle;
 }
 
 function displayFirstName(name: string) {

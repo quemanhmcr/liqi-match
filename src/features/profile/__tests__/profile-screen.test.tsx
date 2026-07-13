@@ -1,5 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
+import { createAssetKey, type AssetResolver } from '@/entities/media-asset';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import type { ProfileViewModel } from '@/features/profile/services/profile-service';
 import {
@@ -15,6 +16,19 @@ jest.mock('expo-router', () => ({
     push: jest.fn(),
   },
 }));
+
+const unavailableAssetResolver: AssetResolver = {
+  async invalidate() {},
+  async preload() {},
+  resolve(key) {
+    return {
+      fallback: 'media-neutral',
+      key,
+      retryable: true,
+      state: 'offline-unavailable',
+    };
+  },
+};
 
 const canonicalProfile: ProfileViewModel = {
   bio: 'Bình tĩnh, phối hợp và không toxic.',
@@ -50,6 +64,35 @@ describe('ProfileScreen repository consumer', () => {
       session: testAuthSession,
       userId: 'player-canonical-1',
     });
+  });
+
+  it('renders explicit unavailable states for canonical profile media', async () => {
+    const profile: ProfileViewModel = {
+      ...canonicalProfile,
+      avatarAssetKey: createAssetKey('asset:profile:test:avatar'),
+      coverAssetKey: createAssetKey('asset:profile:test:cover'),
+      wallAssetKeys: [createAssetKey('asset:profile:test:wall-1')],
+    };
+    const getProfile = jest.fn(async () => profile);
+    const screen = await renderWithProviders(
+      <ProfileScreen mode="other" userId="player-canonical-1" />,
+      {
+        serviceOverrides: {
+          assetResolver: unavailableAssetResolver,
+          profileRepository: { getProfile },
+        },
+      },
+    );
+
+    expect(
+      await screen.findByLabelText('Ảnh bìa hồ sơ offline-unavailable'),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText('Avatar hồ sơ offline-unavailable'),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText('Khoảnh khắc hồ sơ offline-unavailable'),
+    ).toBeTruthy();
   });
 
   it('shows an explicit error instead of rendering a preview profile', async () => {
