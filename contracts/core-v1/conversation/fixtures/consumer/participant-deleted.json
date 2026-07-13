@@ -2,23 +2,23 @@
   "fixtureVersion": 1,
   "cases": [
     {
-      "schema": "send-message-command-v1",
+      "schema": "SendMessageCommandV1",
       "data": {
-        "conversationId": "20000000-0000-0000-0000-000000000001",
-        "clientMessageId": "client-deleted",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "clientMessageId": "client-message-deleted",
         "content": {
           "kind": "text",
           "text": "Retry-safe"
         },
         "clientCreatedAt": "2026-07-14T08:03:00.000Z",
-        "correlationId": "corr-deleted"
+        "correlationId": "70000000-0000-4000-8000-000000000030"
       }
     }
   ],
   "expectation": {
     "principalLifecycle": "deleted",
-    "displayIdentityPolicy": "tombstone",
     "errorCode": "player_deleted",
-    "messageCreateCount": 0
+    "messageCreateCount": 0,
+    "displayIdentityPolicy": "tombstone"
   }
 }

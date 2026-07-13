@@ -2,13 +2,13 @@
   "fixtureVersion": 1,
   "cases": [
     {
-      "schema": "conversation-snapshot-v1",
+      "schema": "ConversationSnapshotV1",
       "data": {
-        "conversationId": "20000000-0000-0000-0000-000000000001",
-        "matchId": "10000000-0000-0000-0000-000000000001",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "matchId": "60000000-0000-4000-8000-000000000001",
         "participantIds": [
-          "00000000-0000-0000-0000-0000000000a1",
-          "00000000-0000-0000-0000-0000000000b2"
+          "20000000-0000-4000-8000-000000000001",
+          "20000000-0000-4000-8000-000000000002"
         ],
         "state": "open",
         "lastMessage": null,
@@ -17,28 +17,30 @@
       }
     },
     {
-      "schema": "conversation-created-v1",
+      "schema": "ConversationCreatedEventV1",
       "data": {
-        "eventId": "evt-conversation-001",
+        "eventId": "80000000-0000-4000-8000-000000000031",
         "eventType": "conversation.created.v1",
-        "occurredAt": "2026-07-14T08:00:00.000Z",
-        "correlationId": "corr-match-loop-001",
-        "payload": {
+        "aggregateType": "conversation",
+        "aggregateId": "90000000-0000-4000-8000-000000000001",
+        "occurredAt": "2026-07-14T08:10:00.000Z",
+        "correlationId": "70000000-0000-4000-8000-000000000001",
+        "causationId": "80000000-0000-4000-8000-000000000011",
+        "data": {
           "conversation": {
-            "conversationId": "20000000-0000-0000-0000-000000000001",
-            "matchId": "10000000-0000-0000-0000-000000000001",
+            "conversationId": "90000000-0000-4000-8000-000000000001",
+            "matchId": "60000000-0000-4000-8000-000000000001",
             "participantIds": [
-              "00000000-0000-0000-0000-0000000000a1",
-              "00000000-0000-0000-0000-0000000000b2"
+              "20000000-0000-4000-8000-000000000001",
+              "20000000-0000-4000-8000-000000000002"
             ],
             "state": "open",
             "lastMessage": null,
             "unreadCount": 0,
             "version": 1
           },
-          "idempotencyKey": "bootstrap:match:10000000-0000-0000-0000-000000000001"
-        },
-        "causationId": "evt-bootstrap-001"
+          "bootstrapEventId": "80000000-0000-4000-8000-000000000011"
+        }
       }
     }
   ],

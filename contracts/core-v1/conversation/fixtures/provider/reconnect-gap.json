@@ -2,12 +2,12 @@
   "fixtureVersion": 1,
   "cases": [
     {
-      "schema": "message-v1",
+      "schema": "MessageV1",
       "data": {
-        "messageId": "30000000-0000-0000-0000-000000000008",
-        "conversationId": "20000000-0000-0000-0000-000000000001",
-        "senderPlayerId": "00000000-0000-0000-0000-0000000000b2",
-        "clientMessageId": "client-b-0008",
+        "messageId": "91000000-0000-4000-8000-000000000008",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "senderPlayerId": "20000000-0000-4000-8000-000000000002",
+        "clientMessageId": "client-message-b-0008",
         "sequence": 8,
         "content": {
           "kind": "text",
@@ -17,12 +17,12 @@
       }
     },
     {
-      "schema": "message-v1",
+      "schema": "MessageV1",
       "data": {
-        "messageId": "30000000-0000-0000-0000-000000000009",
-        "conversationId": "20000000-0000-0000-0000-000000000001",
-        "senderPlayerId": "00000000-0000-0000-0000-0000000000b2",
-        "clientMessageId": "client-b-0009",
+        "messageId": "91000000-0000-4000-8000-000000000009",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "senderPlayerId": "20000000-0000-4000-8000-000000000002",
+        "clientMessageId": "client-message-b-0009",
         "sequence": 9,
         "content": {
           "kind": "text",
