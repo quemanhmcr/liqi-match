@@ -120,11 +120,12 @@
     "task:start": "node scripts/worktree/worktree-cli.cjs create",
     "task:inspect": "node scripts/worktree/worktree-cli.cjs doctor",
     "task:list": "node scripts/worktree/worktree-cli.cjs list",
-    "task:check": "npm run repository:check && npm run contracts:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
+    "task:check": "npm run repository:check && npm run contracts:check && npm run match-authority:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
     "task:review": "node scripts/worktree/worktree-cli.cjs overlay",
     "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
     "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
-    "contracts:check": "node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts"
+    "contracts:check": "node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts",
+    "match-authority:check": "node scripts/contracts/check-match-authority-v1.cjs"
   },
   "overrides": {
     "xcode": {
