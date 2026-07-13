@@ -11,47 +11,44 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 
-import { HEROES } from '@/entities/hero';
+import {
+  HEROES,
+  HERO_CLASS_CATALOG,
+  HERO_DOMAIN_CATALOG,
+  heroDefinitionById,
+  type HeroId,
+} from '@/entities/hero';
+import { PROFILE_LIMITS } from '@/entities/player-profile';
 import { LiquidButton, LiquidOrbButton } from '@/shared/components/liquid';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
 import { ProfileText } from '../../components/ProfileShared';
-import type {
-  ProfileFavoriteHero,
-  ProfileHeroPickerOption,
-} from '../../services/profile-service';
+import type { ProfileEditHero } from '../model/profile-edit-model';
 import { ProfileEditSection } from './ProfileEditPrimitives';
 import { profileEditStyles as styles } from './profile-edit-styles';
 
-const heroSlotCount = 3;
 const fallbackHeroImage =
   require('../../../../../assets/anh_mau2/heroes/aya.webp') as ImageSourcePropType;
 
-const heroImageByKey = HEROES.reduce<Record<string, ImageSourcePropType>>(
-  (images, hero) => {
-    images[heroVisualKey(hero.id)] = hero.image;
-    images[heroVisualKey(hero.name)] = hero.image;
-    images[heroVisualKey(hero.id.replace(/-/g, '_'))] = hero.image;
-    return images;
-  },
-  {},
+const heroImageById = new Map<string, ImageSourcePropType>(
+  HEROES.map((hero) => [hero.id, hero.image]),
 );
 
 export function HeroSection({
   heroes,
   onChange,
-  options,
 }: {
-  heroes: ProfileFavoriteHero[];
-  onChange: (heroes: ProfileFavoriteHero[]) => void;
-  options: ProfileHeroPickerOption[];
+  heroes: ProfileEditHero[];
+  onChange: (heroes: ProfileEditHero[]) => void;
 }) {
   const [pickerSlot, setPickerSlot] = useState<number | null>(null);
 
-  const updateHero = (slot: number, patch: Partial<ProfileFavoriteHero>) => {
+  const updateHero = (slot: number, patch: Partial<ProfileEditHero>) => {
     onChange(
-      heroes.map((hero, index) =>
-        index === slot ? { ...hero, ...patch } : hero,
+      normalizePriorities(
+        heroes.map((hero, index) =>
+          index === slot ? { ...hero, ...patch } : hero,
+        ),
       ),
     );
   };
@@ -60,129 +57,141 @@ export function HeroSection({
     <>
       <ProfileEditSection
         icon="shield-checkmark-outline"
-        subtitle="Slot là priority hiển thị. Replacement được upsert trước khi record cũ bị xoá."
+        subtitle="Form dùng canonical HeroId và priority. Backend metadata mới được chuẩn bị trước khi hero cũ bị xoá."
         title="Tướng tủ"
       >
-        {Array.from({ length: heroSlotCount }).map((_, index) => {
-          const hero = heroes[index];
-          return (
-            <View key={index} style={styles.heroEditRow}>
-              <View style={styles.heroEditIndex}>
-                <ProfileText style={styles.heroEditIndexText}>
-                  {index + 1}
-                </ProfileText>
-              </View>
-              <Image source={heroImage(hero)} style={styles.heroEditImage} />
-              <View style={styles.heroEditCopy}>
-                <ProfileText numberOfLines={1} style={styles.heroEditName}>
-                  {hero?.name ?? 'Chọn tướng'}
-                </ProfileText>
-                {hero ? (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      flexWrap: 'wrap',
-                      gap: 6,
-                      marginTop: 6,
-                    }}
-                  >
-                    <HeroNumberInput
-                      accessibilityLabel={`Số trận ${hero.name}`}
-                      max={99999}
-                      suffix="trận"
-                      value={hero.matches}
-                      onChange={(matches) => updateHero(index, { matches })}
-                    />
-                    <HeroNumberInput
-                      accessibilityLabel={`Tỷ lệ thắng ${hero.name}`}
-                      max={100}
-                      suffix="%"
-                      value={hero.winRate}
-                      onChange={(winRate) => updateHero(index, { winRate })}
-                    />
-                  </View>
-                ) : (
-                  <ProfileText style={styles.heroEditMeta}>
-                    Slot đang trống
+        {Array.from({ length: PROFILE_LIMITS.favoriteHeroes }).map(
+          (_, index) => {
+            const hero = heroes[index];
+            const definition = hero
+              ? heroDefinitionById(hero.heroId)
+              : undefined;
+            return (
+              <View key={index} style={styles.heroEditRow}>
+                <View style={styles.heroEditIndex}>
+                  <ProfileText style={styles.heroEditIndexText}>
+                    {index + 1}
                   </ProfileText>
-                )}
-              </View>
-              <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <LiquidButton
-                  accessibilityLabel={`Đổi tướng tủ slot ${index + 1}`}
-                  glowIntensity="none"
-                  onPress={() => setPickerSlot(index)}
-                  radius={16}
-                  variant="ghost"
-                  withShadow={false}
-                >
-                  <ProfileText style={styles.fieldLabel}>Đổi</ProfileText>
-                </LiquidButton>
-                {hero ? (
-                  <View style={{ flexDirection: 'row', gap: 8 }}>
-                    <Pressable
-                      accessibilityLabel={`Ưu tiên ${hero.name} cao hơn`}
-                      disabled={index === 0}
-                      onPress={() =>
-                        onChange(moveHero(heroes, index, index - 1))
-                      }
+                </View>
+                <Image
+                  source={heroImage(hero?.heroId)}
+                  style={styles.heroEditImage}
+                />
+                <View style={styles.heroEditCopy}>
+                  <ProfileText numberOfLines={1} style={styles.heroEditName}>
+                    {definition?.name ?? 'Chọn tướng'}
+                  </ProfileText>
+                  {hero && definition ? (
+                    <View
+                      style={{
+                        flexDirection: 'row',
+                        flexWrap: 'wrap',
+                        gap: 6,
+                        marginTop: 6,
+                      }}
                     >
-                      <Ionicons
-                        color={
-                          index === 0
-                            ? 'rgba(205,216,245,0.28)'
-                            : 'rgba(186,239,255,0.72)'
+                      <HeroNumberInput
+                        accessibilityLabel={`Số trận ${definition.name}`}
+                        max={99999}
+                        suffix="trận"
+                        value={hero.matches}
+                        onChange={(matches) => updateHero(index, { matches })}
+                      />
+                      <HeroNumberInput
+                        accessibilityLabel={`Tỷ lệ thắng ${definition.name}`}
+                        max={100}
+                        suffix="%"
+                        value={hero.winRate}
+                        onChange={(winRate) => updateHero(index, { winRate })}
+                      />
+                    </View>
+                  ) : (
+                    <ProfileText style={styles.heroEditMeta}>
+                      Slot đang trống
+                    </ProfileText>
+                  )}
+                </View>
+                <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                  <LiquidButton
+                    accessibilityLabel={`Đổi tướng tủ slot ${index + 1}`}
+                    glowIntensity="none"
+                    onPress={() => setPickerSlot(index)}
+                    radius={16}
+                    variant="ghost"
+                    withShadow={false}
+                  >
+                    <ProfileText style={styles.fieldLabel}>Đổi</ProfileText>
+                  </LiquidButton>
+                  {hero && definition ? (
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <Pressable
+                        accessibilityLabel={`Ưu tiên ${definition.name} cao hơn`}
+                        disabled={index === 0}
+                        onPress={() =>
+                          onChange(moveHero(heroes, index, index - 1))
                         }
-                        name="arrow-up"
-                        size={15}
-                      />
-                    </Pressable>
-                    <Pressable
-                      accessibilityLabel={`Ưu tiên ${hero.name} thấp hơn`}
-                      disabled={index >= heroes.length - 1}
-                      onPress={() =>
-                        onChange(moveHero(heroes, index, index + 1))
-                      }
-                    >
-                      <Ionicons
-                        color={
-                          index >= heroes.length - 1
-                            ? 'rgba(205,216,245,0.28)'
-                            : 'rgba(186,239,255,0.72)'
+                      >
+                        <Ionicons
+                          color={
+                            index === 0
+                              ? 'rgba(205,216,245,0.28)'
+                              : 'rgba(186,239,255,0.72)'
+                          }
+                          name="arrow-up"
+                          size={15}
+                        />
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel={`Ưu tiên ${definition.name} thấp hơn`}
+                        disabled={index >= heroes.length - 1}
+                        onPress={() =>
+                          onChange(moveHero(heroes, index, index + 1))
                         }
-                        name="arrow-down"
-                        size={15}
-                      />
-                    </Pressable>
-                    <Pressable
-                      accessibilityLabel={`Bỏ tướng ${hero.name}`}
-                      onPress={() =>
-                        onChange(
-                          heroes.filter((_, heroIndex) => heroIndex !== index),
-                        )
-                      }
-                    >
-                      <Ionicons
-                        color="rgba(255,216,168,0.82)"
-                        name="close"
-                        size={16}
-                      />
-                    </Pressable>
-                  </View>
-                ) : null}
+                      >
+                        <Ionicons
+                          color={
+                            index >= heroes.length - 1
+                              ? 'rgba(205,216,245,0.28)'
+                              : 'rgba(186,239,255,0.72)'
+                          }
+                          name="arrow-down"
+                          size={15}
+                        />
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel={`Bỏ tướng ${definition.name}`}
+                        onPress={() =>
+                          onChange(
+                            normalizePriorities(
+                              heroes.filter(
+                                (_, heroIndex) => heroIndex !== index,
+                              ),
+                            ),
+                          )
+                        }
+                      >
+                        <Ionicons
+                          color="rgba(255,216,168,0.82)"
+                          name="close"
+                          size={16}
+                        />
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
               </View>
-            </View>
-          );
-        })}
+            );
+          },
+        )}
       </ProfileEditSection>
       <HeroPickerModal
         onClose={() => setPickerSlot(null)}
-        onSelect={(hero) => {
-          if (pickerSlot !== null)
-            onChange(replaceHero(heroes, pickerSlot, hero));
+        onSelect={(heroId) => {
+          if (pickerSlot !== null) {
+            onChange(replaceHero(heroes, pickerSlot, heroId));
+          }
           setPickerSlot(null);
         }}
-        options={options}
         selectedHeroes={heroes}
         slot={pickerSlot}
       />
@@ -223,27 +232,24 @@ function HeroNumberInput({
 function HeroPickerModal({
   onClose,
   onSelect,
-  options,
   selectedHeroes,
   slot,
 }: {
   onClose: () => void;
-  onSelect: (hero: ProfileHeroPickerOption) => void;
-  options: ProfileHeroPickerOption[];
-  selectedHeroes: ProfileFavoriteHero[];
+  onSelect: (heroId: HeroId) => void;
+  selectedHeroes: ProfileEditHero[];
   slot: number | null;
 }) {
   const [search, setSearch] = useState('');
-  const selectedKeys = selectedHeroes.map(heroKey);
-  const currentKey = slot === null ? undefined : heroKey(selectedHeroes[slot]);
+  const selectedIds = selectedHeroes.map((hero) => hero.heroId);
+  const currentId = slot === null ? undefined : selectedHeroes[slot]?.heroId;
   const query = search.trim().toLowerCase();
-  const filtered = options
-    .filter((hero) =>
-      query
-        ? `${hero.name} ${hero.role ?? ''}`.toLowerCase().includes(query)
-        : true,
-    )
-    .slice(0, 80);
+  const filtered = HERO_DOMAIN_CATALOG.filter((hero) => {
+    const classLabel = heroClassLabel(hero.classSlug);
+    return query
+      ? `${hero.name} ${classLabel}`.toLowerCase().includes(query)
+      : true;
+  }).slice(0, 80);
 
   return (
     <Modal
@@ -291,18 +297,16 @@ function HeroPickerModal({
             showsVerticalScrollIndicator={false}
           >
             {filtered.map((hero) => {
-              const key = heroKey(hero);
-              const selectedElsewhere = Boolean(
-                key && selectedKeys.includes(key) && key !== currentKey,
-              );
+              const selectedElsewhere =
+                selectedIds.includes(hero.id) && hero.id !== currentId;
               return (
                 <Pressable
                   accessibilityLabel={`Chọn ${hero.name}`}
                   accessibilityRole="button"
                   accessibilityState={{ disabled: selectedElsewhere }}
                   disabled={selectedElsewhere}
-                  key={`${hero.slug ?? hero.name}-${hero.heroId ?? ''}`}
-                  onPress={() => onSelect(hero)}
+                  key={hero.id}
+                  onPress={() => onSelect(hero.id)}
                   style={({ pressed }) => [
                     styles.heroPickerRow,
                     selectedElsewhere && styles.heroPickerDisabled,
@@ -310,7 +314,7 @@ function HeroPickerModal({
                   ]}
                 >
                   <Image
-                    source={heroImage(hero)}
+                    source={heroImage(hero.id)}
                     style={styles.heroPickerImage}
                   />
                   <View style={styles.heroPickerCopy}>
@@ -318,7 +322,7 @@ function HeroPickerModal({
                       {hero.name}
                     </ProfileText>
                     <ProfileText style={styles.heroPickerMeta}>
-                      {hero.role ?? 'Chưa có role catalog'}
+                      {heroClassLabel(hero.classSlug)}
                     </ProfileText>
                   </View>
                   {selectedElsewhere ? (
@@ -342,31 +346,31 @@ function HeroPickerModal({
   );
 }
 
-function replaceHero(
-  heroes: ProfileFavoriteHero[],
-  slot: number,
-  selected: ProfileHeroPickerOption,
-) {
-  const selectedKey = heroKey(selected);
-  const next = heroes.filter(
-    (hero, index) => index === slot || heroKey(hero) !== selectedKey,
+function replaceHero(heroes: ProfileEditHero[], slot: number, heroId: HeroId) {
+  const withoutDuplicate = heroes.filter(
+    (hero, index) => index === slot || hero.heroId !== heroId,
   );
   const previous = heroes[slot];
-  next[slot] = {
-    heroId: selected.heroId,
-    matches: previous?.matches ?? selected.matches,
-    name: selected.name,
-    slug: selected.slug,
-    winRate: previous?.winRate ?? selected.winRate,
+  withoutDuplicate[slot] = {
+    heroId,
+    matches: previous?.matches,
+    priority: slot + 1,
+    winRate: previous?.winRate,
   };
-  return next.filter(Boolean).slice(0, heroSlotCount);
+  return normalizePriorities(
+    withoutDuplicate.filter(Boolean).slice(0, PROFILE_LIMITS.favoriteHeroes),
+  );
 }
 
-function moveHero(heroes: ProfileFavoriteHero[], from: number, to: number) {
+function moveHero(heroes: ProfileEditHero[], from: number, to: number) {
   if (to < 0 || to >= heroes.length) return heroes;
   const next = [...heroes];
   [next[from], next[to]] = [next[to]!, next[from]!];
-  return next;
+  return normalizePriorities(next);
+}
+
+function normalizePriorities(heroes: ProfileEditHero[]) {
+  return heroes.map((hero, index) => ({ ...hero, priority: index + 1 }));
 }
 
 function parseOptionalInteger(value: string, max: number) {
@@ -375,21 +379,13 @@ function parseOptionalInteger(value: string, max: number) {
   return Math.min(max, Number(digits));
 }
 
-function heroImage(hero: ProfileFavoriteHero | undefined) {
-  if (!hero) return fallbackHeroImage;
+function heroImage(heroId: HeroId | undefined) {
+  return (heroId && heroImageById.get(heroId)) || fallbackHeroImage;
+}
+
+function heroClassLabel(classSlug: string) {
   return (
-    heroImageByKey[heroVisualKey(hero.slug ?? hero.name)] ?? fallbackHeroImage
+    HERO_CLASS_CATALOG.find((heroClass) => heroClass.id === classSlug)?.label ??
+    classSlug
   );
-}
-
-function heroKey(hero: Pick<ProfileFavoriteHero, 'name' | 'slug'> | undefined) {
-  return hero ? heroVisualKey(hero.slug ?? hero.name) : '';
-}
-
-function heroVisualKey(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-');
 }

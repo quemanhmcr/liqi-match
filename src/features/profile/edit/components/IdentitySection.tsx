@@ -3,6 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
+import {
+  GENDER_CATALOG,
+  PROFILE_LIMITS,
+  type GenderId,
+} from '@/entities/player-profile';
 import { LiquidChip } from '@/shared/components/liquid';
 
 import { ProfileText } from '../../components/ProfileShared';
@@ -17,7 +22,6 @@ import {
 } from './ProfileEditPrimitives';
 import { profileEditStyles as styles } from './profile-edit-styles';
 
-const maxDisplayNameLength = 20;
 const maxBioLength = 80;
 
 const statusOptions = [
@@ -27,16 +31,14 @@ const statusOptions = [
   { label: 'Chỉ bạn bè', value: 'friends' },
 ] as const;
 
-const genderOptions = [
-  { icon: 'male', label: 'Nam', meta: 'hiện ký hiệu ♂', value: 'male' },
-  { icon: 'female', label: 'Nữ', meta: 'hiện ký hiệu ♀', value: 'female' },
-  {
-    icon: 'remove-outline',
-    label: 'Ẩn',
-    meta: 'không hiện trên hồ sơ',
-    value: 'hidden',
-  },
-] as const;
+const genderPresentation: Record<
+  GenderId,
+  { icon: keyof typeof Ionicons.glyphMap; meta: string }
+> = {
+  female: { icon: 'female', meta: 'hiện ký hiệu ♀' },
+  hidden: { icon: 'remove-outline', meta: 'không hiện trên hồ sơ' },
+  male: { icon: 'male', meta: 'hiện ký hiệu ♂' },
+};
 
 export function IdentitySection({
   identity,
@@ -58,11 +60,11 @@ export function IdentitySection({
     >
       <ProfileEditFieldLabel
         label="Tên hiển thị"
-        meta={`${identity.displayName.length}/${maxDisplayNameLength}`}
+        meta={`${identity.displayName.length}/${PROFILE_LIMITS.displayName}`}
       />
       <TextInput
         accessibilityLabel="Tên hiển thị"
-        maxLength={maxDisplayNameLength}
+        maxLength={PROFILE_LIMITS.displayName}
         onBlur={() => setFocusedField(null)}
         onChangeText={(displayName) => onChange({ ...identity, displayName })}
         onFocus={() => setFocusedField('displayName')}
@@ -81,20 +83,17 @@ export function IdentitySection({
       ) : null}
 
       <ProfileEditFieldLabel label="Giới tính" meta="không bắt buộc" />
-      {identity.gender &&
-      !genderOptions.some((option) => option.value === identity.gender) ? (
-        <UnsupportedProfileValue label="Giới tính" value={identity.gender} />
-      ) : null}
       <View style={styles.genderOptionRow}>
-        {genderOptions.map((option) => {
-          const isSelected = option.value === identity.gender;
+        {GENDER_CATALOG.map((option) => {
+          const isSelected = option.id === identity.genderId;
+          const presentation = genderPresentation[option.id];
           return (
             <Pressable
               accessibilityLabel={`Giới tính ${option.label}`}
               accessibilityRole="button"
               accessibilityState={{ selected: isSelected }}
-              key={option.value}
-              onPress={() => onChange({ ...identity, gender: option.value })}
+              key={option.id}
+              onPress={() => onChange({ ...identity, genderId: option.id })}
               style={({ pressed }) => [
                 styles.genderOption,
                 isSelected && styles.genderOptionSelected,
@@ -103,9 +102,9 @@ export function IdentitySection({
             >
               <LinearGradient
                 colors={
-                  option.value === 'female'
+                  option.id === 'female'
                     ? ['rgba(255,116,211,0.28)', 'rgba(142,92,255,0.12)']
-                    : option.value === 'male'
+                    : option.id === 'male'
                       ? ['rgba(103,232,255,0.24)', 'rgba(87,111,255,0.11)']
                       : ['rgba(205,216,245,0.12)', 'rgba(255,255,255,0.02)']
                 }
@@ -119,7 +118,7 @@ export function IdentitySection({
                       ? 'rgba(250,252,255,0.96)'
                       : 'rgba(205,216,245,0.62)'
                   }
-                  name={option.icon}
+                  name={presentation.icon}
                   size={14}
                 />
               </View>
@@ -128,7 +127,7 @@ export function IdentitySection({
                   {option.label}
                 </ProfileText>
                 <ProfileText numberOfLines={1} style={styles.genderMeta}>
-                  {option.meta}
+                  {presentation.meta}
                 </ProfileText>
               </View>
             </Pressable>

@@ -22,6 +22,11 @@ import {
   withUploadedMedia,
 } from '@/features/profile/edit/services/profile-edit-commands';
 import { saveProfileEditChanges } from '@/features/profile/edit/services/profile-edit-coordinator';
+import {
+  clone,
+  makeProfileEditDraft,
+  makeProfileEditForm,
+} from './profile-edit-test-fixtures';
 
 jest.mock(
   '@/features/profile/edit/model/profile-media-picker-recovery',
@@ -159,8 +164,8 @@ describe('saveProfileEditChanges', () => {
     const baseline = baseForm();
     const current = clone(baseline);
     current.identity.displayName = 'Saved name';
-    current.lanes.roleIds = ['role-new', 'role-secondary'];
-    current.habits.seriousness = 'Cạnh tranh';
+    current.laneSelection = { primary: 'mid', secondary: 'support' };
+    current.habits.seriousnessId = 'seriousness.competitive';
     mockSaveRoles.mockRejectedValueOnce(
       new ProfileEditCommandError('lane failed'),
     );
@@ -177,7 +182,7 @@ describe('saveProfileEditChanges', () => {
     expect(result.failedSection).toBe('lanes');
     expect(result.retrySections).toEqual(['lanes', 'habits']);
     expect(result.baseline.identity.displayName).toBe('Saved name');
-    expect(result.baseline.lanes.roleIds).toEqual(baseline.lanes.roleIds);
+    expect(result.baseline.laneSelection).toEqual(baseline.laneSelection);
     expect(mockSaveHabits).not.toHaveBeenCalled();
   });
 
@@ -246,7 +251,10 @@ describe('saveProfileEditChanges', () => {
   it('does not write availability before the shared primitive exists', async () => {
     const baseline = baseForm();
     const current = clone(baseline);
-    current.availability.presets = ['Tối'];
+    current.availability = {
+      slots: [{ dayOfWeek: 1, startMinute: 1080, endMinute: 1440 }],
+      timezone: 'Asia/Bangkok',
+    };
 
     const result = await saveProfileEditChanges({
       baseline,
@@ -268,41 +276,13 @@ describe('saveProfileEditChanges', () => {
 });
 
 function baseForm(): ProfileEditForm {
-  return {
-    availability: {},
-    gameProfile: { handle: 'GameHandle' },
-    habits: {},
-    heroes: [
-      {
-        heroId: '11111111-1111-4111-8111-111111111111',
-        name: 'Aya',
-        slug: 'aya',
-      },
-    ],
-    identity: { bio: 'Bio', displayName: 'Old name' },
-    lanes: { roleIds: ['role-primary', 'role-secondary'] },
-    media: {
-      avatarMediaId: null,
-      coverMediaId: null,
-      staged: {},
-    },
-  };
+  const form = makeProfileEditForm();
+  form.identity.displayName = 'Old name';
+  return form;
 }
 
 function draftFor(form: ProfileEditForm): ProfileEditDraft {
-  return {
-    availabilitySlots: [],
-    form: clone(form),
-    heroOptions: [],
-    id: session.user.id,
-    mediaSummary: {},
-    meta: {
-      hasGameProfileRecord: true,
-      hasHabitRecord: true,
-    },
-    ranks: [],
-    roles: [],
-  };
+  return makeProfileEditDraft(form, session.user.id);
 }
 
 function uploadedItem(
@@ -319,8 +299,4 @@ function uploadedItem(
     uploadedAssetId: assetId,
     uploadedUrl: `https://media/${assetId}`,
   };
-}
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
 }

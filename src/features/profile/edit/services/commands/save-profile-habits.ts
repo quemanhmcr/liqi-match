@@ -1,26 +1,29 @@
+import {
+  COMEBACK_RESPONSE_CATALOG,
+  COMMUNICATION_PREFERENCE_CATALOG,
+  DECISION_STYLE_CATALOG,
+  FEEDBACK_STYLE_CATALOG,
+  HabitAnswersDraftSchema,
+  LOSS_RESPONSE_CATALOG,
+  SERIOUSNESS_CATALOG,
+  SESSION_LENGTH_CATALOG,
+  STRATEGY_STYLE_CATALOG,
+  TEAM_ATMOSPHERE_CATALOG,
+  TEAM_GOAL_CATALOG,
+  TIME_PREFERENCE_CATALOG,
+  legacyValueForCatalogId,
+  type HabitAnswersDraft,
+} from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
-import type { ProfileEditHabitAnswers } from '../../model/profile-edit-model';
 import { ProfileEditCommandError } from './profile-edit-command-error';
-import { compactUnique, stableKey } from './profile-edit-command-utils';
-
-const habitKeys = [
-  'comeback_response',
-  'communication_channels',
-  'decision_style',
-  'feedback_style',
-  'loss_response',
-  'seriousness',
-  'session_length',
-  'strategy_styles',
-  'team_atmospheres',
-  'team_goals',
-] as const satisfies readonly (keyof ProfileEditHabitAnswers)[];
+import { stableKey } from './profile-edit-command-utils';
 
 export async function saveProfileHabits(input: {
-  baseline: ProfileEditHabitAnswers;
-  current: ProfileEditHabitAnswers;
+  baseline: HabitAnswersDraft;
+  current: HabitAnswersDraft;
+  habitsLossless: boolean;
   hasHabitRecord: boolean;
   profileId: string;
   session: AuthSession;
@@ -30,16 +33,102 @@ export async function saveProfileHabits(input: {
       'Chưa có câu trả lời thói quen để cập nhật. Profile Edit sẽ không tạo completion marker hoặc đáp án giả.',
     );
   }
-
-  const patch: Record<string, unknown> = {};
-  for (const key of habitKeys) {
-    if (stableKey(input.baseline[key]) === stableKey(input.current[key])) {
-      continue;
-    }
-    patch[key] = normalizeHabitValue(key, input.current[key]);
+  if (!input.habitsLossless) {
+    throw new ProfileEditCommandError(
+      'Habit legacy chưa resolve losslessly. Hãy xử lý giá trị unsupported trước khi lưu habits.',
+    );
   }
-  if (!Object.keys(patch).length) return;
 
+  const baseline = HabitAnswersDraftSchema.parse(input.baseline);
+  const current = HabitAnswersDraftSchema.parse(input.current);
+  const patch: Record<string, unknown> = {};
+
+  setIfChanged(
+    patch,
+    'comeback_response',
+    baseline.comebackResponseId,
+    current.comebackResponseId,
+    (id) =>
+      requiredLegacyValue(COMEBACK_RESPONSE_CATALOG, id, 'comebackResponseId'),
+  );
+  setIfChanged(
+    patch,
+    'communication_channels',
+    baseline.communicationPreferenceIds,
+    current.communicationPreferenceIds,
+    (ids) =>
+      ids.map((id) =>
+        legacyValueForCatalogId(COMMUNICATION_PREFERENCE_CATALOG, id),
+      ),
+  );
+  setIfChanged(
+    patch,
+    'decision_style',
+    baseline.decisionStyleId,
+    current.decisionStyleId,
+    (id) => requiredLegacyValue(DECISION_STYLE_CATALOG, id, 'decisionStyleId'),
+  );
+  setIfChanged(
+    patch,
+    'feedback_style',
+    baseline.feedbackStyleId,
+    current.feedbackStyleId,
+    (id) => requiredLegacyValue(FEEDBACK_STYLE_CATALOG, id, 'feedbackStyleId'),
+  );
+  setIfChanged(
+    patch,
+    'loss_response',
+    baseline.lossResponseId,
+    current.lossResponseId,
+    (id) => requiredLegacyValue(LOSS_RESPONSE_CATALOG, id, 'lossResponseId'),
+  );
+  setIfChanged(
+    patch,
+    'online_time_presets',
+    baseline.timePreferenceIds,
+    current.timePreferenceIds,
+    (ids) =>
+      ids.map((id) => legacyValueForCatalogId(TIME_PREFERENCE_CATALOG, id)),
+  );
+  setIfChanged(
+    patch,
+    'seriousness',
+    baseline.seriousnessId,
+    current.seriousnessId,
+    (id) => requiredLegacyValue(SERIOUSNESS_CATALOG, id, 'seriousnessId'),
+  );
+  setIfChanged(
+    patch,
+    'session_length',
+    baseline.sessionLengthId,
+    current.sessionLengthId,
+    (id) => requiredLegacyValue(SESSION_LENGTH_CATALOG, id, 'sessionLengthId'),
+  );
+  setIfChanged(
+    patch,
+    'strategy_styles',
+    baseline.strategyStyleIds,
+    current.strategyStyleIds,
+    (ids) =>
+      ids.map((id) => legacyValueForCatalogId(STRATEGY_STYLE_CATALOG, id)),
+  );
+  setIfChanged(
+    patch,
+    'team_atmospheres',
+    baseline.teamAtmosphereIds,
+    current.teamAtmosphereIds,
+    (ids) =>
+      ids.map((id) => legacyValueForCatalogId(TEAM_ATMOSPHERE_CATALOG, id)),
+  );
+  setIfChanged(
+    patch,
+    'team_goals',
+    baseline.teamGoalIds,
+    current.teamGoalIds,
+    (ids) => ids.map((id) => legacyValueForCatalogId(TEAM_GOAL_CATALOG, id)),
+  );
+
+  if (!Object.keys(patch).length) return;
   await supabaseRest(
     `profile_habits?profile_id=eq.${encodeURIComponent(input.profileId)}`,
     {
@@ -51,18 +140,29 @@ export async function saveProfileHabits(input: {
   );
 }
 
-function normalizeHabitValue(
-  key: (typeof habitKeys)[number],
-  value: ProfileEditHabitAnswers[(typeof habitKeys)[number]],
+function setIfChanged<T>(
+  patch: Record<string, unknown>,
+  backendKey: string,
+  baseline: T,
+  current: T,
+  map: (value: T) => unknown,
 ) {
-  if (Array.isArray(value)) {
-    const limits: Partial<Record<(typeof habitKeys)[number], number>> = {
-      communication_channels: 2,
-      strategy_styles: 3,
-      team_atmospheres: 2,
-      team_goals: 2,
-    };
-    return compactUnique(value, limits[key] ?? 10);
+  if (stableKey(baseline) !== stableKey(current)) {
+    patch[backendKey] = map(current);
   }
-  return typeof value === 'string' ? value.trim() : '';
+}
+
+function requiredLegacyValue<
+  const Options extends readonly {
+    id: string;
+    label: string;
+    legacyValue: string;
+  }[],
+>(options: Options, id: Options[number]['id'] | null, path: string) {
+  if (id === null) {
+    throw new ProfileEditCommandError(
+      `${path} chưa có câu trả lời; Profile Edit không ghi giá trị giả.`,
+    );
+  }
+  return legacyValueForCatalogId(options, id);
 }

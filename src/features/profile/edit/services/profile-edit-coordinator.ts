@@ -296,13 +296,16 @@ async function saveNonMediaSection(input: {
       baseline: input.baseline.gameProfile,
       current: input.current.gameProfile,
       hasGameProfileRecord: input.draft.meta.hasGameProfileRecord,
+      rankDbIds: input.draft.meta.rankDbIds,
     });
   }
   if (input.section === 'lanes') {
     return saveProfileRoles({
       ...shared,
-      baselineRoleIds: input.baseline.lanes.roleIds,
-      currentRoleIds: input.current.lanes.roleIds,
+      baselineSelection: input.baseline.laneSelection,
+      currentSelection: input.current.laneSelection,
+      laneDbIds: input.draft.meta.laneDbIds,
+      lanesLossless: input.draft.meta.lanesLossless,
     });
   }
   if (input.section === 'heroes') {
@@ -311,6 +314,8 @@ async function saveNonMediaSection(input: {
       baselineHeroes: input.baseline.heroes,
       currentHeroes: input.current.heroes,
       hasHabitRecord: input.draft.meta.hasHabitRecord,
+      heroDbIds: input.draft.meta.heroDbIds,
+      heroesLossless: input.draft.meta.heroesLossless,
     });
   }
   if (input.section === 'habits') {
@@ -318,6 +323,7 @@ async function saveNonMediaSection(input: {
       ...shared,
       baseline: input.baseline.habits,
       current: input.current.habits,
+      habitsLossless: input.draft.meta.habitsLossless,
       hasHabitRecord: input.draft.meta.hasHabitRecord,
     });
   }

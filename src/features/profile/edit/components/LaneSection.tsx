@@ -1,92 +1,105 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, View } from 'react-native';
 
+import {
+  LANE_CATALOG,
+  PROFILE_LIMITS,
+  type LaneSelection,
+  type LaneSlug,
+} from '@/entities/player-profile';
 import { LiquidChip } from '@/shared/components/liquid';
 
 import { ProfileText } from '../../components/ProfileShared';
-import type { ProfileReferenceOption } from '../../services/profile-service';
-import type { ProfileEditForm } from '../model/profile-edit-model';
 import {
   ProfileEditFieldLabel,
   ProfileEditSection,
-  UnsupportedProfileValue,
 } from './ProfileEditPrimitives';
 import { profileEditStyles as styles } from './profile-edit-styles';
 
 export function LaneSection({
-  lanes,
   onChange,
   onLimitReached,
-  roles,
+  selection,
 }: {
-  lanes: ProfileEditForm['lanes'];
-  onChange: (lanes: ProfileEditForm['lanes']) => void;
+  onChange: (selection: LaneSelection | null) => void;
   onLimitReached: () => void;
-  roles: ProfileReferenceOption[];
+  selection: LaneSelection | null;
 }) {
-  const selected = lanes.roleIds;
-  const unknownIds = selected.filter(
-    (roleId) => !roles.some((role) => role.id === roleId),
-  );
+  const selected = selection
+    ? [selection.primary, selection.secondary].filter(
+        (value): value is LaneSlug => Boolean(value),
+      )
+    : [];
 
-  const toggle = (roleId: string) => {
-    if (selected.includes(roleId)) {
-      onChange({ roleIds: selected.filter((item) => item !== roleId) });
+  const toggle = (laneId: LaneSlug) => {
+    if (!selection) {
+      onChange({ primary: laneId, secondary: null });
       return;
     }
-    if (selected.length >= 2) {
+    if (selection.primary === laneId) {
+      onChange(
+        selection.secondary
+          ? { primary: selection.secondary, secondary: null }
+          : null,
+      );
+      return;
+    }
+    if (selection.secondary === laneId) {
+      onChange({ ...selection, secondary: null });
+      return;
+    }
+    if (selection.secondary) {
       onLimitReached();
       return;
     }
-    onChange({ roleIds: [...selected, roleId] });
+    onChange({ ...selection, secondary: laneId });
   };
 
   return (
     <ProfileEditSection
       icon="map-outline"
-      subtitle="Backend hiện chỉ lưu tập vai trò, chưa có lane-order contract. UI không tuyên bố primary/secondary được persist."
+      subtitle="Form giữ primary/secondary canonical; backend hiện chỉ lưu tập vai trò nên thứ tự chưa round-trip được."
       title="Lane"
     >
       <ProfileEditFieldLabel
-        label="Vai trò đã chọn"
-        meta={`${selected.length}/2`}
+        label="Lane đã chọn"
+        meta={`${selected.length}/${PROFILE_LIMITS.lanes}`}
       />
-      {selected.map((roleId) => {
-        const role = roles.find((option) => option.id === roleId);
-        if (!role) return null;
+      {selected.map((laneId, index) => {
+        const option = LANE_CATALOG.find((lane) => lane.id === laneId)!;
         return (
-          <View key={roleId} style={styles.laneSelectedRow}>
-            <ProfileText style={styles.fieldLabel}>{role.label}</ProfileText>
+          <View key={laneId} style={styles.laneSelectedRow}>
+            <ProfileText style={styles.fieldLabel}>
+              {index === 0 ? 'Ưu tiên 1' : 'Ưu tiên 2'} · {option.label}
+            </ProfileText>
             <Pressable
-              accessibilityLabel={`Bỏ vai trò ${role.label}`}
-              onPress={() => toggle(roleId)}
+              accessibilityLabel={`Bỏ vai trò ${option.label}`}
+              onPress={() => toggle(laneId)}
             >
               <Ionicons color="rgba(255,216,168,0.82)" name="close" size={17} />
             </Pressable>
           </View>
         );
       })}
-      {unknownIds.map((roleId) => (
-        <UnsupportedProfileValue key={roleId} label="Lane" value={roleId} />
-      ))}
-      <ProfileEditFieldLabel label="Chọn vai trò" />
+      <ProfileEditFieldLabel label="Chọn lane" />
       <View style={styles.chipWrap}>
-        {roles.map((role) => {
-          const isSelected = selected.includes(role.id);
-          const disabled = !isSelected && selected.length >= 2;
+        {LANE_CATALOG.map((lane) => {
+          const isSelected = selected.includes(lane.id);
+          const disabled =
+            !isSelected && selected.length >= PROFILE_LIMITS.lanes;
           return (
             <LiquidChip
-              accessibilityLabel={`Vai trò ${role.label}`}
+              accessibilityLabel={`Vai trò ${lane.label}`}
               accessibilityState={{ disabled, selected: isSelected }}
               density="compact"
               disabled={disabled}
-              key={role.id}
-              onPress={() => toggle(role.id)}
+              key={lane.id}
+              onPress={() => toggle(lane.id)}
               selected={isSelected}
               textStyle={styles.chipText}
               variant="cyan"
             >
-              {role.label}
+              {lane.label}
             </LiquidChip>
           );
         })}

@@ -1,0 +1,70 @@
+import { createEmptyHabitAnswers } from '@/entities/player-profile';
+import type {
+  ProfileEditDraft,
+  ProfileEditForm,
+} from '@/features/profile/edit/model/profile-edit-model';
+
+export function makeProfileEditForm(): ProfileEditForm {
+  return {
+    availability: null,
+    gameProfile: { handle: 'GameHandle', rankId: 'master' },
+    habits: {
+      ...createEmptyHabitAnswers(),
+      communicationPreferenceIds: ['communication.voice-as-needed'],
+      seriousnessId: 'seriousness.balanced',
+      teamGoalIds: ['goal.rank-climb'],
+    },
+    heroes: [
+      { heroId: 'edras', priority: 1 },
+      { heroId: 'goverra', priority: 2 },
+      { heroId: 'heino', priority: 3 },
+    ],
+    identity: {
+      bio: 'Bio',
+      displayName: 'Display Name',
+      genderId: null,
+    },
+    laneSelection: { primary: 'jungle', secondary: 'support' },
+    media: {
+      avatarMediaId: 'avatar-1',
+      coverMediaId: 'cover-1',
+      staged: {},
+    },
+  };
+}
+
+export function makeProfileEditDraft(
+  form: ProfileEditForm = makeProfileEditForm(),
+  profileId = '00000000-0000-0000-0000-000000000001',
+): ProfileEditDraft {
+  return {
+    form: clone(form),
+    id: profileId,
+    mediaSummary: {},
+    meta: {
+      habitIssues: [],
+      habitsLossless: true,
+      hasGameProfileRecord: true,
+      hasHabitRecord: true,
+      heroDbIds: {
+        edras: 'hero-db-edras',
+        goverra: 'hero-db-goverra',
+        heino: 'hero-db-heino',
+      },
+      heroesLossless: true,
+      laneDbIds: {
+        jungle: 'role-db-jungle',
+        mid: 'role-db-mid',
+        support: 'role-db-support',
+      },
+      lanesLossless: true,
+      rankDbIds: { master: 'rank-db-master' },
+      readIssues: [],
+      serverRegion: 'sea',
+    },
+  };
+}
+
+export function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}

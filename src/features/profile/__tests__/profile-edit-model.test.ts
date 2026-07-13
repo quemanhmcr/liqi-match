@@ -4,35 +4,12 @@ import {
   applySavedProfileEditSections,
   cloneProfileEditForm,
   getDirtyProfileEditSections,
-  type ProfileEditForm,
 } from '../edit/model/profile-edit-model';
-
-function makeForm(): ProfileEditForm {
-  return {
-    availability: { presets: ['Tối'] },
-    gameProfile: { handle: 'GameHandle', rankId: 'rank-1' },
-    habits: {
-      communication_channels: ['Voice khi cần'],
-      seriousness: 'Cân bằng',
-    },
-    heroes: [
-      { heroId: 'hero-1', name: 'Aya', slug: 'aya' },
-      { heroId: 'hero-2', name: 'Helen', slug: 'helen' },
-      { heroId: 'hero-3', name: 'Alice', slug: 'alice' },
-    ],
-    identity: { bio: 'Bio', displayName: 'Display Name' },
-    lanes: { roleIds: ['primary-lane', 'secondary-lane'] },
-    media: {
-      avatarMediaId: 'avatar-1',
-      coverMediaId: 'cover-1',
-      staged: {},
-    },
-  };
-}
+import { makeProfileEditForm } from './profile-edit-test-fixtures';
 
 describe('Profile Edit dirty sections', () => {
-  it('marks only identity dirty and preserves lane and hero ordering', () => {
-    const baseline = makeForm();
+  it('marks only identity dirty and preserves lane and hero priority', () => {
+    const baseline = makeProfileEditForm();
     const current = cloneProfileEditForm(baseline);
     current.identity.displayName = 'New Display Name';
 
@@ -43,24 +20,26 @@ describe('Profile Edit dirty sections', () => {
     const nextBaseline = applySavedProfileEditSections(baseline, current, [
       'identity',
     ]);
-    expect(nextBaseline.lanes.roleIds).toEqual([
-      'primary-lane',
-      'secondary-lane',
-    ]);
-    expect(nextBaseline.heroes.map((hero) => hero.heroId)).toEqual([
-      'hero-1',
-      'hero-2',
-      'hero-3',
+    expect(nextBaseline.laneSelection).toEqual({
+      primary: 'jungle',
+      secondary: 'support',
+    });
+    expect(nextBaseline.heroes).toEqual([
+      { heroId: 'edras', priority: 1 },
+      { heroId: 'goverra', priority: 2 },
+      { heroId: 'heino', priority: 3 },
     ]);
   });
 
-  it('marks only habits dirty when one answer changes', () => {
-    const baseline = makeForm();
+  it('marks only habits dirty when one canonical answer changes', () => {
+    const baseline = makeProfileEditForm();
     const current = cloneProfileEditForm(baseline);
-    current.habits.seriousness = 'Cạnh tranh';
+    current.habits.seriousnessId = 'seriousness.competitive';
 
     expect(getDirtyProfileEditSections(baseline, current)).toEqual(['habits']);
-    expect(current.habits.communication_channels).toEqual(['Voice khi cần']);
-    expect(current.lanes.roleIds).toEqual(baseline.lanes.roleIds);
+    expect(current.habits.communicationPreferenceIds).toEqual([
+      'communication.voice-as-needed',
+    ]);
+    expect(current.laneSelection).toEqual(baseline.laneSelection);
   });
 });

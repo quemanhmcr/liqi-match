@@ -5,8 +5,9 @@ import { View } from 'react-native';
 import { LiquidCard, LiquidChip } from '@/shared/components/liquid';
 
 import { ProfileText } from '../../components/ProfileShared';
-import type { ProfileReferenceOption } from '../../services/profile-service';
 import { profileEditStyles as styles } from './profile-edit-styles';
+
+type CatalogOption<Id extends string> = Readonly<{ id: Id; label: string }>;
 
 export function ProfileEditSection({
   children,
@@ -56,25 +57,20 @@ export function ProfileEditFieldLabel({
   );
 }
 
-export function ProfileEditOptionGroup({
+export function ProfileEditOptionGroup<Id extends string>({
   label,
   onSelect,
   options,
   selectedId,
 }: {
   label: string;
-  onSelect: (id: string) => void;
-  options: ProfileReferenceOption[];
-  selectedId?: string;
+  onSelect: (id: Id) => void;
+  options: readonly CatalogOption<Id>[];
+  selectedId: Id | null;
 }) {
-  const unsupported =
-    selectedId && !options.some((option) => option.id === selectedId);
   return (
     <>
       <ProfileEditFieldLabel label={label} />
-      {unsupported ? (
-        <UnsupportedProfileValue label={label} value={selectedId} />
-      ) : null}
       <View style={styles.chipWrap}>
         {options.map((option) => (
           <LiquidChip
@@ -95,37 +91,33 @@ export function ProfileEditOptionGroup({
   );
 }
 
-export function ProfileEditStringSingleGroup({
+export function ProfileEditCatalogSingleGroup<Id extends string>({
   label,
   onSelect,
   options,
-  selected,
+  selectedId,
 }: {
   label: string;
-  onSelect: (value: string) => void;
-  options: readonly string[];
-  selected?: string;
+  onSelect: (id: Id) => void;
+  options: readonly CatalogOption<Id>[];
+  selectedId: Id | null;
 }) {
-  const unsupported = selected && !options.includes(selected);
   return (
     <>
       <ProfileEditFieldLabel label={label} />
-      {unsupported ? (
-        <UnsupportedProfileValue label={label} value={selected} />
-      ) : null}
       <View style={styles.chipWrap}>
         {options.map((option) => (
           <LiquidChip
-            accessibilityLabel={`${label} ${option}`}
-            accessibilityState={{ selected: selected === option }}
+            accessibilityLabel={`${label} ${option.label}`}
+            accessibilityState={{ selected: selectedId === option.id }}
             density="compact"
-            key={option}
-            onPress={() => onSelect(option)}
-            selected={selected === option}
+            key={option.id}
+            onPress={() => onSelect(option.id)}
+            selected={selectedId === option.id}
             textStyle={styles.chipText}
             variant="purple"
           >
-            {option}
+            {option.label}
           </LiquidChip>
         ))}
       </View>
@@ -133,44 +125,42 @@ export function ProfileEditStringSingleGroup({
   );
 }
 
-export function ProfileEditStringMultiGroup({
+export function ProfileEditCatalogMultiGroup<Id extends string>({
   label,
   limit,
   onToggle,
   options,
-  selected,
+  selectedIds,
 }: {
   label: string;
   limit: number;
-  onToggle: (value: string) => void;
-  options: readonly string[];
-  selected?: string[];
+  onToggle: (id: Id) => void;
+  options: readonly CatalogOption<Id>[];
+  selectedIds: readonly Id[];
 }) {
-  const values = selected ?? [];
-  const unsupported = values.filter((value) => !options.includes(value));
   return (
     <>
-      <ProfileEditFieldLabel label={label} meta={`${values.length}/${limit}`} />
-      {unsupported.map((value) => (
-        <UnsupportedProfileValue key={value} label={label} value={value} />
-      ))}
+      <ProfileEditFieldLabel
+        label={label}
+        meta={`${selectedIds.length}/${limit}`}
+      />
       <View style={styles.chipWrap}>
         {options.map((option) => {
-          const isSelected = values.includes(option);
-          const disabled = !isSelected && values.length >= limit;
+          const isSelected = selectedIds.includes(option.id);
+          const disabled = !isSelected && selectedIds.length >= limit;
           return (
             <LiquidChip
-              accessibilityLabel={`${label} ${option}`}
+              accessibilityLabel={`${label} ${option.label}`}
               accessibilityState={{ disabled, selected: isSelected }}
               density="compact"
               disabled={disabled}
-              key={option}
-              onPress={() => onToggle(option)}
+              key={option.id}
+              onPress={() => onToggle(option.id)}
               selected={isSelected}
               textStyle={styles.chipText}
               variant="purple"
             >
-              {option}
+              {option.label}
             </LiquidChip>
           );
         })}

@@ -1,3 +1,8 @@
+import {
+  GENDER_CATALOG,
+  GenderIdSchema,
+  legacyValueForCatalogId,
+} from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
@@ -44,7 +49,7 @@ export async function saveProfileIdentity(input: {
     profileSaved = true;
   }
 
-  const genderChanged = input.baseline.gender !== input.current.gender;
+  const genderChanged = input.baseline.genderId !== input.current.genderId;
   const statusChanged = input.baseline.status !== input.current.status;
   const statsChanged =
     stableKey(input.baseline.stats) !== stableKey(input.current.stats);
@@ -59,7 +64,13 @@ export async function saveProfileIdentity(input: {
         if (genderChanged) {
           next.profile_basics = {
             ...recordValue(summary.profile_basics),
-            gender: input.current.gender ?? null,
+            gender:
+              input.current.genderId === null
+                ? null
+                : legacyValueForCatalogId(
+                    GENDER_CATALOG,
+                    GenderIdSchema.parse(input.current.genderId),
+                  ),
           };
         }
         if (statusChanged) next.profile_status = input.current.status ?? null;

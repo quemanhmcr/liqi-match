@@ -1,15 +1,17 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-import type { AuthSession } from '@/shared/auth/auth-service';
-import { supabaseRest } from '@/shared/services/supabase-rest';
+import { createEmptyHabitAnswers } from '@/entities/player-profile';
 import {
   ProfileEditCommandError,
+  saveProfileGameProfile,
   saveProfileHabits,
   saveProfileHeroes,
   saveProfileIdentity,
   saveProfileMediaAssociation,
   saveProfileRoles,
 } from '@/features/profile/edit/services/profile-edit-commands';
+import type { AuthSession } from '@/shared/auth/auth-service';
+import { supabaseRest } from '@/shared/services/supabase-rest';
 
 jest.mock('@/shared/services/supabase-rest', () => ({
   supabaseRest: jest.fn(),
@@ -42,8 +44,16 @@ describe('Profile Edit commands', () => {
     mockSupabaseRest.mockResolvedValueOnce([]);
 
     await saveProfileIdentity({
-      baseline: { bio: 'Bio', displayName: 'Old name' },
-      current: { bio: 'Bio', displayName: 'New name' },
+      baseline: {
+        bio: 'Bio',
+        displayName: 'Old name',
+        genderId: null,
+      },
+      current: {
+        bio: 'Bio',
+        displayName: 'New name',
+        genderId: null,
+      },
       profileId,
       session,
     });
@@ -60,12 +70,38 @@ describe('Profile Edit commands', () => {
     expect(mockSupabaseRest.mock.calls[0]?.[0]).not.toContain('profile_habits');
   });
 
-  it('upserts a replacement role before deleting the previous role', async () => {
+  it('maps canonical rank to DB UUID instead of writing the canonical ID', async () => {
+    mockSupabaseRest.mockResolvedValueOnce([]);
+
+    await saveProfileGameProfile({
+      baseline: { handle: 'Handle', rankId: null },
+      current: { handle: 'Handle', rankId: 'master' },
+      hasGameProfileRecord: true,
+      profileId,
+      rankDbIds: { master: 'rank-db-master' },
+      session,
+    });
+
+    expect(mockSupabaseRest).toHaveBeenCalledWith(
+      `game_profiles?profile_id=eq.${profileId}`,
+      expect.objectContaining({
+        body: { rank_id: 'rank-db-master' },
+        method: 'PATCH',
+      }),
+    );
+  });
+
+  it('upserts a replacement lane DB row before deleting the previous row', async () => {
     mockSupabaseRest.mockResolvedValue([]);
 
     await saveProfileRoles({
-      baselineRoleIds: ['role-old'],
-      currentRoleIds: ['role-new'],
+      baselineSelection: { primary: 'jungle', secondary: null },
+      currentSelection: { primary: 'mid', secondary: null },
+      laneDbIds: {
+        jungle: 'role-db-jungle',
+        mid: 'role-db-mid',
+      },
+      lanesLossless: true,
       profileId,
       session,
     });
@@ -75,23 +111,28 @@ describe('Profile Edit commands', () => {
       'profile_roles?on_conflict=profile_id,role_id',
     );
     expect(mockSupabaseRest.mock.calls[0]?.[1]).toEqual(
-      expect.objectContaining({ method: 'POST' }),
+      expect.objectContaining({
+        body: { profile_id: profileId, role_id: 'role-db-mid' },
+        method: 'POST',
+      }),
     );
     expect(mockSupabaseRest.mock.calls[1]?.[0]).toContain(
-      'role_id=eq.role-old',
-    );
-    expect(mockSupabaseRest.mock.calls[1]?.[1]).toEqual(
-      expect.objectContaining({ method: 'DELETE' }),
+      'role_id=eq.role-db-jungle',
     );
   });
 
-  it('does not delete an old role when replacement upsert fails', async () => {
+  it('does not delete an old lane when replacement upsert fails', async () => {
     mockSupabaseRest.mockRejectedValueOnce(new Error('insert failed'));
 
     await expect(
       saveProfileRoles({
-        baselineRoleIds: ['role-old'],
-        currentRoleIds: ['role-new'],
+        baselineSelection: { primary: 'jungle', secondary: null },
+        currentSelection: { primary: 'mid', secondary: null },
+        laneDbIds: {
+          jungle: 'role-db-jungle',
+          mid: 'role-db-mid',
+        },
+        lanesLossless: true,
         profileId,
         session,
       }),
@@ -103,9 +144,7 @@ describe('Profile Edit commands', () => {
     );
   });
 
-  it('writes replacement hero and ordered metadata before deleting the old hero', async () => {
-    const oldHero = '11111111-1111-4111-8111-111111111111';
-    const newHero = '22222222-2222-4222-8222-222222222222';
+  it('writes replacement hero and exact ordered metadata before deleting the old hero', async () => {
     mockSupabaseRest
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ media_summary: { preserved: true } }])
@@ -113,34 +152,47 @@ describe('Profile Edit commands', () => {
       .mockResolvedValueOnce([]);
 
     await saveProfileHeroes({
-      baselineHeroes: [{ heroId: oldHero, name: 'Old', slug: 'old' }],
-      currentHeroes: [{ heroId: newHero, name: 'New', slug: 'new' }],
+      baselineHeroes: [{ heroId: 'edras', priority: 1 }],
+      currentHeroes: [{ heroId: 'goverra', priority: 1 }],
       hasHabitRecord: true,
+      heroDbIds: {
+        edras: 'hero-db-edras',
+        goverra: 'hero-db-goverra',
+      },
+      heroesLossless: true,
       profileId,
       session,
     });
 
     expect(mockSupabaseRest).toHaveBeenCalledTimes(4);
-    expect(mockSupabaseRest.mock.calls[0]?.[0]).toBe(
-      'profile_heroes?on_conflict=profile_id,hero_id',
-    );
-    expect(mockSupabaseRest.mock.calls[1]?.[0]).toContain(
-      'profile_habits?select=media_summary',
+    expect(mockSupabaseRest.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        body: { hero_id: 'hero-db-goverra', profile_id: profileId },
+        method: 'POST',
+      }),
     );
     expect(mockSupabaseRest.mock.calls[2]?.[1]).toEqual(
-      expect.objectContaining({ method: 'PATCH' }),
+      expect.objectContaining({
+        body: expect.objectContaining({
+          media_summary: expect.objectContaining({
+            favorite_hero_stats: [
+              expect.objectContaining({
+                hero_id: 'hero-db-goverra',
+                order: 0,
+                slug: 'goverra',
+              }),
+            ],
+          }),
+        }),
+        method: 'PATCH',
+      }),
     );
     expect(mockSupabaseRest.mock.calls[3]?.[0]).toContain(
-      `hero_id=eq.${oldHero}`,
-    );
-    expect(mockSupabaseRest.mock.calls[3]?.[1]).toEqual(
-      expect.objectContaining({ method: 'DELETE' }),
+      'hero_id=eq.hero-db-edras',
     );
   });
 
   it('keeps the old hero when replacement metadata cannot be saved', async () => {
-    const oldHero = '11111111-1111-4111-8111-111111111111';
-    const newHero = '22222222-2222-4222-8222-222222222222';
     mockSupabaseRest
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ media_summary: {} }])
@@ -148,30 +200,43 @@ describe('Profile Edit commands', () => {
 
     await expect(
       saveProfileHeroes({
-        baselineHeroes: [{ heroId: oldHero, name: 'Old', slug: 'old' }],
-        currentHeroes: [{ heroId: newHero, name: 'New', slug: 'new' }],
+        baselineHeroes: [{ heroId: 'edras', priority: 1 }],
+        currentHeroes: [{ heroId: 'goverra', priority: 1 }],
         hasHabitRecord: true,
+        heroDbIds: {
+          edras: 'hero-db-edras',
+          goverra: 'hero-db-goverra',
+        },
+        heroesLossless: true,
         profileId,
         session,
       }),
     ).rejects.toMatchObject({ partiallySaved: true });
 
-    expect(mockSupabaseRest).toHaveBeenCalledTimes(3);
     expect(
       mockSupabaseRest.mock.calls.some(
         ([path, options]) =>
-          path.includes(`hero_id=eq.${oldHero}`) &&
+          path.includes('hero_id=eq.hero-db-edras') &&
           (options as { method?: string })?.method === 'DELETE',
       ),
     ).toBe(false);
   });
 
-  it('patches only the habit answer that changed', async () => {
+  it('patches only the changed canonical habit using its exact legacy value', async () => {
     mockSupabaseRest.mockResolvedValueOnce([]);
+    const baseline = {
+      ...createEmptyHabitAnswers(),
+      seriousnessId: 'seriousness.balanced' as const,
+    };
+    const current = {
+      ...baseline,
+      seriousnessId: 'seriousness.competitive' as const,
+    };
 
     await saveProfileHabits({
-      baseline: { seriousness: 'Cân bằng' },
-      current: { seriousness: 'Cạnh tranh' },
+      baseline,
+      current,
+      habitsLossless: true,
       hasHabitRecord: true,
       profileId,
       session,
@@ -184,6 +249,24 @@ describe('Profile Edit commands', () => {
         method: 'PATCH',
       }),
     );
+  });
+
+  it('blocks habit writes when legacy adaptation was lossy', async () => {
+    await expect(
+      saveProfileHabits({
+        baseline: createEmptyHabitAnswers(),
+        current: {
+          ...createEmptyHabitAnswers(),
+          seriousnessId: 'seriousness.competitive',
+        },
+        habitsLossless: false,
+        hasHabitRecord: true,
+        profileId,
+        session,
+      }),
+    ).rejects.toThrow('chưa resolve losslessly');
+
+    expect(mockSupabaseRest).not.toHaveBeenCalled();
   });
 
   it('reports avatar as saved when cover association fails afterwards', async () => {

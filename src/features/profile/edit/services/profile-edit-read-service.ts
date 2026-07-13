@@ -1,17 +1,29 @@
-import { HEROES } from '@/entities/hero';
+import {
+  GENDER_CATALOG,
+  LANE_CATALOG,
+  RANK_CATALOG,
+  RecurringAvailabilitySchema,
+  adaptLegacyHabitAnswers,
+  resolveCatalogId,
+  resolveHeroId,
+  type GenderId,
+  type HeroId,
+  type LaneSelection,
+  type LaneSlug,
+  type RankId,
+  type RecurringAvailability,
+} from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
 import {
   profileMediaUrl,
-  type ProfileFavoriteHero,
-  type ProfileHeroPickerOption,
-  type ProfileReferenceOption,
   type ProfileStats,
 } from '../../services/profile-service';
 import type {
   ProfileEditDraft,
-  ProfileEditHabitAnswers,
+  ProfileEditHero,
+  ProfileEditReadIssue,
 } from '../model/profile-edit-model';
 
 type MaybeArray<T> = T | T[] | null | undefined;
@@ -23,18 +35,18 @@ type ProfileEditGameProfileRow = {
 };
 
 type ProfileEditHabitRow = {
-  comeback_response: string | null;
-  communication_channels: string[] | null;
-  decision_style: string | null;
-  feedback_style: string | null;
-  loss_response: string | null;
+  comeback_response: unknown;
+  communication_channels: unknown;
+  decision_style: unknown;
+  feedback_style: unknown;
+  loss_response: unknown;
   media_summary: unknown | null;
-  online_time_presets: string[] | null;
-  seriousness: string | null;
-  session_length: string | null;
-  strategy_styles: string[] | null;
-  team_atmospheres: string[] | null;
-  team_goals: string[] | null;
+  online_time_presets: unknown;
+  seriousness: unknown;
+  session_length: unknown;
+  strategy_styles: unknown;
+  team_atmospheres: unknown;
+  team_goals: unknown;
 };
 
 type ProfileEditRow = {
@@ -44,18 +56,16 @@ type ProfileEditRow = {
   game_profiles?: MaybeArray<ProfileEditGameProfileRow>;
   id: string;
   profile_habits?: MaybeArray<ProfileEditHabitRow>;
+  timezone: string | null;
 };
 
 type RankRow = {
   id: string;
-  name: string;
   slug: string;
-  sort_order: number;
 };
 
 type RoleRow = {
   id: string;
-  name: string;
   slug: string;
 };
 
@@ -66,12 +76,10 @@ type ProfileRoleRow = {
 
 type HeroRow = {
   id: string;
-  name: string;
   slug: string;
 };
 
 type HeroEmbed = {
-  name: string | null;
   slug: string | null;
 };
 
@@ -84,14 +92,12 @@ type ProfileHeroRow = {
 type AvailabilitySlotRow = {
   day_of_week: number;
   ends_at: string;
-  id: string;
   starts_at: string;
 };
 
 type HeroStatSummary = {
   heroId?: string;
   matches?: number;
-  name?: string;
   order?: number;
   slug?: string;
   winRate?: number;
@@ -101,6 +107,7 @@ const profileEditSelect = [
   'id',
   'display_name',
   'bio',
+  'timezone',
   'avatar_media_id',
   'game_profiles(handle,rank_id,server_region)',
   [
@@ -111,8 +118,6 @@ const profileEditSelect = [
     ')',
   ].join(''),
 ].join(',');
-
-const editableRoleOrder = ['slayer', 'jungle', 'mid', 'dragon', 'support'];
 
 export async function fetchProfileEditDraft(
   session: AuthSession,
@@ -131,13 +136,10 @@ export async function fetchProfileEditDraft(
       `profiles?id=eq.${encodeURIComponent(profileId)}&select=${profileEditSelect}&limit=1`,
       { session },
     ),
-    supabaseRest<RankRow[]>(
-      'ranks?select=id,slug,name,sort_order&order=sort_order.asc',
-      { session },
-    ),
-    supabaseRest<RoleRow[]>('roles?select=id,slug,name&order=name.asc', {
+    supabaseRest<RankRow[]>('ranks?select=id,slug&order=sort_order.asc', {
       session,
     }),
+    supabaseRest<RoleRow[]>('roles?select=id,slug&order=name.asc', { session }),
     supabaseRest<ProfileRoleRow[]>(
       [
         'profile_roles?select=role_id,created_at',
@@ -147,12 +149,12 @@ export async function fetchProfileEditDraft(
       { session },
     ),
     fetchProfileHeroRows(session, profileId),
-    supabaseRest<HeroRow[]>('heroes?select=id,slug,name&order=name.asc', {
+    supabaseRest<HeroRow[]>('heroes?select=id,slug&order=name.asc', {
       session,
     }),
     supabaseRest<AvailabilitySlotRow[]>(
       [
-        'availability_slots?select=id,day_of_week,starts_at,ends_at',
+        'availability_slots?select=day_of_week,starts_at,ends_at',
         `profile_id=eq.${encodeURIComponent(profileId)}`,
         'order=day_of_week.asc,starts_at.asc',
       ].join('&'),
@@ -163,50 +165,42 @@ export async function fetchProfileEditDraft(
   const row = profileRows[0];
   if (!row) throw new Error('Không tìm thấy hồ sơ để chỉnh sửa.');
 
+  const issues: ProfileEditReadIssue[] = [];
   const gameProfile = first(row.game_profiles);
   const habitRow = first(row.profile_habits);
+  const habits = adaptLegacyHabitAnswers(habitRow);
   const mediaSummary = mediaSummaryRecord(habitRow?.media_summary);
   const coverMediaId = stringValue(mediaSummary.cover_media_id) ?? null;
   const avatarMediaId = row.avatar_media_id ?? null;
-  const favoriteHeroes = buildFavoriteHeroes(selectedHeroes, mediaSummary);
-  const roleOptions = roles
-    .filter((role) => editableRoleOrder.includes(role.slug))
-    .sort(
-      (left, right) =>
-        editableRoleOrder.indexOf(left.slug) -
-        editableRoleOrder.indexOf(right.slug),
-    )
-    .map(toReferenceOption);
+  const rankDbIds = buildRankDbIds(ranks);
+  const laneDbIds = buildLaneDbIds(roles);
+  const heroDbIds = buildHeroDbIds(backendHeroes);
+  const rankId = resolveSelectedRank(gameProfile?.rank_id, ranks, issues);
+  const laneResult = buildLaneSelection(selectedRoles, roles, issues);
+  const heroResult = buildFavoriteHeroes(selectedHeroes, mediaSummary, issues);
+  const availability = buildAvailability(
+    availabilitySlots,
+    row.timezone,
+    issues,
+  );
 
   return {
-    availabilitySlots: availabilitySlots.map((slot) => ({
-      dayOfWeek: slot.day_of_week,
-      endsAt: slot.ends_at,
-      id: slot.id,
-      startsAt: slot.starts_at,
-    })),
     form: {
-      availability: {
-        presets: habitRow
-          ? cloneStringArray(habitRow.online_time_presets)
-          : undefined,
-      },
+      availability,
       gameProfile: {
         handle: gameProfile?.handle ?? '',
-        rankId: gameProfile?.rank_id ?? undefined,
+        rankId,
       },
-      habits: buildHabitAnswers(habitRow),
-      heroes: favoriteHeroes,
+      habits: habits.value,
+      heroes: heroResult.heroes,
       identity: {
         bio: row.bio ?? '',
         displayName: row.display_name ?? '',
-        gender: profileGenderFromSummary(mediaSummary),
+        genderId: resolveGender(mediaSummary, issues),
         stats: profileStatsFromSummary(mediaSummary),
-        status: statusFromSummary(mediaSummary),
+        status: stringValue(mediaSummary.profile_status),
       },
-      lanes: {
-        roleIds: selectedRoles.map((item) => item.role_id),
-      },
+      laneSelection: laneResult.selection,
       media: {
         avatarFallbackUrl: avatarUrlFromSession(session),
         avatarMediaId,
@@ -217,41 +211,109 @@ export async function fetchProfileEditDraft(
         staged: {},
       },
     },
-    heroOptions: buildHeroOptions(backendHeroes, favoriteHeroes),
     id: row.id,
     mediaSummary,
     meta: {
+      habitIssues: habits.issues,
+      habitsLossless: habits.lossless,
       hasGameProfileRecord: Boolean(gameProfile),
       hasHabitRecord: Boolean(habitRow),
+      heroDbIds,
+      heroesLossless: heroResult.lossless,
+      laneDbIds,
+      lanesLossless: laneResult.lossless,
+      rankDbIds,
+      readIssues: issues,
       serverRegion: gameProfile?.server_region ?? undefined,
     },
-    ranks: ranks.map(toReferenceOption),
-    roles: roleOptions,
   };
 }
 
-function buildHabitAnswers(
-  row: ProfileEditHabitRow | undefined,
-): ProfileEditHabitAnswers {
-  if (!row) return {};
-  return stripUndefined({
-    comeback_response: stringValue(row.comeback_response),
-    communication_channels: cloneStringArray(row.communication_channels),
-    decision_style: stringValue(row.decision_style),
-    feedback_style: stringValue(row.feedback_style),
-    loss_response: stringValue(row.loss_response),
-    seriousness: stringValue(row.seriousness),
-    session_length: stringValue(row.session_length),
-    strategy_styles: cloneStringArray(row.strategy_styles),
-    team_atmospheres: cloneStringArray(row.team_atmospheres),
-    team_goals: cloneStringArray(row.team_goals),
+function buildRankDbIds(rows: RankRow[]) {
+  const values: Partial<Record<RankId, string>> = {};
+  for (const row of rows) {
+    const resolution = resolveCatalogId(RANK_CATALOG, row.slug);
+    if (resolution.ok) values[resolution.id] = row.id;
+  }
+  return values;
+}
+
+function buildLaneDbIds(rows: RoleRow[]) {
+  const values: Partial<Record<LaneSlug, string>> = {};
+  for (const row of rows) {
+    const resolution = resolveCatalogId(LANE_CATALOG, row.slug);
+    if (resolution.ok) values[resolution.id] = row.id;
+  }
+  return values;
+}
+
+function buildHeroDbIds(rows: HeroRow[]) {
+  const values: Partial<Record<HeroId, string>> = {};
+  for (const row of rows) {
+    const resolution = resolveHeroId(row.slug);
+    if (resolution.ok) values[resolution.id] = row.id;
+  }
+  return values;
+}
+
+function resolveSelectedRank(
+  rankDbId: string | null | undefined,
+  rows: RankRow[],
+  issues: ProfileEditReadIssue[],
+): RankId | null {
+  if (!rankDbId) return null;
+  const row = rows.find((candidate) => candidate.id === rankDbId);
+  const resolution = resolveCatalogId(RANK_CATALOG, row?.slug);
+  if (resolution.ok) return resolution.id;
+  issues.push({
+    code: 'unknown_rank',
+    path: 'gameProfile.rankId',
+    value: row?.slug ?? rankDbId,
   });
+  return null;
+}
+
+function buildLaneSelection(
+  selectedRows: ProfileRoleRow[],
+  roles: RoleRow[],
+  issues: ProfileEditReadIssue[],
+): { lossless: boolean; selection: LaneSelection | null } {
+  const resolved: LaneSlug[] = [];
+  let lossless = true;
+  for (const selected of selectedRows) {
+    const role = roles.find((candidate) => candidate.id === selected.role_id);
+    const resolution = resolveCatalogId(LANE_CATALOG, role?.slug);
+    if (!resolution.ok) {
+      lossless = false;
+      issues.push({
+        code: 'unknown_lane',
+        path: 'laneSelection',
+        value: role?.slug ?? selected.role_id,
+      });
+      continue;
+    }
+    if (!resolved.includes(resolution.id)) resolved.push(resolution.id);
+  }
+  if (resolved.length > 2) {
+    issues.push({
+      code: 'lane_selection_unrepresentable',
+      path: 'laneSelection',
+      value: resolved,
+    });
+    return { lossless: false, selection: null };
+  }
+  return {
+    lossless,
+    selection: resolved[0]
+      ? { primary: resolved[0], secondary: resolved[1] ?? null }
+      : null,
+  };
 }
 
 async function fetchProfileHeroRows(session: AuthSession, profileId: string) {
   return supabaseRest<ProfileHeroRow[]>(
     [
-      'profile_heroes?select=hero_id,created_at,heroes(name,slug)',
+      'profile_heroes?select=hero_id,created_at,heroes(slug)',
       `profile_id=eq.${encodeURIComponent(profileId)}`,
       'order=created_at.asc',
     ].join('&'),
@@ -262,32 +324,56 @@ async function fetchProfileHeroRows(session: AuthSession, profileId: string) {
 function buildFavoriteHeroes(
   rows: ProfileHeroRow[],
   mediaSummary: Record<string, unknown>,
-): ProfileFavoriteHero[] {
+  issues: ProfileEditReadIssue[],
+): { heroes: ProfileEditHero[]; lossless: boolean } {
   const stats = heroStatsFromSummary(mediaSummary);
-  const heroes = rows
-    .map((row, fallbackOrder) => {
-      const hero = first(row.heroes);
-      const name = stringValue(hero?.name);
-      if (!name) return undefined;
-      const stat = findHeroStat(stats, {
-        heroId: row.hero_id,
-        name,
-        slug: stringValue(hero?.slug),
-      });
-      return {
-        heroId: row.hero_id,
-        matches: stat?.matches,
-        name,
-        order: stat?.order ?? fallbackOrder,
-        slug: stringValue(hero?.slug),
-        winRate: stat?.winRate,
-      };
-    })
-    .filter((hero): hero is NonNullable<typeof hero> => Boolean(hero))
-    .sort((left, right) => left.order - right.order)
-    .slice(0, 3);
+  const resolved: (ProfileEditHero & { sourceOrder: number })[] = [];
+  let lossless = true;
 
-  return heroes.map(({ order: _order, ...hero }) => hero);
+  for (const [sourceOrder, row] of rows.entries()) {
+    const hero = first(row.heroes);
+    const resolution = resolveHeroId(hero?.slug);
+    if (!resolution.ok) {
+      lossless = false;
+      issues.push({
+        code: 'unknown_hero',
+        path: 'heroes',
+        value: hero?.slug ?? row.hero_id,
+      });
+      continue;
+    }
+    const stat = stats.find(
+      (candidate) =>
+        candidate.heroId === row.hero_id || candidate.slug === hero?.slug,
+    );
+    resolved.push({
+      heroId: resolution.id,
+      matches: stat?.matches,
+      priority: (stat?.order ?? sourceOrder) + 1,
+      sourceOrder,
+      winRate: stat?.winRate,
+    });
+  }
+
+  if (resolved.length > 3) {
+    issues.push({
+      code: 'hero_selection_unrepresentable',
+      path: 'heroes',
+      value: resolved.map((hero) => hero.heroId),
+    });
+    return { heroes: [], lossless: false };
+  }
+
+  const heroes = resolved
+    .sort(
+      (left, right) =>
+        left.priority - right.priority || left.sourceOrder - right.sourceOrder,
+    )
+    .map(({ sourceOrder: _sourceOrder, ...hero }, index) => ({
+      ...hero,
+      priority: index + 1,
+    }));
+  return { heroes, lossless };
 }
 
 function heroStatsFromSummary(summary: Record<string, unknown>) {
@@ -299,7 +385,6 @@ function heroStatsFromSummary(summary: Record<string, unknown>) {
       return stripUndefined({
         heroId: stringValue(row.hero_id),
         matches: optionalNumber(row.matches, 99999),
-        name: stringValue(row.name),
         order: optionalNumber(row.order, 2),
         slug: stringValue(row.slug),
         winRate: optionalNumber(row.win_rate ?? row.winRate, 100),
@@ -308,51 +393,50 @@ function heroStatsFromSummary(summary: Record<string, unknown>) {
     .filter((item): item is HeroStatSummary => Boolean(item));
 }
 
-function findHeroStat(
-  stats: HeroStatSummary[],
-  hero: Pick<ProfileFavoriteHero, 'heroId' | 'name' | 'slug'>,
-) {
-  const keys = heroKeys(hero);
-  return stats.find((stat) => heroKeys(stat).some((key) => keys.includes(key)));
+function resolveGender(
+  summary: Record<string, unknown>,
+  issues: ProfileEditReadIssue[],
+): GenderId | null {
+  const raw = mediaSummaryRecord(summary.profile_basics).gender;
+  if (raw === null || raw === undefined) return null;
+  const resolution = resolveCatalogId(GENDER_CATALOG, raw);
+  if (resolution.ok) return resolution.id;
+  issues.push({
+    code: 'unknown_gender',
+    path: 'identity.genderId',
+    value: raw,
+  });
+  return null;
 }
 
-function buildHeroOptions(
-  backendHeroes: HeroRow[],
-  selectedHeroes: ProfileFavoriteHero[],
-): ProfileHeroPickerOption[] {
-  const bySlug = new Map<string, ProfileHeroPickerOption>();
-  for (const hero of HEROES) {
-    const slug = toDbSlug(hero.id);
-    bySlug.set(slug, {
-      name: hero.name,
-      role: hero.variant ?? hero.role,
-      slug,
-    });
-  }
-  for (const hero of backendHeroes) {
-    bySlug.set(hero.slug, {
-      ...bySlug.get(hero.slug),
-      heroId: hero.id,
-      name: hero.name,
-      slug: hero.slug,
-    });
-  }
-  for (const hero of selectedHeroes) {
-    const slug = hero.slug ?? normalizeKey(hero.name);
-    bySlug.set(slug, { ...bySlug.get(slug), ...hero, slug });
-  }
-  return [...bySlug.values()].sort((left, right) =>
-    left.name.localeCompare(right.name, 'vi'),
-  );
+function buildAvailability(
+  rows: AvailabilitySlotRow[],
+  timezone: string | null,
+  issues: ProfileEditReadIssue[],
+): RecurringAvailability | null {
+  if (!rows.length) return null;
+  const candidate = {
+    slots: rows.map((row) => ({
+      dayOfWeek: row.day_of_week,
+      endMinute: parseClockMinute(row.ends_at, true),
+      startMinute: parseClockMinute(row.starts_at, false),
+    })),
+    timezone: timezone ?? '',
+  };
+  const parsed = RecurringAvailabilitySchema.safeParse(candidate);
+  if (parsed.success) return parsed.data;
+  issues.push({
+    code: 'invalid_availability',
+    path: 'availability',
+    value: candidate,
+  });
+  return null;
 }
 
-function profileGenderFromSummary(summary: Record<string, unknown>) {
-  const basics = mediaSummaryRecord(summary.profile_basics);
-  return stringValue(basics.gender);
-}
-
-function statusFromSummary(summary: Record<string, unknown>) {
-  return stringValue(summary.profile_status);
+function parseClockMinute(value: string, isEnd: boolean) {
+  if (isEnd && value === '23:59:59') return 24 * 60;
+  const [hours = '0', minutes = '0'] = value.split(':');
+  return Number(hours) * 60 + Number(minutes);
 }
 
 function profileStatsFromSummary(
@@ -391,29 +475,6 @@ function avatarUrlFromSession(session: AuthSession) {
   );
 }
 
-function toReferenceOption(row: RankRow | RoleRow): ProfileReferenceOption {
-  return { id: row.id, label: row.name, slug: row.slug };
-}
-
-function heroKeys(hero: { heroId?: string; name?: string; slug?: string }) {
-  return [hero.heroId, hero.slug, hero.name]
-    .map((value) => (value ? normalizeKey(value) : ''))
-    .filter(Boolean);
-}
-
-function toDbSlug(value: string) {
-  return normalizeKey(value).replace(/-/g, '_');
-}
-
-function normalizeKey(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
 function mediaSummaryRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -422,10 +483,6 @@ function mediaSummaryRecord(value: unknown): Record<string, unknown> {
 
 function stringValue(value: unknown) {
   return typeof value === 'string' && value.trim() ? value.trim() : undefined;
-}
-
-function cloneStringArray(value: string[] | null | undefined) {
-  return Array.isArray(value) ? [...value] : undefined;
 }
 
 function first<T>(value: MaybeArray<T>): T | undefined {

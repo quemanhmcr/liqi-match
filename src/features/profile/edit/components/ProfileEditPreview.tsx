@@ -2,6 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image, StyleSheet, View } from 'react-native';
 
+import {
+  LANE_CATALOG,
+  RANK_CATALOG,
+  catalogOptionById,
+} from '@/entities/player-profile';
 import { LiquidCard } from '@/shared/components/liquid';
 
 import { ProfileText } from '../../components/ProfileShared';
@@ -20,27 +25,27 @@ const statusLabels: Record<string, string> = {
 };
 
 export function ProfileEditPreview({
-  draft,
+  draft: _draft,
   form,
 }: {
   draft: ProfileEditDraft;
   form: ProfileEditForm;
 }) {
-  const rankLabel =
-    draft.ranks.find((rank) => rank.id === form.gameProfile.rankId)?.label ??
-    (form.gameProfile.rankId ? 'Rank cũ chưa hỗ trợ' : 'Chưa chọn rank');
-  const roleLabels = form.lanes.roleIds.map(
-    (roleId) =>
-      draft.roles.find((role) => role.id === roleId)?.label ?? 'Lane cũ',
-  );
-  const avatarUrl = mediaPreviewUrl(
-    form.media.staged.avatar,
-    form.media.avatarUrl,
-  );
-  const coverUrl = mediaPreviewUrl(
-    form.media.staged.cover,
-    form.media.coverUrl,
-  );
+  const rankLabel = form.gameProfile.rankId
+    ? catalogOptionById(RANK_CATALOG, form.gameProfile.rankId)?.label
+    : undefined;
+  const laneLabels = form.laneSelection
+    ? [form.laneSelection.primary, form.laneSelection.secondary]
+        .filter((value): value is NonNullable<typeof value> => Boolean(value))
+        .map((laneId) => catalogOptionById(LANE_CATALOG, laneId)?.label)
+        .filter((value): value is string => Boolean(value))
+    : [];
+  const avatar = form.media.staged.avatar;
+  const cover = form.media.staged.cover;
+  const avatarUrl =
+    avatar?.uploadedUrl ?? avatar?.asset.uri ?? form.media.avatarUrl;
+  const coverUrl =
+    cover?.uploadedUrl ?? cover?.asset.uri ?? form.media.coverUrl;
 
   return (
     <LiquidCard
@@ -90,7 +95,8 @@ export function ProfileEditPreview({
             </View>
           </View>
           <ProfileText numberOfLines={1} style={styles.previewMeta}>
-            {rankLabel} · {roleLabels.join(' / ') || 'Chưa chọn lane'}
+            {rankLabel ?? 'Chưa chọn rank'} ·{' '}
+            {laneLabels.join(' / ') || 'Chưa chọn lane'}
           </ProfileText>
           <ProfileText numberOfLines={1} style={styles.previewMeta}>
             {form.gameProfile.handle || 'Chưa có game handle'}
@@ -110,12 +116,4 @@ export function ProfileEditPreview({
       </ProfileText>
     </LiquidCard>
   );
-}
-
-function mediaPreviewUrl(
-  item: ProfileEditForm['media']['staged']['avatar'] | undefined,
-  fallback: string | undefined,
-) {
-  if (item?.uploadedAssetId && item.uploadedUrl) return item.uploadedUrl;
-  return item?.asset.uri ?? fallback;
 }

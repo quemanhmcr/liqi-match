@@ -1,7 +1,8 @@
 import { TextInput } from 'react-native';
 
+import { RANK_CATALOG } from '@/entities/player-profile';
+
 import { ProfileText } from '../../components/ProfileShared';
-import type { ProfileReferenceOption } from '../../services/profile-service';
 import type { ProfileEditGameProfile } from '../model/profile-edit-model';
 import {
   ProfileEditFieldLabel,
@@ -14,23 +15,21 @@ export function GameProfileSection({
   gameProfile,
   hasGameProfileRecord,
   onChange,
-  ranks,
 }: {
   gameProfile: ProfileEditGameProfile;
   hasGameProfileRecord: boolean;
   onChange: (gameProfile: ProfileEditGameProfile) => void;
-  ranks: ProfileReferenceOption[];
 }) {
   return (
     <ProfileEditSection
       icon="game-controller-outline"
-      subtitle="Game handle và rank được lưu riêng; region không còn là field có thể chỉnh."
+      subtitle="Game handle và rank dùng canonical IDs; region không còn là field có thể chỉnh."
       title="Hồ sơ game"
     >
       {!hasGameProfileRecord ? (
         <ProfileText style={styles.errorText}>
-          Chưa có game profile trên server. Màn hình này sẽ không tự tạo handle
-          hoặc region giả; các phần hồ sơ khác vẫn có thể lưu độc lập.
+          Chưa có game profile trên server. Màn hình này không tự tạo handle,
+          rank hoặc region giả; các phần hồ sơ khác vẫn có thể lưu độc lập.
         </ProfileText>
       ) : null}
       <ProfileEditFieldLabel
@@ -50,7 +49,7 @@ export function GameProfileSection({
       <ProfileEditOptionGroup
         label="Cấp độ"
         onSelect={(rankId) => onChange({ ...gameProfile, rankId })}
-        options={ranks}
+        options={RANK_CATALOG}
         selectedId={gameProfile.rankId}
       />
     </ProfileEditSection>

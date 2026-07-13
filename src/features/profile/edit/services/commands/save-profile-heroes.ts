@@ -1,23 +1,25 @@
+import { heroDefinitionById } from '@/entities/hero';
+import {
+  FavoriteHeroSelectionsSchema,
+  type HeroId,
+} from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
-import type { ProfileFavoriteHero } from '../../../services/profile-service';
+import type { ProfileEditHero } from '../../model/profile-edit-model';
 import { ProfileEditCommandError } from './profile-edit-command-error';
 import {
-  isUuid,
-  normalizeKey,
   normalizeOptionalNumber,
-  normalizeSlug,
   stripUndefined,
 } from './profile-edit-command-utils';
 import { patchProfileMediaSummary } from './profile-edit-media-summary';
 
-type HeroLookupRow = { id: string; name: string; slug: string };
-
 export async function saveProfileHeroes(input: {
-  baselineHeroes: readonly ProfileFavoriteHero[];
-  currentHeroes: readonly ProfileFavoriteHero[];
+  baselineHeroes: readonly ProfileEditHero[];
+  currentHeroes: readonly ProfileEditHero[];
   hasHabitRecord: boolean;
+  heroDbIds: Partial<Record<HeroId, string>>;
+  heroesLossless: boolean;
   profileId: string;
   session: AuthSession;
 }) {
@@ -26,28 +28,20 @@ export async function saveProfileHeroes(input: {
       'Không thể lưu tướng hoặc thứ tự vì profile_habits chưa tồn tại. Không có record cũ nào bị thay đổi.',
     );
   }
-
-  const previous = dedupeHeroes(input.baselineHeroes).slice(0, 3);
-  const selected = dedupeHeroes(input.currentHeroes).slice(0, 3);
-  const resolved = await Promise.all(
-    selected.map(async (hero) => ({
-      hero,
-      heroId: await resolveHeroId(input.session, hero),
-    })),
-  );
-  const unresolved = resolved.find((item) => !item.heroId);
-  if (unresolved) {
+  if (!input.heroesLossless) {
     throw new ProfileEditCommandError(
-      `Chưa đồng bộ dữ liệu tướng “${unresolved.hero.name}”. Không có tướng cũ nào bị xoá.`,
+      'Danh sách hero legacy chưa resolve losslessly. Hãy xử lý giá trị unsupported trước khi lưu.',
     );
   }
 
-  const previousIds = previous
-    .map((hero) => hero.heroId)
-    .filter((value): value is string => Boolean(value));
-  const selectedIds = resolved
-    .map((item) => item.heroId)
-    .filter((value): value is string => Boolean(value));
+  const previous = validateHeroes(input.baselineHeroes);
+  const selected = validateHeroes(input.currentHeroes);
+  const previousIds = previous.map((hero) =>
+    dbHeroId(hero.heroId, input.heroDbIds),
+  );
+  const selectedIds = selected.map((hero) =>
+    dbHeroId(hero.heroId, input.heroDbIds),
+  );
   const additions = selectedIds.filter(
     (heroId) => !previousIds.includes(heroId),
   );
@@ -57,7 +51,6 @@ export async function saveProfileHeroes(input: {
   let databaseChanged = false;
 
   try {
-    // A failed replacement may leave an extra hero temporarily, never a gap.
     for (const heroId of additions) {
       await supabaseRest('profile_heroes?on_conflict=profile_id,hero_id', {
         body: { hero_id: heroId, profile_id: input.profileId },
@@ -73,16 +66,22 @@ export async function saveProfileHeroes(input: {
       input.profileId,
       (summary) => ({
         ...summary,
-        favorite_hero_stats: selected.map((hero, order) =>
-          stripUndefined({
-            hero_id: resolved[order]?.heroId,
+        favorite_hero_stats: selected.map((hero, order) => {
+          const definition = heroDefinitionById(hero.heroId);
+          if (!definition) {
+            throw new ProfileEditCommandError(
+              `Không tìm thấy canonical hero “${hero.heroId}”.`,
+            );
+          }
+          return stripUndefined({
+            hero_id: selectedIds[order],
             matches: normalizeOptionalNumber(hero.matches, 99999),
-            name: hero.name,
+            name: definition.name,
             order,
-            slug: hero.slug,
+            slug: definition.legacySlug,
             win_rate: normalizeOptionalNumber(hero.winRate, 100),
-          }),
-        ),
+          });
+        }),
       }),
     );
     databaseChanged = true;
@@ -112,22 +111,22 @@ export async function saveProfileHeroes(input: {
   }
 }
 
-async function resolveHeroId(session: AuthSession, hero: ProfileFavoriteHero) {
-  if (hero.heroId && isUuid(hero.heroId)) return hero.heroId;
-  const slug = normalizeSlug(hero.slug ?? hero.name);
-  const rows = await supabaseRest<HeroLookupRow[]>(
-    `heroes?select=id,slug,name&slug=eq.${encodeURIComponent(slug)}&limit=1`,
-    { session },
+function validateHeroes(heroes: readonly ProfileEditHero[]) {
+  const canonical = FavoriteHeroSelectionsSchema.parse(
+    heroes.map(({ heroId, priority }) => ({ heroId, priority })),
   );
-  return rows[0]?.id;
+  return canonical.map((selection) => {
+    const source = heroes.find((hero) => hero.heroId === selection.heroId)!;
+    return { ...source, ...selection };
+  });
 }
 
-function dedupeHeroes(heroes: readonly ProfileFavoriteHero[]) {
-  const seen = new Set<string>();
-  return heroes.filter((hero) => {
-    const key = normalizeKey(hero.slug ?? hero.name);
-    if (!key || seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+function dbHeroId(heroId: HeroId, dbIds: Partial<Record<HeroId, string>>) {
+  const dbId = dbIds[heroId];
+  if (!dbId) {
+    throw new ProfileEditCommandError(
+      `Hero canonical “${heroId}” chưa có DB UUID trong edit draft.`,
+    );
+  }
+  return dbId;
 }

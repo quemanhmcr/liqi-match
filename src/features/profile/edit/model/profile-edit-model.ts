@@ -1,9 +1,15 @@
 import type {
-  ProfileFavoriteHero,
-  ProfileHeroPickerOption,
-  ProfileReferenceOption,
-  ProfileStats,
-} from '../../services/profile-service';
+  GenderId,
+  HabitAnswersDraft,
+  LegacyHabitAdapterIssue,
+  HeroId,
+  LaneSelection,
+  LaneSlug,
+  RankId,
+  RecurringAvailability,
+} from '@/entities/player-profile';
+
+import type { ProfileStats } from '../../services/profile-service';
 
 export const profileEditSections = [
   'identity',
@@ -17,37 +23,24 @@ export const profileEditSections = [
 
 export type ProfileEditSectionId = (typeof profileEditSections)[number];
 
-export type ProfileEditHabitAnswers = {
-  comeback_response?: string;
-  communication_channels?: string[];
-  decision_style?: string;
-  feedback_style?: string;
-  loss_response?: string;
-  seriousness?: string;
-  session_length?: string;
-  strategy_styles?: string[];
-  team_atmospheres?: string[];
-  team_goals?: string[];
-};
-
-export type ProfileAvailabilitySlot = {
-  dayOfWeek: number;
-  endsAt: string;
-  id: string;
-  startsAt: string;
+export type ProfileEditHero = {
+  heroId: HeroId;
+  matches?: number;
+  priority: number;
+  winRate?: number;
 };
 
 export type ProfileEditIdentity = {
   bio: string;
   displayName: string;
-  gender?: string;
+  genderId: GenderId | null;
   stats?: Partial<ProfileStats>;
   status?: string;
 };
 
 export type ProfileEditGameProfile = {
   handle: string;
-  rankId?: string;
+  rankId: RankId | null;
 };
 
 export type ProfileEditMediaSlot = 'avatar' | 'cover';
@@ -89,32 +82,45 @@ export type ProfileEditMedia = {
 };
 
 export type ProfileEditForm = {
-  availability: {
-    presets?: string[];
-  };
+  availability: RecurringAvailability | null;
   gameProfile: ProfileEditGameProfile;
-  habits: ProfileEditHabitAnswers;
-  heroes: ProfileFavoriteHero[];
+  habits: HabitAnswersDraft;
+  heroes: ProfileEditHero[];
   identity: ProfileEditIdentity;
-  lanes: {
-    roleIds: string[];
-  };
+  laneSelection: LaneSelection | null;
   media: ProfileEditMedia;
 };
 
+export type ProfileEditReadIssue = {
+  code:
+    | 'hero_selection_unrepresentable'
+    | 'invalid_availability'
+    | 'lane_selection_unrepresentable'
+    | 'unknown_gender'
+    | 'unknown_hero'
+    | 'unknown_lane'
+    | 'unknown_rank';
+  path: string;
+  value: unknown;
+};
+
 export type ProfileEditDraft = {
-  availabilitySlots: ProfileAvailabilitySlot[];
   form: ProfileEditForm;
-  heroOptions: ProfileHeroPickerOption[];
   id: string;
   mediaSummary: Record<string, unknown>;
   meta: {
+    habitIssues: LegacyHabitAdapterIssue[];
+    habitsLossless: boolean;
     hasGameProfileRecord: boolean;
     hasHabitRecord: boolean;
+    heroesLossless: boolean;
+    laneDbIds: Partial<Record<LaneSlug, string>>;
+    lanesLossless: boolean;
+    heroDbIds: Partial<Record<HeroId, string>>;
+    rankDbIds: Partial<Record<RankId, string>>;
+    readIssues: ProfileEditReadIssue[];
     serverRegion?: string;
   };
-  ranks: ProfileReferenceOption[];
-  roles: ProfileReferenceOption[];
 };
 
 export type ProfileEditDirtyState = Record<ProfileEditSectionId, boolean>;
@@ -148,13 +154,17 @@ export function applySavedProfileEditSections(
   const next = cloneProfileEditForm(baseline);
   for (const section of savedSections) {
     if (section === 'identity') next.identity = clone(current.identity);
-    if (section === 'gameProfile')
+    if (section === 'gameProfile') {
       next.gameProfile = clone(current.gameProfile);
-    if (section === 'lanes') next.lanes = clone(current.lanes);
+    }
+    if (section === 'lanes') {
+      next.laneSelection = clone(current.laneSelection);
+    }
     if (section === 'heroes') next.heroes = clone(current.heroes);
     if (section === 'habits') next.habits = clone(current.habits);
-    if (section === 'availability')
+    if (section === 'availability') {
       next.availability = clone(current.availability);
+    }
     if (section === 'media') next.media = clone(current.media);
   }
   return next;
@@ -170,18 +180,8 @@ function stableSectionKey(
 ): string {
   if (section === 'identity') return stableKey(value.identity);
   if (section === 'gameProfile') return stableKey(value.gameProfile);
-  if (section === 'lanes') return stableKey(value.lanes);
-  if (section === 'heroes') {
-    return stableKey(
-      value.heroes.map((hero) => ({
-        heroId: hero.heroId ?? null,
-        matches: hero.matches ?? null,
-        name: hero.name,
-        slug: hero.slug ?? null,
-        winRate: hero.winRate ?? null,
-      })),
-    );
-  }
+  if (section === 'lanes') return stableKey(value.laneSelection);
+  if (section === 'heroes') return stableKey(value.heroes);
   if (section === 'habits') return stableKey(value.habits);
   if (section === 'availability') return stableKey(value.availability);
   return stableKey({

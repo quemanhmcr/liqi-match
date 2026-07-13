@@ -3,6 +3,10 @@ import { act, fireEvent, waitFor } from '@testing-library/react-native';
 
 import { ProfileEditScreen } from '@/features/profile/screens/ProfileEditScreen';
 import {
+  makeProfileEditDraft,
+  makeProfileEditForm,
+} from './profile-edit-test-fixtures';
+import {
   clearPendingProfileMediaSlot,
   consumePendingProfileMediaSlot,
   persistProfileMediaDraftItem,
@@ -134,36 +138,23 @@ describe('ProfileEditScreen', () => {
 });
 
 function profileDraft() {
-  return {
-    availabilitySlots: [],
-    form: {
-      availability: { presets: ['Tối'] },
-      gameProfile: {
-        handle: 'IndependentHandle',
-        rankId: undefined,
-      },
-      habits: {},
-      heroes: [],
-      identity: {
-        bio: 'Bio',
-        displayName: 'Display Name',
-      },
-      lanes: { roleIds: [] },
-      media: {
-        avatarMediaId: null,
-        coverMediaId: null,
-        staged: {},
-      },
-    },
-    heroOptions: [],
-    id: testAuthSession.user.id,
-    mediaSummary: {},
-    meta: {
-      hasGameProfileRecord: true,
-      hasHabitRecord: true,
-      serverRegion: 'sea',
-    },
-    ranks: [],
-    roles: [],
+  const form = makeProfileEditForm();
+  form.availability = null;
+  form.gameProfile = {
+    handle: 'IndependentHandle',
+    rankId: null,
   };
+  form.heroes = [];
+  form.identity = {
+    bio: 'Bio',
+    displayName: 'Display Name',
+    genderId: null,
+  };
+  form.laneSelection = null;
+  form.media = {
+    avatarMediaId: null,
+    coverMediaId: null,
+    staged: {},
+  };
+  return makeProfileEditDraft(form, testAuthSession.user.id);
 }

@@ -309,6 +309,13 @@ function ProfileEditEditor({
         />
       ) : null}
       <ProfileEditPreview draft={draft} form={form} />
+      {draft.meta.readIssues.length || draft.meta.habitIssues.length ? (
+        <ProfileText style={styles.errorText}>
+          Một số dữ liệu legacy chưa thể chuyển losslessly. Field không liên
+          quan vẫn lưu độc lập; section bị ảnh hưởng cần được chọn lại bằng giá
+          trị canonical trước khi ghi.
+        </ProfileText>
+      ) : null}
       <IdentitySection
         identity={form.identity}
         onChange={(identity) => setForm({ ...form, identity })}
@@ -317,18 +324,15 @@ function ProfileEditEditor({
         gameProfile={form.gameProfile}
         hasGameProfileRecord={draft.meta.hasGameProfileRecord}
         onChange={(gameProfile) => setForm({ ...form, gameProfile })}
-        ranks={draft.ranks}
       />
       <LaneSection
-        lanes={form.lanes}
-        onChange={(lanes) => setForm({ ...form, lanes })}
+        onChange={(laneSelection) => setForm({ ...form, laneSelection })}
         onLimitReached={showSelectionLimit}
-        roles={draft.roles}
+        selection={form.laneSelection}
       />
       <HeroSection
         heroes={form.heroes}
         onChange={(heroes) => setForm({ ...form, heroes })}
-        options={draft.heroOptions}
       />
       <HabitSection
         habits={form.habits}

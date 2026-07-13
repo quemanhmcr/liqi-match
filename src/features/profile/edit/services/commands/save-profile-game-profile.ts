@@ -1,3 +1,4 @@
+import { RankIdSchema, type RankId } from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
@@ -10,6 +11,7 @@ export async function saveProfileGameProfile(input: {
   current: ProfileEditForm['gameProfile'];
   hasGameProfileRecord: boolean;
   profileId: string;
+  rankDbIds: Partial<Record<RankId, string>>;
   session: AuthSession;
 }) {
   if (!input.hasGameProfileRecord) {
@@ -23,7 +25,18 @@ export async function saveProfileGameProfile(input: {
     patch.handle = normalizeGameHandle(input.current.handle);
   }
   if (input.baseline.rankId !== input.current.rankId) {
-    patch.rank_id = input.current.rankId ?? null;
+    if (input.current.rankId === null) {
+      patch.rank_id = null;
+    } else {
+      const rankId = RankIdSchema.parse(input.current.rankId);
+      const dbId = input.rankDbIds[rankId];
+      if (!dbId) {
+        throw new ProfileEditCommandError(
+          `Rank canonical “${rankId}” chưa có DB UUID trong edit draft. Không có dữ liệu nào được ghi.`,
+        );
+      }
+      patch.rank_id = dbId;
+    }
   }
   if (!Object.keys(patch).length) return;
 

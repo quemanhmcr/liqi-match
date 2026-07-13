@@ -1,17 +1,29 @@
+import {
+  LaneSelectionSchema,
+  type LaneSelection,
+  type LaneSlug,
+} from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
 import { ProfileEditCommandError } from './profile-edit-command-error';
-import { uniqueIds } from './profile-edit-command-utils';
 
 export async function saveProfileRoles(input: {
-  baselineRoleIds: readonly string[];
-  currentRoleIds: readonly string[];
+  baselineSelection: LaneSelection | null;
+  currentSelection: LaneSelection | null;
+  laneDbIds: Partial<Record<LaneSlug, string>>;
+  lanesLossless: boolean;
   profileId: string;
   session: AuthSession;
 }) {
-  const previous = uniqueIds(input.baselineRoleIds);
-  const selected = uniqueIds(input.currentRoleIds).slice(0, 2);
+  if (!input.lanesLossless) {
+    throw new ProfileEditCommandError(
+      'Lane legacy chưa resolve losslessly. Hãy xử lý giá trị unsupported trước khi lưu lane.',
+    );
+  }
+
+  const previous = toDbIds(input.baselineSelection, input.laneDbIds);
+  const selected = toDbIds(input.currentSelection, input.laneDbIds);
   const additions = selected.filter((roleId) => !previous.includes(roleId));
   const removals = previous.filter((roleId) => !selected.includes(roleId));
   let databaseChanged = false;
@@ -44,4 +56,23 @@ export async function saveProfileRoles(input: {
       { cause: error, partiallySaved: databaseChanged },
     );
   }
+}
+
+function toDbIds(
+  selection: LaneSelection | null,
+  dbIds: Partial<Record<LaneSlug, string>>,
+) {
+  if (!selection) return [];
+  const canonical = LaneSelectionSchema.parse(selection);
+  return [canonical.primary, canonical.secondary]
+    .filter((value): value is LaneSlug => Boolean(value))
+    .map((laneId) => {
+      const dbId = dbIds[laneId];
+      if (!dbId) {
+        throw new ProfileEditCommandError(
+          `Lane canonical “${laneId}” chưa có DB UUID trong edit draft.`,
+        );
+      }
+      return dbId;
+    });
 }
