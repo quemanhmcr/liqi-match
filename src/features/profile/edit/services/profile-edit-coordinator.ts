@@ -1,3 +1,4 @@
+import { MediaStagingItemSchema } from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 
 import {
@@ -219,15 +220,17 @@ async function prepareMediaForAssociation(input: {
   for (const slot of ['avatar', 'cover'] as const) {
     const staged = form.media.staged[slot];
     if (!staged) continue;
-    if (staged.status === 'failed' && !staged.uploadedAssetId) {
+    if (staged.status === 'failed' && staged.uploadedAssetId === null) {
+      const message =
+        staged.failure?.message ?? 'Ảnh đã chọn chưa vượt qua validation.';
       throw new ProfileMediaPreparationError({
-        cause: new Error(staged.error),
+        cause: new Error(message),
         form,
-        message: staged.error ?? 'Ảnh đã chọn chưa vượt qua validation.',
+        message,
         uploadedButUnassociated,
       });
     }
-    if (staged.uploadedAssetId) {
+    if (staged.uploadedAssetId !== null) {
       const persisted = await persistProfileMediaDraftItem(
         input.draft.id,
         staged,
@@ -237,11 +240,7 @@ async function prepareMediaForAssociation(input: {
       continue;
     }
 
-    const uploading: ProfileEditStagedMedia = {
-      ...staged,
-      error: undefined,
-      status: 'uploading',
-    };
+    const uploading = transitionMediaToUploading(staged);
     form = setStagedMedia(form, uploading);
     try {
       const uploaded = await uploadStagedProfileMedia({
@@ -255,11 +254,7 @@ async function prepareMediaForAssociation(input: {
       uploadedButUnassociated.push(persisted);
       form = withUploadedMedia(form, persisted);
     } catch (error) {
-      const failed: ProfileEditStagedMedia = {
-        ...uploading,
-        error: errorMessage(error),
-        status: 'failed',
-      };
+      const failed = transitionMediaToFailed(uploading, errorMessage(error));
       form = setStagedMedia(form, failed);
       await persistProfileMediaDraftItem(input.draft.id, failed).catch(
         () => undefined,
@@ -374,7 +369,7 @@ function markMediaSlotsAssociated(
     if (item) {
       next.media.staged[slot] = {
         ...item,
-        error: undefined,
+        failure: null,
         status: 'associated',
       };
     }
@@ -397,7 +392,7 @@ function applyAssociatedMediaToBaseline(
       next.media.coverUrl = current.media.coverUrl;
     }
     next.media.staged[slot] = current.media.staged[slot]
-      ? { ...current.media.staged[slot]!, status: 'associated' }
+      ? transitionMediaStatus(current.media.staged[slot]!, 'associated')
       : undefined;
   }
   return next;
@@ -408,7 +403,7 @@ function markUploadingMediaFailed(form: ProfileEditForm, error: string) {
   for (const slot of ['avatar', 'cover'] as const) {
     const item = next.media.staged[slot];
     if (item?.status === 'uploading') {
-      next.media.staged[slot] = { ...item, error, status: 'failed' };
+      next.media.staged[slot] = transitionMediaToFailed(item, error);
     }
   }
   return next;
@@ -456,6 +451,55 @@ async function clearRecoveredMediaSlots(
   for (const slot of slots) {
     await clearProfileMediaDraftItem(profileId, slot).catch(() => undefined);
   }
+}
+
+function transitionMediaToUploading(
+  item: ProfileEditStagedMedia,
+): ProfileEditStagedMedia {
+  const attemptedAt = new Date().toISOString();
+  return parseProfileMediaItem({
+    ...item,
+    failure: null,
+    retry: {
+      attemptCount: item.retry.attemptCount + 1,
+      lastAttemptAt: attemptedAt,
+      retryable: true,
+    },
+    status: 'uploading',
+  });
+}
+
+function transitionMediaToFailed(
+  item: ProfileEditStagedMedia,
+  message: string,
+): ProfileEditStagedMedia {
+  return parseProfileMediaItem({
+    ...item,
+    failure: {
+      code: 'profile_media_operation_failed',
+      message,
+    },
+    status: 'failed',
+  });
+}
+
+function transitionMediaStatus(
+  item: ProfileEditStagedMedia,
+  status: 'associated',
+): ProfileEditStagedMedia {
+  return parseProfileMediaItem({
+    ...item,
+    failure: null,
+    status,
+  });
+}
+
+function parseProfileMediaItem(value: unknown): ProfileEditStagedMedia {
+  const item = MediaStagingItemSchema.parse(value);
+  if (item.slot !== 'avatar' && item.slot !== 'cover') {
+    throw new Error('Profile Edit chỉ hỗ trợ avatar hoặc cover media.');
+  }
+  return item as ProfileEditStagedMedia;
 }
 
 function uniqueSlots(slots: readonly ProfileEditMediaSlot[]) {

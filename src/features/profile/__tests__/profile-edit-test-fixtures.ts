@@ -1,4 +1,7 @@
-import { createEmptyHabitAnswers } from '@/entities/player-profile';
+import {
+  MediaStagingItemSchema,
+  createEmptyHabitAnswers,
+} from '@/entities/player-profile';
 import type {
   ProfileEditDraft,
   ProfileEditForm,
@@ -67,4 +70,60 @@ export function makeProfileEditDraft(
 
 export function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export function makeProfileMediaItem(input: {
+  assetId?: string;
+  failureMessage?: string;
+  localId?: string;
+  slot: 'avatar' | 'cover';
+  status?: import('@/entities/player-profile').MediaStagingStatus;
+  uri?: string;
+}): import('@/features/profile/edit/model/profile-edit-model').ProfileEditStagedMedia {
+  const status = input.status ?? 'ready';
+  const attempted =
+    status === 'uploading' ||
+    status === 'uploaded' ||
+    status === 'associated' ||
+    status === 'failed';
+  const assetId = input.assetId ?? null;
+  const item = {
+    asset: {
+      fileName: `${input.slot}.jpg`,
+      fileSize: 1024,
+      height: 512,
+      mimeType: 'image/jpeg',
+      uri:
+        input.uri ?? `file:///documents/profile-edit-media/${input.slot}.jpg`,
+      width: 512,
+    },
+    cleanup: {
+      completedAt: null,
+      failure: null,
+      lastAttemptAt: null,
+      requestedAt: null,
+    },
+    failure:
+      status === 'failed'
+        ? {
+            code: 'test_media_failure',
+            message: input.failureMessage ?? 'Media operation failed.',
+          }
+        : null,
+    localId: input.localId ?? `${input.slot}:0:test-local`,
+    persistedAt: '2026-07-13T02:00:00.000Z',
+    position: 0,
+    retry: {
+      attemptCount: attempted ? 1 : 0,
+      lastAttemptAt: attempted ? '2026-07-13T02:01:00.000Z' : null,
+      retryable: true,
+    },
+    slot: input.slot,
+    status,
+    uploadedAssetId: assetId,
+    uploadedObjectKey: assetId ? `owner/${assetId}.jpg` : null,
+  };
+  return MediaStagingItemSchema.parse(
+    item,
+  ) as import('@/features/profile/edit/model/profile-edit-model').ProfileEditStagedMedia;
 }

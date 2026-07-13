@@ -1,3 +1,4 @@
+import { MediaStagingItemSchema } from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { uploadProfileMediaAsset } from '@/shared/services/media-upload';
 import { supabaseRest } from '@/shared/services/supabase-rest';
@@ -15,18 +16,18 @@ export async function uploadStagedProfileMedia(input: {
   session: AuthSession;
   staged: ProfileEditStagedMedia;
 }): Promise<ProfileEditStagedMedia> {
-  if (input.staged.uploadedAssetId) return input.staged;
+  if (input.staged.uploadedAssetId !== null) return input.staged;
   const uploaded = await uploadProfileMediaAsset(input.session, {
     asset: input.staged.asset,
     slot: input.staged.slot,
   });
-  return {
+  return parseProfileMediaItem({
     ...input.staged,
-    error: undefined,
-    status: 'uploaded-unassociated',
+    failure: null,
+    status: 'uploaded',
     uploadedAssetId: uploaded.assetId,
-    uploadedUrl: profileMediaUrl(uploaded.assetId),
-  };
+    uploadedObjectKey: uploaded.objectKey,
+  });
 }
 
 export async function saveProfileMediaAssociation(input: {
@@ -99,12 +100,21 @@ export function withUploadedMedia(
   if (!assetId) return form;
   const media = { ...form.media, staged: { ...form.media.staged } };
   media.staged[uploaded.slot] = uploaded;
+  const url = profileMediaUrl(assetId);
   if (uploaded.slot === 'avatar') {
     media.avatarMediaId = assetId;
-    media.avatarUrl = uploaded.uploadedUrl;
+    media.avatarUrl = url;
   } else {
     media.coverMediaId = assetId;
-    media.coverUrl = uploaded.uploadedUrl;
+    media.coverUrl = url;
   }
   return { ...form, media };
+}
+
+function parseProfileMediaItem(value: unknown): ProfileEditStagedMedia {
+  const item = MediaStagingItemSchema.parse(value);
+  if (item.slot !== 'avatar' && item.slot !== 'cover') {
+    throw new Error('Profile Edit chỉ hỗ trợ avatar hoặc cover media.');
+  }
+  return item as ProfileEditStagedMedia;
 }

@@ -106,15 +106,17 @@ export function MediaSection({
           </View>
         </Pressable>
       </View>
-      {avatar?.error ? (
-        <ProfileText style={styles.errorText}>{avatar.error}</ProfileText>
+      {avatar?.failure ? (
+        <ProfileText style={styles.errorText}>
+          {avatar.failure.message}
+        </ProfileText>
       ) : null}
-      {cover?.error ? (
-        <ProfileText style={styles.errorText}>{cover.error}</ProfileText>
+      {cover?.failure ? (
+        <ProfileText style={styles.errorText}>
+          {cover.failure.message}
+        </ProfileText>
       ) : null}
-      {[avatar, cover].some(
-        (item) => item?.status === 'uploaded-unassociated',
-      ) ? (
+      {[avatar, cover].some((item) => item?.status === 'uploaded') ? (
         <View style={styles.notice}>
           <ProfileText style={styles.noticeTitle}>
             Có ảnh đã upload nhưng chưa liên kết
@@ -148,7 +150,7 @@ function mediaStatusLabel(status: string) {
   if (status === 'selected') return 'Đã chọn cục bộ';
   if (status === 'ready') return 'Sẵn sàng upload khi lưu';
   if (status === 'uploading') return 'Đang upload';
-  if (status === 'uploaded-unassociated') return 'Đã upload · chờ liên kết';
+  if (status === 'uploaded') return 'Đã upload · chờ liên kết';
   if (status === 'associated') return 'Đã liên kết';
   return 'Cần chọn lại hoặc retry';
 }
@@ -157,6 +159,6 @@ function mediaPreviewUrl(
   item: ProfileEditMedia['staged']['avatar'] | undefined,
   fallback: string | undefined,
 ) {
-  if (item?.uploadedAssetId && item.uploadedUrl) return item.uploadedUrl;
+  if (item?.uploadedAssetId !== null) return fallback;
   return item?.asset.uri ?? fallback;
 }

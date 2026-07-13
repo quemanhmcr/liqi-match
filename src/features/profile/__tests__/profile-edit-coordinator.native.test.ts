@@ -26,6 +26,7 @@ import {
   clone,
   makeProfileEditDraft,
   makeProfileEditForm,
+  makeProfileMediaItem,
 } from './profile-edit-test-fixtures';
 
 jest.mock(
@@ -63,12 +64,19 @@ jest.mock('@/features/profile/edit/services/profile-edit-commands', () => {
     saveProfileIdentity: jest.fn(async () => undefined),
     saveProfileMediaAssociation: jest.fn(async () => []),
     saveProfileRoles: jest.fn(async () => undefined),
-    uploadStagedProfileMedia: jest.fn(async ({ staged }) => ({
-      ...staged,
-      status: 'uploaded-unassociated',
-      uploadedAssetId: `${staged.slot}-uploaded`,
-      uploadedUrl: `https://media/${staged.slot}-uploaded`,
-    })),
+    uploadStagedProfileMedia: jest.fn(
+      async ({
+        staged,
+      }: {
+        staged: import('@/features/profile/edit/model/profile-edit-model').ProfileEditStagedMedia;
+      }) => ({
+        ...staged,
+        failure: null,
+        status: 'uploaded' as const,
+        uploadedAssetId: `${staged.slot}-uploaded`,
+        uploadedObjectKey: `owner/${staged.slot}-uploaded.jpg`,
+      }),
+    ),
     withUploadedMedia: jest.fn(
       (
         form: import('@/features/profile/edit/model/profile-edit-model').ProfileEditForm,
@@ -80,10 +88,14 @@ jest.mock('@/features/profile/edit/services/profile-edit-commands', () => {
         };
         if (item.slot === 'avatar') {
           media.avatarMediaId = item.uploadedAssetId;
-          media.avatarUrl = item.uploadedUrl;
+          media.avatarUrl = item.uploadedAssetId
+            ? `https://media/${item.uploadedAssetId}`
+            : undefined;
         } else {
           media.coverMediaId = item.uploadedAssetId;
-          media.coverUrl = item.uploadedUrl;
+          media.coverUrl = item.uploadedAssetId
+            ? `https://media/${item.uploadedAssetId}`
+            : undefined;
         }
         return { ...form, media };
       },
@@ -212,9 +224,7 @@ describe('saveProfileEditChanges', () => {
     expect(result.outcome).toBe('partially-saved');
     expect(result.failedSection).toBe('media');
     expect(result.form.media.staged.avatar?.status).toBe('associated');
-    expect(result.form.media.staged.cover?.status).toBe(
-      'uploaded-unassociated',
-    );
+    expect(result.form.media.staged.cover?.status).toBe('uploaded');
     expect(result.uploadedButUnassociated.map((item) => item.slot)).toEqual([
       'cover',
     ]);
@@ -289,14 +299,5 @@ function uploadedItem(
   slot: 'avatar' | 'cover',
   assetId: string,
 ): ProfileEditStagedMedia {
-  return {
-    asset: {
-      mimeType: 'image/jpeg',
-      uri: `file:///documents/profile-edit-media/${slot}.jpg`,
-    },
-    slot,
-    status: 'uploaded-unassociated',
-    uploadedAssetId: assetId,
-    uploadedUrl: `https://media/${assetId}`,
-  };
+  return makeProfileMediaItem({ assetId, slot, status: 'uploaded' });
 }

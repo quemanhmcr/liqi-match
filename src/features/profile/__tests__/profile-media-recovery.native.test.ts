@@ -7,7 +7,7 @@ import {
   persistProfileMediaDraftItem,
   restoreProfileMediaDraft,
 } from '@/features/profile/edit/model/profile-media-picker-recovery';
-import type { ProfileEditStagedMedia } from '@/features/profile/edit/model/profile-edit-model';
+import { makeProfileMediaItem } from './profile-edit-test-fixtures';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
   __esModule: true,
@@ -34,6 +34,7 @@ const mockDeleteAsync = jest.mocked(FileSystem.deleteAsync);
 const mockGetInfoAsync = jest.mocked(FileSystem.getInfoAsync);
 const mockMakeDirectoryAsync = jest.mocked(FileSystem.makeDirectoryAsync);
 const profileId = '00000000-0000-0000-0000-000000000001';
+const storageKey = `profile-edit:staged-media:v1:${profileId}`;
 let storage: Map<string, string>;
 let existingFiles: Set<string>;
 
@@ -75,10 +76,15 @@ beforeEach(() => {
 });
 
 describe('Profile media recovery', () => {
-  it('copies a picker cache file into durable document storage before saving metadata', async () => {
+  it('copies a picker cache file into durable document storage before saving canonical metadata', async () => {
     const persisted = await persistProfileMediaDraftItem(
       profileId,
-      readyItem('avatar', 'file:///cache/cropped.jpg'),
+      makeProfileMediaItem({
+        localId: 'avatar:0:picker-1',
+        slot: 'avatar',
+        status: 'ready',
+        uri: 'file:///cache/cropped.jpg',
+      }),
     );
 
     expect(mockMakeDirectoryAsync).toHaveBeenCalledWith(
@@ -87,70 +93,109 @@ describe('Profile media recovery', () => {
     );
     expect(mockCopyAsync).toHaveBeenCalledWith({
       from: 'file:///cache/cropped.jpg',
-      to: `file:///documents/profile-edit-media/${profileId}-avatar.jpg`,
+      to: `file:///documents/profile-edit-media/${profileId}-avatar-avatar_0_picker-1.jpg`,
     });
-    expect(persisted.asset.uri).toBe(
-      `file:///documents/profile-edit-media/${profileId}-avatar.jpg`,
-    );
+    expect(persisted.asset.uri).toContain('/profile-edit-media/');
+    expect(persisted.persistedAt).not.toBeNull();
 
     const restored = await restoreProfileMediaDraft(profileId);
     expect(restored.avatar).toEqual(
       expect.objectContaining({
+        localId: 'avatar:0:picker-1',
         status: 'ready',
         asset: expect.objectContaining({ uri: persisted.asset.uri }),
       }),
     );
   });
 
-  it('restores uploaded-but-unassociated metadata even when the local file is gone', async () => {
-    const uri = `file:///documents/profile-edit-media/${profileId}-cover.jpg`;
-    await persistProfileMediaDraftItem(profileId, {
-      ...readyItem('cover', uri),
-      status: 'uploaded-unassociated',
-      uploadedAssetId: 'cover-asset-id',
-      uploadedUrl: 'https://media/cover-asset-id',
+  it('restores uploaded media even when the local file is gone', async () => {
+    const item = makeProfileMediaItem({
+      assetId: 'cover-asset-id',
+      localId: 'cover:0:uploaded-1',
+      slot: 'cover',
+      status: 'uploaded',
     });
-    existingFiles.delete(uri);
+    await persistProfileMediaDraftItem(profileId, item);
+    existingFiles.clear();
 
     const restored = await restoreProfileMediaDraft(profileId);
 
     expect(restored.cover).toEqual(
       expect.objectContaining({
-        status: 'uploaded-unassociated',
+        status: 'uploaded',
         uploadedAssetId: 'cover-asset-id',
       }),
     );
-    expect(mockGetInfoAsync).not.toHaveBeenCalledWith(uri);
+    expect(mockGetInfoAsync).not.toHaveBeenCalledWith(
+      expect.stringContaining('cover:0:uploaded-1'),
+    );
   });
 
-  it('clears metadata and deletes only its managed local file after association', async () => {
+  it('records cleanup attempt, deletes only its managed local file, then removes metadata', async () => {
     const persisted = await persistProfileMediaDraftItem(
       profileId,
-      readyItem('avatar', 'file:///cache/avatar.png', 'image/png'),
+      makeProfileMediaItem({
+        localId: 'avatar:0:cleanup-1',
+        slot: 'avatar',
+        status: 'ready',
+        uri: 'file:///cache/avatar.png',
+      }),
     );
     mockDeleteAsync.mockClear();
+    mockSetItem.mockClear();
 
     await clearProfileMediaDraftItem(profileId, 'avatar');
 
+    expect(mockSetItem).toHaveBeenCalledWith(
+      storageKey,
+      expect.stringContaining('"requestedAt"'),
+    );
     expect(mockDeleteAsync).toHaveBeenCalledWith(persisted.asset.uri, {
       idempotent: true,
     });
     expect(storage.size).toBe(0);
   });
-});
 
-function readyItem(
-  slot: 'avatar' | 'cover',
-  uri: string,
-  mimeType = 'image/jpeg',
-): ProfileEditStagedMedia {
-  return {
-    asset: {
-      fileName: `picked.${mimeType === 'image/png' ? 'png' : 'jpg'}`,
-      mimeType,
-      uri,
-    },
-    slot,
-    status: 'ready',
-  };
-}
+  it('migrates v1 uploaded-unassociated metadata to canonical v2 uploaded status', async () => {
+    storage.set(
+      storageKey,
+      JSON.stringify({
+        slots: {
+          cover: {
+            asset: {
+              fileName: 'cover.jpg',
+              fileSize: 1024,
+              height: 512,
+              mimeType: 'image/jpeg',
+              uri: 'file:///documents/profile-edit-media/legacy-cover.jpg',
+              width: 512,
+            },
+            error: undefined,
+            persistedAt: '2026-07-13T02:00:00.000Z',
+            slot: 'cover',
+            status: 'uploaded-unassociated',
+            uploadedAssetId: 'legacy-cover-asset',
+            uploadedUrl: 'https://media/legacy-cover-asset',
+          },
+        },
+        version: 1,
+      }),
+    );
+
+    const restored = await restoreProfileMediaDraft(profileId);
+
+    expect(restored.cover).toEqual(
+      expect.objectContaining({
+        localId: expect.stringMatching(/^cover:0:legacy-/),
+        status: 'uploaded',
+        uploadedAssetId: 'legacy-cover-asset',
+      }),
+    );
+    const migrated = JSON.parse(storage.get(storageKey) ?? '{}') as {
+      slots?: { cover?: { status?: string } };
+      version?: number;
+    };
+    expect(migrated.version).toBe(2);
+    expect(migrated.slots?.cover?.status).toBe('uploaded');
+  });
+});

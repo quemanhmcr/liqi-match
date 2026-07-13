@@ -43,9 +43,13 @@ export function ProfileEditPreview({
   const avatar = form.media.staged.avatar;
   const cover = form.media.staged.cover;
   const avatarUrl =
-    avatar?.uploadedUrl ?? avatar?.asset.uri ?? form.media.avatarUrl;
+    avatar?.uploadedAssetId !== null
+      ? form.media.avatarUrl
+      : (avatar?.asset.uri ?? form.media.avatarUrl);
   const coverUrl =
-    cover?.uploadedUrl ?? cover?.asset.uri ?? form.media.coverUrl;
+    cover?.uploadedAssetId !== null
+      ? form.media.coverUrl
+      : (cover?.asset.uri ?? form.media.coverUrl);
 
   return (
     <LiquidCard

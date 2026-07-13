@@ -1,4 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  MediaLocalAssetSchema,
+  MediaStagingItemSchema,
+} from '@/entities/player-profile';
 import * as FileSystem from 'expo-file-system/legacy';
 
 import type {
@@ -12,7 +16,7 @@ const mediaDirectoryName = 'profile-edit-media';
 
 type StoredProfileMediaDraft = {
   slots: Partial<Record<ProfileEditMediaSlot, ProfileEditStagedMedia>>;
-  version: 1;
+  version: 2;
 };
 
 export async function rememberPendingProfileMediaSlot(
@@ -32,9 +36,9 @@ export async function clearPendingProfileMediaSlot() {
 }
 
 /**
- * Copies picker output out of the temporary cache before recording the draft.
- * Uploaded-but-unassociated items retain their asset id so association can be
- * retried after an app restart without uploading the bytes again.
+ * Copies picker output out of temporary cache before recording the canonical
+ * durable item. Uploaded items retain their asset id so association can resume
+ * after restart without uploading bytes again.
  */
 export async function persistProfileMediaDraftItem(
   profileId: string,
@@ -43,17 +47,18 @@ export async function persistProfileMediaDraftItem(
   const current = await readStoredDraft(profileId);
   const previous = current.slots[item.slot];
   const durable = await ensureDurableLocalFile(profileId, item);
+  const canonical = parseProfileItem({
+    ...durable,
+    persistedAt: new Date().toISOString(),
+  });
 
-  if (previous?.asset.uri !== durable.asset.uri) {
+  if (previous?.asset.uri !== canonical.asset.uri) {
     await deleteManagedFile(previous?.asset.uri);
   }
 
-  current.slots[item.slot] = {
-    ...durable,
-    persistedAt: new Date().toISOString(),
-  };
+  current.slots[canonical.slot] = canonical;
   await writeStoredDraft(profileId, current);
-  return current.slots[item.slot] as ProfileEditStagedMedia;
+  return canonical;
 }
 
 export async function restoreProfileMediaDraft(profileId: string) {
@@ -66,7 +71,7 @@ export async function restoreProfileMediaDraft(profileId: string) {
   for (const slot of ['avatar', 'cover'] as const) {
     const item = stored.slots[slot];
     if (!item) continue;
-    if (item.uploadedAssetId) {
+    if (item.uploadedAssetId !== null) {
       restored[slot] = item;
       continue;
     }
@@ -82,7 +87,7 @@ export async function restoreProfileMediaDraft(profileId: string) {
   }
 
   if (changed) {
-    await writeStoredDraft(profileId, { slots: restored, version: 1 });
+    await writeStoredDraft(profileId, { slots: restored, version: 2 });
   }
   return restored;
 }
@@ -93,19 +98,49 @@ export async function clearProfileMediaDraftItem(
 ) {
   const stored = await readStoredDraft(profileId);
   const item = stored.slots[slot];
-  delete stored.slots[slot];
-  await deleteManagedFile(item?.asset.uri);
+  if (!item) return;
+
+  const requestedAt = item.cleanup.requestedAt ?? new Date().toISOString();
+  const lastAttemptAt = new Date().toISOString();
+  stored.slots[slot] = parseProfileItem({
+    ...item,
+    cleanup: {
+      completedAt: null,
+      failure: null,
+      lastAttemptAt,
+      requestedAt,
+    },
+  });
   await writeStoredDraft(profileId, stored);
+
+  try {
+    await deleteManagedFile(item.asset.uri, true);
+    delete stored.slots[slot];
+    await writeStoredDraft(profileId, stored);
+  } catch (error) {
+    stored.slots[slot] = parseProfileItem({
+      ...stored.slots[slot]!,
+      cleanup: {
+        completedAt: null,
+        failure: {
+          code: 'local_cleanup_failed',
+          message: errorMessage(error),
+        },
+        lastAttemptAt,
+        requestedAt,
+      },
+    });
+    await writeStoredDraft(profileId, stored);
+    throw error;
+  }
 }
 
 export async function clearProfileMediaDraft(profileId: string) {
   const stored = await readStoredDraft(profileId);
-  await Promise.all(
-    Object.values(stored.slots).map((item) =>
-      deleteManagedFile(item?.asset.uri),
-    ),
-  );
-  await AsyncStorage.removeItem(mediaDraftKey(profileId));
+  for (const slot of ['avatar', 'cover'] as const) {
+    if (!stored.slots[slot]) continue;
+    await clearProfileMediaDraftItem(profileId, slot);
+  }
 }
 
 async function ensureDurableLocalFile(
@@ -115,17 +150,19 @@ async function ensureDurableLocalFile(
   if (isManagedFile(item.asset.uri)) return item;
   const directory = mediaDirectory();
   await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
-  const destination = `${directory}${safeName(profileId)}-${item.slot}.${fileExtension(item)}`;
+  const destination = `${directory}${safeName(profileId)}-${item.slot}-${safeName(
+    item.localId,
+  )}.${fileExtension(item)}`;
   await FileSystem.deleteAsync(destination, { idempotent: true });
   await FileSystem.copyAsync({ from: item.asset.uri, to: destination });
-  return {
+  return parseProfileItem({
     ...item,
     asset: {
       ...item.asset,
-      fileName: item.asset.fileName ?? destination.split('/').pop(),
+      fileName: item.asset.fileName ?? destination.split('/').pop() ?? null,
       uri: destination,
     },
-  };
+  });
 }
 
 async function readStoredDraft(
@@ -133,18 +170,103 @@ async function readStoredDraft(
 ): Promise<StoredProfileMediaDraft> {
   const key = mediaDraftKey(profileId);
   const value = await AsyncStorage.getItem(key);
-  if (!value) return { slots: {}, version: 1 };
+  if (!value) return emptyStoredDraft();
+
   try {
-    const parsed = JSON.parse(value) as Partial<StoredProfileMediaDraft>;
-    return {
-      slots:
-        parsed.slots && typeof parsed.slots === 'object' ? parsed.slots : {},
-      version: 1,
-    };
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const rawSlots = isRecord(parsed.slots) ? parsed.slots : {};
+    const slots: StoredProfileMediaDraft['slots'] = {};
+    let changed = parsed.version !== 2;
+
+    for (const slot of ['avatar', 'cover'] as const) {
+      const raw = rawSlots[slot];
+      if (!raw) continue;
+      const migrated = migrateStoredItem(raw, slot);
+      if (!migrated) {
+        changed = true;
+        continue;
+      }
+      slots[slot] = migrated.item;
+      changed ||= migrated.changed;
+    }
+
+    const canonical = { slots, version: 2 } satisfies StoredProfileMediaDraft;
+    if (changed) await writeStoredDraft(profileId, canonical);
+    return canonical;
   } catch {
     await AsyncStorage.removeItem(key);
-    return { slots: {}, version: 1 };
+    return emptyStoredDraft();
   }
+}
+
+function migrateStoredItem(
+  value: unknown,
+  expectedSlot: ProfileEditMediaSlot,
+): { changed: boolean; item: ProfileEditStagedMedia } | undefined {
+  const canonical = MediaStagingItemSchema.safeParse(value);
+  if (canonical.success && canonical.data.slot === expectedSlot) {
+    return {
+      changed: false,
+      item: canonical.data as ProfileEditStagedMedia,
+    };
+  }
+  if (!isRecord(value) || !isRecord(value.asset)) return undefined;
+
+  const asset = MediaLocalAssetSchema.safeParse({
+    fileName: nullableString(value.asset.fileName),
+    fileSize: nullableNumber(value.asset.fileSize),
+    height: nullableNumber(value.asset.height),
+    mimeType: nullableString(value.asset.mimeType),
+    uri: typeof value.asset.uri === 'string' ? value.asset.uri : '',
+    width: nullableNumber(value.asset.width),
+  });
+  if (!asset.success) return undefined;
+
+  const legacyStatus =
+    typeof value.status === 'string' ? value.status : 'ready';
+  const status = mapLegacyStatus(legacyStatus);
+  const persistedAt = isoDateOrNull(value.persistedAt);
+  const attempted =
+    status === 'uploading' ||
+    status === 'uploaded' ||
+    status === 'associated' ||
+    status === 'failed';
+  const failureMessage =
+    typeof value.error === 'string' && value.error.trim()
+      ? value.error.trim()
+      : status === 'failed'
+        ? 'Media operation failed before the staging contract migration.'
+        : null;
+  const uploadedAssetId = nonEmptyString(value.uploadedAssetId);
+  const migrated = MediaStagingItemSchema.safeParse({
+    asset: asset.data,
+    cleanup: emptyCleanup(),
+    failure:
+      status === 'failed'
+        ? { code: 'legacy_media_failure', message: failureMessage! }
+        : null,
+    localId:
+      nonEmptyString(value.localId) ??
+      legacyLocalId(expectedSlot, asset.data.uri),
+    persistedAt,
+    position: 0,
+    retry: {
+      attemptCount: attempted ? 1 : 0,
+      lastAttemptAt: attempted
+        ? (persistedAt ?? new Date().toISOString())
+        : null,
+      retryable: true,
+    },
+    slot: expectedSlot,
+    status:
+      (status === 'uploaded' || status === 'associated') && !uploadedAssetId
+        ? 'failed'
+        : status,
+    uploadedAssetId,
+    uploadedObjectKey: nonEmptyString(value.uploadedObjectKey),
+  });
+  if (!migrated.success) return undefined;
+  return { changed: true, item: migrated.data as ProfileEditStagedMedia };
 }
 
 async function writeStoredDraft(
@@ -159,11 +281,21 @@ async function writeStoredDraft(
   await AsyncStorage.setItem(key, JSON.stringify(draft));
 }
 
-async function deleteManagedFile(uri: string | undefined) {
+async function deleteManagedFile(uri: string | undefined, strict = false) {
   if (!uri || !isManagedFile(uri)) return;
-  await FileSystem.deleteAsync(uri, { idempotent: true }).catch(
-    () => undefined,
-  );
+  try {
+    await FileSystem.deleteAsync(uri, { idempotent: true });
+  } catch (error) {
+    if (strict) throw error;
+  }
+}
+
+function parseProfileItem(value: unknown): ProfileEditStagedMedia {
+  const parsed = MediaStagingItemSchema.parse(value);
+  if (parsed.slot !== 'avatar' && parsed.slot !== 'cover') {
+    throw new Error('Profile Edit chỉ hỗ trợ avatar hoặc cover media.');
+  }
+  return parsed as ProfileEditStagedMedia;
 }
 
 function mediaDraftKey(profileId: string) {
@@ -197,4 +329,63 @@ function fileExtension(item: ProfileEditStagedMedia) {
     .pop()
     ?.toLowerCase();
   return candidate === 'png' || candidate === 'webp' ? candidate : 'jpg';
+}
+
+function mapLegacyStatus(value: string) {
+  if (value === 'selected') return 'selected' as const;
+  if (value === 'uploading') return 'uploading' as const;
+  if (value === 'uploaded-unassociated' || value === 'uploaded') {
+    return 'uploaded' as const;
+  }
+  if (value === 'associated') return 'associated' as const;
+  if (value === 'failed' || value === 'error') return 'failed' as const;
+  return 'ready' as const;
+}
+
+function legacyLocalId(slot: ProfileEditMediaSlot, uri: string) {
+  let hash = 0;
+  for (const character of uri) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+  return `${slot}:0:legacy-${hash.toString(36)}`;
+}
+
+function emptyStoredDraft(): StoredProfileMediaDraft {
+  return { slots: {}, version: 2 };
+}
+
+function emptyCleanup() {
+  return {
+    completedAt: null,
+    failure: null,
+    lastAttemptAt: null,
+    requestedAt: null,
+  } as const;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function nullableString(value: unknown) {
+  return value === null || typeof value === 'string' ? value : null;
+}
+
+function nullableNumber(value: unknown) {
+  return value === null || typeof value === 'number' ? value : null;
+}
+
+function nonEmptyString(value: unknown) {
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+}
+
+function isoDateOrNull(value: unknown) {
+  if (typeof value !== 'string') return null;
+  return Number.isNaN(Date.parse(value)) ? null : value;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Không thể dọn file media cục bộ.';
 }

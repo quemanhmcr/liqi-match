@@ -5,6 +5,9 @@ import type {
   HeroId,
   LaneSelection,
   LaneSlug,
+  MediaLocalAsset,
+  MediaStagingItem,
+  MediaStagingSlot,
   RankId,
   RecurringAvailability,
 } from '@/entities/player-profile';
@@ -43,33 +46,10 @@ export type ProfileEditGameProfile = {
   rankId: RankId | null;
 };
 
-export type ProfileEditMediaSlot = 'avatar' | 'cover';
-
-export type ProfileEditLocalAsset = {
-  fileName?: string | null;
-  fileSize?: number | null;
-  height?: number | null;
-  mimeType?: string | null;
-  uri: string;
-  width?: number | null;
-};
-
-export type ProfileEditStagedMediaStatus =
-  | 'selected'
-  | 'ready'
-  | 'uploading'
-  | 'uploaded-unassociated'
-  | 'associated'
-  | 'failed';
-
-export type ProfileEditStagedMedia = {
-  asset: ProfileEditLocalAsset;
-  error?: string;
+export type ProfileEditMediaSlot = Exclude<MediaStagingSlot, 'wall'>;
+export type ProfileEditLocalAsset = MediaLocalAsset;
+export type ProfileEditStagedMedia = MediaStagingItem & {
   slot: ProfileEditMediaSlot;
-  status: ProfileEditStagedMediaStatus;
-  persistedAt?: string;
-  uploadedAssetId?: string;
-  uploadedUrl?: string;
 };
 
 export type ProfileEditMedia = {

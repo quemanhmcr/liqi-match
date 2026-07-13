@@ -10,6 +10,7 @@ import { useAuth } from '@/shared/auth/auth-context';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 
 import { ProfileText } from '../components/ProfileShared';
+import { profileMediaUrl } from '../services/profile-service';
 import { AvailabilitySection } from '../edit/components/AvailabilitySection';
 import { GameProfileSection } from '../edit/components/GameProfileSection';
 import { HabitSection } from '../edit/components/HabitSection';
@@ -165,7 +166,7 @@ function ProfileEditEditor({
   );
   const hasChanges = dirtySections.length > 0;
   const hasUploadedButUnassociated = Object.values(form.media.staged).some(
-    (item) => item?.status === 'uploaded-unassociated',
+    (item) => item?.status === 'uploaded',
   );
 
   const saveMutation = useMutation({
@@ -211,7 +212,7 @@ function ProfileEditEditor({
   const pickImage = async (slot: ProfileEditMediaSlot) => {
     if (pickingMedia || saveMutation.isPending) return;
     const existing = form.media.staged[slot];
-    if (existing?.status === 'uploaded-unassociated') {
+    if (existing?.status === 'uploaded') {
       Alert.alert(
         'Ảnh đang chờ liên kết',
         'Hãy thử lưu lại asset hiện có trước khi chọn ảnh khác để tránh orphan asset.',
@@ -254,7 +255,7 @@ function ProfileEditEditor({
       showFeedback(
         durable.status === 'ready'
           ? 'Đã giữ ảnh cục bộ. Bấm Lưu để upload.'
-          : (durable.error ?? 'Ảnh chưa hợp lệ.'),
+          : (durable.failure?.message ?? 'Ảnh chưa hợp lệ.'),
       );
     } catch (error) {
       await clearPendingProfileMediaSlot().catch(() => undefined);
@@ -372,11 +373,11 @@ function applyRecoveredMedia(
         ...(slot === 'avatar'
           ? {
               avatarMediaId: item.uploadedAssetId,
-              avatarUrl: item.uploadedUrl,
+              avatarUrl: profileMediaUrl(item.uploadedAssetId),
             }
           : {
               coverMediaId: item.uploadedAssetId,
-              coverUrl: item.uploadedUrl,
+              coverUrl: profileMediaUrl(item.uploadedAssetId),
             }),
       },
     };
