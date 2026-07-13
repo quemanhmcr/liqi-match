@@ -1,0 +1,228 @@
+{
+  "budgets": {
+    "maxBytesByKind": {
+      "avatar": 3000000,
+      "cover": 4500000,
+      "message-image": 4500000,
+      "set-artwork": 3000000
+    },
+    "maxTotalBundledBytes": 35000000
+  },
+  "entries": [
+    {
+      "byteSize": 383435,
+      "format": "png",
+      "height": 512,
+      "key": "asset:v1/profile/minh-anh/avatar",
+      "kind": "avatar",
+      "ownerId": "minh-anh",
+      "sha256": "301b8796f4683dff8fc940c9fe63436c3100dee733e03d7d6483bb1af06a3101",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/minh-anh.png",
+        "type": "bundled"
+      },
+      "width": 512
+    },
+    {
+      "byteSize": 375363,
+      "format": "png",
+      "height": 512,
+      "key": "asset:v1/profile/khoa-jungle/avatar",
+      "kind": "avatar",
+      "ownerId": "khoa-jungle",
+      "sha256": "0b547e79eea8d6acffc135f50a6ae83ab454168f18c761ebb6c978ff3aee1c73",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/khoa-jungle.png",
+        "type": "bundled"
+      },
+      "width": 512
+    },
+    {
+      "byteSize": 2139297,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/avatar/pink-support",
+      "kind": "avatar",
+      "sha256": "143311e5072cd6162ea70b61c24f1fd83acde8d9ab7f52479645d08fa6cd6760",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/pink-support.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2216524,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/avatar/silver-assassin",
+      "kind": "avatar",
+      "sha256": "979988cd9c314cddb40e22f244fb97cda09c41a0ae97227fa73cd0d665dce074",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/silver-assassin.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2600790,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/avatar/lavender-mage",
+      "kind": "avatar",
+      "sha256": "a1ac5b523891bae2e684507b5c3c84862a659f4bd9556ffe7aa22fea317eb7ee",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/lavender-mage.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2192434,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/avatar/dark-fighter",
+      "kind": "avatar",
+      "sha256": "587e7a2fee101b57ecc2811c41e6a45ea4663b45f1f32bd8fddb543444d9fe71",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/dark-fighter.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2387889,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/avatar/cyber-girl",
+      "kind": "avatar",
+      "sha256": "9da1b309775a2abdfd4d3a86af0b928e327b987583af54557c6c3bd391ac95c9",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/cyber-girl.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2341156,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/avatar/pink-carry",
+      "kind": "avatar",
+      "sha256": "e924a93c35610ea9bcf3f0ed5899627950dd5bc2c9bcba4e685de7d132dc94da",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/pink-carry.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2506527,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/avatar/ice-prince",
+      "kind": "avatar",
+      "sha256": "b637fe45c246fbc8a941de084db50725add4f3e0f1df6590f6bcb501630f8f31",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/ice-prince.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2163396,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/avatar/cozy-gamer",
+      "kind": "avatar",
+      "sha256": "9030af8cf000eda6febbffb33eed6ee3170b2474d32ac92a0f777c1b31751353",
+      "source": {
+        "path": "assets/simulation/golden-world/avatars/cozy-gamer.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2040706,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/set/team-sao-bang/artwork",
+      "kind": "set-artwork",
+      "ownerId": "team-sao-bang",
+      "sha256": "5b62f4461987e265309c7aacda8cfe1207b8f816a01f660ac8c89b54642c857a",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/set-team-sao-bang.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2219454,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/set/duo-jungle-support/artwork",
+      "kind": "set-artwork",
+      "ownerId": "duo-jungle-support",
+      "sha256": "2467970d590d5b746d12b4e1828ff4150914323b3e0eca4702330b53d0a02dda",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/set-duo-jungle-support.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2170847,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/vibe/late-night-rank",
+      "kind": "set-artwork",
+      "sha256": "4afe2062de0c370611f5597a8d162bae49cacbd5a27b0be30e663c976428dbf4",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/vibe-late-night-rank.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2229591,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/vibe/duo-support",
+      "kind": "set-artwork",
+      "sha256": "ca60fd0fa6f9c865208e8a9483fdb1310ba51f3af17b6881a19d0258be46cfa7",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/vibe-duo-support.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 2271134,
+      "format": "png",
+      "height": 1254,
+      "key": "asset:v1/library/vibe/team-needs-mid",
+      "kind": "set-artwork",
+      "sha256": "d067ee44cd4347ae3f9e3de3c6abeb5a993bb5c0a6d3473212131e6cd5fa0228",
+      "source": {
+        "path": "assets/simulation/golden-world/artwork/vibe-team-needs-mid.png",
+        "type": "bundled"
+      },
+      "width": 1254
+    },
+    {
+      "byteSize": 3438,
+      "format": "webp",
+      "height": 100,
+      "key": "asset:v1/message/khoa-build-1/image/primary",
+      "kind": "message-image",
+      "ownerId": "khoa-build-1",
+      "sha256": "e9f109edaf9d3d7e05830b8976469c3b135fa4e7242da4ae6ca8828331fb5d06",
+      "source": {
+        "path": "assets/anh_mau2/heroes/nakroth.webp",
+        "type": "bundled"
+      },
+      "width": 10753
+    }
+  ],
+  "generatedAt": "2026-07-13T07:00:00.000Z",
+  "version": 1
+}

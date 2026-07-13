@@ -1,9 +1,11 @@
+import type { AssetKey } from '@/entities/media-asset';
 import type { AuthSession } from '@/shared/auth/auth-service';
 
 export type NotificationCategory =
   'interaction' | 'message' | 'set-invite' | 'system';
 
 export type NotificationActor = {
+  avatarAssetKey?: AssetKey;
   avatarUrl?: string;
   displayName: string;
   id: string;

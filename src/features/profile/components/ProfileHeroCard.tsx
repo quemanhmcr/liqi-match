@@ -8,6 +8,10 @@ import {
 } from 'react-native';
 
 import {
+  goldenWorldAssetKeys,
+  requireGoldenWorldBundledModule,
+} from '@/entities/media-asset';
+import {
   LiquidBadge,
   LiquidButton,
   LiquidChip,
@@ -25,10 +29,12 @@ import { ProfileText } from './ProfileShared';
 
 export type ProfileHeroMode = 'self' | 'other';
 
-const fallbackAvatar =
-  require('../../../../assets/anh_mau_3/avatar_khoa_jungle_assassin.png') as ImageSourcePropType;
-const fallbackMinhAnhAvatar =
-  require('../../../../assets/anh_mau_3/avatar_minh_anh_support.png') as ImageSourcePropType;
+const fallbackAvatar = requireGoldenWorldBundledModule(
+  goldenWorldAssetKeys.profiles.khoaJungleAvatar,
+);
+const fallbackMinhAnhAvatar = requireGoldenWorldBundledModule(
+  goldenWorldAssetKeys.profiles.minhAnhAvatar,
+);
 const heroArtwork =
   require('../../../../assets/anh_mau_3/background_hero_trang_chu.png') as ImageSourcePropType;
 
