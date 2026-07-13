@@ -5,16 +5,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
-  type ImageStyle,
 } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import {
+  useAssetResolver,
+  usePreloadAssetSurface,
+} from '@/entities/media-asset';
 import {
   LiquidCard,
   LiquidChip,
@@ -31,6 +33,7 @@ import {
   type LiquidGlowPreset,
 } from '@/shared/theme/liquid-glow.presets';
 
+import { MessageResolvedImage } from '../components/MessageResolvedImage';
 import type { MessageInboxFilter } from '../contracts/messages-contracts';
 import { loadChatDraftIndex } from '../model/chat-draft-store';
 import type { ChatDeliveryStatus } from '../model/chat-message';
@@ -142,6 +145,8 @@ function compareActivity(
 
 export function MessagesScreen(props: MessagesScreenProps = {}) {
   const services = useMessagesServices();
+  const assetResolver = useAssetResolver();
+  usePreloadAssetSurface('messages');
   const clock = props.clock ?? systemMessagesClock;
   const repository = props.repository ?? services.repository;
   const [query, setQuery] = useState('');
@@ -195,6 +200,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
     () =>
       (activeSnapshot?.items ?? []).map((conversation) =>
         presentInboxConversation({
+          assetResolver,
           conversation,
           draftPreview: draftPreviewsByConversation[conversation.id],
           draftUpdatedAt: draftUpdatedAtByConversation[conversation.id],
@@ -205,6 +211,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
       ),
     [
       activeSnapshot?.items,
+      assetResolver,
       draftPreviewsByConversation,
       draftUpdatedAtByConversation,
       readConversationIds,
@@ -605,9 +612,9 @@ function ConversationAvatar({
       ]}
     >
       {conversation.avatar ? (
-        <Image
-          source={conversation.avatar}
-          style={styles.avatarImage as ImageStyle}
+        <MessageResolvedImage
+          media={conversation.avatar}
+          style={styles.avatarImage}
         />
       ) : (
         <View style={[styles.avatarFallback, { backgroundColor: tone.iconBg }]}>

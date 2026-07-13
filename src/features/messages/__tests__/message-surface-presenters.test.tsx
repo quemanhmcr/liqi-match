@@ -1,5 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { createGoldenWorldAssetResolver } from '@/entities/media-asset';
+
 import {
   MessageConversationDetailSchema,
   MessageTimelineItemSchema,
@@ -8,6 +10,8 @@ import {
   presentConversationThread,
   presentTimelineMessage,
 } from '@/features/messages/model/message-surface-presenters';
+
+const assetResolver = createGoldenWorldAssetResolver();
 
 describe('message surface presenters', () => {
   it('presents received media and typing as stable render-model items', () => {
@@ -26,7 +30,7 @@ describe('message surface presenters', () => {
       },
       width: 1200,
     });
-    const rendered = presentTimelineMessage(media);
+    const rendered = presentTimelineMessage(media, assetResolver);
 
     expect(rendered).toMatchObject({
       attachment: {
@@ -66,7 +70,11 @@ describe('message surface presenters', () => {
         unreadCount: 0,
       },
     });
-    const thread = presentConversationThread(conversation, [media]);
+    const thread = presentConversationThread(
+      conversation,
+      [media],
+      assetResolver,
+    );
 
     expect(thread.kind).toBe('Team');
     expect(thread.messages.at(-1)).toEqual({

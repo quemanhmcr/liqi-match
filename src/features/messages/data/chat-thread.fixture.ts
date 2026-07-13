@@ -1,7 +1,8 @@
-import type { ImageSourcePropType } from 'react-native';
-
-import { resolveMessageAsset } from './message-assets';
-import type { ChatMessage, ChatThread } from '../model/chat-message';
+import type {
+  ChatMessage,
+  ChatThread,
+  MessageResolvedMedia,
+} from '../model/chat-message';
 
 function fixtureTimestamp(hour: number, minute: number, dayOffset = 0) {
   const date = new Date();
@@ -10,10 +11,9 @@ function fixtureTimestamp(hour: number, minute: number, dayOffset = 0) {
   return date.toISOString();
 }
 
-function fixtureSource(assetKey: string): ImageSourcePropType {
-  const source = resolveMessageAsset({ assetKey, kind: 'fixture' });
-  if (!source) throw new Error(`Unknown message fixture asset: ${assetKey}`);
-  return source;
+function fixtureSource(assetKey: string): MessageResolvedMedia {
+  const uri = `fixture://${encodeURIComponent(assetKey)}`;
+  return { kind: 'remote', source: { uri }, state: 'ready', uri };
 }
 
 const buildAssets = {

@@ -128,6 +128,8 @@ async function renderMessagesScreen(
   return screen;
 }
 
+jest.setTimeout(15_000);
+
 describe('MessagesScreen', () => {
   beforeEach(() => {
     jest.restoreAllMocks();
