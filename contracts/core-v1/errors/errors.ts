@@ -7,6 +7,7 @@ export const CoreErrorCodeV1Schema = z.enum([
   'validation_failed',
   'not_found',
   'lifecycle_not_active',
+  'lifecycle_version_conflict',
   'player_not_found',
   'player_suspended',
   'player_deleting',

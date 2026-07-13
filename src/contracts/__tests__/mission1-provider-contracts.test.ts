@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import {
   AuthenticatedPrincipalV1Schema,
+  CompletePlayerOnboardingCommandV1Schema,
   CompletePlayerOnboardingResultV1Schema,
   CoreErrorV1Schema,
   isDiscoveryEligible,
@@ -41,7 +42,7 @@ describe('Mission 1 Core V1 provider contracts', () => {
     expect(principal.accountId).not.toBe(principal.playerId);
   });
 
-  it.each(['onboarding', 'active', 'suspended', 'deleting'])(
+  it.each(['onboarding', 'active', 'suspended', 'deleting', 'deleted'])(
     'validates the %s lifecycle fixture',
     (state) => {
       expect(
@@ -74,6 +75,15 @@ describe('Mission 1 Core V1 provider contracts', () => {
         messagingAllowed: true,
       }),
     ).toThrow();
+  });
+
+  it('publishes the authoritative completion command with a legacy transport bridge', () => {
+    const command = CompletePlayerOnboardingCommandV1Schema.parse(
+      read('onboarding-completion-command.json'),
+    );
+
+    expect(command.profile.favoriteHeroSlugs).toHaveLength(3);
+    expect(command.legacyProfilePayload).toBeDefined();
   });
 
   it('publishes the optimistic profile version conflict', () => {
