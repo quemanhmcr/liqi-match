@@ -243,6 +243,13 @@ const defaultProfileStats: ProfileStats = {
   winRate: profileMockStats.winRate,
 };
 
+const emptyProfileStats: ProfileStats = {
+  matches: 0,
+  rating: 0,
+  reputation: 0,
+  winRate: 0,
+};
+
 const defaultEditHabits: ProfileEditHabits = {
   comeback_response: 'Vẫn cố gắng đến cuối',
   communication_channels: ['Voice khi cần'],
@@ -472,14 +479,14 @@ export async function fetchProfileView(input: {
   const coverUrl = mediaUrl(explicitCoverMediaId) ?? fallbackCover?.url;
   const gender = profileGenderFromSummary(mediaSummary);
   const showWinRate = showWinRateFromSummary(mediaSummary);
-  const stats = profileStatsFromSummary(mediaSummary);
+  const stats = profileStatsFromSummary(mediaSummary, emptyProfileStats);
   const statusValue = statusFromSummary(mediaSummary);
 
   return {
     avatarFallbackUrl,
     avatarUrl,
     coverUrl,
-    bio: row.bio?.trim() || profileMockQuote,
+    bio: row.bio?.trim() ?? '',
     displayName:
       row.display_name ??
       gameProfile?.handle ??
@@ -923,7 +930,7 @@ function buildPlayStyleTags(habits: ProfileHabitEmbed | undefined) {
     .filter((tag): tag is string => Boolean(tag))
     .slice(0, 6);
 
-  return tags.length ? tags : [...profileMockPlayStyleTags];
+  return tags;
 }
 
 function formatPlayStyleTag(value: string) {
@@ -1003,39 +1010,36 @@ function normalizeProfileGender(value: unknown): ProfileGender {
   return 'male';
 }
 
-function profileStatsFromSummary(summary: MediaSummary): ProfileStats {
+function profileStatsFromSummary(
+  summary: MediaSummary,
+  fallback: ProfileStats = defaultProfileStats,
+): ProfileStats {
   const stats = mediaSummaryRecord(summary.profile_stats);
-  return normalizeProfileStats({
-    matches: stats.matches,
-    rating: stats.rating,
-    reputation: stats.reputation,
-    winRate: stats.win_rate ?? stats.winRate,
-  });
+  return normalizeProfileStats(
+    {
+      matches: stats.matches,
+      rating: stats.rating,
+      reputation: stats.reputation,
+      winRate: stats.win_rate ?? stats.winRate,
+    },
+    fallback,
+  );
 }
 
 function normalizeProfileStats(
   value: Partial<Record<keyof ProfileStats, unknown>>,
+  fallback: ProfileStats = defaultProfileStats,
 ): ProfileStats {
   return {
-    matches: normalizeStatNumber(
-      value.matches,
-      defaultProfileStats.matches,
-      0,
-      99999,
-    ),
-    rating: normalizeRatingNumber(value.rating),
+    matches: normalizeStatNumber(value.matches, fallback.matches, 0, 99999),
+    rating: normalizeRatingNumber(value.rating, fallback.rating),
     reputation: normalizeStatNumber(
       value.reputation,
-      defaultProfileStats.reputation,
+      fallback.reputation,
       0,
       100,
     ),
-    winRate: normalizeStatNumber(
-      value.winRate,
-      defaultProfileStats.winRate,
-      0,
-      100,
-    ),
+    winRate: normalizeStatNumber(value.winRate, fallback.winRate, 0, 100),
   };
 }
 
@@ -1051,12 +1055,15 @@ function normalizeStatNumber(
   return Math.max(min, Math.min(max, Math.round(number)));
 }
 
-function normalizeRatingNumber(value: unknown) {
+function normalizeRatingNumber(
+  value: unknown,
+  fallback = defaultProfileStats.rating,
+) {
   if (value === null || value === undefined || value === '') {
-    return defaultProfileStats.rating;
+    return fallback;
   }
   const number = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(number)) return defaultProfileStats.rating;
+  if (!Number.isFinite(number)) return fallback;
   return Math.max(0, Math.min(5, Math.round(number * 10) / 10));
 }
 
