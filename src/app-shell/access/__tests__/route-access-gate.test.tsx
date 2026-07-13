@@ -11,7 +11,10 @@ import { act, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
 
-import type { OnboardingDraft } from '@/entities/player-profile';
+import type {
+  MediaStagingItem,
+  OnboardingDraft,
+} from '@/entities/player-profile';
 
 import {
   clearActivePersistedOnboardingDraft,
@@ -107,14 +110,13 @@ describe('RouteAccessGate onboarding integration', () => {
           data: {
             ...completeData(),
             mediaQueue: [
-              {
-                error: 'R2 unavailable',
-                localId: 'avatar:0:failed',
-                localUri: 'file:///avatar.jpg',
-                position: 0,
-                slot: 'avatar',
-                status: 'error',
-              },
+              mediaItem({
+                failure: {
+                  code: 'upload_failed',
+                  message: 'R2 unavailable',
+                },
+                status: 'failed',
+              }),
             ],
           },
           status: 'media_pending',
@@ -188,6 +190,39 @@ describe('RouteAccessGate onboarding integration', () => {
     });
   });
 });
+
+function mediaItem(patch: Partial<MediaStagingItem> = {}): MediaStagingItem {
+  return {
+    asset: {
+      fileName: 'avatar.jpg',
+      fileSize: 1024,
+      height: 512,
+      mimeType: 'image/jpeg',
+      uri: 'file:///avatar.jpg',
+      width: 512,
+    },
+    cleanup: {
+      completedAt: null,
+      failure: null,
+      lastAttemptAt: null,
+      requestedAt: null,
+    },
+    failure: null,
+    localId: 'avatar:0:failed',
+    persistedAt: '2026-07-13T00:00:00.000Z',
+    position: 0,
+    retry: {
+      attemptCount: 1,
+      lastAttemptAt: '2026-07-13T00:00:00.000Z',
+      retryable: true,
+    },
+    slot: 'avatar',
+    status: 'selected',
+    uploadedAssetId: null,
+    uploadedObjectKey: null,
+    ...patch,
+  };
+}
 
 function completeProfile(): OnboardingDraft {
   return {

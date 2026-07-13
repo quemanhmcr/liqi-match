@@ -12,6 +12,10 @@ import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import ProfileMediaScreen from '@/features/onboarding/screens/ProfileMediaScreen';
 import { runOnboardingMediaQueue } from '@/features/onboarding/services/onboarding-media-queue-service';
 import { completeOnboardingProfile } from '@/features/onboarding/services/onboarding-profile-service';
+import {
+  createOnboardingMediaQueueItem,
+  type OnboardingMediaQueueItem,
+} from '@/features/onboarding/model/onboarding-media-queue';
 import { usePersistedOnboardingDraftStore } from '@/features/onboarding/model/persisted-onboarding-draft';
 import { renderWithProviders } from '@/test/render-with-providers';
 
@@ -125,7 +129,7 @@ describe('ProfileMediaScreen', () => {
       expect(data?.pendingMediaSelection).toBeUndefined();
       expect(data?.mediaQueue?.[0]).toEqual(
         expect.objectContaining({
-          localUri: 'file:///avatar.jpg',
+          asset: expect.objectContaining({ uri: 'file:///avatar.jpg' }),
           position: 0,
           slot: 'avatar',
           status: 'selected',
@@ -157,13 +161,7 @@ describe('ProfileMediaScreen', () => {
   });
 
   it('keeps media_pending when an upload fails after core completion', async () => {
-    const failedItem = {
-      localId: 'avatar:0:selected',
-      localUri: 'file:///avatar.jpg',
-      position: 0,
-      slot: 'avatar' as const,
-      status: 'selected' as const,
-    };
+    const failedItem = mediaItem();
     usePersistedOnboardingDraftStore.setState({
       envelope: onboardingEnvelope({
         data: {
@@ -174,10 +172,10 @@ describe('ProfileMediaScreen', () => {
     });
     mockRunOnboardingMediaQueue.mockImplementationOnce(
       async ({ onItemChange }) => {
-        const errorItem = {
+        const errorItem: OnboardingMediaQueueItem = {
           ...failedItem,
-          error: 'R2 unavailable',
-          status: 'error' as const,
+          failure: { code: 'upload_failed', message: 'R2 unavailable' },
+          status: 'failed',
         };
         await onItemChange(errorItem);
         return { failed: [errorItem], items: [errorItem] };
@@ -199,15 +197,12 @@ describe('ProfileMediaScreen', () => {
   });
 
   it('does not call core completion again when resuming media_pending', async () => {
-    const failedItem = {
-      error: 'R2 unavailable',
+    const failedItem = mediaItem({
+      failure: { code: 'association_failed', message: 'R2 unavailable' },
       localId: 'avatar:0:failed',
-      localUri: 'file:///avatar.jpg',
-      position: 0,
-      slot: 'avatar' as const,
-      status: 'error' as const,
+      status: 'failed',
       uploadedAssetId: 'asset-1',
-    };
+    });
     usePersistedOnboardingDraftStore.setState({
       envelope: onboardingEnvelope({
         data: {
@@ -219,10 +214,10 @@ describe('ProfileMediaScreen', () => {
     });
     mockRunOnboardingMediaQueue.mockImplementationOnce(
       async ({ onItemChange }) => {
-        const associated = {
+        const associated: OnboardingMediaQueueItem = {
           ...failedItem,
-          error: undefined,
-          status: 'associated' as const,
+          failure: null,
+          status: 'associated',
         };
         await onItemChange(associated);
         return { failed: [], items: [associated] };
@@ -243,3 +238,17 @@ describe('ProfileMediaScreen', () => {
     expect(mockCompleteOnboardingProfile).not.toHaveBeenCalled();
   });
 });
+
+function mediaItem(
+  patch: Partial<OnboardingMediaQueueItem> = {},
+): OnboardingMediaQueueItem {
+  return {
+    ...createOnboardingMediaQueueItem({
+      asset: { mimeType: 'image/jpeg', uri: 'file:///avatar.jpg' },
+      localId: 'avatar:0:selected',
+      position: 0,
+      slot: 'avatar',
+    }),
+    ...patch,
+  };
+}

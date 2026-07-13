@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import {
   GENDER_CATALOG,
   LANE_CATALOG,
+  MediaStagingQueueSchema,
   OnboardingDraftSchema,
   PROFILE_LIMITS,
   RANK_CATALOG,
@@ -20,12 +21,13 @@ import {
 
 import {
   isPendingMediaSelection,
-  sanitizeOnboardingMediaItem,
+  migrateLegacyOnboardingMediaQueue,
   type OnboardingMediaQueueItem,
   type PendingMediaSelection,
 } from './onboarding-media-state';
 
-export const ONBOARDING_DRAFT_VERSION = 2 as const;
+export const ONBOARDING_DRAFT_VERSION = 3 as const;
+const PREVIOUS_ONBOARDING_DRAFT_VERSION = 2 as const;
 const LEGACY_ONBOARDING_DRAFT_VERSION = 1 as const;
 
 export type OnboardingStatus =
@@ -44,6 +46,7 @@ export type OnboardingDraftMigrationIssue = Readonly<{
     | 'legacy_availability_expanded_all_days'
     | 'legacy_completed_status_downgraded'
     | 'legacy_game_handle_missing'
+    | 'legacy_media_staging_migrated'
     | 'legacy_value_invalid';
   message: string;
   path: string;
@@ -102,6 +105,10 @@ export function onboardingDraftStorageKey(accountId: string) {
   return `@liqi/onboarding-draft/v${ONBOARDING_DRAFT_VERSION}/${encodeURIComponent(accountId)}`;
 }
 
+export function previousOnboardingDraftStorageKey(accountId: string) {
+  return `@liqi/onboarding-draft/v${PREVIOUS_ONBOARDING_DRAFT_VERSION}/${encodeURIComponent(accountId)}`;
+}
+
 export function legacyOnboardingDraftStorageKey(accountId: string) {
   return `@liqi/onboarding-draft/v${LEGACY_ONBOARDING_DRAFT_VERSION}/${encodeURIComponent(accountId)}`;
 }
@@ -134,12 +141,17 @@ export async function hydratePersistedOnboardingDraft(accountId: string) {
   try {
     await operationQueue.catch(() => undefined);
     const currentKey = onboardingDraftStorageKey(accountId);
+    const previousKey = previousOnboardingDraftStorageKey(accountId);
     const legacyKey = legacyOnboardingDraftStorageKey(accountId);
     const currentRaw = await AsyncStorage.getItem(currentKey);
-    const legacyRaw = currentRaw ? null : await AsyncStorage.getItem(legacyKey);
+    const previousRaw = currentRaw
+      ? null
+      : await AsyncStorage.getItem(previousKey);
+    const legacyRaw =
+      currentRaw || previousRaw ? null : await AsyncStorage.getItem(legacyKey);
     if (generation !== hydrationGeneration) return;
 
-    if (!currentRaw && !legacyRaw) {
+    if (!currentRaw && !previousRaw && !legacyRaw) {
       usePersistedOnboardingDraftStore.setState({
         accountId,
         envelope: createEmptyOnboardingDraft(accountId),
@@ -152,14 +164,18 @@ export async function hydratePersistedOnboardingDraft(accountId: string) {
       return;
     }
 
-    const parsedRaw = JSON.parse(currentRaw ?? legacyRaw!);
+    const parsedRaw = JSON.parse(currentRaw ?? previousRaw ?? legacyRaw!);
     const migrated = migrateOnboardingDraftWithIssues(parsedRaw, accountId);
     const requiresRewrite =
+      previousRaw !== null ||
       legacyRaw !== null ||
       (isRecord(parsedRaw) && parsedRaw.version !== ONBOARDING_DRAFT_VERSION);
 
     if (requiresRewrite) {
       await AsyncStorage.setItem(currentKey, JSON.stringify(migrated.envelope));
+    }
+    if (previousRaw) {
+      await AsyncStorage.removeItem(previousKey);
     }
     if (legacyRaw) {
       await AsyncStorage.removeItem(legacyKey);
@@ -200,6 +216,7 @@ export function clearActivePersistedOnboardingDraft() {
 export async function resetPersistedOnboardingDraft(accountId: string) {
   return enqueueOperation(async () => {
     await AsyncStorage.removeItem(onboardingDraftStorageKey(accountId));
+    await AsyncStorage.removeItem(previousOnboardingDraftStorageKey(accountId));
     await AsyncStorage.removeItem(legacyOnboardingDraftStorageKey(accountId));
 
     const state = usePersistedOnboardingDraftStore.getState();
@@ -343,6 +360,9 @@ function migrateOnboardingDraftWithIssues(
   if (raw.version === ONBOARDING_DRAFT_VERSION) {
     return { envelope: normalizeCurrentEnvelope(raw, accountId), issues: [] };
   }
+  if (raw.version === PREVIOUS_ONBOARDING_DRAFT_VERSION) {
+    return migratePreviousFeatureEnvelope(raw, accountId);
+  }
   if (raw.version === LEGACY_ONBOARDING_DRAFT_VERSION) {
     return migrateLegacyFeatureEnvelope(raw, accountId);
   }
@@ -377,6 +397,67 @@ function normalizeCurrentEnvelope(
   };
 }
 
+function migratePreviousFeatureEnvelope(
+  raw: Record<string, unknown>,
+  accountId: string,
+): {
+  envelope: OnboardingDraftEnvelope;
+  issues: OnboardingDraftMigrationIssue[];
+} {
+  if (raw.accountId !== accountId) {
+    throw new Error('Draft onboarding không thuộc tài khoản hiện tại.');
+  }
+  const data = isRecord(raw.data) ? raw.data : {};
+  const updatedAt =
+    typeof raw.updatedAt === 'string' && raw.updatedAt
+      ? raw.updatedAt
+      : nowIso();
+  const mediaQueue = migrateLegacyOnboardingMediaQueue(
+    data.mediaQueue,
+    updatedAt,
+  );
+  const profile = syncProfileMediaSelection(
+    OnboardingDraftSchema.parse(data.profile),
+    mediaQueue,
+  );
+  const migratedData: OnboardingDraftData = { profile };
+  if (mediaQueue.length) migratedData.mediaQueue = mediaQueue;
+  if (isPendingMediaSelection(data.pendingMediaSelection)) {
+    migratedData.pendingMediaSelection = data.pendingMediaSelection;
+  }
+  if (typeof data.coreProfileCompletedAt === 'string') {
+    migratedData.coreProfileCompletedAt = data.coreProfileCompletedAt;
+  }
+  if (typeof data.completedAt === 'string') {
+    migratedData.completedAt = data.completedAt;
+  }
+  const warnings = sanitizeCompatibilityWarnings(data.compatibilityWarnings);
+  if (warnings.length) migratedData.compatibilityWarnings = warnings;
+
+  const issues: OnboardingDraftMigrationIssue[] = [];
+  if (Array.isArray(data.mediaQueue) && data.mediaQueue.length > 0) {
+    issues.push({
+      code: 'legacy_media_staging_migrated',
+      message:
+        'Media queue cũ đã được chuyển sang canonical durable staging contract.',
+      path: 'data.mediaQueue',
+      severity: 'warning',
+    });
+  }
+
+  return {
+    envelope: {
+      accountId,
+      currentStep: onboardingStep(raw.currentStep),
+      data: migratedData,
+      status: onboardingStatus(raw.status),
+      updatedAt,
+      version: ONBOARDING_DRAFT_VERSION,
+    },
+    issues,
+  };
+}
+
 function migrateLegacyFeatureEnvelope(
   raw: Record<string, unknown>,
   accountId: string,
@@ -390,7 +471,14 @@ function migrateLegacyFeatureEnvelope(
 
   const data = isRecord(raw.data) ? raw.data : {};
   const issues: OnboardingDraftMigrationIssue[] = [];
-  const mediaQueue = sanitizeMediaQueue(data.mediaQueue);
+  const updatedAt =
+    typeof raw.updatedAt === 'string' && raw.updatedAt
+      ? raw.updatedAt
+      : nowIso();
+  const mediaQueue = migrateLegacyOnboardingMediaQueue(
+    data.mediaQueue,
+    updatedAt,
+  );
   let profile = createEmptyProfileDraft();
 
   if (isRecord(data.profileBasics)) {
@@ -505,10 +593,7 @@ function migrateLegacyFeatureEnvelope(
         profile: syncedProfile,
       },
       status,
-      updatedAt:
-        typeof raw.updatedAt === 'string' && raw.updatedAt
-          ? raw.updatedAt
-          : nowIso(),
+      updatedAt,
       version: ONBOARDING_DRAFT_VERSION,
     },
     issues,
@@ -533,7 +618,7 @@ function resetLegacyEnvelope(accountId: string, path: string) {
 function sanitizeCurrentDraftData(value: unknown): OnboardingDraftData {
   if (!isRecord(value))
     throw new Error('Dữ liệu draft onboarding không hợp lệ.');
-  const mediaQueue = sanitizeMediaQueue(value.mediaQueue);
+  const mediaQueue = MediaStagingQueueSchema.parse(value.mediaQueue ?? []);
   const profile = syncProfileMediaSelection(
     OnboardingDraftSchema.parse(value.profile),
     mediaQueue,
@@ -553,13 +638,6 @@ function sanitizeCurrentDraftData(value: unknown): OnboardingDraftData {
   const warnings = sanitizeCompatibilityWarnings(value.compatibilityWarnings);
   if (warnings.length) data.compatibilityWarnings = warnings;
   return data;
-}
-
-function sanitizeMediaQueue(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value
-    .map(sanitizeOnboardingMediaItem)
-    .filter((item): item is OnboardingMediaQueueItem => Boolean(item));
 }
 
 function syncProfileMediaSelection(

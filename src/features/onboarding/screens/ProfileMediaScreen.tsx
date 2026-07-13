@@ -27,6 +27,7 @@ import {
 } from '../services/onboarding-media-queue-service';
 import {
   createOnboardingMediaLocalId,
+  createOnboardingMediaQueueItem,
   removeOnboardingMediaItem,
   replaceOnboardingMediaSlotItem,
   setPendingOnboardingMediaSelection,
@@ -65,7 +66,7 @@ export default function ProfileMediaScreen() {
       (item) => item.slot === 'wall' && item.position === position,
     ),
   );
-  const failedItems = mediaQueue.filter((item) => item.status === 'error');
+  const failedItems = mediaQueue.filter((item) => item.status === 'failed');
   const [sourceRequest, setSourceRequest] = useState<SourceRequest>(null);
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle');
   const [uploadProgress, setUploadProgress] =
@@ -93,18 +94,12 @@ export default function ProfileMediaScreen() {
     ) => {
       const position = request.kind === 'wall' ? (request.index ?? 0) : 0;
       const validated = validateOnboardingMediaSelection(asset, request.kind);
-      const item: OnboardingMediaQueueItem = {
-        fileName: validated.fileName,
-        fileSize: validated.fileSize,
-        height: validated.height,
+      const item = createOnboardingMediaQueueItem({
+        asset: validated,
         localId: createOnboardingMediaLocalId(request.kind, position),
-        localUri: validated.uri,
-        mimeType: validated.mimeType,
         position,
         slot: request.kind,
-        status: 'selected',
-        width: validated.width,
-      };
+      });
       await replaceOnboardingMediaSlotItem(item);
     },
     [],
@@ -241,7 +236,9 @@ export default function ProfileMediaScreen() {
         session,
       });
       if (result.failed.length > 0) {
-        setError(result.failed[0]?.error ?? 'Không thể upload ảnh này.');
+        setError(
+          result.failed[0]?.failure?.message ?? 'Không thể upload ảnh này.',
+        );
         return;
       }
 
@@ -371,7 +368,7 @@ export default function ProfileMediaScreen() {
             <View style={styles.avatarPreview}>
               {avatar ? (
                 <Image
-                  source={{ uri: avatar.localUri }}
+                  source={{ uri: avatar.asset.uri }}
                   style={styles.avatarImage}
                 />
               ) : (
@@ -413,7 +410,7 @@ export default function ProfileMediaScreen() {
             {cover ? (
               <>
                 <Image
-                  source={{ uri: cover.localUri }}
+                  source={{ uri: cover.asset.uri }}
                   style={styles.coverImage}
                 />
                 <LinearGradient
@@ -457,7 +454,7 @@ export default function ProfileMediaScreen() {
                 {item ? (
                   <>
                     <Image
-                      source={{ uri: item.localUri }}
+                      source={{ uri: item.asset.uri }}
                       style={styles.wallImage}
                     />
                     <LinearGradient
@@ -503,7 +500,7 @@ export default function ProfileMediaScreen() {
             <Text style={styles.retryTitle}>
               Thử lại {mediaItemLabel(item)}
             </Text>
-            <Text style={styles.retryError}>{item.error}</Text>
+            <Text style={styles.retryError}>{item.failure?.message}</Text>
           </Pressable>
         ))}
         {error ? <Text style={styles.error}>{error}</Text> : null}

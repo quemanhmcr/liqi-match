@@ -87,7 +87,9 @@ export async function runOnboardingMediaQueue(input: {
 }): Promise<MediaQueueRunResult> {
   const items = [...input.items];
   const candidates = items.filter(
-    (item) => !isOnboardingMediaItemComplete(item),
+    (item) =>
+      !isOnboardingMediaItemComplete(item) &&
+      (item.status !== 'failed' || item.retry.retryable),
   );
   const failed: OnboardingMediaQueueItem[] = [];
   let completed = 0;
@@ -96,9 +98,15 @@ export async function runOnboardingMediaQueue(input: {
     const index = items.findIndex((item) => item.localId === candidate.localId);
     if (index < 0) continue;
 
+    const attemptAt = new Date().toISOString();
     const uploading: OnboardingMediaQueueItem = {
       ...candidate,
-      error: undefined,
+      failure: null,
+      retry: {
+        attemptCount: candidate.retry.attemptCount + 1,
+        lastAttemptAt: attemptAt,
+        retryable: true,
+      },
       status: 'uploading',
     };
     items[index] = uploading;
@@ -129,14 +137,18 @@ export async function runOnboardingMediaQueue(input: {
         total: candidates.length,
       });
     } catch (error) {
-      const errored: OnboardingMediaQueueItem = {
+      const failedItem: OnboardingMediaQueueItem = {
         ...latest,
-        error: errorMessage(error),
-        status: 'error',
+        failure: {
+          code: latest.uploadedAssetId ? 'association_failed' : 'upload_failed',
+          message: errorMessage(error),
+        },
+        retry: { ...latest.retry, retryable: true },
+        status: 'failed',
       };
-      items[index] = errored;
-      failed.push(errored);
-      await input.onItemChange(errored);
+      items[index] = failedItem;
+      failed.push(failedItem);
+      await input.onItemChange(failedItem);
     }
   }
 
@@ -152,24 +164,24 @@ export async function uploadOnboardingMediaQueueItem(
 
   if (item.uploadedAssetId) {
     if (item.slot !== 'avatar') {
-      return { ...item, error: undefined, status: 'uploaded' };
+      return { ...item, failure: null, status: 'uploaded' };
     }
     await associateAvatar(session, item.uploadedAssetId);
-    return { ...item, error: undefined, status: 'associated' };
+    return { ...item, failure: null, status: 'associated' };
   }
 
   const asset: LocalImageAsset = {
-    fileName: item.fileName,
-    fileSize: item.fileSize,
-    height: item.height,
-    mimeType: item.mimeType,
-    uri: item.localUri,
-    width: item.width,
+    fileName: item.asset.fileName,
+    fileSize: item.asset.fileSize,
+    height: item.asset.height,
+    mimeType: item.asset.mimeType,
+    uri: item.asset.uri,
+    width: item.asset.width,
   };
   const uploaded = await uploadSingleQueueAsset(session, item.slot, asset);
   const uploadedItem: OnboardingMediaQueueItem = {
     ...item,
-    error: undefined,
+    failure: null,
     status: 'uploaded',
     uploadedAssetId: uploaded.assetId,
     uploadedObjectKey: uploaded.objectKey,

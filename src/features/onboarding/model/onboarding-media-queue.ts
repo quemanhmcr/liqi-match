@@ -3,6 +3,7 @@ import {
   updatePersistedOnboardingDraft,
 } from './persisted-onboarding-draft';
 import {
+  isOnboardingMediaItem,
   sortOnboardingMediaQueue,
   type OnboardingMediaQueueItem,
   type OnboardingMediaSlot,
@@ -16,9 +17,12 @@ export type {
   PendingMediaSelection,
 } from './onboarding-media-state';
 export {
+  createOnboardingMediaQueueItem,
   isOnboardingMediaItem,
   isPendingMediaSelection,
+  migrateLegacyOnboardingMediaQueue,
   sanitizeOnboardingMediaItem,
+  sanitizeOnboardingMediaQueue,
   sortOnboardingMediaQueue,
 } from './onboarding-media-state';
 
@@ -31,6 +35,11 @@ export function getOnboardingMediaQueue() {
 export async function replaceOnboardingMediaSlotItem(
   item: OnboardingMediaQueueItem,
 ) {
+  if (!isOnboardingMediaItem(item)) {
+    throw new Error(
+      'Ảnh onboarding không đúng canonical media staging contract.',
+    );
+  }
   return updatePersistedOnboardingDraft((current) => {
     const mediaQueue = (current.data.mediaQueue ?? []).filter(
       (candidate) =>
@@ -64,6 +73,11 @@ export async function setPendingOnboardingMediaSelection(
 export async function updateOnboardingMediaItem(
   item: OnboardingMediaQueueItem,
 ) {
+  if (!isOnboardingMediaItem(item)) {
+    throw new Error(
+      'Ảnh onboarding không đúng canonical media staging contract.',
+    );
+  }
   return updatePersistedOnboardingDraft((current) => {
     const mediaQueue = [...(current.data.mediaQueue ?? [])];
     const index = mediaQueue.findIndex(
@@ -111,9 +125,13 @@ export async function recoverInterruptedOnboardingMediaQueue() {
         item.status === 'uploading'
           ? {
               ...item,
-              error:
-                'Upload bị gián đoạn khi ứng dụng đóng. Hãy thử lại mục này.',
-              status: 'error' as const,
+              failure: {
+                code: 'upload_interrupted',
+                message:
+                  'Upload bị gián đoạn khi ứng dụng đóng. Hãy thử lại mục này.',
+              },
+              retry: { ...item.retry, retryable: true },
+              status: 'failed' as const,
             }
           : item,
       ),

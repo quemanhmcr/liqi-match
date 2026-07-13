@@ -9,6 +9,7 @@ import {
 } from '@jest/globals';
 
 import {
+  createOnboardingMediaQueueItem,
   recoverInterruptedOnboardingMediaQueue,
   replaceOnboardingMediaSlotItem,
 } from '../model/onboarding-media-queue';
@@ -18,6 +19,7 @@ import {
   hydratePersistedOnboardingDraft,
   legacyOnboardingDraftStorageKey,
   onboardingDraftStorageKey,
+  previousOnboardingDraftStorageKey,
   savePersistedOnboardingStep,
   usePersistedOnboardingDraftStore,
 } from '../model/persisted-onboarding-draft';
@@ -206,7 +208,7 @@ describe('persisted onboarding draft infrastructure', () => {
     expect(state.persistenceError).toBe('disk full');
   });
 
-  it('migrates v1 profile data to v2 and downgrades legacy completion safely', async () => {
+  it('migrates v1 profile data to v3 and downgrades legacy completion safely', async () => {
     const legacyKey = legacyOnboardingDraftStorageKey('account-a');
     storage.set(
       legacyKey,
@@ -241,7 +243,7 @@ describe('persisted onboarding draft infrastructure', () => {
     await hydratePersistedOnboardingDraft('account-a');
 
     const state = usePersistedOnboardingDraftStore.getState();
-    expect(state.envelope?.version).toBe(2);
+    expect(state.envelope?.version).toBe(3);
     expect(state.envelope?.status).toBe('in_progress');
     expect(state.envelope?.data.profile).toEqual(
       expect.objectContaining({
@@ -269,9 +271,10 @@ describe('persisted onboarding draft infrastructure', () => {
     expect(storage.has(onboardingDraftStorageKey('account-a'))).toBe(true);
   });
 
-  it('recovers an interrupted upload as a resumable item error', async () => {
+  it('migrates a v2 interrupted upload then recovers it as canonical failed', async () => {
+    const previousKey = previousOnboardingDraftStorageKey('account-a');
     storage.set(
-      onboardingDraftStorageKey('account-a'),
+      previousKey,
       JSON.stringify({
         ...createEmptyOnboardingDraft('account-a'),
         data: {
@@ -287,6 +290,7 @@ describe('persisted onboarding draft infrastructure', () => {
           ],
         },
         status: 'media_pending',
+        version: 2,
       }),
     );
 
@@ -298,36 +302,91 @@ describe('persisted onboarding draft infrastructure', () => {
         .mediaQueue?.[0],
     ).toEqual(
       expect.objectContaining({
-        error: expect.stringContaining('bị gián đoạn'),
+        asset: expect.objectContaining({ uri: 'file:///avatar.jpg' }),
+        failure: expect.objectContaining({
+          code: 'upload_interrupted',
+          message: expect.stringContaining('bị gián đoạn'),
+        }),
         position: 0,
-        status: 'error',
+        status: 'failed',
       }),
+    );
+    expect(storage.has(previousKey)).toBe(false);
+    expect(storage.has(onboardingDraftStorageKey('account-a'))).toBe(true);
+  });
+
+  it('keeps uploaded asset identity while migrating a v2 association failure', async () => {
+    storage.set(
+      previousOnboardingDraftStorageKey('account-a'),
+      JSON.stringify({
+        ...createEmptyOnboardingDraft('account-a'),
+        data: {
+          profile: createEmptyOnboardingDraft('account-a').data.profile,
+          mediaQueue: [
+            {
+              error: 'profile patch failed',
+              localId: 'avatar:0:failed',
+              localUri: 'file:///avatar.jpg',
+              position: 0,
+              slot: 'avatar',
+              status: 'error',
+              uploadedAssetId: 'asset-1',
+              uploadedObjectKey: 'owner/asset-1.jpg',
+            },
+          ],
+        },
+        status: 'media_pending',
+        version: 2,
+      }),
+    );
+
+    await hydratePersistedOnboardingDraft('account-a');
+
+    expect(
+      usePersistedOnboardingDraftStore.getState().envelope?.data
+        .mediaQueue?.[0],
+    ).toEqual(
+      expect.objectContaining({
+        failure: {
+          code: 'legacy_media_error',
+          message: 'profile patch failed',
+        },
+        status: 'failed',
+        uploadedAssetId: 'asset-1',
+        uploadedObjectKey: 'owner/asset-1.jpg',
+      }),
+    );
+    expect(usePersistedOnboardingDraftStore.getState().migrationIssues).toEqual(
+      [expect.objectContaining({ code: 'legacy_media_staging_migrated' })],
     );
   });
 
   it('keeps stable wall positions and canonical media summary in sync', async () => {
     await hydratePersistedOnboardingDraft('account-a');
-    await replaceOnboardingMediaSlotItem({
-      localId: 'wall:2:first',
-      localUri: 'file:///wall-2.jpg',
-      position: 2,
-      slot: 'wall',
-      status: 'selected',
-    });
-    await replaceOnboardingMediaSlotItem({
-      localId: 'wall:0:first',
-      localUri: 'file:///wall-0.jpg',
-      position: 0,
-      slot: 'wall',
-      status: 'selected',
-    });
-    await replaceOnboardingMediaSlotItem({
-      localId: 'wall:2:replacement',
-      localUri: 'file:///wall-2-new.jpg',
-      position: 2,
-      slot: 'wall',
-      status: 'selected',
-    });
+    await replaceOnboardingMediaSlotItem(
+      createOnboardingMediaQueueItem({
+        asset: { mimeType: 'image/jpeg', uri: 'file:///wall-2.jpg' },
+        localId: 'wall:2:first',
+        position: 2,
+        slot: 'wall',
+      }),
+    );
+    await replaceOnboardingMediaSlotItem(
+      createOnboardingMediaQueueItem({
+        asset: { mimeType: 'image/jpeg', uri: 'file:///wall-0.jpg' },
+        localId: 'wall:0:first',
+        position: 0,
+        slot: 'wall',
+      }),
+    );
+    await replaceOnboardingMediaSlotItem(
+      createOnboardingMediaQueueItem({
+        asset: { mimeType: 'image/jpeg', uri: 'file:///wall-2-new.jpg' },
+        localId: 'wall:2:replacement',
+        position: 2,
+        slot: 'wall',
+      }),
+    );
 
     const data = usePersistedOnboardingDraftStore.getState().envelope?.data;
     expect(

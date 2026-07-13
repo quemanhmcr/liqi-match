@@ -4,7 +4,10 @@ import type { AuthSession } from '@/shared/auth/auth-service';
 import { uploadMediaBatch } from '@/shared/services/media-upload';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
-import type { OnboardingMediaQueueItem } from '../model/onboarding-media-state';
+import {
+  createOnboardingMediaQueueItem,
+  type OnboardingMediaQueueItem,
+} from '../model/onboarding-media-state';
 import {
   runOnboardingMediaQueue,
   uploadOnboardingMediaQueueItem,
@@ -60,14 +63,20 @@ describe('onboarding media queue', () => {
   it('retries avatar association without uploading the file again', async () => {
     mockSupabaseRest.mockResolvedValueOnce(undefined);
     const item = mediaItem({
-      status: 'error',
+      failure: {
+        code: 'association_failed',
+        message: 'profile patch failed',
+      },
+      status: 'failed',
       uploadedAssetId: 'asset-1',
       uploadedObjectKey: 'owner/asset-1.jpg',
     });
 
     await expect(
       uploadOnboardingMediaQueueItem(session, item),
-    ).resolves.toEqual(expect.objectContaining({ status: 'associated' }));
+    ).resolves.toEqual(
+      expect.objectContaining({ failure: null, status: 'associated' }),
+    );
 
     expect(mockUploadMediaBatch).not.toHaveBeenCalled();
     expect(mockSupabaseRest).toHaveBeenCalledWith(
@@ -102,11 +111,20 @@ describe('onboarding media queue', () => {
     expect(changes.map((item) => item.status)).toEqual([
       'uploading',
       'uploaded',
-      'error',
+      'failed',
     ]);
+    expect(changes[0]?.retry).toEqual(
+      expect.objectContaining({
+        attemptCount: 1,
+        lastAttemptAt: expect.any(String),
+      }),
+    );
     expect(result.failed[0]).toEqual(
       expect.objectContaining({
-        error: 'profile patch failed',
+        failure: {
+          code: 'association_failed',
+          message: 'profile patch failed',
+        },
         uploadedAssetId: 'asset-1',
         uploadedObjectKey: 'owner/asset-1.jpg',
       }),
@@ -117,7 +135,7 @@ describe('onboarding media queue', () => {
     expect(mockUploadMediaBatch).toHaveBeenCalledTimes(1);
   });
 
-  it('skips completed items and persists a failed item for retry', async () => {
+  it('skips completed items and persists a structured failed item for retry', async () => {
     const completed = mediaItem({
       localId: 'cover:0:done',
       slot: 'cover',
@@ -141,13 +159,13 @@ describe('onboarding media queue', () => {
     });
 
     expect(mockUploadMediaBatch).toHaveBeenCalledTimes(1);
-    expect(changes.map((item) => item.status)).toEqual(['uploading', 'error']);
+    expect(changes.map((item) => item.status)).toEqual(['uploading', 'failed']);
     expect(result.failed).toEqual([
       expect.objectContaining({
-        error: 'R2 unavailable',
+        failure: { code: 'upload_failed', message: 'R2 unavailable' },
         localId: 'wall:2:pending',
         position: 2,
-        status: 'error',
+        status: 'failed',
       }),
     ]);
   });
@@ -157,12 +175,13 @@ function mediaItem(
   patch: Partial<OnboardingMediaQueueItem> = {},
 ): OnboardingMediaQueueItem {
   return {
-    localId: 'avatar:0:selected',
-    localUri: 'file:///avatar.jpg',
-    mimeType: 'image/jpeg',
-    position: 0,
-    slot: 'avatar',
-    status: 'selected',
+    ...createOnboardingMediaQueueItem({
+      asset: { mimeType: 'image/jpeg', uri: 'file:///avatar.jpg' },
+      localId: 'avatar:0:selected',
+      persistedAt: '2026-07-13T02:00:00.000Z',
+      position: 0,
+      slot: 'avatar',
+    }),
     ...patch,
   };
 }
