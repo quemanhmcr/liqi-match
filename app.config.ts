@@ -99,6 +99,13 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-font',
       'expo-sharing',
       [
+        'expo-secure-store',
+        {
+          configureAndroidBackup: true,
+          faceIDPermission: false,
+        },
+      ],
+      [
         'expo-media-library',
         {
           photosPermission:
