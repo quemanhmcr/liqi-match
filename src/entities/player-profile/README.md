@@ -81,3 +81,23 @@ RPC boundary. It returns `{ ok, payload, warnings }` or `{ ok, errors, warnings 
 Do not call the RPC with hand-built payloads and do not suppress its warning
 codes. See `docs/contracts/profile-domain.md` for backend gaps and handoff
 requirements.
+
+## Durable media staging
+
+`MediaStagingItemSchema` and `MediaStagingQueueSchema` are neutral runtime
+contracts for resumable local media work. They model slot/position identity,
+local asset metadata, upload/association lifecycle, retry metadata and cleanup
+progress without choosing AsyncStorage keys, file-copy policy, upload services or
+feature orchestration.
+
+Canonical status mapping for existing consumers:
+
+- onboarding `error` and Profile Edit `failed` -> `failed`;
+- onboarding `uploaded` and Profile Edit `uploaded-unassociated` -> `uploaded`;
+- `uploaded` always means an uploaded asset exists but required association may
+  still be pending;
+- `associated` means the feature-specific association command succeeded.
+
+Backend wall association/order remains unsupported. A durable local wall item
+must not be represented as server-associated unless the backend actually stores
+that slot and position.

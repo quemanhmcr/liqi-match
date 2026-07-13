@@ -238,3 +238,28 @@ Senior 2 and Senior 3 can integrate independently by:
 Consumer feedback should change this contract only when a domain semantic is
 missing, a cast/loose string is otherwise unavoidable, or valid product data
 cannot be represented.
+
+## Durable media staging contract
+
+The additive `MediaStagingItemSchema` and `MediaStagingQueueSchema` define the
+shared runtime shape for resumable onboarding and Profile Edit media work. They
+include stable `localId`, canonical slot and position, local asset metadata,
+neutral lifecycle status, uploaded asset/object identity, retry metadata and
+cleanup progress.
+
+The entity contract deliberately does not own AsyncStorage keys, filesystem copy
+policy, upload calls, profile association commands, cleanup execution or retry
+scheduling. Those remain feature/application concerns.
+
+Consumer status mapping is explicit:
+
+- feature-local `error` maps to canonical `failed`;
+- feature-local `uploaded-unassociated` maps to canonical `uploaded`;
+- canonical `uploaded` requires `uploadedAssetId` and means association may still
+  be pending;
+- canonical `associated` means the owning feature completed its actual backend
+  association command.
+
+This is an additive runtime API. It does not change player-profile persisted
+contract version 1. Backend wall slot association and wall ordering remain an
+open limitation; local staging state must not claim those values round-trip.
