@@ -1,3 +1,4 @@
+import { createGoldenWorldAssetResolver } from '@/entities/media-asset';
 import {
   MockNotificationInboxRepository,
   type NotificationInboxRepository,
@@ -24,6 +25,7 @@ import {
   fetchProfileView,
   type ProfileReadRepository,
 } from '@/features/profile';
+import { passiveAssetCacheDriver } from '@/shared/assets/asset-cache-driver';
 import { env } from '@/shared/config/env';
 
 import { ApplicationServiceUnavailableError } from './application-service-error';
@@ -42,6 +44,9 @@ export function createSimulationApplicationServices(): ApplicationServices {
   const messageScenario = createChatScenarioController();
 
   return {
+    assetResolver: createGoldenWorldAssetResolver({
+      cacheDriver: passiveAssetCacheDriver,
+    }),
     discoverRepository: new MockDiscoverRepository(),
     homeRepository: {
       async getDashboard(session) {
@@ -62,6 +67,9 @@ export function createSimulationApplicationServices(): ApplicationServices {
 
 export function createApiApplicationServices(): ApplicationServices {
   return {
+    assetResolver: createGoldenWorldAssetResolver({
+      cacheDriver: passiveAssetCacheDriver,
+    }),
     discoverRepository: new ApiDiscoverRepository(
       createDiscoverHttpTransport(),
     ),

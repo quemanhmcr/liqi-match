@@ -1,5 +1,9 @@
 import type { PropsWithChildren } from 'react';
 
+import {
+  AssetResolverProvider,
+  usePreloadAssetSurface,
+} from '@/entities/media-asset';
 import { NotificationRepositoryProvider } from '@/entities/notifications';
 import { DiscoverRepositoryProvider } from '@/features/discover';
 import { HomeRepositoryProvider } from '@/features/home';
@@ -17,23 +21,31 @@ export function ApplicationServiceProviders({
   services,
 }: ApplicationServiceProvidersProps) {
   return (
-    <DiscoverRepositoryProvider repository={services.discoverRepository}>
-      <HomeRepositoryProvider repository={services.homeRepository}>
-        <MessagesServicesProvider
-          messageTransport={services.messageTransport}
-          repository={services.messageRepository}
-        >
-          <NotificationRepositoryProvider
-            repository={services.notificationRepository}
+    <AssetResolverProvider resolver={services.assetResolver}>
+      <ApplicationAssetPreloader />
+      <DiscoverRepositoryProvider repository={services.discoverRepository}>
+        <HomeRepositoryProvider repository={services.homeRepository}>
+          <MessagesServicesProvider
+            messageTransport={services.messageTransport}
+            repository={services.messageRepository}
           >
-            <ProfileReadRepositoryProvider
-              repository={services.profileRepository}
+            <NotificationRepositoryProvider
+              repository={services.notificationRepository}
             >
-              {children}
-            </ProfileReadRepositoryProvider>
-          </NotificationRepositoryProvider>
-        </MessagesServicesProvider>
-      </HomeRepositoryProvider>
-    </DiscoverRepositoryProvider>
+              <ProfileReadRepositoryProvider
+                repository={services.profileRepository}
+              >
+                {children}
+              </ProfileReadRepositoryProvider>
+            </NotificationRepositoryProvider>
+          </MessagesServicesProvider>
+        </HomeRepositoryProvider>
+      </DiscoverRepositoryProvider>
+    </AssetResolverProvider>
   );
+}
+
+function ApplicationAssetPreloader() {
+  usePreloadAssetSurface('app-shell');
+  return null;
 }

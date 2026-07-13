@@ -1,4 +1,10 @@
 export {
+  AssetResolverProvider,
+  useAssetResolver,
+  usePreloadAssetSurface,
+  type AssetResolverProviderProps,
+} from './AssetResolverProvider';
+export {
   createAssetKey,
   isAssetKey,
   parseAssetKey,

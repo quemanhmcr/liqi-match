@@ -1,3 +1,4 @@
+import type { AssetResolver } from '@/entities/media-asset';
 import type { NotificationInboxRepository } from '@/entities/notifications';
 import type { DiscoverRepository } from '@/features/discover';
 import type { HomeRepository } from '@/features/home';
@@ -7,6 +8,7 @@ import type { ProfileReadRepository } from '@/features/profile';
 import type { ApplicationRuntimeMode } from './application-runtime-mode';
 
 export type ApplicationServices = {
+  assetResolver: AssetResolver;
   discoverRepository: DiscoverRepository;
   homeRepository: HomeRepository;
   messageRepository: ChatRepository;

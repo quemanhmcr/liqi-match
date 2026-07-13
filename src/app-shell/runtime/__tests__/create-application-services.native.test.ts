@@ -1,5 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { goldenWorldAssetKeys } from '@/entities/media-asset';
+
 import { ApplicationServiceUnavailableError } from '../application-service-error';
 import {
   createApiApplicationServices,
@@ -19,6 +21,11 @@ describe('application service composition', () => {
     const second = createSimulationApplicationServices();
 
     expect(first.mode).toBe('simulation');
+    expect(first.assetResolver).not.toBe(second.assetResolver);
+    expect(
+      first.assetResolver.resolve(goldenWorldAssetKeys.shared.avatarFallback)
+        .state,
+    ).toBe('ready');
     expect(first.discoverRepository).not.toBe(second.discoverRepository);
     expect(first.messageRepository).not.toBe(second.messageRepository);
     expect(first.notificationRepository).not.toBe(
