@@ -129,12 +129,39 @@ enough.
 Persist hero ID plus priority and return it in deterministic order. Do not rely
 on insertion time as product semantics.
 
-### Dedicated completion status
+### Dedicated onboarding lifecycle
 
-Add an explicit onboarding/profile completion state or completed-at field.
+The server must expose one authoritative lifecycle record with these stages:
+
+- `not_started`: no canonical core profile has been accepted;
+- `core_profile_completed`: the canonical profile command succeeded, but the
+  post-profile media step has not been completed;
+- `completed`: all required onboarding work, including required media
+  association, has completed.
+
+The record should carry `core_profile_completed_at`, `completed_at`, the profile
+contract version and the resulting profile version. The canonical profile
+command writes `core_profile_completed` atomically with the validated profile;
+the media completion command advances it to `completed` atomically with the
+required media associations. Replaying either command must be idempotent.
+
+`in_progress` remains a local draft state until the backend supports draft sync.
+On a fresh installation, routing uses the server stage as follows:
+
+- `completed` -> leave onboarding;
+- `core_profile_completed` -> enter the media step with no invented local media
+  selections;
+- `not_started` or no record -> hydrate a local draft or start unanswered.
+
 **Do not introduce or continue using `profile_habits` existence as the new
-completion marker.** Completion should be written by the same command that
-validates the completed profile.
+completion marker.** A habit row proves neither final media completion nor that
+the current canonical contract was validated. A legacy backfill may classify a
+row as core-profile evidence only through an explicit backend migration; the
+runtime client must not infer final completion from it.
+
+This is an additive backend handoff and does not change player-profile contract
+version 1. Senior 2's account-scoped progress envelope has its own storage
+version and must migrate separately when its nested profile data changes.
 
 ### Atomic profile command
 
@@ -211,3 +238,28 @@ Senior 2 and Senior 3 can integrate independently by:
 Consumer feedback should change this contract only when a domain semantic is
 missing, a cast/loose string is otherwise unavoidable, or valid product data
 cannot be represented.
+
+## Durable media staging contract
+
+The additive `MediaStagingItemSchema` and `MediaStagingQueueSchema` define the
+shared runtime shape for resumable onboarding and Profile Edit media work. They
+include stable `localId`, canonical slot and position, local asset metadata,
+neutral lifecycle status, uploaded asset/object identity, retry metadata and
+cleanup progress.
+
+The entity contract deliberately does not own AsyncStorage keys, filesystem copy
+policy, upload calls, profile association commands, cleanup execution or retry
+scheduling. Those remain feature/application concerns.
+
+Consumer status mapping is explicit:
+
+- feature-local `error` maps to canonical `failed`;
+- feature-local `uploaded-unassociated` maps to canonical `uploaded`;
+- canonical `uploaded` requires `uploadedAssetId` and means association may still
+  be pending;
+- canonical `associated` means the owning feature completed its actual backend
+  association command.
+
+This is an additive runtime API. It does not change player-profile persisted
+contract version 1. Backend wall slot association and wall ordering remain an
+open limitation; local staging state must not claim those values round-trip.
