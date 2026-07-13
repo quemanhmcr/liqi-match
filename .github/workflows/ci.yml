@@ -45,6 +45,11 @@ jobs:
       - name: Check generated Core V1 contracts
         run: npm run contracts:check
 
+      - name: Check production authority invariants
+        run: |
+          npm run match-authority:check
+          npm run conversation-authority:check
+
       - name: Check formatting
         run: npm run format:check
 
