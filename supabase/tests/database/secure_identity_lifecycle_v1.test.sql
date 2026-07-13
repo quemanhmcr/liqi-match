@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(26);
+select plan(31);
 
 select has_table('public', 'players', 'canonical players table exists');
 select has_table('public', 'player_profiles_v1', 'canonical player profile mapping exists');
@@ -450,6 +450,64 @@ select is(
   ),
   '{"profiles":1,"deletedEvents":1}'::jsonb,
   'auth deletion preserves canonical ProfileId and emits exactly one deleted event'
+);
+
+
+select is(
+  public.get_player_lifecycle_snapshot_v1(
+    '01000000-0000-4000-8000-000000000101',
+    false
+  )->>'state',
+  'deleted',
+  'account provider returns the authoritative tombstone lifecycle'
+);
+
+select is(
+  public.get_player_lifecycle_snapshot_by_player_v1(
+    (
+      select id
+      from public.players
+      where account_id = '01000000-0000-4000-8000-000000000102'
+    ),
+    true
+  )->>'state',
+  'onboarding',
+  'player provider lock path returns the authoritative lifecycle'
+);
+
+select is(
+  public.get_player_lifecycle_snapshot_by_player_v1(
+    (
+      select id
+      from public.players
+      where account_id = '01000000-0000-4000-8000-000000000102'
+    ),
+    true
+  )->>'messagingAllowed',
+  'false',
+  'provider snapshot includes authoritative messaging capability'
+);
+
+select is(
+  public.get_player_lifecycle_snapshot_v1(
+    '01000000-0000-4000-8000-000000000102',
+    true
+  )->>'playerId',
+  (
+    select id::text
+    from public.players
+    where account_id = '01000000-0000-4000-8000-000000000102'
+  ),
+  'account and player provider functions resolve the same canonical PlayerId'
+);
+
+select is(
+  public.get_player_lifecycle_snapshot_by_player_v1(
+    'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    true
+  ),
+  null,
+  'provider returns null for an unknown player'
 );
 
 select * from finish();
