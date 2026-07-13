@@ -47,15 +47,21 @@ export type SimulationRuntimeCapability = z.infer<
 
 export const SimulationMutationKindSchema = z.enum([
   'advance-clock',
+  'apply-scenario-event',
   'associate-media',
   'invite-player',
+  'join-set',
+  'leave-set',
+  'mark-conversation-read',
   'mark-notification-read',
   'mark-notifications-seen',
   'receive-message',
+  'receive-notification',
   'request-set-join',
   'retry-message',
   'send-message',
   'set-network-state',
+  'transition-message-delivery',
   'update-profile',
 ]);
 export type SimulationMutationKind = z.infer<

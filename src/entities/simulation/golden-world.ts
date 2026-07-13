@@ -1,3 +1,5 @@
+import { offsetSimulationTimestamp } from '@/shared/simulation';
+
 import type {
   CompletedHabitAnswers,
   GenderId,
@@ -1324,7 +1326,5 @@ function asset(
 }
 
 function at(minutesAgo: number) {
-  return new Date(
-    Date.parse(GOLDEN_WORLD_CLOCK) - minutesAgo * 60_000,
-  ).toISOString();
+  return offsetSimulationTimestamp(GOLDEN_WORLD_CLOCK, -minutesAgo * 60_000);
 }

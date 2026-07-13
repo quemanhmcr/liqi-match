@@ -30,6 +30,10 @@ export {
   type SimulationNotificationLens,
 } from './data/simulation-notification-inbox.repository';
 export {
+  createCanonicalSimulationNotificationInboxRepository,
+  type CanonicalSimulationNotificationRepositoryOptions,
+} from './data/canonical-simulation-notification-inbox.repository';
+export {
   NotificationRepositoryProvider,
   useNotificationRepository,
 } from './runtime/NotificationRepositoryProvider';

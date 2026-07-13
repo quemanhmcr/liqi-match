@@ -85,6 +85,27 @@ export function assertValidSimulationFault(fault: SimulationFault) {
     throw new SimulationContractError('A simulation fault requires a kind.');
   }
 
+  if (fault.operation && fault.operationPrefix) {
+    throw new SimulationContractError(
+      'A simulation fault cannot use operation and operationPrefix together.',
+    );
+  }
+  if (fault.operation !== undefined && !fault.operation.trim()) {
+    throw new SimulationContractError(
+      'A simulation fault operation must be non-empty.',
+    );
+  }
+  if (fault.operationPrefix !== undefined && !fault.operationPrefix.trim()) {
+    throw new SimulationContractError(
+      'A simulation fault operationPrefix must be non-empty.',
+    );
+  }
+  if (fault.scope !== undefined && !fault.scope.trim()) {
+    throw new SimulationContractError(
+      'A simulation fault scope must be non-empty.',
+    );
+  }
+
   if (
     fault.kind === 'latency' &&
     (!Number.isFinite(fault.durationMs) || fault.durationMs < 0)

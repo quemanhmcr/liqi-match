@@ -1,16 +1,17 @@
+import { offsetSimulationTimestamp } from '@/shared/simulation';
+
 import { HERO_IDS } from '@/entities/hero';
 
 import {
   LANE_CATALOG,
   RANK_CATALOG,
   type GenderId,
-  type HeroId,
   type LaneSlug,
   type RankId,
 } from '@/entities/player-profile';
 
 import { createGoldenWorldSnapshot } from './golden-world';
-import { profileId, type ProfileId } from './identity';
+import { profileId } from './identity';
 import {
   SimulationWorldSnapshotSchema,
   type SimulatedDiscoverFacet,
@@ -249,7 +250,7 @@ function rankWeight(rankId: RankId) {
 }
 
 function timestampBefore(clock: string, minutes: number) {
-  return new Date(Date.parse(clock) - minutes * 60_000).toISOString();
+  return offsetSimulationTimestamp(clock, -minutes * 60_000);
 }
 
 function pick<const Values extends readonly unknown[]>(

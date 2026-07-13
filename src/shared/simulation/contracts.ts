@@ -16,6 +16,8 @@ type SimulationFaultBase = {
   operation?: string;
   /** Optional adapter-defined scope such as a conversation or asset id. */
   scope?: string;
+  /** Prefix matcher for a feature operation family, e.g. `messages.`. */
+  operationPrefix?: string;
   message?: string;
 };
 
@@ -59,7 +61,51 @@ export type SimulationFault =
 
 export type ScheduledSimulationFault = SimulationFault & {
   id: string;
+  /** null means active until explicitly cleared. */
+  remainingUses: number | null;
 };
+
+export type SimulationScheduledAction =
+  | {
+      at: string;
+      id: string;
+      kind: 'clear_fault';
+      faultId: string;
+    }
+  | {
+      at: string;
+      durationMs: number;
+      id: string;
+      kind: 'fixed_latency';
+    }
+  | {
+      at: string;
+      id: string;
+      kind: 'network';
+      state: SimulationNetworkState;
+    }
+  | {
+      at: string;
+      fault: SimulationFault;
+      faultId: string;
+      id: string;
+      kind: 'schedule_fault';
+      /** null means active until a clear_fault action. */
+      uses: number | null;
+    }
+  | {
+      at: string;
+      id: string;
+      kind: 'domain';
+      payload: SimulationJsonValue;
+    };
+
+export type SimulationDomainEventContext = Readonly<{
+  actionId: string;
+  at: string;
+  network: SimulationNetworkState;
+  scenarioId: ScenarioId;
+}>;
 
 export type SimulationClockSnapshot = {
   baselineAt: string;
@@ -83,11 +129,13 @@ export type SimulationControllerSnapshot = {
 };
 
 export type SimulationScenarioDefinition<TWorld> = Readonly<{
+  allowedMutations?: readonly string[];
   clock: Readonly<{ at: string }>;
   fixedLatencyMs?: number;
   id: ScenarioId;
   label?: string;
   network?: SimulationNetworkState;
+  scheduledActions?: readonly SimulationScheduledAction[];
   version?: number;
   world: TWorld;
 }>;
@@ -95,6 +143,7 @@ export type SimulationScenarioDefinition<TWorld> = Readonly<{
 export type SimulationEventType =
   | 'clock_advanced'
   | 'clock_frozen'
+  | 'fault_cleared'
   | 'fault_consumed'
   | 'fault_scheduled'
   | 'fixed_latency_changed'
@@ -102,6 +151,7 @@ export type SimulationEventType =
   | 'network_changed'
   | 'reset_completed'
   | 'scenario_selected'
+  | 'scheduled_action_applied'
   | 'snapshot_restored';
 
 export type SimulationEvent = Readonly<{
@@ -113,7 +163,7 @@ export type SimulationEvent = Readonly<{
   type: SimulationEventType;
 }>;
 
-export type SimulationWorldSnapshot<TWorld> = {
+export type SimulationRuntimeSnapshot<TWorld> = {
   clock: SimulationClockSnapshot;
   controller: SimulationControllerSnapshot;
   createdAt: string;
@@ -122,9 +172,13 @@ export type SimulationWorldSnapshot<TWorld> = {
   participants: Record<string, SimulationJsonValue>;
   scenarioId: ScenarioId;
   scenarioVersion: number;
+  timelineCursor: number;
   version: 1;
   world: TWorld;
 };
+
+/** @deprecated Prefer SimulationRuntimeSnapshot to avoid domain-world name collisions. */
+export type SimulationWorldSnapshot<TWorld> = SimulationRuntimeSnapshot<TWorld>;
 
 export type SimulationResetReason = 'reset' | 'restore' | 'scenario-selection';
 
@@ -165,6 +219,7 @@ export type SimulationOperationContext = Readonly<{
 }>;
 
 export type SimulationWorldValidationContext = Readonly<{
+  now: string;
   operation: string;
   scenarioId: ScenarioId;
 }>;
@@ -175,6 +230,7 @@ export type SimulationRuntimeDebugState<TWorld> = Readonly<{
   events: readonly SimulationEvent[];
   namespace: SimulationNamespace;
   scenarioId: ScenarioId;
+  timelineCursor: number;
   world: TWorld;
 }>;
 

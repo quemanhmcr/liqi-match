@@ -1,4 +1,10 @@
-export { DeterministicSimulationClock } from './clock';
+export {
+  DeterministicSimulationClock,
+  offsetSimulationTimestamp,
+  shiftSimulationTimestamp,
+  simulationTimestampIso,
+  simulationTimestampMs,
+} from './clock';
 export { cloneSimulationState, assertSimulationJsonValue } from './clone';
 export type {
   ScenarioControlPort,
@@ -7,6 +13,7 @@ export type {
   SimulationClock,
   SimulationClockSnapshot,
   SimulationControllerSnapshot,
+  SimulationDomainEventContext,
   SimulationEvent,
   SimulationEventType,
   SimulationFault,
@@ -19,6 +26,8 @@ export type {
   SimulationResetParticipant,
   SimulationResetPhase,
   SimulationRuntimeDebugState,
+  SimulationRuntimeSnapshot,
+  SimulationScheduledAction,
   SimulationScenarioDefinition,
   SimulationWorldSnapshot,
   SimulationWorldValidationContext,
@@ -33,6 +42,7 @@ export {
   SimulationFaultController,
   type PreparedSimulationOperation,
   type SimulationDelay,
+  type ScheduleSimulationFaultOptions,
   type SimulationFaultControllerOptions,
 } from './fault-controller';
 export { SimulationResetRegistry } from './reset-registry';

@@ -2,7 +2,6 @@ import type {
   AssetKey,
   ConversationId,
   MessageId,
-  NotificationId,
   ProfileId,
   SetId,
 } from './identity';
@@ -67,7 +66,6 @@ export function validateSimulationWorld(
   const issues: SimulationIntegrityIssue[] = [];
   const profileIds = new Set(Object.keys(world.profiles));
   const setIds = new Set(Object.keys(world.sets));
-  const conversationIds = new Set(Object.keys(world.conversations));
   const messageIds = new Set(Object.keys(world.messages));
   const assetKeys = new Set(Object.keys(world.assets));
 
@@ -275,7 +273,7 @@ function validateProfile(
   assetKeys: ReadonlySet<string>,
   issues: SimulationIntegrityIssue[],
 ) {
-  const refs: Array<readonly [AssetKey | null, string]> = [
+  const refs: (readonly [AssetKey | null, string])[] = [
     [profile.media.avatarAssetKey, 'avatarAssetKey'],
     [profile.media.coverAssetKey, 'coverAssetKey'],
     ...profile.media.wallAssetKeys.map(

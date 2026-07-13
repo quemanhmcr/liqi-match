@@ -18,7 +18,7 @@ import {
 export const SIMULATION_NOTIFICATION_OPERATIONS = {
   list: 'notifications.list',
   markRead: 'notifications.mark-read',
-  markSeen: 'notifications.mark-seen',
+  markSeen: 'notifications.mark-seen-through',
   summary: 'notifications.summary',
 } as const;
 

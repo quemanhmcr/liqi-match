@@ -6,7 +6,7 @@ export class DeterministicSimulationClock implements SimulationClock {
   private currentMs: number;
 
   constructor(initialAt: string) {
-    this.baselineMs = parseTimestamp(initialAt, 'initial clock');
+    this.baselineMs = simulationTimestampMs(initialAt, 'initial clock');
     this.currentMs = this.baselineMs;
   }
 
@@ -15,16 +15,15 @@ export class DeterministicSimulationClock implements SimulationClock {
   }
 
   freeze(at: string) {
-    this.currentMs = parseTimestamp(at, 'frozen clock');
+    this.currentMs = simulationTimestampMs(at, 'frozen clock');
   }
 
   advance(durationMs: number) {
-    if (!Number.isFinite(durationMs) || durationMs < 0) {
-      throw new SimulationContractError(
-        'Clock durationMs must be non-negative and finite.',
-      );
-    }
-    this.currentMs += durationMs;
+    this.currentMs = advancedSimulationTimestampMs(
+      this.currentMs,
+      durationMs,
+      'clock durationMs',
+    );
   }
 
   reset() {
@@ -32,14 +31,14 @@ export class DeterministicSimulationClock implements SimulationClock {
   }
 
   setBaseline(at: string) {
-    this.baselineMs = parseTimestamp(at, 'clock baseline');
+    this.baselineMs = simulationTimestampMs(at, 'clock baseline');
     this.currentMs = this.baselineMs;
   }
 
   snapshot(): SimulationClockSnapshot {
     return {
-      baselineAt: new Date(this.baselineMs).toISOString(),
-      currentAt: new Date(this.currentMs).toISOString(),
+      baselineAt: simulationTimestampIso(this.baselineMs),
+      currentAt: simulationTimestampIso(this.currentMs),
       version: 1,
     };
   }
@@ -50,12 +49,18 @@ export class DeterministicSimulationClock implements SimulationClock {
         `Unsupported simulation clock snapshot version: ${String(snapshot.version)}.`,
       );
     }
-    this.baselineMs = parseTimestamp(snapshot.baselineAt, 'clock baseline');
-    this.currentMs = parseTimestamp(snapshot.currentAt, 'clock current time');
+    this.baselineMs = simulationTimestampMs(
+      snapshot.baselineAt,
+      'clock baseline',
+    );
+    this.currentMs = simulationTimestampMs(
+      snapshot.currentAt,
+      'clock current time',
+    );
   }
 }
 
-function parseTimestamp(value: string, label: string) {
+export function simulationTimestampMs(value: string, label = 'timestamp') {
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) {
     throw new SimulationContractError(
@@ -63,4 +68,56 @@ function parseTimestamp(value: string, label: string) {
     );
   }
   return timestamp;
+}
+
+export function simulationTimestampIso(timestampMs: number) {
+  if (!Number.isFinite(timestampMs)) {
+    throw new SimulationContractError('A simulation timestamp must be finite.');
+  }
+  return new Date(timestampMs).toISOString();
+}
+
+export function offsetSimulationTimestamp(
+  at: string,
+  offsetMs: number,
+  label = 'offsetMs',
+) {
+  if (!Number.isFinite(offsetMs)) {
+    throw new SimulationContractError(`${label} must be finite.`);
+  }
+  const shifted = simulationTimestampMs(at) + offsetMs;
+  if (!Number.isFinite(shifted)) {
+    throw new SimulationContractError('Simulation clock overflowed.');
+  }
+  return simulationTimestampIso(shifted);
+}
+
+export function shiftSimulationTimestamp(
+  at: string,
+  durationMs: number,
+  label = 'durationMs',
+) {
+  if (!Number.isFinite(durationMs) || durationMs < 0) {
+    throw new SimulationContractError(
+      `${label} must be non-negative and finite.`,
+    );
+  }
+  return offsetSimulationTimestamp(at, durationMs, label);
+}
+
+function advancedSimulationTimestampMs(
+  timestampMs: number,
+  durationMs: number,
+  label: string,
+) {
+  if (!Number.isFinite(durationMs) || durationMs < 0) {
+    throw new SimulationContractError(
+      `${label} must be non-negative and finite.`,
+    );
+  }
+  const advanced = timestampMs + durationMs;
+  if (!Number.isFinite(advanced)) {
+    throw new SimulationContractError('Simulation clock overflowed.');
+  }
+  return advanced;
 }

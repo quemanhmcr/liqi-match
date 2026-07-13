@@ -21,7 +21,6 @@ import type {
 import type {
   SimulatedConversation,
   SimulatedDiscoverFacet,
-  SimulatedMatch,
   SimulatedMatchKind,
   SimulatedOnlineStatus,
   SimulatedProfile,
@@ -717,7 +716,7 @@ function setCompatibility(viewer: SimulatedProfile, set: SimulatedSet) {
 }
 
 function matchReasons(viewer: SimulatedProfile, candidate: SimulatedProfile) {
-  const reasons: Array<{ code: string; label: string }> = [];
+  const reasons: { code: string; label: string }[] = [];
   if (
     viewer.canonicalProfile.laneSelection.primary !==
     candidate.canonicalProfile.laneSelection.primary

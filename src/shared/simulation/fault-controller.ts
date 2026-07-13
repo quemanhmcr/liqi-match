@@ -32,6 +32,12 @@ export type SimulationFaultControllerOptions = {
   network?: SimulationNetworkState;
 };
 
+export type ScheduleSimulationFaultOptions = {
+  id?: string;
+  /** null keeps the fault active until clearFault is called. */
+  uses?: number | null;
+};
+
 export class SimulationFaultController {
   private readonly delay: SimulationDelay;
   private fixedLatencyMs: number;
@@ -81,14 +87,49 @@ export class SimulationFaultController {
   }
 
   failNext(fault: SimulationFault) {
+    return this.scheduleFault(fault, { uses: 1 });
+  }
+
+  scheduleFault(
+    fault: SimulationFault,
+    options: ScheduleSimulationFaultOptions = {},
+  ) {
     assertValidSimulationFault(fault);
-    this.nextFaultSequence += 1;
+    const remainingUses = normalizeFaultUses(
+      options.uses === undefined ? 1 : options.uses,
+    );
+    const id = options.id
+      ? normalizeFaultId(options.id)
+      : this.createGeneratedFaultId();
+    if (this.pendingFaults.some((pending) => pending.id === id)) {
+      throw new SimulationContractError(
+        `Simulation fault id is already scheduled: ${id}.`,
+      );
+    }
+
     const scheduled = cloneSimulationState({
       ...fault,
-      id: `fault-${this.nextFaultSequence}`,
+      id,
+      remainingUses,
     }) as ScheduledSimulationFault;
     this.pendingFaults.push(scheduled);
     return cloneSimulationState(scheduled);
+  }
+
+  clearFault(id: string) {
+    const normalized = normalizeFaultId(id);
+    const index = this.pendingFaults.findIndex(
+      (fault) => fault.id === normalized,
+    );
+    if (index < 0) return false;
+    this.pendingFaults.splice(index, 1);
+    return true;
+  }
+
+  fork() {
+    const fork = new SimulationFaultController({ delay: this.delay });
+    fork.restore(this.snapshot());
+    return fork;
   }
 
   async prepare(
@@ -104,14 +145,7 @@ export class SimulationFaultController {
       this.assertOnline(input.operation);
     }
 
-    const faultIndex = this.pendingFaults.findIndex((fault) =>
-      matchesFault(fault, input),
-    );
-    if (faultIndex < 0) {
-      return { consumedFault: null, directive: null };
-    }
-
-    const [fault] = this.pendingFaults.splice(faultIndex, 1);
+    const fault = this.consumeMatchingFault(input);
     if (!fault) {
       return { consumedFault: null, directive: null };
     }
@@ -174,19 +208,51 @@ export class SimulationFaultController {
         'Simulation fault sequence must be a non-negative integer.',
       );
     }
+    const ids = new Set<string>();
     for (const fault of snapshot.pendingFaults) {
       assertValidSimulationFault(fault);
-      if (!fault.id.trim()) {
+      normalizeFaultId(fault.id);
+      normalizeFaultUses(fault.remainingUses);
+      if (ids.has(fault.id)) {
         throw new SimulationContractError(
-          'A scheduled simulation fault requires an id.',
+          `Duplicate scheduled simulation fault id: ${fault.id}.`,
         );
       }
+      ids.add(fault.id);
     }
 
     this.pendingFaults = cloneSimulationState(snapshot.pendingFaults);
     this.nextFaultSequence = snapshot.nextFaultSequence;
     this.fixedLatencyMs = fixedLatencyMs;
     this.setNetwork(snapshot.network);
+  }
+
+  private createGeneratedFaultId() {
+    do {
+      this.nextFaultSequence += 1;
+    } while (
+      this.pendingFaults.some(
+        (fault) => fault.id === `fault-${this.nextFaultSequence}`,
+      )
+    );
+    return `fault-${this.nextFaultSequence}`;
+  }
+
+  private consumeMatchingFault(input: SimulationOperationInput) {
+    const index = this.pendingFaults.findIndex((fault) =>
+      matchesFault(fault, input),
+    );
+    if (index < 0) return null;
+
+    const scheduled = this.pendingFaults[index];
+    if (!scheduled) return null;
+    const consumed = cloneSimulationState(scheduled);
+    if (scheduled.remainingUses === 1) {
+      this.pendingFaults.splice(index, 1);
+    } else if (scheduled.remainingUses !== null) {
+      scheduled.remainingUses -= 1;
+    }
+    return consumed;
   }
 
   private assertOnline(operation: string) {
@@ -236,6 +302,26 @@ function normalizeLatency(durationMs: number) {
   return durationMs;
 }
 
+function normalizeFaultUses(uses: number | null) {
+  if (uses === null) return null;
+  if (!Number.isInteger(uses) || uses < 1) {
+    throw new SimulationContractError(
+      'Simulation fault uses must be a positive integer or null.',
+    );
+  }
+  return uses;
+}
+
+function normalizeFaultId(id: string) {
+  const normalized = id.trim();
+  if (!normalized) {
+    throw new SimulationContractError(
+      'A scheduled simulation fault requires a non-empty id.',
+    );
+  }
+  return normalized;
+}
+
 function assertOperation(operation: string) {
   if (!operation.trim()) {
     throw new SimulationContractError(
@@ -249,6 +335,12 @@ function matchesFault(
   input: SimulationOperationInput,
 ) {
   if (fault.operation && fault.operation !== input.operation) return false;
+  if (
+    fault.operationPrefix &&
+    !input.operation.startsWith(fault.operationPrefix)
+  ) {
+    return false;
+  }
   if (fault.scope && fault.scope !== input.scope) return false;
   return true;
 }

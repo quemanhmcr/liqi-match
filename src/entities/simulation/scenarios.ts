@@ -1,3 +1,5 @@
+import { offsetSimulationTimestamp } from '@/shared/simulation';
+
 import {
   assetKey,
   messageId,
@@ -8,7 +10,6 @@ import {
   type ScenarioId,
 } from './identity';
 import {
-  GOLDEN_ASSET_KEYS,
   GOLDEN_CONVERSATION_IDS,
   GOLDEN_PROFILE_IDS,
   GOLDEN_SET_IDS,
@@ -37,15 +38,21 @@ const DEFAULT_CAPABILITIES = [
 
 const DEFAULT_MUTATIONS: readonly SimulationMutationKind[] = [
   'advance-clock',
+  'apply-scenario-event',
   'associate-media',
   'invite-player',
+  'join-set',
+  'leave-set',
+  'mark-conversation-read',
   'mark-notification-read',
   'mark-notifications-seen',
   'receive-message',
+  'receive-notification',
   'request-set-join',
   'retry-message',
   'send-message',
   'set-network-state',
+  'transition-message-delivery',
   'update-profile',
 ];
 
@@ -360,15 +367,11 @@ function cloneWorld(world: SimulationWorldSnapshot) {
 }
 
 function before(minutes: number) {
-  return new Date(
-    Date.parse(GOLDEN_WORLD_CLOCK) - minutes * 60_000,
-  ).toISOString();
+  return offsetSimulationTimestamp(GOLDEN_WORLD_CLOCK, -minutes * 60_000);
 }
 
 function after(minutes: number) {
-  return new Date(
-    Date.parse(GOLDEN_WORLD_CLOCK) + minutes * 60_000,
-  ).toISOString();
+  return offsetSimulationTimestamp(GOLDEN_WORLD_CLOCK, minutes * 60_000);
 }
 
 function requiredEntity<T>(value: T | undefined, label: string): T {

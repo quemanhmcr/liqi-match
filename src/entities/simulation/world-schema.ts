@@ -400,9 +400,7 @@ export const SimulationWorldSnapshotSchema = z.object({
   viewerId: ProfileIdSchema,
 });
 
-export type SimulationWorldSnapshot = z.infer<
-  typeof SimulationWorldSnapshotSchema
-> & {
+export type SimulationWorld = z.infer<typeof SimulationWorldSnapshotSchema> & {
   assets: Record<AssetKey, SimulatedAssetManifestEntry>;
   conversations: Record<ConversationId, SimulatedConversation>;
   matches: Record<MatchId, SimulatedMatch>;
@@ -411,3 +409,6 @@ export type SimulationWorldSnapshot = z.infer<
   profiles: Record<ProfileId, SimulatedProfile>;
   sets: Record<SetId, SimulatedSet>;
 };
+
+/** @deprecated Prefer SimulationWorld to avoid confusion with runtime snapshots. */
+export type SimulationWorldSnapshot = SimulationWorld;

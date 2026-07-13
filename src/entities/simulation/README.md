@@ -38,7 +38,11 @@ Consumers must not derive one ID from another. In particular, do not construct
 
 ## World and clock semantics
 
-`SimulationWorldSnapshot` is a normalized domain graph. Records store each
+`SimulationWorld` is the preferred domain name for the normalized graph.
+`SimulationWorldSnapshot` remains a compatibility alias required by the v1
+deliverable; Senior 2's runtime snapshot is a different envelope type.
+
+`SimulationWorld` is a normalized domain graph. Records store each
 entity exactly once and relationships use canonical IDs. Arrays such as
 `conversation.messageIds`, `set.memberIds` and ordered profile selections carry
 business order explicitly.
@@ -88,6 +92,24 @@ entity identity.
 Scenarios declare initial world, initial clock, required relationships,
 capabilities, faults and ordered domain events. Runtime owns persistence, reset,
 network state, latency, retry counters and application of events.
+
+`SIMULATION_RUNTIME_SCENARIOS` adapts the domain definitions to Senior 2's
+generic runtime contract. `SIMULATION_RUNTIME_SCENARIO_PLANS` retains the
+ordered timeline, domain fault declarations and mutation capabilities that do
+not belong in the runtime's generic world baseline. Use
+`validateSimulationWorldForRuntime` for every runtime ingress and commit.
+
+`SIMULATION_OPERATION_IDS` is the canonical operation vocabulary.
+`projectSimulationFaultToRuntime` maps activated domain targets to the runtime's
+exact-operation fault directives; offline faults remain network controller
+transitions. The mapping catalog is injectable when composition needs narrower
+scopes.
+
+Messages, Notifications and Set membership adapters call the exported mutation lenses from
+`mutations.ts` inside `runtime.mutate`. Lenses own delivery transitions, read
+watermarks, notification ownership and graph updates; runtime owns FIFO,
+rollback and faults. `changeSimulationSetMembership` makes join/leave explicit and
+forbids owner departure without ownership transfer.
 
 The six required scenarios are exported through `SIMULATION_SCENARIOS`:
 

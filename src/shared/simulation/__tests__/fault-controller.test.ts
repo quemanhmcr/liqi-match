@@ -101,3 +101,75 @@ describe('SimulationFaultController', () => {
     expect(states).toEqual(['offline', 'online']);
   });
 });
+
+describe('SimulationFaultController persistent plans', () => {
+  it('matches operation prefixes for a fixed number of uses', async () => {
+    const controller = new SimulationFaultController();
+    controller.scheduleFault(
+      {
+        kind: 'retryable_server_error',
+        operationPrefix: 'messages.',
+      },
+      { id: 'fault:messages', uses: 2 },
+    );
+
+    await expect(
+      controller.prepare({ operation: 'notifications.list' }),
+    ).resolves.toMatchObject({ consumedFault: null });
+    await expect(
+      controller.prepare({ operation: 'messages.list' }),
+    ).rejects.toMatchObject({ code: 'retryable_server_error' });
+    expect(controller.snapshot().pendingFaults[0]?.remainingUses).toBe(1);
+    await expect(
+      controller.prepare({ operation: 'messages.send-text' }),
+    ).rejects.toMatchObject({ code: 'retryable_server_error' });
+    expect(controller.snapshot().pendingFaults).toEqual([]);
+  });
+
+  it('keeps persistent faults active until explicitly cleared', async () => {
+    const controller = new SimulationFaultController();
+    controller.scheduleFault(
+      {
+        code: 'asset_unavailable',
+        kind: 'partial_failure',
+        operationPrefix: 'media.',
+        scope: 'asset:one',
+      },
+      { id: 'fault:asset', uses: null },
+    );
+
+    await expect(
+      controller.prepare({ operation: 'media.load', scope: 'asset:one' }),
+    ).resolves.toMatchObject({
+      directive: { code: 'asset_unavailable', remainingUses: null },
+    });
+    await expect(
+      controller.prepare({ operation: 'media.resolve', scope: 'asset:one' }),
+    ).resolves.toMatchObject({
+      directive: { code: 'asset_unavailable', remainingUses: null },
+    });
+    expect(controller.clearFault('fault:asset')).toBe(true);
+    expect(controller.clearFault('fault:asset')).toBe(false);
+    await expect(
+      controller.prepare({ operation: 'media.load', scope: 'asset:one' }),
+    ).resolves.toMatchObject({ consumedFault: null });
+  });
+
+  it('forks controller state without sharing mutations or listeners', () => {
+    const controller = new SimulationFaultController({ network: 'online' });
+    const states: string[] = [];
+    controller.subscribeNetworkState((state) => states.push(state));
+    controller.scheduleFault(
+      { kind: 'stale_cursor' },
+      { id: 'fault:cursor', uses: null },
+    );
+
+    const fork = controller.fork();
+    fork.setNetwork('offline');
+    fork.clearFault('fault:cursor');
+
+    expect(controller.getNetworkState()).toBe('online');
+    expect(controller.snapshot().pendingFaults).toHaveLength(1);
+    expect(states).toEqual([]);
+  });
+});

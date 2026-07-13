@@ -192,3 +192,181 @@ describe('SimulationRuntime', () => {
     });
   });
 });
+
+describe('SimulationRuntime scheduled lifecycle', () => {
+  type TimelineWorld = {
+    counter: number;
+    log: string[];
+    now: string;
+  };
+
+  function timelineRuntime(namespace = 'timeline-test') {
+    return createSimulationRuntime<TimelineWorld>({
+      applyDomainEvent: (world, payload) => {
+        const event = payload as { delta: number; label: string };
+        if (event.label === 'invalid') throw new Error('invalid event');
+        world.counter += event.delta;
+        world.log.push(event.label);
+      },
+      initialScenarioId: 'timeline',
+      mutationKindForOperation: (operation) =>
+        operation === 'counter.increment' ? 'increment' : null,
+      namespace,
+      scenarios: [
+        {
+          allowedMutations: ['advance-clock', 'increment'],
+          clock: { at: '2026-07-13T00:00:00.000Z' },
+          id: 'timeline',
+          scheduledActions: [
+            {
+              at: '2026-07-13T00:01:00.000Z',
+              id: 'network-offline',
+              kind: 'network',
+              state: 'offline',
+            },
+            {
+              at: '2026-07-13T00:02:00.000Z',
+              id: 'network-online',
+              kind: 'network',
+              state: 'online',
+            },
+            {
+              at: '2026-07-13T00:02:00.000Z',
+              id: 'domain-two',
+              kind: 'domain',
+              payload: { delta: 2, label: 'two' },
+            },
+            {
+              at: '2026-07-13T00:03:00.000Z',
+              fault: {
+                kind: 'stale_cursor',
+                operationPrefix: 'messages.',
+              },
+              faultId: 'fault:timeline-cursor',
+              id: 'schedule-cursor-fault',
+              kind: 'schedule_fault',
+              uses: 2,
+            },
+            {
+              at: '2026-07-13T00:04:00.000Z',
+              faultId: 'fault:timeline-cursor',
+              id: 'clear-cursor-fault',
+              kind: 'clear_fault',
+            },
+          ],
+          world: {
+            counter: 0,
+            log: [],
+            now: '2026-07-13T00:00:00.000Z',
+          },
+        },
+      ],
+      synchronizeWorldClock: (world, now) => {
+        world.now = now;
+      },
+      validateMutation: (previous, next) => {
+        if (next.counter < previous.counter) {
+          throw new Error('counter cannot decrease');
+        }
+      },
+      validateWorld: (world, context) => {
+        if (world.now !== context.now) throw new Error('clock drift');
+      },
+    });
+  }
+
+  it('applies scheduled network, domain and fault actions in declaration order', async () => {
+    const current = timelineRuntime();
+    const states: string[] = [];
+    current.subscribeNetworkState((state) => states.push(state));
+
+    current.advanceClock(2 * 60_000);
+
+    expect(current.readWorld()).toEqual({
+      counter: 2,
+      log: ['two'],
+      now: '2026-07-13T00:02:00.000Z',
+    });
+    expect(current.faults.getNetworkState()).toBe('online');
+    expect(states).toEqual([]);
+    expect(current.readDebugState().timelineCursor).toBe(3);
+
+    current.advanceClock(60_000);
+    await expect(
+      current.execute({ operation: 'messages.list' }, () => undefined),
+    ).rejects.toMatchObject({ code: 'stale_cursor' });
+    expect(current.faults.snapshot().pendingFaults[0]?.remainingUses).toBe(1);
+
+    current.advanceClock(60_000);
+    await expect(
+      current.execute({ operation: 'messages.list' }, () => undefined),
+    ).resolves.toBeUndefined();
+    expect(current.readDebugState().timelineCursor).toBe(5);
+  });
+
+  it('rolls back clock, world, controller and cursor when a scheduled event fails', () => {
+    const current = createSimulationRuntime<TimelineWorld>({
+      applyDomainEvent: (world, payload) => {
+        const event = payload as { label: string };
+        world.log.push(event.label);
+        throw new Error('domain reducer failed');
+      },
+      initialScenarioId: 'rollback',
+      namespace: 'timeline-rollback',
+      scenarios: [
+        {
+          clock: { at: '2026-07-13T00:00:00.000Z' },
+          id: 'rollback',
+          scheduledActions: [
+            {
+              at: '2026-07-13T00:01:00.000Z',
+              id: 'offline-before-failure',
+              kind: 'network',
+              state: 'offline',
+            },
+            {
+              at: '2026-07-13T00:01:00.000Z',
+              id: 'failing-event',
+              kind: 'domain',
+              payload: { label: 'never-committed' },
+            },
+          ],
+          world: {
+            counter: 0,
+            log: [],
+            now: '2026-07-13T00:00:00.000Z',
+          },
+        },
+      ],
+      synchronizeWorldClock: (world, now) => {
+        world.now = now;
+      },
+    });
+
+    expect(() => current.advanceClock(60_000)).toThrow('domain reducer failed');
+    expect(current.clock.now().toISOString()).toBe('2026-07-13T00:00:00.000Z');
+    expect(current.readWorld().log).toEqual([]);
+    expect(current.faults.getNetworkState()).toBe('online');
+    expect(current.readDebugState().timelineCursor).toBe(0);
+  });
+
+  it('persists timeline cursor and rejects mutations outside scenario policy', async () => {
+    const current = timelineRuntime('timeline-snapshot');
+    current.advanceClock(2 * 60_000);
+    const snapshot = await current.snapshot();
+
+    current.advanceClock(2 * 60_000);
+    await current.restore(snapshot);
+
+    expect(current.readDebugState().timelineCursor).toBe(3);
+    expect(current.clock.now().toISOString()).toBe('2026-07-13T00:02:00.000Z');
+    await expect(
+      current.mutate({ operation: 'profile.update' }, () => undefined),
+    ).rejects.toThrow(/not allowed/);
+    await expect(
+      current.mutate({ operation: 'counter.increment' }, (world) => {
+        world.counter += 1;
+      }),
+    ).resolves.toBeUndefined();
+  });
+});
