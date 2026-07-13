@@ -21,8 +21,17 @@ import {
   OnboardingSection,
 } from '@/features/onboarding/components/OnboardingCinematic';
 import { appRoutes } from '@/app-shell/navigation/routes';
-import { HEROES, HERO_ROLES, type Hero, type HeroRole } from '@/entities/hero';
-import { updateOnboardingSnapshot } from '../model/onboarding-draft-store';
+import {
+  HEROES,
+  HERO_ROLES,
+  type Hero,
+  type HeroId,
+  type HeroRole,
+} from '@/entities/hero';
+import {
+  savePersistedOnboardingStep,
+  usePersistedOnboardingDraftStore,
+} from '../model/persisted-onboarding-draft';
 
 const MAX_SELECTED = 3;
 const FALLBACK_SLOT_WIDTH = 96;
@@ -68,7 +77,7 @@ type SelectedHeroSlotProps = {
   onDragStart: (index: number) => void;
   onDragTargetChange: (index: number | null) => void;
   onMove: (fromIndex: number, toIndex: number) => void;
-  onRemove: (id: string) => void;
+  onRemove: (id: HeroId) => void;
   selectedCount: number;
   slotWidth: number;
 };
@@ -207,7 +216,7 @@ function SelectedHeroSlot({
         accessibilityLabel={`Xoá tướng ${hero.name}`}
         accessibilityRole="button"
         hitSlop={8}
-        onPress={() => onRemove(hero.id)}
+        onPress={() => onRemove(hero.id as HeroId)}
         style={({ pressed }) => [
           styles.selectedRemove,
           pressed && styles.selectedRemovePressed,
@@ -223,11 +232,13 @@ function SelectedHeroSlot({
 }
 
 export default function HeroSelectionScreen() {
-  const [selected, setSelected] = useState<string[]>([
-    'edras',
-    'goverra',
-    'heino',
-  ]);
+  const persistedFavoriteHeroes = usePersistedOnboardingDraftStore(
+    (state) => state.envelope?.data.profile.favoriteHeroes,
+  );
+  const [selected, setSelected] = useState<HeroId[]>(
+    persistedFavoriteHeroes?.map((item) => item.heroId) ?? [],
+  );
+  const [saving, setSaving] = useState(false);
   const [activeRole, setActiveRole] = useState<HeroRole>(HERO_ROLES[0]!);
   const [selectedTrayWidth, setSelectedTrayWidth] = useState(0);
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
@@ -263,7 +274,7 @@ export default function HeroSelectionScreen() {
     );
   }, [selectedTrayWidth]);
 
-  const toggleHero = useCallback((id: string) => {
+  const toggleHero = useCallback((id: HeroId) => {
     setSelected((current) => {
       if (current.includes(id)) return current.filter((item) => item !== id);
       if (current.length >= MAX_SELECTED) return [...current.slice(1), id];
@@ -298,21 +309,34 @@ export default function HeroSelectionScreen() {
     router.back();
   };
 
-  const submit = () => {
-    if (selected.length !== MAX_SELECTED) return;
-    updateOnboardingSnapshot({ heroIds: selected });
-    router.push(appRoutes.onboarding.habits);
+  const submit = async () => {
+    if (selected.length !== MAX_SELECTED || saving) return;
+    setSaving(true);
+    try {
+      await savePersistedOnboardingStep(
+        {
+          favoriteHeroes: selected.map((heroId, index) => ({
+            heroId,
+            priority: index + 1,
+          })),
+        },
+        'habits',
+      );
+      router.push(appRoutes.onboarding.habits);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const renderHero = ({ item }: { item: Hero }) => {
-    const isSelected = selected.includes(item.id);
+    const isSelected = selected.includes(item.id as HeroId);
 
     return (
       <Pressable
         accessibilityLabel={`Chọn tướng ${item.name}`}
         accessibilityRole="button"
         accessibilityState={{ selected: isSelected }}
-        onPress={() => toggleHero(item.id)}
+        onPress={() => toggleHero(item.id as HeroId)}
         style={({ pressed }) => [
           styles.heroCard,
           isSelected && styles.heroCardActive,
@@ -353,8 +377,8 @@ export default function HeroSelectionScreen() {
       footer={
         <View>
           <OnboardingPrimaryButton
-            disabled={selected.length !== MAX_SELECTED}
-            onPress={submit}
+            disabled={selected.length !== MAX_SELECTED || saving}
+            onPress={() => void submit()}
             tone="purple"
           >
             Tiếp tục
