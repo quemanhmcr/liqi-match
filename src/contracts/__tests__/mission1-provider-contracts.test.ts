@@ -10,7 +10,9 @@ import {
   isDiscoveryEligible,
   isMessagingAllowed,
   isPrincipalExpired,
+  PlayerIdentityMappingV1Schema,
   PlayerLifecycleSnapshotV1Schema,
+  PlayerProfileVersionV1Schema,
 } from '../../../contracts/core-v1';
 
 const fixtureRoot = path.join(
@@ -42,6 +44,23 @@ describe('Mission 1 Core V1 provider contracts', () => {
     expect(principal.accountId).not.toBe(principal.playerId);
   });
 
+  it('publishes identity mapping separately from lifecycle semantics', () => {
+    const mapping = PlayerIdentityMappingV1Schema.parse(
+      read('player-identity-mapping.json'),
+    );
+
+    expect(mapping.accountId).not.toBe(mapping.playerId);
+    expect(mapping.playerId).not.toBe(mapping.profileId);
+  });
+
+  it('publishes optimistic profile version separately from lifecycle', () => {
+    const version = PlayerProfileVersionV1Schema.parse(
+      read('player-profile-version.json'),
+    );
+
+    expect(version.version).toBe(1);
+  });
+
   it.each(['onboarding', 'active', 'suspended', 'deleting', 'deleted'])(
     'validates the %s lifecycle fixture',
     (state) => {
@@ -52,6 +71,21 @@ describe('Mission 1 Core V1 provider contracts', () => {
       ).toBe(state);
     },
   );
+
+  it('rejects identity and profile-version fields in the exact lifecycle contract', () => {
+    expect(() =>
+      PlayerLifecycleSnapshotV1Schema.parse({
+        ...(read('player-lifecycle-active.json') as object),
+        accountId: '01000000-0000-4000-8000-000000000012',
+      }),
+    ).toThrow();
+    expect(() =>
+      PlayerLifecycleSnapshotV1Schema.parse({
+        ...(read('player-lifecycle-active.json') as object),
+        profileVersion: 1,
+      }),
+    ).toThrow();
+  });
 
   it('makes discovery and messaging capability authoritative', () => {
     const active = PlayerLifecycleSnapshotV1Schema.parse(

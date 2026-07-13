@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(31);
+select plan(35);
 
 select has_table('public', 'players', 'canonical players table exists');
 select has_table('public', 'player_profiles_v1', 'canonical player profile mapping exists');
@@ -454,16 +454,40 @@ select is(
 
 
 select is(
-  public.get_player_lifecycle_snapshot_v1(
-    '01000000-0000-4000-8000-000000000101',
-    false
-  )->>'state',
-  'deleted',
-  'account provider returns the authoritative tombstone lifecycle'
+  public.resolve_player_identity_v1(
+    '01000000-0000-4000-8000-000000000102',
+    true
+  ),
+  (
+    select jsonb_build_object(
+      'accountId', players.account_id,
+      'playerId', players.id,
+      'profileId', profiles.id
+    )
+    from public.players players
+    join public.player_profiles_v1 profiles on profiles.player_id = players.id
+    where players.account_id = '01000000-0000-4000-8000-000000000102'
+  ),
+  'identity provider resolves exact AccountId to PlayerId to ProfileId mapping'
 );
 
 select is(
-  public.get_player_lifecycle_snapshot_by_player_v1(
+  jsonb_object_length(
+    public.get_player_lifecycle_snapshot_v1(
+      (
+        select id
+        from public.players
+        where account_id = '01000000-0000-4000-8000-000000000102'
+      ),
+      true
+    )
+  ),
+  7,
+  'lifecycle provider returns exactly the seven PlayerLifecycleSnapshotV1 fields'
+);
+
+select is(
+  public.get_player_lifecycle_snapshot_v1(
     (
       select id
       from public.players
@@ -472,7 +496,34 @@ select is(
     true
   )->>'state',
   'onboarding',
-  'player provider lock path returns the authoritative lifecycle'
+  'PlayerId lock path returns the authoritative lifecycle'
+);
+
+select is(
+  public.get_player_lifecycle_snapshot_v1(
+    (
+      select id
+      from public.players
+      where account_id = '01000000-0000-4000-8000-000000000102'
+    ),
+    true
+  )->>'messagingAllowed',
+  'false',
+  'lifecycle snapshot includes authoritative messaging capability'
+);
+
+select is(
+  public.get_player_profile_version_v1(
+    (
+      select profiles.id
+      from public.player_profiles_v1 profiles
+      join public.players players on players.id = profiles.player_id
+      where players.account_id = '01000000-0000-4000-8000-000000000102'
+    ),
+    true
+  )->>'version',
+  '0',
+  'ProfileId lock path returns authoritative optimistic version'
 );
 
 select is(
@@ -482,32 +533,44 @@ select is(
       from public.players
       where account_id = '01000000-0000-4000-8000-000000000102'
     ),
-    true
-  )->>'messagingAllowed',
-  'false',
-  'provider snapshot includes authoritative messaging capability'
-);
-
-select is(
-  public.get_player_lifecycle_snapshot_v1(
-    '01000000-0000-4000-8000-000000000102',
-    true
-  )->>'playerId',
-  (
-    select id::text
-    from public.players
-    where account_id = '01000000-0000-4000-8000-000000000102'
+    false
   ),
-  'account and player provider functions resolve the same canonical PlayerId'
+  public.get_player_lifecycle_snapshot_v1(
+    (
+      select id
+      from public.players
+      where account_id = '01000000-0000-4000-8000-000000000102'
+    ),
+    false
+  ),
+  'compatibility transport delegates to the canonical lifecycle provider'
 );
 
 select is(
-  public.get_player_lifecycle_snapshot_by_player_v1(
+  public.resolve_player_identity_v1(
     'ffffffff-ffff-4fff-8fff-ffffffffffff',
     true
   ),
   null,
-  'provider returns null for an unknown player'
+  'identity provider returns null for an unknown account'
+);
+
+select is(
+  public.get_player_lifecycle_snapshot_v1(
+    'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    true
+  ),
+  null,
+  'lifecycle provider returns null for an unknown player'
+);
+
+select is(
+  public.get_player_profile_version_v1(
+    'ffffffff-ffff-4fff-8fff-ffffffffffff',
+    true
+  ),
+  null,
+  'profile version provider returns null for an unknown profile'
 );
 
 select * from finish();

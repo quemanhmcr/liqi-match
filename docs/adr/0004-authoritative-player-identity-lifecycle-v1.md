@@ -34,6 +34,25 @@ profile version columns directly. Authoritative commands run in hardened
 Database Functions with fixed empty `search_path`, explicit grants, row locks,
 expected versions, durable receipts, structured errors, and outbox events.
 
+The shared database boundary is deliberately split into three exact provider
+seams rather than one JSON envelope:
+
+```text
+resolve_player_identity_v1(AccountId) -> AccountId, PlayerId, ProfileId
+get_player_lifecycle_snapshot_v1(PlayerId) -> PlayerLifecycleSnapshotV1
+get_player_profile_version_v1(ProfileId) -> ProfileId, version, updatedAt
+```
+
+`PlayerLifecycleSnapshotV1` contains only `playerId`, `profileId`, `state`,
+`version`, `discoverable`, `messagingAllowed`, and `updatedAt`. Account identity
+and profile concurrency are not lifecycle fields.
+
+For a two-player transaction, consumers first resolve identities without row
+locks, order by canonical PlayerId, then request lifecycle snapshots with
+`p_lock=true` in that order. The provider locks `players` before the associated
+`player_profiles_v1` row. Independent profile-version locks must use ascending
+ProfileId order.
+
 ## Lifecycle and capabilities
 
 Allowed transitions are:
