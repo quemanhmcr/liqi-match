@@ -1,0 +1,15 @@
+{
+  "matchIntentId": "10000000-0000-4000-8000-000000000002",
+  "playerId": "20000000-0000-4000-8000-000000000001",
+  "state": "paused",
+  "filters": {
+    "mode": "normal",
+    "partyFormat": "flex",
+    "sessionPlan": "long",
+    "roleSlugs": [],
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "version": 2,
+  "activatedAt": "2026-07-14T08:00:00.000Z",
+  "expiresAt": "2026-07-14T12:00:00.000Z"
+}
