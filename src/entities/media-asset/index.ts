@@ -7,6 +7,12 @@ export {
 } from './asset-key';
 export { createAssetManifest, indexAssetManifest } from './asset-manifest';
 export {
+  assetPreloadSurfaces,
+  goldenWorldAssetPreloadPlan,
+  preloadGoldenWorldAssetSurface,
+  type AssetPreloadSurface,
+} from './asset-preload-plan';
+export {
   createAssetResolver,
   type AssetResolver,
   type MutableAssetResolver,
@@ -28,6 +34,8 @@ export type {
 } from './asset-types';
 export {
   canonicalAssetKey,
+  createGoldenWorldAssetResolver,
+  createGoldenWorldSimulationAssetResolver,
   goldenWorldAssetKeys,
   goldenWorldAssetManifest,
   goldenWorldAssetResolver,
