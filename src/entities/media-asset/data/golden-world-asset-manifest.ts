@@ -12,6 +12,12 @@ import {
 import { createAssetKey, isAssetKey } from '../asset-key';
 import { createAssetManifest } from '../asset-manifest';
 import { createAssetResolver } from '../asset-resolver';
+import {
+  createSimulationAssetResolver,
+  type AssetSimulationRuntimePort,
+} from '../simulation-asset-resolver';
+import type { AssetCacheDriver } from '@/shared/assets/asset-cache-driver';
+
 import type {
   AssetFormat,
   AssetManifestEntry,
@@ -76,9 +82,31 @@ export const goldenWorldAssetManifest = createAssetManifest({
   generatedAt: rawManifest.generatedAt,
 });
 
-export const goldenWorldAssetResolver = createAssetResolver({
-  manifest: goldenWorldAssetManifest,
-});
+export function createGoldenWorldAssetResolver(
+  input: {
+    cacheDriver?: AssetCacheDriver;
+  } = {},
+) {
+  return createAssetResolver({
+    cacheDriver: input.cacheDriver,
+    manifest: goldenWorldAssetManifest,
+  });
+}
+
+export function createGoldenWorldSimulationAssetResolver(input: {
+  cacheDriver?: AssetCacheDriver;
+  participantKey?: string;
+  runtime: AssetSimulationRuntimePort;
+}) {
+  return createSimulationAssetResolver({
+    cacheDriver: input.cacheDriver,
+    manifest: goldenWorldAssetManifest,
+    participantKey: input.participantKey,
+    runtime: input.runtime,
+  });
+}
+
+export const goldenWorldAssetResolver = createGoldenWorldAssetResolver();
 
 const profileAvatar = (
   profileId: keyof typeof GOLDEN_ASSET_REQUIREMENTS.profiles,
