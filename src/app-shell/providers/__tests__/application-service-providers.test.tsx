@@ -66,11 +66,19 @@ describe('ApplicationServiceProviders replacement seam', () => {
   it.each(cases)(
     'keeps the consumer unchanged when the %s binding is selected',
     async (mode, expectedName) => {
-      const services: ApplicationServices = {
-        ...createSimulationApplicationServices(),
-        homeRepository: createHomeRepository(expectedName),
-        mode,
-      };
+      const simulationServices = createSimulationApplicationServices();
+      const services: ApplicationServices =
+        mode === 'simulation'
+          ? {
+              ...simulationServices,
+              homeRepository: createHomeRepository(expectedName),
+            }
+          : {
+              ...simulationServices,
+              homeRepository: createHomeRepository(expectedName),
+              mode: 'api' as const,
+              simulationRuntime: null,
+            };
 
       const screen = await renderConsumer(services);
 

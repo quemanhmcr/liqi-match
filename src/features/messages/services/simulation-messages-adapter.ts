@@ -17,10 +17,8 @@ import type {
   ChatMessageTransport,
   ChatTransportFailureCode,
   SendChatMediaCommand,
-  SendChatMediaReceipt,
   SendChatMessageReceipt,
   SendChatTextCommand,
-  SendChatTextReceipt,
 } from './chat-message-transport';
 import { ChatTransportError } from './chat-message-transport';
 import type { ChatRepository, MessagesRequestContext } from './chat-repository';
@@ -91,15 +89,15 @@ export type SimulationMessagesMutations<TWorld> = {
     command: SendChatMediaCommand,
     context: SimulationOperationContext,
   ):
-    | Promise<SimulationMessageMutationOutcome<SendChatMediaReceipt>>
-    | SimulationMessageMutationOutcome<SendChatMediaReceipt>;
+    | Promise<SimulationMessageMutationOutcome<SendChatMessageReceipt>>
+    | SimulationMessageMutationOutcome<SendChatMessageReceipt>;
   sendText(
     world: TWorld,
     command: SendChatTextCommand,
     context: SimulationOperationContext,
   ):
-    | Promise<SimulationMessageMutationOutcome<SendChatTextReceipt>>
-    | SimulationMessageMutationOutcome<SendChatTextReceipt>;
+    | Promise<SimulationMessageMutationOutcome<SendChatMessageReceipt>>
+    | SimulationMessageMutationOutcome<SendChatMessageReceipt>;
 };
 
 type QueuedMessageCommand =

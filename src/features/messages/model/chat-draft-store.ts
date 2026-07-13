@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const CHAT_DRAFT_STORAGE_PREFIX = '@liqi-match/chat-draft-v1:';
+export const CHAT_DRAFT_STORAGE_PREFIX = '@liqi-match/chat-draft-v1:';
 export const CHAT_DRAFT_INDEX_STORAGE_KEY = '@liqi-match/chat-draft-index-v2';
 export const CHAT_DRAFT_SAVE_DEBOUNCE_MS = 350;
 const CHAT_DRAFT_PREVIEW_LIMIT = 160;
@@ -206,10 +206,12 @@ export function clearChatDraft(conversationId: string) {
   });
 }
 
-export function resetChatDraftPersistenceForTests() {
+export function resetChatDraftPersistenceState() {
   for (const { timer } of pendingDraftSaves.values()) clearTimeout(timer);
   pendingDraftSaves.clear();
   draftWriteQueues.clear();
   draftIndexWriteQueue = Promise.resolve();
   draftIndexCache = undefined;
 }
+
+export const resetChatDraftPersistenceForTests = resetChatDraftPersistenceState;

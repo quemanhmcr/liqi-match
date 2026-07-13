@@ -11,3 +11,12 @@ export {
   useMessagesServices,
   type MessagesServices,
 } from './runtime/MessagesServicesProvider';
+
+export {
+  createCanonicalSimulationMessagesAdapter,
+  type CanonicalSimulationMessagesAdapterOptions,
+} from './services/canonical-simulation-messages-adapter';
+export {
+  createMessagesSimulationResetParticipant,
+  resetMessagesSimulationState,
+} from './runtime/messages-simulation-reset';

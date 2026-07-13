@@ -8,6 +8,7 @@ import {
   GOLDEN_PROFILE_IDS,
   MEDIA_PARTIALLY_ASSOCIATED_SCENARIO,
   SIMULATION_OPERATION_IDS,
+  SimulationFaultSchema,
   SIMULATION_RUNTIME_NAMESPACE,
   SIMULATION_RUNTIME_SCENARIOS,
   appendSimulationMessage,
@@ -79,13 +80,18 @@ describe('Senior 1 world / Senior 2 runtime adapter', () => {
   });
 
   it('maps media faults to the asset resolver operation and error vocabulary', () => {
-    const mediaFault = {
+    const mediaFault = SimulationFaultSchema.parse({
       activatesAt: '2026-07-13T02:00:00.000Z',
       assetKey: 'asset:profile:quan-viewer:cover-pending',
+      clearsAt: null,
       id: 'fault:test:media-unavailable',
-      kind: 'media-unavailable' as const,
-      target: 'media' as const,
-    };
+      kind: 'media-unavailable',
+      target: 'media',
+    });
+
+    if (mediaFault.kind !== 'media-unavailable') {
+      throw new Error('Expected a media-unavailable simulation fault.');
+    }
 
     expect(projectSimulationFaultToRuntime(mediaFault)).toEqual(
       expect.arrayContaining([

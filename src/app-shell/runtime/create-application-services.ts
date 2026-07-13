@@ -1,8 +1,12 @@
-import { createGoldenWorldAssetResolver } from '@/entities/media-asset';
 import {
-  MockNotificationInboxRepository,
+  createGoldenWorldAssetResolver,
+  createGoldenWorldSimulationAssetResolver,
+} from '@/entities/media-asset';
+import {
+  createCanonicalSimulationNotificationInboxRepository,
   type NotificationInboxRepository,
 } from '@/entities/notifications';
+import { createProductionSimulationRuntime } from '@/entities/simulation';
 import {
   ApiDiscoverRepository,
   MockDiscoverRepository,
@@ -15,22 +19,36 @@ import {
   type HomeRepository,
 } from '@/features/home';
 import {
-  createChatScenarioController,
-  createLocalChatRepository,
+  createCanonicalSimulationMessagesAdapter,
+  createMessagesSimulationResetParticipant,
   type ChatMessageTransport,
   type ChatRepository,
 } from '@/features/messages';
 import {
   buildPreviewProfile,
+  createProfileEditSimulationResetParticipant,
   fetchProfileView,
   type ProfileReadRepository,
 } from '@/features/profile';
+import { createOnboardingSimulationResetParticipant } from '@/features/onboarding';
 import { passiveAssetCacheDriver } from '@/shared/assets/asset-cache-driver';
 import { env } from '@/shared/config/env';
 
 import { ApplicationServiceUnavailableError } from './application-service-error';
-import type { ApplicationServices } from './application-services';
+import type {
+  ApiApplicationServices,
+  ApplicationServices,
+  SimulationApplicationServices,
+} from './application-services';
 import type { ApplicationRuntimeMode } from './application-runtime-mode';
+
+export type CreateSimulationApplicationServicesOptions = Readonly<{
+  namespace?: string;
+  onboardingAccountId?: string;
+  scenarioId?: string;
+}>;
+
+let simulationApplicationSequence = 0;
 
 export function createApplicationServices(
   mode: ApplicationRuntimeMode,
@@ -40,12 +58,34 @@ export function createApplicationServices(
     : createApiApplicationServices();
 }
 
-export function createSimulationApplicationServices(): ApplicationServices {
-  const messageScenario = createChatScenarioController();
+export function createSimulationApplicationServices(
+  options: CreateSimulationApplicationServicesOptions = {},
+): SimulationApplicationServices {
+  const simulationRuntime = createProductionSimulationRuntime({
+    ...(options.scenarioId ? { initialScenarioId: options.scenarioId } : {}),
+    namespace: options.namespace ?? nextSimulationApplicationNamespace(),
+  });
+  const messages = createCanonicalSimulationMessagesAdapter({
+    runtime: simulationRuntime,
+  });
+  simulationRuntime.registerResetParticipant(
+    createMessagesSimulationResetParticipant(),
+  );
+  simulationRuntime.registerResetParticipant(
+    createProfileEditSimulationResetParticipant(
+      simulationRuntime.readWorld().viewerId,
+    ),
+  );
+  if (options.onboardingAccountId) {
+    simulationRuntime.registerResetParticipant(
+      createOnboardingSimulationResetParticipant(options.onboardingAccountId),
+    );
+  }
 
   return {
-    assetResolver: createGoldenWorldAssetResolver({
+    assetResolver: createGoldenWorldSimulationAssetResolver({
       cacheDriver: passiveAssetCacheDriver,
+      runtime: simulationRuntime,
     }),
     discoverRepository: new MockDiscoverRepository(),
     homeRepository: {
@@ -53,19 +93,23 @@ export function createSimulationApplicationServices(): ApplicationServices {
         return buildPreviewHomeDashboard(session);
       },
     },
-    messageRepository: createLocalChatRepository(),
-    messageTransport: messageScenario.transport,
+    messageRepository: messages,
+    messageTransport: messages.transport,
     mode: 'simulation',
-    notificationRepository: new MockNotificationInboxRepository(),
+    notificationRepository:
+      createCanonicalSimulationNotificationInboxRepository({
+        runtime: simulationRuntime,
+      }),
     profileRepository: {
       async getProfile({ session, userId }) {
         return buildPreviewProfile(session, userId);
       },
     },
+    simulationRuntime,
   };
 }
 
-export function createApiApplicationServices(): ApplicationServices {
+export function createApiApplicationServices(): ApiApplicationServices {
   return {
     assetResolver: createGoldenWorldAssetResolver({
       cacheDriver: passiveAssetCacheDriver,
@@ -79,6 +123,7 @@ export function createApiApplicationServices(): ApplicationServices {
     mode: 'api',
     notificationRepository: createUnavailableNotificationRepository(),
     profileRepository: createApiProfileRepository(),
+    simulationRuntime: null,
   };
 }
 
@@ -186,6 +231,11 @@ function createUnavailableNotificationRepository(): NotificationInboxRepository 
       throw unavailable('Notifications repository');
     },
   };
+}
+
+function nextSimulationApplicationNamespace() {
+  simulationApplicationSequence += 1;
+  return `application-simulation-${simulationApplicationSequence}`;
 }
 
 function unavailable(service: string) {

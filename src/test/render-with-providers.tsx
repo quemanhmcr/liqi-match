@@ -9,6 +9,19 @@ import { createSimulationApplicationServices } from '@/app-shell/runtime/create-
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
 
+type ApplicationServiceOverrides = Partial<
+  Pick<
+    ApplicationServices,
+    | 'assetResolver'
+    | 'discoverRepository'
+    | 'homeRepository'
+    | 'messageRepository'
+    | 'messageTransport'
+    | 'notificationRepository'
+    | 'profileRepository'
+  >
+>;
+
 export const testAuthSession: AuthSession = {
   accessToken: 'test-access-token',
   expiresAt: 4102444800,
@@ -28,12 +41,12 @@ export async function renderWithProviders(
     services,
     session = testAuthSession,
   }: {
-    serviceOverrides?: Partial<ApplicationServices>;
+    serviceOverrides?: ApplicationServiceOverrides;
     services?: ApplicationServices;
     session?: AuthSession | null;
   } = {},
 ) {
-  const resolvedServices = services ?? {
+  const resolvedServices: ApplicationServices = services ?? {
     ...createSimulationApplicationServices(),
     ...serviceOverrides,
   };

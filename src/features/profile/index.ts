@@ -9,3 +9,8 @@ export {
   type GetProfileInput,
   type ProfileReadRepository,
 } from './runtime/ProfileReadRepositoryProvider';
+
+export {
+  createProfileEditSimulationResetParticipant,
+  type ProfileEditRecoveryPort,
+} from './edit/runtime/profile-edit-simulation-reset';
