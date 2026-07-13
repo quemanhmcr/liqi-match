@@ -57,17 +57,6 @@ export const ConversationBootstrapRequestedEventV1Schema =
     }),
   });
 
-export const ConversationBootstrappedEventV1Schema =
-  EventEnvelopeBaseV1Schema.extend({
-    eventType: z.literal('conversation.bootstrapped.v1'),
-    aggregateType: z.literal('conversation'),
-    aggregateId: ConversationIdSchema,
-    data: z.object({
-      matchId: MatchIdSchema,
-      conversationId: ConversationIdSchema,
-    }),
-  });
-
 export const SetJoinRequestedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
   eventType: z.literal('set.join_requested.v1'),
   aggregateType: z.literal('set'),
@@ -93,10 +82,23 @@ export const NotificationRequestedEventV1Schema =
     aggregateId: PlayerIdSchema,
     data: z.object({
       recipientPlayerId: PlayerIdSchema,
-      reasonCode: z.enum(['match_created', 'set_invite', 'set_join_requested']),
+      reasonCode: z.enum([
+        'match_created',
+        'message_received',
+        'set_invite',
+        'set_join_requested',
+      ]),
       target: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('match'), matchId: MatchIdSchema }),
         z.object({ kind: z.literal('set'), setId: SetIdSchema }),
+        z.object({
+          kind: z.literal('conversation'),
+          conversationId: ConversationIdSchema,
+          messageId: z.string().uuid(),
+          senderPlayerId: PlayerIdSchema,
+          authoritativeUnreadCount: z.number().int().positive(),
+          foregroundPolicy: z.enum(['suppress_push', 'allow_push']),
+        }),
       ]),
     }),
   });

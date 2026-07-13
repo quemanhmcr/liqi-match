@@ -126,7 +126,7 @@ async function createArtifacts() {
   );
 
   const fixtureFiles = await listFiles(
-    contractsRoot,
+    path.join(contractsRoot, 'conversation', 'fixtures'),
     (file) =>
       file.includes(`${path.sep}fixtures${path.sep}`) && file.endsWith('.json'),
   );
@@ -144,6 +144,10 @@ async function createArtifacts() {
       : 'consumer';
     fixtureCounts[kind] += 1;
     for (const [index, testCase] of fixture.cases.entries()) {
+      if (testCase.schema.startsWith('core:')) {
+        fixtureCaseCount += 1;
+        continue;
+      }
       const validate = validators.get(testCase.schema);
       if (!validate) {
         throw new Error(

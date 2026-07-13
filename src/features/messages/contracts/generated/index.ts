@@ -9,8 +9,6 @@ export type { ReadStateV1 } from './read-state-v1.types';
 export { ReadStateV1Schema } from './read-state-v1.schema';
 export type { SendMessageCommandV1 } from './send-message-command-v1.types';
 export { SendMessageCommandV1Schema } from './send-message-command-v1.schema';
-export type { ConversationBootstrapRequestedV1 } from './conversation-bootstrap-requested-v1.types';
-export { ConversationBootstrapRequestedV1Schema } from './conversation-bootstrap-requested-v1.schema';
 export type { ConversationClosedV1 } from './conversation-closed-v1.types';
 export { ConversationClosedV1Schema } from './conversation-closed-v1.schema';
 export type { ConversationCreatedV1 } from './conversation-created-v1.types';
@@ -19,5 +17,3 @@ export type { ConversationReadAdvancedV1 } from './conversation-read-advanced-v1
 export { ConversationReadAdvancedV1Schema } from './conversation-read-advanced-v1.schema';
 export type { MessageSentV1 } from './message-sent-v1.types';
 export { MessageSentV1Schema } from './message-sent-v1.schema';
-export type { NotificationRequestedV1 } from './notification-requested-v1.types';
-export { NotificationRequestedV1Schema } from './notification-requested-v1.schema';
