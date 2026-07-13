@@ -153,6 +153,38 @@ describe('persisted onboarding draft migration', () => {
     ).toHaveLength(2);
   });
 
+  it('normalizes duplicate legacy habits with an explicit warning', () => {
+    const result = migratePersistedOnboardingDraft(
+      {
+        ...legacySnapshot,
+        habits: {
+          ...legacySnapshot.habits,
+          communication_channels: [
+            'Voice khi cần',
+            'Voice khi cần',
+            'Ping/chat là chính',
+          ],
+        },
+      },
+      { timezone: 'UTC' },
+    );
+
+    expect(result.status).toBe('migrated');
+    if (result.status !== 'migrated') throw new Error('Expected migration.');
+    expect(result.envelope.draft.habits.communicationPreferenceIds).toEqual([
+      'communication.voice-as-needed',
+      'communication.text-ping',
+    ]);
+    expect(result.issues).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: 'legacy_duplicates_removed',
+          path: 'habits.communicationPreferenceIds.1',
+        }),
+      ]),
+    );
+  });
+
   it('does not invent rank, lane, heroes, handle, habits, or availability', () => {
     const result = migratePersistedOnboardingDraft({
       habits: null,

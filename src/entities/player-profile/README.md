@@ -54,6 +54,11 @@ if (!rank.ok || !lane.ok || !hero.ok) {
 The resolver returns whether the input was already a canonical ID or an exact
 legacy value. It never treats a rank/lane display label or hero name as identity.
 
+Current `profile_habits` rows must pass through `adaptLegacyHabitAnswers`. Its
+`value` contains only canonical IDs, while `issues` preserves unknown, malformed,
+duplicate or over-limit backend data. A consumer must not persist the canonical
+value as a replacement when `lossless` is false without resolving those issues.
+
 ## Persistence
 
 Persist only `PersistedOnboardingDraftEnvelopeSchema` data. On hydration, call

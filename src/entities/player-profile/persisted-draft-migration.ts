@@ -2,30 +2,18 @@ import { z } from 'zod';
 
 import { buildRecurringAvailabilityFromTimePreferences } from './availability';
 import {
-  COMEBACK_RESPONSE_CATALOG,
-  COMMUNICATION_PREFERENCE_CATALOG,
-  DECISION_STYLE_CATALOG,
   DEFAULT_PROFILE_LOCALE_ID,
-  FEEDBACK_STYLE_CATALOG,
   GENDER_CATALOG,
   LANE_CATALOG,
-  LOSS_RESPONSE_CATALOG,
   ONBOARDING_DRAFT_ENVELOPE_KIND,
   PROFILE_CONTRACT_VERSION,
   RANK_CATALOG,
-  SERIOUSNESS_CATALOG,
-  SESSION_LENGTH_CATALOG,
-  STRATEGY_STYLE_CATALOG,
-  TEAM_ATMOSPHERE_CATALOG,
-  TEAM_GOAL_CATALOG,
-  TIME_PREFERENCE_CATALOG,
-  type CatalogOption,
 } from './catalogs';
+import { adaptLegacyHabitAnswers } from './legacy-habit-adapter';
 import { resolveCatalogId, resolveHeroId } from './legacy-value-resolver';
 import {
   PersistedOnboardingDraftEnvelopeSchema,
   TimezoneSchema,
-  createEmptyHabitAnswers,
   type HabitAnswersDraft,
   type PersistedOnboardingDraftEnvelope,
 } from './schemas';
@@ -299,83 +287,33 @@ export function migratePersistedOnboardingDraft(
 function migrateLegacyHabits(
   input: z.infer<typeof LegacyHabitPayloadSchema> | null,
 ):
-  | { habits: HabitAnswersDraft; issues: DraftMigrationIssue[]; ok: true }
+  | {
+      habits: HabitAnswersDraft;
+      issues: DraftMigrationIssue[];
+      ok: true;
+    }
   | { ok: false; result: DraftMigrationResult } {
-  if (!input)
-    return { habits: createEmptyHabitAnswers(), issues: [], ok: true };
-
-  const fields = {
-    comebackResponseId: resolvedCatalogId(
-      COMEBACK_RESPONSE_CATALOG,
-      input.comeback_response,
-    ),
-    communicationPreferenceIds: resolvedCatalogIds(
-      COMMUNICATION_PREFERENCE_CATALOG,
-      input.communication_channels,
-    ),
-    decisionStyleId: resolvedCatalogId(
-      DECISION_STYLE_CATALOG,
-      input.decision_style,
-    ),
-    feedbackStyleId: resolvedCatalogId(
-      FEEDBACK_STYLE_CATALOG,
-      input.feedback_style,
-    ),
-    lossResponseId: resolvedCatalogId(
-      LOSS_RESPONSE_CATALOG,
-      input.loss_response,
-    ),
-    seriousnessId: resolvedCatalogId(SERIOUSNESS_CATALOG, input.seriousness),
-    sessionLengthId: resolvedCatalogId(
-      SESSION_LENGTH_CATALOG,
-      input.session_length,
-    ),
-    strategyStyleIds: resolvedCatalogIds(
-      STRATEGY_STYLE_CATALOG,
-      input.strategy_styles,
-    ),
-    teamAtmosphereIds: resolvedCatalogIds(
-      TEAM_ATMOSPHERE_CATALOG,
-      input.team_atmospheres,
-    ),
-    teamGoalIds: resolvedCatalogIds(TEAM_GOAL_CATALOG, input.team_goals),
-    timePreferenceIds: resolvedCatalogIds(
-      TIME_PREFERENCE_CATALOG,
-      input.online_time_presets,
-    ),
-  };
-
-  const unknown = Object.entries(fields).find(([, value]) =>
-    Array.isArray(value) ? value.some((item) => item === undefined) : !value,
-  );
-  if (unknown) {
+  const adapted = adaptLegacyHabitAnswers(input);
+  const firstError = adapted.issues.find((issue) => issue.severity === 'error');
+  if (firstError) {
     return {
       ok: false,
-      result: resetForUnknown(
-        `habits.${unknown[0]}`,
-        'Legacy habit payload contains an unknown display value.',
-      ),
+      result: resetForUnknown(`habits.${firstError.path}`, firstError.message),
     };
   }
 
   return {
-    habits: fields as HabitAnswersDraft,
-    issues: [],
+    habits: adapted.value,
+    issues: adapted.issues
+      .filter((issue) => issue.severity === 'warning')
+      .map((issue) => ({
+        code: 'legacy_duplicates_removed' as const,
+        message: issue.message,
+        path: `habits.${issue.path}`,
+        severity: 'warning' as const,
+      })),
     ok: true,
   };
-}
-
-function resolvedCatalogId<
-  const Options extends readonly CatalogOption<string, string>[],
->(options: Options, value: unknown): Options[number]['id'] | undefined {
-  const result = resolveCatalogId(options, value);
-  return result.ok ? result.id : undefined;
-}
-
-function resolvedCatalogIds<
-  const Options extends readonly CatalogOption<string, string>[],
->(options: Options, values: readonly unknown[]) {
-  return values.map((value) => resolvedCatalogId(options, value));
 }
 
 function dedupe(values: string[], path: string, issues: DraftMigrationIssue[]) {
