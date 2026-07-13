@@ -29,6 +29,26 @@ describe('pure simulation projections', () => {
     );
   });
 
+  it('keeps matched actor identity and messaging capability across Discover', () => {
+    const profile = projectSimulationProfile(
+      GOLDEN_WORLD,
+      GOLDEN_PROFILE_IDS.minhAnh,
+    );
+    const home = projectSimulationHome(GOLDEN_WORLD);
+    const discover = projectSimulationDiscover(GOLDEN_WORLD);
+    const homeActor = home.connections.find(
+      (item) => item.profileId === GOLDEN_PROFILE_IDS.minhAnh,
+    );
+    const discoverActor = discover.players.find(
+      (item) => item.profileId === GOLDEN_PROFILE_IDS.minhAnh,
+    );
+
+    expect(discoverActor?.displayName).toBe(profile.displayName);
+    expect(discoverActor?.avatar.assetKey).toBe(profile.avatar?.assetKey);
+    expect(discoverActor?.capabilities.canMessage).toBe(true);
+    expect(homeActor?.profileId).toBe(discoverActor?.profileId);
+  });
+
   it('derives unread state from the same conversation timeline', () => {
     const home = projectSimulationHome(GOLDEN_WORLD);
     const khoa = home.connections.find(

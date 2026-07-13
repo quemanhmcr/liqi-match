@@ -347,12 +347,7 @@ export function projectSimulationDiscover(
     .sort((left, right) => right.openedAt.localeCompare(left.openedAt))[0];
 
   const players = Object.values(world.profiles)
-    .filter(
-      (profile) =>
-        profile.id !== world.viewerId &&
-        profile.discoverable &&
-        !hasActiveMatch(world, world.viewerId, profile.id),
-    )
+    .filter((profile) => profile.id !== world.viewerId && profile.discoverable)
     .map((profile) => projectDiscoverPlayer(world, viewer, profile, targetSet))
     .sort(
       (left, right) =>
