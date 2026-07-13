@@ -2,12 +2,12 @@
   "fixtureVersion": 1,
   "cases": [
     {
-      "schema": "message-v1",
+      "schema": "MessageV1",
       "data": {
-        "messageId": "30000000-0000-0000-0000-000000000001",
-        "conversationId": "20000000-0000-0000-0000-000000000001",
-        "senderPlayerId": "00000000-0000-0000-0000-0000000000a1",
-        "clientMessageId": "client-a-0001",
+        "messageId": "91000000-0000-4000-8000-000000000001",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "senderPlayerId": "20000000-0000-4000-8000-000000000001",
+        "clientMessageId": "client-message-a-0001",
         "sequence": 1,
         "content": {
           "kind": "text",
@@ -17,18 +17,21 @@
       }
     },
     {
-      "schema": "message-sent-v1",
+      "schema": "MessageSentEventV1",
       "data": {
-        "eventId": "evt-message-001",
+        "eventId": "80000000-0000-4000-8000-000000000041",
         "eventType": "message.sent.v1",
-        "occurredAt": "2026-07-14T08:00:00.000Z",
-        "correlationId": "corr-match-loop-001",
-        "payload": {
+        "aggregateType": "conversation",
+        "aggregateId": "90000000-0000-4000-8000-000000000001",
+        "occurredAt": "2026-07-14T08:10:00.000Z",
+        "correlationId": "70000000-0000-4000-8000-000000000001",
+        "causationId": "80000000-0000-4000-8000-000000000040",
+        "data": {
           "message": {
-            "messageId": "30000000-0000-0000-0000-000000000001",
-            "conversationId": "20000000-0000-0000-0000-000000000001",
-            "senderPlayerId": "00000000-0000-0000-0000-0000000000a1",
-            "clientMessageId": "client-a-0001",
+            "messageId": "91000000-0000-4000-8000-000000000001",
+            "conversationId": "90000000-0000-4000-8000-000000000001",
+            "senderPlayerId": "20000000-0000-4000-8000-000000000001",
+            "clientMessageId": "client-message-a-0001",
             "sequence": 1,
             "content": {
               "kind": "text",
@@ -36,9 +39,8 @@
             },
             "createdAt": "2026-07-14T08:01:00.000Z"
           },
-          "recipientPlayerIds": ["00000000-0000-0000-0000-0000000000b2"]
-        },
-        "causationId": "client-a-0001"
+          "recipientPlayerIds": ["20000000-0000-4000-8000-000000000002"]
+        }
       }
     }
   ],

@@ -2,16 +2,21 @@ import type {
   AuthenticatedPrincipalV1,
   CoreErrorCodeV1,
   PlayerLifecycleSnapshotV1,
-} from '@/shared/contracts/core-v1';
+} from '../../../../contracts/core-v1';
+import {
+  isMessagingAllowed,
+  isPrincipalExpired,
+} from '../../../../contracts/core-v1';
 
 export type MessagingAuthorizationFailureCode = Extract<
   CoreErrorCodeV1,
-  | 'authentication_required'
+  | 'lifecycle_not_active'
   | 'player_deleting'
   | 'player_deleted'
   | 'player_not_found'
   | 'player_suspended'
   | 'session_expired'
+  | 'unauthenticated'
 >;
 
 export class MessagingAuthorizationError extends Error {
@@ -39,18 +44,13 @@ export function authorizeMessagingActor(input: {
   const principal = input.principal;
   if (!principal) {
     throw new MessagingAuthorizationError(
-      'authentication_required',
+      'unauthenticated',
       'Authentication is required for messaging.',
     );
   }
 
-  const now = Date.parse(input.now);
-  const expiresAt = Date.parse(principal.expiresAt);
-  if (
-    !Number.isFinite(now) ||
-    !Number.isFinite(expiresAt) ||
-    expiresAt <= now
-  ) {
+  const now = new Date(input.now);
+  if (!Number.isFinite(now.getTime()) || isPrincipalExpired(principal, now)) {
     throw new MessagingAuthorizationError(
       'session_expired',
       'The authenticated session has expired.',
@@ -65,22 +65,18 @@ export function authorizeMessagingActor(input: {
   }
 
   const lifecycle = input.lifecycle;
-  if (lifecycle.playerId !== principal.playerId) {
+  if (
+    lifecycle.accountId !== principal.accountId ||
+    lifecycle.playerId !== principal.playerId
+  ) {
     throw new MessagingAuthorizationError(
       'player_not_found',
-      'The lifecycle snapshot does not belong to the authenticated player.',
+      'The lifecycle snapshot does not belong to the authenticated principal.',
     );
   }
 
-  if (!lifecycle.messagingAllowed) {
+  if (!isMessagingAllowed(lifecycle)) {
     throw lifecycleFailure(lifecycle.state);
-  }
-
-  if (lifecycle.state !== 'active') {
-    throw new MessagingAuthorizationError(
-      'player_not_found',
-      'Messaging is only available to active players.',
-    );
   }
 
   return Object.freeze({
@@ -112,8 +108,8 @@ function lifecycleFailure(
       );
     default:
       return new MessagingAuthorizationError(
-        'player_not_found',
-        'Messaging is unavailable for the current player lifecycle.',
+        'lifecycle_not_active',
+        'Messaging is only available to active players.',
       );
   }
 }

@@ -2,29 +2,29 @@
   "fixtureVersion": 1,
   "cases": [
     {
-      "schema": "send-message-command-v1",
+      "schema": "SendMessageCommandV1",
       "data": {
-        "conversationId": "20000000-0000-0000-0000-000000000001",
-        "clientMessageId": "client-a-retry",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "clientMessageId": "client-message-a-retry",
         "content": {
           "kind": "text",
           "text": "Retry-safe"
         },
         "clientCreatedAt": "2026-07-14T08:03:00.000Z",
-        "correlationId": "corr-send-retry"
+        "correlationId": "70000000-0000-4000-8000-000000000010"
       }
     },
     {
-      "schema": "send-message-command-v1",
+      "schema": "SendMessageCommandV1",
       "data": {
-        "conversationId": "20000000-0000-0000-0000-000000000001",
-        "clientMessageId": "client-a-retry",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "clientMessageId": "client-message-a-retry",
         "content": {
           "kind": "text",
           "text": "Retry-safe"
         },
         "clientCreatedAt": "2026-07-14T08:03:00.000Z",
-        "correlationId": "corr-send-retry"
+        "correlationId": "70000000-0000-4000-8000-000000000010"
       }
     }
   ],

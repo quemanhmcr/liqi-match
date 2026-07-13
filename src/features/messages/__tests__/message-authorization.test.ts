@@ -1,30 +1,49 @@
 import { describe, expect, it } from '@jest/globals';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import {
-  coreV1ProviderFixtures,
-  parseCoreV1Fixture,
+  AuthenticatedPrincipalV1Schema,
+  PlayerLifecycleSnapshotV1Schema,
   type AuthenticatedPrincipalV1,
   type PlayerLifecycleSnapshotV1,
-} from '@/shared/contracts/core-v1';
+} from '../../../../contracts/core-v1';
 
 import {
   authorizeMessagingActor,
   MessagingAuthorizationError,
 } from '../model/message-authorization';
 
-const now = '2026-07-14T00:30:00.000Z';
+const fixtureRoot = path.join(
+  process.cwd(),
+  'contracts/core-v1/fixtures/provider',
+);
+const now = '2026-07-14T08:30:00.000Z';
 
-function principal(): AuthenticatedPrincipalV1 {
-  return parseCoreV1Fixture(
-    'authenticatedPrincipal.valid',
-  ) as AuthenticatedPrincipalV1;
+function read(name: string): unknown {
+  return JSON.parse(fs.readFileSync(path.join(fixtureRoot, name), 'utf8'));
+}
+
+function principal(
+  name:
+    | 'authenticated-principal-expired.json'
+    | 'authenticated-principal-valid.json' = 'authenticated-principal-valid.json',
+): AuthenticatedPrincipalV1 {
+  return AuthenticatedPrincipalV1Schema.parse(read(name));
 }
 
 function lifecycle(
-  name: 'lifecycle.active' | 'lifecycle.deleting' | 'lifecycle.suspended',
+  state: 'active' | 'deleting' | 'suspended',
 ): PlayerLifecycleSnapshotV1 {
-  const value = parseCoreV1Fixture(name) as PlayerLifecycleSnapshotV1;
-  return { ...value, playerId: principal().playerId! };
+  const value = PlayerLifecycleSnapshotV1Schema.parse(
+    read(`player-lifecycle-${state}.json`),
+  );
+  const actor = principal();
+  return {
+    ...value,
+    accountId: actor.accountId,
+    playerId: actor.playerId!,
+  };
 }
 
 function expectFailure(
@@ -41,28 +60,25 @@ function expectFailure(
 }
 
 describe('Conversation messaging authorization', () => {
-  it('authorizes only a valid principal mapped to an active messaging player', () => {
-    const active = lifecycle('lifecycle.active');
+  it('authorizes only a current principal mapped to an active messaging player', () => {
+    const active = lifecycle('active');
+    const actor = principal();
 
     expect(
-      authorizeMessagingActor({
-        lifecycle: active,
-        now,
-        principal: principal(),
-      }),
+      authorizeMessagingActor({ lifecycle: active, now, principal: actor }),
     ).toEqual({
-      accountId: principal().accountId,
+      accountId: actor.accountId,
       playerId: active.playerId,
       profileId: active.profileId,
-      sessionId: principal().sessionId,
+      sessionId: actor.sessionId,
     });
   });
 
-  it('rejects suspended and deleting players from the provider fixture bundle', () => {
+  it('rejects suspended and deleting provider lifecycle fixtures', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
-          lifecycle: lifecycle('lifecycle.suspended'),
+          lifecycle: lifecycle('suspended'),
           now,
           principal: principal(),
         }),
@@ -71,7 +87,7 @@ describe('Conversation messaging authorization', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
-          lifecycle: lifecycle('lifecycle.deleting'),
+          lifecycle: lifecycle('deleting'),
           now,
           principal: principal(),
         }),
@@ -79,7 +95,7 @@ describe('Conversation messaging authorization', () => {
     );
   });
 
-  it('rejects missing or mismatched player mappings without reading profile fields', () => {
+  it('rejects missing or mismatched authoritative mappings', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
@@ -92,12 +108,12 @@ describe('Conversation messaging authorization', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
-          lifecycle: lifecycle('lifecycle.active'),
+          lifecycle: lifecycle('active'),
           now,
-          principal: {
-            ...principal(),
-            playerId: '10000000-0000-4000-8000-000000000999',
-          },
+          principal: AuthenticatedPrincipalV1Schema.parse({
+            ...(read('authenticated-principal-valid.json') as object),
+            accountId: '01000000-0000-4000-8000-000000000099',
+          }),
         }),
       'player_not_found',
     );
@@ -107,10 +123,9 @@ describe('Conversation messaging authorization', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
-          lifecycle: lifecycle('lifecycle.active'),
+          lifecycle: lifecycle('active'),
           now,
-          principal:
-            coreV1ProviderFixtures['authenticatedPrincipal.expired'].value,
+          principal: principal('authenticated-principal-expired.json'),
         }),
       'session_expired',
     );
