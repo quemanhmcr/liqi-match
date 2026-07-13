@@ -74,6 +74,7 @@ export type ProfileEditStagedMedia = {
   error?: string;
   slot: ProfileEditMediaSlot;
   status: ProfileEditStagedMediaStatus;
+  persistedAt?: string;
   uploadedAssetId?: string;
   uploadedUrl?: string;
 };
