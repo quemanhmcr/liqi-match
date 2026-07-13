@@ -32,6 +32,27 @@ Key rules:
 - Favorite hero array order and the explicit `priority` field must agree.
 - Long-term habits and a time-bound `matchIntent` are separate concepts.
 - Recurring availability always carries an IANA timezone and explicit weekdays.
+- Current-backend values are resolved through `resolveCatalogId` or
+  `resolveHeroId`; consumers must not compare localized labels or normalize
+  arbitrary names into IDs.
+
+### Reading current backend values
+
+Current tables expose rank/role/hero slugs and Vietnamese habit strings. Resolve
+those values before placing them into canonical state:
+
+```ts
+const rank = resolveCatalogId(RANK_CATALOG, backendRank.slug);
+const lane = resolveCatalogId(LANE_CATALOG, backendRole.slug);
+const hero = resolveHeroId(backendHero.slug);
+
+if (!rank.ok || !lane.ok || !hero.ok) {
+  // Preserve/report the unsupported backend value. Do not guess from labels.
+}
+```
+
+The resolver returns whether the input was already a canonical ID or an exact
+legacy value. It never treats a rank/lane display label or hero name as identity.
 
 ## Persistence
 

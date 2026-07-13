@@ -197,12 +197,14 @@ inventing heroes.
 Senior 2 and Senior 3 can integrate independently by:
 
 1. importing schemas/catalogs from `@/entities/player-profile`;
-2. keeping temporary UI state in their own feature;
-3. validating before writing persisted drafts or submitting profile changes;
-4. using the migration result rather than merging old state into defaults;
-5. using the legacy adapter only at the current backend boundary;
-6. preserving and reporting adapter warnings;
-7. never adding UI-specific fields to the shared entity.
+2. resolving current backend slugs/text with `resolveCatalogId` and
+   `resolveHeroId`, never labels or normalized names;
+3. keeping temporary UI state in their own feature;
+4. validating before writing persisted drafts or submitting profile changes;
+5. using the migration result rather than merging old state into defaults;
+6. using the legacy adapter only at the current backend boundary;
+7. preserving and reporting adapter warnings;
+8. never adding UI-specific fields to the shared entity.
 
 Consumer feedback should change this contract only when a domain semantic is
 missing, a cast/loose string is otherwise unavoidable, or valid product data

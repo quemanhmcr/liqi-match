@@ -1,6 +1,5 @@
-import { z } from 'zod';
-
 import { heroDefinitionById } from '@/entities/hero';
+import { z } from 'zod';
 
 import { toLegacyAvailabilitySlots } from './availability';
 import {
@@ -22,6 +21,7 @@ import {
   TIME_PREFERENCE_CATALOG,
   type CatalogOption,
 } from './catalogs';
+import { legacyValueForCatalogId } from './legacy-value-resolver';
 import {
   CompletedProfileDraftSchema,
   GenderIdSchema,
@@ -214,7 +214,7 @@ export function adaptCompletedProfileToLegacyOnboardingPayload(
     };
   }
 
-  const locale = legacyValue(LOCALE_CATALOG, profile.localeId);
+  const locale = legacyValueForCatalogId(LOCALE_CATALOG, profile.localeId);
   const payload = {
     availability_slots: toLegacyAvailabilitySlots(
       profile.recurringAvailability,
@@ -222,44 +222,44 @@ export function adaptCompletedProfileToLegacyOnboardingPayload(
     display_name: profile.profileBasics.displayName,
     handle: profile.profileBasics.gameHandle,
     habits: {
-      comeback_response: legacyValue(
+      comeback_response: legacyValueForCatalogId(
         COMEBACK_RESPONSE_CATALOG,
         profile.habits.comebackResponseId,
       ),
       communication_channels: profile.habits.communicationPreferenceIds.map(
-        (id) => legacyValue(COMMUNICATION_PREFERENCE_CATALOG, id),
+        (id) => legacyValueForCatalogId(COMMUNICATION_PREFERENCE_CATALOG, id),
       ),
-      decision_style: legacyValue(
+      decision_style: legacyValueForCatalogId(
         DECISION_STYLE_CATALOG,
         profile.habits.decisionStyleId,
       ),
-      feedback_style: legacyValue(
+      feedback_style: legacyValueForCatalogId(
         FEEDBACK_STYLE_CATALOG,
         profile.habits.feedbackStyleId,
       ),
-      loss_response: legacyValue(
+      loss_response: legacyValueForCatalogId(
         LOSS_RESPONSE_CATALOG,
         profile.habits.lossResponseId,
       ),
       online_time_presets: profile.habits.timePreferenceIds.map((id) =>
-        legacyValue(TIME_PREFERENCE_CATALOG, id),
+        legacyValueForCatalogId(TIME_PREFERENCE_CATALOG, id),
       ),
-      seriousness: legacyValue(
+      seriousness: legacyValueForCatalogId(
         SERIOUSNESS_CATALOG,
         profile.habits.seriousnessId,
       ),
-      session_length: legacyValue(
+      session_length: legacyValueForCatalogId(
         SESSION_LENGTH_CATALOG,
         profile.habits.sessionLengthId,
       ),
       strategy_styles: profile.habits.strategyStyleIds.map((id) =>
-        legacyValue(STRATEGY_STYLE_CATALOG, id),
+        legacyValueForCatalogId(STRATEGY_STYLE_CATALOG, id),
       ),
       team_atmospheres: profile.habits.teamAtmosphereIds.map((id) =>
-        legacyValue(TEAM_ATMOSPHERE_CATALOG, id),
+        legacyValueForCatalogId(TEAM_ATMOSPHERE_CATALOG, id),
       ),
       team_goals: profile.habits.teamGoalIds.map((id) =>
-        legacyValue(TEAM_GOAL_CATALOG, id),
+        legacyValueForCatalogId(TEAM_GOAL_CATALOG, id),
       ),
     },
     heroes: profile.favoriteHeroes.map(({ heroId }) => {
@@ -282,12 +282,17 @@ export function adaptCompletedProfileToLegacyOnboardingPayload(
       wall_positions: profile.mediaSelection.wallPositions,
     },
     profile_basics: { gender: profile.profileBasics.genderId },
-    rank_slug: legacyValue(RANK_CATALOG, profile.rankId),
+    rank_slug: legacyValueForCatalogId(RANK_CATALOG, profile.rankId),
     regions: [GLOBAL_REGION_LEGACY_VALUE] as const,
     role_slugs: [
-      legacyValue(LANE_CATALOG, profile.laneSelection.primary),
+      legacyValueForCatalogId(LANE_CATALOG, profile.laneSelection.primary),
       ...(profile.laneSelection.secondary
-        ? [legacyValue(LANE_CATALOG, profile.laneSelection.secondary)]
+        ? [
+            legacyValueForCatalogId(
+              LANE_CATALOG,
+              profile.laneSelection.secondary,
+            ),
+          ]
         : []),
     ],
     timezone: profile.timezone,
@@ -373,13 +378,4 @@ function legacyWarnings(
     });
   }
   return warnings;
-}
-
-function legacyValue<Id extends string, LegacyValue extends string>(
-  catalog: readonly CatalogOption<Id, LegacyValue>[],
-  id: Id,
-): LegacyValue {
-  const option = catalog.find((candidate) => candidate.id === id);
-  if (!option) throw new Error(`Catalog has no legacy value for ID: ${id}`);
-  return option.legacyValue;
 }

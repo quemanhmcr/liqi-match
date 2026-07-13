@@ -108,6 +108,24 @@ describe('persisted onboarding draft migration', () => {
     );
   });
 
+  it('normalizes exact database hero slugs without parsing hero names', () => {
+    const result = migratePersistedOnboardingDraft(
+      {
+        ...legacySnapshot,
+        heroIds: ['flowborn_phep', 'bolt_baron', 'the_flash'],
+      },
+      { timezone: 'UTC' },
+    );
+
+    expect(result.status).toBe('migrated');
+    if (result.status !== 'migrated') throw new Error('Expected migration.');
+    expect(result.envelope.draft.favoriteHeroes).toEqual([
+      { heroId: 'flowborn-phep', priority: 1 },
+      { heroId: 'bolt-baron', priority: 2 },
+      { heroId: 'the-flash', priority: 3 },
+    ]);
+  });
+
   it('normalizes duplicate lane and hero values without changing priority', () => {
     const result = migratePersistedOnboardingDraft(
       {

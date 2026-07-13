@@ -1,7 +1,5 @@
 import { z } from 'zod';
 
-import { heroDefinitionById } from '@/entities/hero';
-
 import { buildRecurringAvailabilityFromTimePreferences } from './availability';
 import {
   COMEBACK_RESPONSE_CATALOG,
@@ -23,6 +21,7 @@ import {
   TIME_PREFERENCE_CATALOG,
   type CatalogOption,
 } from './catalogs';
+import { resolveCatalogId, resolveHeroId } from './legacy-value-resolver';
 import {
   PersistedOnboardingDraftEnvelopeSchema,
   TimezoneSchema,
@@ -156,25 +155,42 @@ export function migratePersistedOnboardingDraft(
     });
   }
 
-  const genderId = idFromLegacyOrCanonical(
+  const gender = resolveCatalogId(
     GENDER_CATALOG,
     legacy.data.profileBasics.gender,
   );
-  const rankId = idFromLegacyOrCanonical(RANK_CATALOG, legacy.data.rankId);
-  const laneIds = dedupe(legacy.data.laneIds, 'laneIds', issues);
-  const heroIds = dedupe(legacy.data.heroIds, 'heroIds', issues);
-  const unknownLane = laneIds.find(
-    (value) => !idFromLegacyOrCanonical(LANE_CATALOG, value),
+  const rank = resolveCatalogId(RANK_CATALOG, legacy.data.rankId);
+  const laneValues = dedupe(legacy.data.laneIds, 'laneIds', issues);
+  const heroValues = dedupe(legacy.data.heroIds, 'heroIds', issues);
+  const lanes = laneValues.map((value) =>
+    resolveCatalogId(LANE_CATALOG, value),
   );
-  const unknownHero = heroIds.find((value) => !heroDefinitionById(value));
+  const heroes = heroValues.map(resolveHeroId);
+  const unknownLaneIndex = lanes.findIndex((result) => !result.ok);
+  const unknownHeroIndex = heroes.findIndex((result) => !result.ok);
 
-  if (!genderId)
+  if (!gender.ok)
     return resetForUnknown('profileBasics.gender', 'Unknown legacy gender.');
-  if (!rankId) return resetForUnknown('rankId', 'Unknown legacy rank.');
-  if (unknownLane)
-    return resetForUnknown('laneIds', `Unknown legacy lane: ${unknownLane}.`);
-  if (unknownHero)
-    return resetForUnknown('heroIds', `Unknown legacy hero: ${unknownHero}.`);
+  if (!rank.ok) return resetForUnknown('rankId', 'Unknown legacy rank.');
+  if (unknownLaneIndex >= 0)
+    return resetForUnknown(
+      'laneIds',
+      `Unknown legacy lane: ${laneValues[unknownLaneIndex]}.`,
+    );
+  if (unknownHeroIndex >= 0)
+    return resetForUnknown(
+      'heroIds',
+      `Unknown legacy hero: ${heroValues[unknownHeroIndex]}.`,
+    );
+
+  const laneIds = lanes.map((result) => {
+    if (!result.ok) throw new Error('Lane resolution invariant failed.');
+    return result.id;
+  });
+  const heroIds = heroes.map((result) => {
+    if (!result.ok) throw new Error('Hero resolution invariant failed.');
+    return result.id;
+  });
 
   const habitsResult = migrateLegacyHabits(legacy.data.habits);
   if (!habitsResult.ok) return habitsResult.result;
@@ -236,10 +252,8 @@ export function migratePersistedOnboardingDraft(
       habits: habitsResult.habits,
       laneSelection: laneIds[0]
         ? {
-            primary: idFromLegacyOrCanonical(LANE_CATALOG, laneIds[0])!,
-            secondary: laneIds[1]
-              ? idFromLegacyOrCanonical(LANE_CATALOG, laneIds[1])!
-              : null,
+            primary: laneIds[0],
+            secondary: laneIds[1] ?? null,
           }
         : null,
       localeId: DEFAULT_PROFILE_LOCALE_ID,
@@ -255,9 +269,9 @@ export function migratePersistedOnboardingDraft(
       profileBasics: {
         displayName,
         gameHandle: null,
-        genderId,
+        genderId: gender.id,
       },
-      rankId,
+      rankId: rank.id,
       recurringAvailability,
       timezone: canonicalTimezone,
     },
@@ -291,41 +305,41 @@ function migrateLegacyHabits(
     return { habits: createEmptyHabitAnswers(), issues: [], ok: true };
 
   const fields = {
-    comebackResponseId: idFromLegacyValue(
+    comebackResponseId: resolvedCatalogId(
       COMEBACK_RESPONSE_CATALOG,
       input.comeback_response,
     ),
-    communicationPreferenceIds: idsFromLegacyValues(
+    communicationPreferenceIds: resolvedCatalogIds(
       COMMUNICATION_PREFERENCE_CATALOG,
       input.communication_channels,
     ),
-    decisionStyleId: idFromLegacyValue(
+    decisionStyleId: resolvedCatalogId(
       DECISION_STYLE_CATALOG,
       input.decision_style,
     ),
-    feedbackStyleId: idFromLegacyValue(
+    feedbackStyleId: resolvedCatalogId(
       FEEDBACK_STYLE_CATALOG,
       input.feedback_style,
     ),
-    lossResponseId: idFromLegacyValue(
+    lossResponseId: resolvedCatalogId(
       LOSS_RESPONSE_CATALOG,
       input.loss_response,
     ),
-    seriousnessId: idFromLegacyValue(SERIOUSNESS_CATALOG, input.seriousness),
-    sessionLengthId: idFromLegacyValue(
+    seriousnessId: resolvedCatalogId(SERIOUSNESS_CATALOG, input.seriousness),
+    sessionLengthId: resolvedCatalogId(
       SESSION_LENGTH_CATALOG,
       input.session_length,
     ),
-    strategyStyleIds: idsFromLegacyValues(
+    strategyStyleIds: resolvedCatalogIds(
       STRATEGY_STYLE_CATALOG,
       input.strategy_styles,
     ),
-    teamAtmosphereIds: idsFromLegacyValues(
+    teamAtmosphereIds: resolvedCatalogIds(
       TEAM_ATMOSPHERE_CATALOG,
       input.team_atmospheres,
     ),
-    teamGoalIds: idsFromLegacyValues(TEAM_GOAL_CATALOG, input.team_goals),
-    timePreferenceIds: idsFromLegacyValues(
+    teamGoalIds: resolvedCatalogIds(TEAM_GOAL_CATALOG, input.team_goals),
+    timePreferenceIds: resolvedCatalogIds(
       TIME_PREFERENCE_CATALOG,
       input.online_time_presets,
     ),
@@ -351,27 +365,17 @@ function migrateLegacyHabits(
   };
 }
 
-function idFromLegacyOrCanonical<Id extends string>(
-  catalog: readonly CatalogOption<Id>[],
-  value: string,
-): Id | undefined {
-  return catalog.find(
-    (option) => option.id === value || option.legacyValue === value,
-  )?.id;
+function resolvedCatalogId<
+  const Options extends readonly CatalogOption<string, string>[],
+>(options: Options, value: unknown): Options[number]['id'] | undefined {
+  const result = resolveCatalogId(options, value);
+  return result.ok ? result.id : undefined;
 }
 
-function idFromLegacyValue<Id extends string>(
-  catalog: readonly CatalogOption<Id>[],
-  value: string,
-): Id | undefined {
-  return catalog.find((option) => option.legacyValue === value)?.id;
-}
-
-function idsFromLegacyValues<Id extends string>(
-  catalog: readonly CatalogOption<Id>[],
-  values: string[],
-): (Id | undefined)[] {
-  return values.map((value) => idFromLegacyValue(catalog, value));
+function resolvedCatalogIds<
+  const Options extends readonly CatalogOption<string, string>[],
+>(options: Options, values: readonly unknown[]) {
+  return values.map((value) => resolvedCatalogId(options, value));
 }
 
 function dedupe(values: string[], path: string, issues: DraftMigrationIssue[]) {
