@@ -44,6 +44,10 @@ describe('canonical simulation notification repository', () => {
       runtime.readWorld().profiles[directMessage.payload.actor.id as never]
         ?.canonicalProfile.profileBasics.displayName,
     ).toBe(directMessage.payload.actor.displayName);
+    expect(directMessage.payload.actor.avatarAssetKey).toBe(
+      runtime.readWorld().profiles[directMessage.payload.actor.id as never]
+        ?.media.avatarAssetKey,
+    );
     expect(
       runtime.readWorld().conversations[
         directMessage.payload.conversationId as never

@@ -72,5 +72,5 @@ export async function renderWithProviders(
     </SafeAreaProvider>,
   );
 
-  return { ...renderResult, queryClient };
+  return { ...renderResult, queryClient, services: resolvedServices };
 }

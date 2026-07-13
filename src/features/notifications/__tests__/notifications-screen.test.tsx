@@ -7,6 +7,8 @@ import {
   jest,
 } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import { appRoutes } from '@/app-shell/navigation/routes';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 
@@ -38,6 +40,11 @@ function renderNotificationWithProviders(ui: ReactElement) {
 
   return renderWithProviders(
     <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    {
+      serviceOverrides: {
+        notificationRepository: mockNotificationInboxRepository,
+      },
+    },
   );
 }
 
@@ -49,15 +56,23 @@ jest.mock('expo-router', () => ({
     back: jest.fn(),
     canGoBack: jest.fn(() => false),
     navigate: jest.fn(),
+    push: jest.fn(),
   },
   useFocusEffect: (effect: FocusEffect) => {
     mockFocusEffect = effect;
   },
 }));
 
+const mockExpoRouter = jest.requireMock('expo-router') as {
+  router: {
+    push: ReturnType<typeof jest.fn>;
+  };
+};
+
 describe('NotificationsScreen', () => {
   beforeEach(async () => {
     mockFocusEffect = undefined;
+    mockExpoRouter.router.push.mockClear();
     await resetMockNotificationInboxForTesting(testAuthSession.user.id);
   });
 
@@ -114,5 +129,78 @@ describe('NotificationsScreen', () => {
       expect(summary.unseenCount).toBe(0);
     });
     await unmount();
+  });
+
+  it('opens the canonical conversation and preserves it after marking the notification read', async () => {
+    const screen = await renderWithProviders(<NotificationsScreen />);
+    const services = screen.services;
+    const page = await services.notificationRepository.list({
+      limit: 50,
+      session: testAuthSession,
+    });
+    const directMessage = page.items.find(
+      (notification) => notification.kind === 'direct-message',
+    );
+    if (directMessage?.kind !== 'direct-message') {
+      throw new Error('Expected a canonical direct-message notification.');
+    }
+
+    const messageContext = {
+      locale: 'vi',
+      timezone: 'Asia/Bangkok',
+      viewerId: testAuthSession.user.id,
+    };
+    const conversationBefore = await services.messageRepository.getConversation(
+      directMessage.payload.conversationId,
+      messageContext,
+    );
+    if (!conversationBefore) {
+      throw new Error('Expected the notification conversation to exist.');
+    }
+    const senderBefore = conversationBefore.data.members.find(
+      (member) => member.id === directMessage.payload.actor.id,
+    );
+
+    expect(senderBefore).toMatchObject({
+      displayName: directMessage.payload.actor.displayName,
+      id: directMessage.payload.actor.id,
+    });
+    if (directMessage.payload.actor.avatarAssetKey) {
+      expect(senderBefore?.avatar).toMatchObject({
+        assetKey: directMessage.payload.actor.avatarAssetKey,
+        kind: 'fixture',
+      });
+    }
+
+    const replyButton = await screen.findByLabelText(
+      `Trả lời ${directMessage.payload.actor.displayName}`,
+    );
+    await act(async () => {
+      await fireEvent.press(replyButton);
+    });
+
+    await waitFor(() => {
+      expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
+        appRoutes.messages.detail(directMessage.payload.conversationId),
+      );
+    });
+
+    await waitFor(async () => {
+      const refreshedPage = await services.notificationRepository.list({
+        limit: 50,
+        session: testAuthSession,
+      });
+      const refreshedNotification = refreshedPage.items.find(
+        (notification) => notification.id === directMessage.id,
+      );
+      expect(refreshedNotification?.readAt).not.toBeNull();
+    });
+
+    const conversationAfter = await services.messageRepository.getConversation(
+      directMessage.payload.conversationId,
+      messageContext,
+    );
+    expect(conversationAfter?.data).toEqual(conversationBefore.data);
+    await screen.unmount();
   });
 });

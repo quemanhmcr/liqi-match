@@ -254,6 +254,9 @@ function actor(
     );
   }
   return {
+    ...(profile.media.avatarAssetKey
+      ? { avatarAssetKey: profile.media.avatarAssetKey }
+      : {}),
     displayName: profile.canonicalProfile.profileBasics.displayName,
     id: profile.id,
   };

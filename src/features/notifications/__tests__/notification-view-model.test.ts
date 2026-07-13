@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { createGoldenWorldAssetResolver } from '@/entities/media-asset';
 import { createMockNotificationSeed } from '@/entities/notifications/data/mock-notification-inbox.repository';
 import {
   formatNotificationTime,
@@ -7,13 +8,27 @@ import {
 } from '@/features/notifications/model/notification-view-model';
 
 const now = new Date('2026-07-11T09:00:00.000Z');
+const assetResolver = createGoldenWorldAssetResolver();
 
 describe('notification view model', () => {
   it('maps typed backend payloads without backend-owned visual metadata', () => {
     const records = createMockNotificationSeed('user-a', now);
-    const invite = mapNotificationToViewModel(records[0]!, now);
-    const message = mapNotificationToViewModel(records[1]!, now);
-    const reward = mapNotificationToViewModel(records[5]!, now);
+    const invite = mapNotificationToViewModel(records[0]!, {
+      assetResolver,
+      now,
+    });
+    const directMessage = records[1];
+    if (directMessage?.kind !== 'direct-message') {
+      throw new Error('Expected the second notification to be direct-message.');
+    }
+    const message = mapNotificationToViewModel(directMessage, {
+      assetResolver,
+      now,
+    });
+    const reward = mapNotificationToViewModel(records[5]!, {
+      assetResolver,
+      now,
+    });
 
     expect(invite).toMatchObject({
       category: 'set-invite',
@@ -24,7 +39,14 @@ describe('notification view model', () => {
       title: 'Minh Anh',
       visual: { kind: 'avatar', tone: 'purple' },
     });
-    expect(message.action).toEqual({ label: 'Trả lời', tone: 'blue' });
+    expect(message.action).toEqual({
+      destination: {
+        conversationId: directMessage.payload.conversationId,
+        kind: 'conversation',
+      },
+      label: 'Trả lời',
+      tone: 'blue',
+    });
     expect(reward).toMatchObject({
       category: 'system',
       group: 'Trước đó',

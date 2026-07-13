@@ -4,17 +4,18 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text as RNText,
   View,
-  type ImageSourcePropType,
-  type ImageStyle,
   type TextProps,
 } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import {
+  useAssetResolver,
+  usePreloadAssetSurface,
+} from '@/entities/media-asset';
 import {
   useMarkNotificationInboxSeen,
   useMarkNotificationRead,
@@ -35,13 +36,16 @@ import {
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 
+import { NotificationResolvedImage } from '../components/NotificationResolvedImage';
 import {
   notificationFilters,
   type NotificationFilterId,
-} from '../data/notification.fixture';
+} from '../model/notification-filters';
 import {
   mapNotificationToViewModel,
+  type NotificationDestination,
   type NotificationItem,
+  type NotificationResolvedMedia,
   type NotificationTone,
 } from '../model/notification-view-model';
 
@@ -203,6 +207,8 @@ function NotificationText(props: TextProps) {
 
 export function NotificationsScreen() {
   const { session } = useAuth();
+  const assetResolver = useAssetResolver();
+  usePreloadAssetSurface('notifications');
   const [activeFilter, setActiveFilter] = useState<NotificationFilterId>('all');
   const acknowledgedWatermarkRef = useRef<string | null>(null);
   const inboxQuery = useNotificationInboxFeed(session);
@@ -220,10 +226,10 @@ export function NotificationsScreen() {
     () =>
       (inboxPages ?? []).flatMap((page) =>
         page.items.map((notification) =>
-          mapNotificationToViewModel(notification),
+          mapNotificationToViewModel(notification, { assetResolver }),
         ),
       ),
-    [inboxPages],
+    [assetResolver, inboxPages],
   );
   const filteredNotifications = notifications.filter((item) => {
     if (activeFilter === 'all') return true;
@@ -248,6 +254,15 @@ export function NotificationsScreen() {
         },
       });
     }, [markInboxSeen, latestWatermark, latestWatermarkKey, unseenCount]),
+  );
+
+  const handleNotificationAction = useCallback(
+    (item: NotificationItem) => {
+      markNotificationRead(item.id);
+      const destination = item.action?.destination;
+      if (destination) navigateNotificationDestination(destination);
+    },
+    [markNotificationRead],
   );
 
   const hasResolvedFeed = Boolean(inboxQuery.data);
@@ -293,7 +308,7 @@ export function NotificationsScreen() {
                 <NotificationCard
                   item={item}
                   key={item.id}
-                  onAction={() => markNotificationRead(item.id)}
+                  onAction={() => handleNotificationAction(item)}
                 />
               ))}
             </View>
@@ -619,12 +634,9 @@ function NotificationVisual({
           colors={[tone.icon, 'rgba(255,255,255,0.08)']}
           style={[styles.avatarFrame, compact && styles.avatarFrameCompact]}
         >
-          <Image
-            source={visual.source}
-            style={[
-              styles.avatarImage as ImageStyle,
-              compact && (styles.avatarImageCompact as ImageStyle),
-            ]}
+          <NotificationResolvedImage
+            media={visual.media}
+            style={[styles.avatarImage, compact && styles.avatarImageCompact]}
           />
         </LinearGradient>
         {visual.badgeIcon ? (
@@ -684,7 +696,9 @@ function NotificationAccessory({
     const tone = toneSpecs[item.action.tone];
     return (
       <LiquidButton
-        accessibilityLabel={item.action.label}
+        accessibilityLabel={[item.action.label, item.title]
+          .filter(Boolean)
+          .join(' ')}
         contentStyle={[
           styles.actionButtonContent,
           compact && styles.actionButtonContentCompact,
@@ -745,22 +759,30 @@ function NotificationAccessory({
 function PreviewAvatarStack({
   avatars,
 }: {
-  avatars: readonly ImageSourcePropType[];
+  avatars: readonly NotificationResolvedMedia[];
 }) {
   return (
     <View style={styles.previewStack}>
       {avatars.map((avatar, index) => (
-        <Image
+        <NotificationResolvedImage
           key={index}
-          source={avatar}
+          media={avatar}
           style={[
-            styles.previewAvatar as ImageStyle,
-            index > 0 && (styles.previewAvatarOverlap as ImageStyle),
+            styles.previewAvatar,
+            index > 0 && styles.previewAvatarOverlap,
           ]}
         />
       ))}
     </View>
   );
+}
+
+function navigateNotificationDestination(destination: NotificationDestination) {
+  switch (destination.kind) {
+    case 'conversation':
+      router.push(appRoutes.messages.detail(destination.conversationId));
+      return;
+  }
 }
 
 function NotificationLoadingState() {
