@@ -5,6 +5,7 @@ import { parsePublicEnv } from '@/shared/config/env';
 describe('parsePublicEnv', () => {
   it('returns an immutable config when public env values are valid', () => {
     const parsed = parsePublicEnv({
+      EXPO_PUBLIC_APPLICATION_RUNTIME_MODE: 'simulation',
       EXPO_PUBLIC_API_URL: 'https://api.example.com',
       EXPO_PUBLIC_SUPABASE_URL: 'https://supabase.example.com',
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'publishable-key',
@@ -12,6 +13,7 @@ describe('parsePublicEnv', () => {
     });
 
     expect(parsed).toEqual({
+      EXPO_PUBLIC_APPLICATION_RUNTIME_MODE: 'simulation',
       EXPO_PUBLIC_API_URL: 'https://api.example.com',
       EXPO_PUBLIC_SUPABASE_URL: 'https://supabase.example.com',
       EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'publishable-key',
@@ -23,6 +25,7 @@ describe('parsePublicEnv', () => {
   it('reports the invalid variable name', () => {
     expect(() =>
       parsePublicEnv({
+        EXPO_PUBLIC_APPLICATION_RUNTIME_MODE: 'api',
         EXPO_PUBLIC_API_URL: 'not-a-url',
         EXPO_PUBLIC_SUPABASE_URL: 'https://supabase.example.com',
         EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: 'publishable-key',
