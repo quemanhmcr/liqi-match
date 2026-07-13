@@ -14,8 +14,12 @@ const pendingSlotKey = 'profile-edit:pending-media-slot:v1';
 const mediaDraftKeyPrefix = 'profile-edit:staged-media:v1:';
 const mediaDirectoryName = 'profile-edit-media';
 
+export type ProfileMediaDraftSnapshot = Partial<
+  Record<ProfileEditMediaSlot, ProfileEditStagedMedia>
+>;
+
 type StoredProfileMediaDraft = {
-  slots: Partial<Record<ProfileEditMediaSlot, ProfileEditStagedMedia>>;
+  slots: ProfileMediaDraftSnapshot;
   version: 2;
 };
 
@@ -141,6 +145,29 @@ export async function clearProfileMediaDraft(profileId: string) {
     if (!stored.slots[slot]) continue;
     await clearProfileMediaDraftItem(profileId, slot);
   }
+}
+
+/** Clears recovery metadata while retaining durable files referenced by runtime snapshots. */
+export async function clearProfileMediaDraftRecord(profileId: string) {
+  await AsyncStorage.removeItem(mediaDraftKey(profileId));
+}
+
+/** Restores a canonical recovery record without recopying or deleting durable files. */
+export async function replaceProfileMediaDraft(
+  profileId: string,
+  draft: ProfileMediaDraftSnapshot,
+) {
+  const slots: ProfileMediaDraftSnapshot = {};
+  for (const slot of ['avatar', 'cover'] as const) {
+    const item = draft[slot];
+    if (!item) continue;
+    const canonical = parseProfileItem(item);
+    if (canonical.slot !== slot) {
+      throw new Error(`Profile media draft slot mismatch for ${slot}.`);
+    }
+    slots[slot] = canonical;
+  }
+  await writeStoredDraft(profileId, { slots, version: 2 });
 }
 
 async function ensureDurableLocalFile(
