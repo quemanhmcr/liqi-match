@@ -306,6 +306,7 @@ const entries = [
 
 const manifest = {
   budgets: {
+    maxDimension: 4096,
     maxBytesByKind: {
       avatar: 400000,
       'build-preview': 50000,

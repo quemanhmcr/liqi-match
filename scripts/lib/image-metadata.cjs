@@ -76,10 +76,19 @@ function readWebp(buffer) {
     };
   }
   if (chunk === 'VP8 ') {
+    const startCode = buffer.subarray(23, 26);
+    if (!startCode.equals(Buffer.from([0x9d, 0x01, 0x2a]))) {
+      throw new Error('Invalid VP8 frame start code');
+    }
+    const width = buffer.readUInt16LE(26) & 0x3fff;
+    const height = buffer.readUInt16LE(28) & 0x3fff;
+    if (width === 0 || height === 0) {
+      throw new Error('Invalid VP8 dimensions');
+    }
     return {
       format: 'webp',
-      height: buffer.readUInt16LE(26) & 0x3fff,
-      width: buffer.readUInt16LE(24) & 0x3fff,
+      height,
+      width,
     };
   }
   if (chunk === 'VP8L') {

@@ -83,7 +83,7 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "assets:generate": "node scripts/generate-asset-manifest.cjs",
-    "assets:check": "node scripts/generate-asset-manifest.cjs --check && node scripts/validate-assets.cjs",
+    "assets:check": "node scripts/lib/image-metadata.test.cjs && node scripts/generate-asset-manifest.cjs --check && node scripts/validate-assets.cjs",
     "assets:validate": "node scripts/validate-assets.cjs",
     "architecture:check": "node scripts/check-architecture.cjs && npm run backend:architecture:check",
     "backend:architecture:check": "node scripts/check-backend-architecture.cjs",
