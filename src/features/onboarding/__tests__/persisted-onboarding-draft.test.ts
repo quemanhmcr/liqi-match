@@ -9,6 +9,10 @@ import {
 } from '@jest/globals';
 
 import {
+  recoverInterruptedOnboardingMediaQueue,
+  replaceOnboardingMediaSlotItem,
+} from '../model/onboarding-media-queue';
+import {
   clearActivePersistedOnboardingDraft,
   createEmptyOnboardingDraft,
   hydratePersistedOnboardingDraft,
@@ -126,6 +130,78 @@ describe('persisted onboarding draft infrastructure', () => {
     const state = usePersistedOnboardingDraftStore.getState();
     expect(state.envelope?.data.rankId).toBeUndefined();
     expect(state.persistenceError).toBe('disk full');
+  });
+
+  it('recovers an interrupted upload as a resumable item error', async () => {
+    storage.set(
+      onboardingDraftStorageKey('account-a'),
+      JSON.stringify({
+        ...createEmptyOnboardingDraft('account-a'),
+        data: {
+          mediaQueue: [
+            {
+              localId: 'avatar:0:pending',
+              localUri: 'file:///avatar.jpg',
+              position: 0,
+              slot: 'avatar',
+              status: 'uploading',
+            },
+          ],
+        },
+        status: 'media_pending',
+      }),
+    );
+
+    await hydratePersistedOnboardingDraft('account-a');
+    await recoverInterruptedOnboardingMediaQueue();
+
+    expect(
+      usePersistedOnboardingDraftStore.getState().envelope?.data
+        .mediaQueue?.[0],
+    ).toEqual(
+      expect.objectContaining({
+        error: expect.stringContaining('bị gián đoạn'),
+        position: 0,
+        status: 'error',
+      }),
+    );
+  });
+
+  it('keeps stable wall positions when individual slots are replaced', async () => {
+    await hydratePersistedOnboardingDraft('account-a');
+    await replaceOnboardingMediaSlotItem({
+      localId: 'wall:2:first',
+      localUri: 'file:///wall-2.jpg',
+      position: 2,
+      slot: 'wall',
+      status: 'selected',
+    });
+    await replaceOnboardingMediaSlotItem({
+      localId: 'wall:0:first',
+      localUri: 'file:///wall-0.jpg',
+      position: 0,
+      slot: 'wall',
+      status: 'selected',
+    });
+    await replaceOnboardingMediaSlotItem({
+      localId: 'wall:2:replacement',
+      localUri: 'file:///wall-2-new.jpg',
+      position: 2,
+      slot: 'wall',
+      status: 'selected',
+    });
+
+    expect(
+      usePersistedOnboardingDraftStore
+        .getState()
+        .envelope?.data.mediaQueue?.map((item) => [
+          item.position,
+          item.localId,
+        ]),
+    ).toEqual([
+      [0, 'wall:0:first'],
+      [2, 'wall:2:replacement'],
+    ]);
   });
 
   it('rejects a stored envelope belonging to another account', async () => {

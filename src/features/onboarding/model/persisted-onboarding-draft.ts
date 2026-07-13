@@ -2,6 +2,12 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
 import type { HabitPayload } from '../habit-options';
+import {
+  isPendingMediaSelection,
+  sanitizeOnboardingMediaItem,
+  type OnboardingMediaQueueItem,
+  type PendingMediaSelection,
+} from './onboarding-media-state';
 
 export const ONBOARDING_DRAFT_VERSION = 1;
 
@@ -20,6 +26,8 @@ export type OnboardingDraftData = {
   habits?: HabitPayload;
   heroIds?: string[];
   laneIds?: string[];
+  mediaQueue?: OnboardingMediaQueueItem[];
+  pendingMediaSelection?: PendingMediaSelection;
   profileBasics?: {
     displayName?: string;
     gender?: 'male' | 'female' | 'hidden';
@@ -276,6 +284,14 @@ function sanitizeDraftData(value: unknown): OnboardingDraftData {
   if (isStringArray(value.laneIds)) data.laneIds = [...value.laneIds];
   if (isStringArray(value.heroIds)) data.heroIds = [...value.heroIds];
   if (isHabitPayload(value.habits)) data.habits = value.habits;
+  if (Array.isArray(value.mediaQueue)) {
+    data.mediaQueue = value.mediaQueue
+      .map(sanitizeOnboardingMediaItem)
+      .filter((item): item is OnboardingMediaQueueItem => Boolean(item));
+  }
+  if (isPendingMediaSelection(value.pendingMediaSelection)) {
+    data.pendingMediaSelection = value.pendingMediaSelection;
+  }
 
   return data;
 }
