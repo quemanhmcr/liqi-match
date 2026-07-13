@@ -61,18 +61,57 @@ describe('application service composition', () => {
         .some((participant) => participant.key.startsWith('onboarding.draft:')),
     ).toBe(false);
 
-    first.simulationRuntime.setNetwork('offline');
-    expect(first.messageTransport.getNetworkState?.()).toBe('offline');
-    expect(second.messageTransport.getNetworkState?.()).toBe('online');
-
-    const response = await first.discoverRepository.listPlayers(context, {
+    const onlineResponse = await first.discoverRepository.listPlayers(context, {
       cursor: undefined,
       facetIds: [],
       limit: 1,
       query: '',
       sort: 'best_match',
     });
-    expect(response.data.items).toHaveLength(1);
+    expect(onlineResponse.data.items).toHaveLength(1);
+
+    first.simulationRuntime.setNetwork('offline');
+    expect(first.messageTransport.getNetworkState?.()).toBe('offline');
+    expect(second.messageTransport.getNetworkState?.()).toBe('online');
+    await expect(
+      first.discoverRepository.listPlayers(context, {
+        cursor: undefined,
+        facetIds: [],
+        limit: 1,
+        query: '',
+        sort: 'best_match',
+      }),
+    ).rejects.toMatchObject({ code: 'network_error', retryable: true });
+  });
+
+  it('preserves canonical identity from Discover into Profile', async () => {
+    const services = createSimulationApplicationServices({
+      namespace: 'application-services-discover-profile',
+    });
+    const response = await services.discoverRepository.listPlayers(context, {
+      cursor: undefined,
+      facetIds: [],
+      limit: 50,
+      query: '',
+      sort: 'best_match',
+    });
+    const discoverPlayer = response.data.items[0];
+    expect(discoverPlayer).toBeDefined();
+    if (!discoverPlayer) return;
+
+    const profile = await services.profileRepository.getProfile({
+      session: simulationSession(),
+      userId: discoverPlayer.profileId,
+    });
+
+    expect(profile).not.toBeNull();
+    expect(profile?.id).toBe(discoverPlayer.profileId);
+    expect(profile?.displayName).toBe(discoverPlayer.displayName);
+    expect(profile?.avatarAssetKey).toBe(
+      discoverPlayer.avatar.kind === 'fixture'
+        ? discoverPlayer.avatar.assetKey
+        : undefined,
+    );
   });
 
   it('shares one canonical world across Messages and Notifications', async () => {

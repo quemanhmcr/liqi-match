@@ -40,13 +40,13 @@ describe('SimulationDiscoverRepository', () => {
       sort: 'best_match',
     });
 
-    const minhAnh = response.data.items.find(
-      (item) => item.profileId === GOLDEN_PROFILE_IDS.minhAnh,
+    const maiSupport = response.data.items.find(
+      (item) => item.profileId === GOLDEN_PROFILE_IDS.maiSupport,
     );
-    expect(minhAnh).toMatchObject({
-      avatar: { assetKey: 'asset:profile:minh-anh:avatar', kind: 'fixture' },
-      capabilities: { canMessage: true },
-      profileId: GOLDEN_PROFILE_IDS.minhAnh,
+    expect(maiSupport).toMatchObject({
+      avatar: { assetKey: 'asset:shared:avatar-fallback', kind: 'fixture' },
+      capabilities: { canMessage: false, canViewProfile: true },
+      profileId: GOLDEN_PROFILE_IDS.maiSupport,
     });
   });
 

@@ -9,12 +9,12 @@ import {
 import { createProductionSimulationRuntime } from '@/entities/simulation';
 import {
   ApiDiscoverRepository,
-  MockDiscoverRepository,
+  createSimulationDiscoverRepository,
   type DiscoverApiRequest,
   type DiscoverApiTransport,
 } from '@/features/discover';
 import {
-  buildPreviewHomeDashboard,
+  createSimulationHomeRepository,
   fetchHomeDashboard,
   type HomeRepository,
 } from '@/features/home';
@@ -25,7 +25,7 @@ import {
   type ChatRepository,
 } from '@/features/messages';
 import {
-  buildPreviewProfile,
+  createSimulationProfileReadRepository,
   createProfileEditSimulationResetParticipant,
   fetchProfileView,
   type ProfileReadRepository,
@@ -87,12 +87,8 @@ export function createSimulationApplicationServices(
       cacheDriver: passiveAssetCacheDriver,
       runtime: simulationRuntime,
     }),
-    discoverRepository: new MockDiscoverRepository(),
-    homeRepository: {
-      async getDashboard(session) {
-        return buildPreviewHomeDashboard(session);
-      },
-    },
+    discoverRepository: createSimulationDiscoverRepository(simulationRuntime),
+    homeRepository: createSimulationHomeRepository(simulationRuntime),
     messageRepository: messages,
     messageTransport: messages.transport,
     mode: 'simulation',
@@ -100,11 +96,7 @@ export function createSimulationApplicationServices(
       createCanonicalSimulationNotificationInboxRepository({
         runtime: simulationRuntime,
       }),
-    profileRepository: {
-      async getProfile({ session, userId }) {
-        return buildPreviewProfile(session, userId);
-      },
-    },
+    profileRepository: createSimulationProfileReadRepository(simulationRuntime),
     simulationRuntime,
   };
 }
