@@ -1,9 +1,6 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-import {
-  completeOnboardingProfile,
-  hasCompletedOnboarding,
-} from '@/features/onboarding';
+import { completeOnboardingProfile } from '@/features/onboarding';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
@@ -24,39 +21,6 @@ const session: AuthSession = {
     user_metadata: { full_name: 'Test Player' },
   },
 };
-
-describe('hasCompletedOnboarding', () => {
-  beforeEach(() => {
-    mockSupabaseRest.mockReset();
-  });
-
-  it('checks the profile_habits completion marker for the current user', async () => {
-    mockSupabaseRest.mockResolvedValueOnce([
-      { profile_id: '00000000-0000-0000-0000-000000000001' },
-    ]);
-
-    await expect(hasCompletedOnboarding(session)).resolves.toBe(true);
-
-    expect(mockSupabaseRest).toHaveBeenCalledWith(
-      'profile_habits?select=profile_id&profile_id=eq.00000000-0000-0000-0000-000000000001&limit=1',
-      { session },
-    );
-  });
-
-  it('returns false when no completion marker exists', async () => {
-    mockSupabaseRest.mockResolvedValueOnce([]);
-
-    await expect(hasCompletedOnboarding(session)).resolves.toBe(false);
-  });
-
-  it('lets callers decide the safe fallback when the backend check fails', async () => {
-    mockSupabaseRest.mockRejectedValueOnce(new Error('permission denied'));
-
-    await expect(hasCompletedOnboarding(session)).rejects.toThrow(
-      'permission denied',
-    );
-  });
-});
 
 describe('completeOnboardingProfile', () => {
   beforeEach(() => {
@@ -85,7 +49,6 @@ describe('completeOnboardingProfile', () => {
           team_atmospheres: ['Nghiêm túc nhưng tôn trọng'],
           team_goals: ['Leo rank nghiêm túc'],
         },
-        mediaDraft: { avatar: false, cover: false, wallCount: 0 },
       }),
     ).resolves.toBe(true);
 
@@ -131,10 +94,8 @@ describe('completeOnboardingProfile', () => {
         rankId: 'master',
         laneIds: ['jungle'],
         heroIds: ['edras', 'goverra', 'heino'],
-        habits: null,
-        mediaDraft: { avatar: false, cover: false, wallCount: 0 },
       }),
-    ).rejects.toThrow('Dữ liệu thói quen chưa hoàn tất');
+    ).rejects.toThrow('Dữ liệu onboarding chưa đầy đủ');
 
     expect(mockSupabaseRest).not.toHaveBeenCalled();
   });

@@ -1,5 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
-import { Redirect } from 'expo-router';
+import { Redirect, usePathname } from 'expo-router';
 import {
   ActivityIndicator,
   Pressable,
@@ -7,14 +6,21 @@ import {
   Text,
   View,
 } from 'react-native';
-import type { PropsWithChildren } from 'react';
+import { useEffect, type PropsWithChildren } from 'react';
 
-import { hasCompletedOnboarding } from '@/features/onboarding';
+import {
+  hydratePersistedOnboardingDraft,
+  clearActivePersistedOnboardingDraft,
+  onboardingStepFromPathname,
+  recoverInterruptedOnboardingMediaQueue,
+  resolveOnboardingStepAccess,
+  usePersistedOnboardingDraftStore,
+  type OnboardingStep,
+} from '@/features/onboarding';
 import { useAuth } from '@/shared/auth/auth-context';
-import { queryKeys } from '@/shared/lib/query-keys';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
-import { resolveAccess, type AccessArea } from './access-policy';
+import type { AccessArea } from './access-policy';
 import { appRoutes } from '../navigation/routes';
 
 export type RouteAccessGateProps = PropsWithChildren<{
@@ -22,47 +28,133 @@ export type RouteAccessGateProps = PropsWithChildren<{
 }>;
 
 /**
- * Centralizes session/onboarding routing so direct links follow the same
- * policy as an OAuth return. The preview uses the public policy: anonymous
- * users may view it, while authenticated users return to their Home context.
+ * Sole route orchestrator for auth, account-scoped draft hydration, onboarding
+ * prerequisites, and completion. Screens only persist their step then navigate.
  */
 export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
   const { loading, session } = useAuth();
-  const shouldCheckCompletion = area !== 'public' && Boolean(session);
-  const completionQuery = useQuery({
-    enabled: shouldCheckCompletion,
-    queryFn: () => {
-      if (!session) throw new Error('Missing authenticated session');
-      return hasCompletedOnboarding(session);
-    },
-    queryKey: queryKeys.onboardingCompletion(session?.user.id ?? 'anonymous'),
-    retry: 1,
-    staleTime: 5 * 60_000,
-  });
+  const pathname = usePathname();
+  const accountId = session?.user.id ?? null;
+  const draftState = usePersistedOnboardingDraftStore();
 
-  if (loading || (shouldCheckCompletion && completionQuery.isLoading)) {
-    return <RouteAccessLoading />;
-  }
+  useEffect(() => {
+    if (!accountId) {
+      clearActivePersistedOnboardingDraft();
+      return;
+    }
 
-  if (shouldCheckCompletion && completionQuery.isError) {
-    return (
-      <RouteAccessUnavailable onRetry={() => void completionQuery.refetch()} />
+    const current = usePersistedOnboardingDraftStore.getState();
+    if (
+      current.accountId === accountId &&
+      (current.hydration === 'hydrating' || current.hydration === 'ready')
+    ) {
+      return;
+    }
+
+    clearActivePersistedOnboardingDraft();
+    void hydrateAndRecover(accountId);
+  }, [accountId]);
+
+  const draftReady = Boolean(
+    accountId &&
+    draftState.accountId === accountId &&
+    draftState.hydration === 'ready' &&
+    draftState.envelope,
+  );
+  if (loading) return <RouteAccessLoading />;
+  if (!session) {
+    return area === 'public' ? (
+      children
+    ) : (
+      <Redirect href={appRoutes.auth.login} />
     );
   }
 
-  const decision = resolveAccess({
-    area,
-    hasCompletedOnboarding: completionQuery.data,
-    hasSession: Boolean(session),
+  if (!draftReady) {
+    if (
+      draftState.hydration === 'error' &&
+      draftState.accountId === accountId
+    ) {
+      return (
+        <RouteAccessUnavailable
+          onRetry={() => void hydrateAndRecover(session.user.id)}
+        />
+      );
+    }
+    return <RouteAccessLoading />;
+  }
+
+  const envelope = draftState.envelope!;
+  const requestedStep = onboardingStepFromPathname(pathname);
+  const onboardingAccess = resolveOnboardingStepAccess({
+    envelope,
+    requestedStep,
   });
 
-  if (decision === 'to-login') return <Redirect href={appRoutes.auth.login} />;
-  if (decision === 'to-home') return <Redirect href={appRoutes.main.home} />;
-  if (decision === 'to-onboarding') {
-    return <Redirect href={appRoutes.onboarding.profileSetup} />;
+  if (area === 'public') {
+    return (
+      <Redirect
+        href={
+          onboardingAccess.canLeaveOnboarding
+            ? appRoutes.main.home
+            : routeForOnboardingStep(onboardingAccess.currentStep)
+        }
+      />
+    );
+  }
+
+  if (area === 'app') {
+    return onboardingAccess.canLeaveOnboarding ? (
+      children
+    ) : (
+      <Redirect href={routeForOnboardingStep(onboardingAccess.currentStep)} />
+    );
+  }
+
+  if (onboardingAccess.canLeaveOnboarding) {
+    return <Redirect href={appRoutes.main.home} />;
+  }
+
+  if (
+    requestedStep &&
+    onboardingAccess.redirectTarget &&
+    onboardingAccess.redirectTarget !== 'home'
+  ) {
+    return (
+      <Redirect
+        href={routeForOnboardingStep(onboardingAccess.redirectTarget)}
+      />
+    );
   }
 
   return children;
+}
+
+async function hydrateAndRecover(accountId: string) {
+  await hydratePersistedOnboardingDraft(accountId);
+  const state = usePersistedOnboardingDraftStore.getState();
+  if (
+    state.accountId !== accountId ||
+    state.hydration !== 'ready' ||
+    !state.envelope
+  ) {
+    return;
+  }
+
+  try {
+    await recoverInterruptedOnboardingMediaQueue();
+  } catch {
+    // persistenceError remains available while the hydrated draft stays usable.
+  }
+}
+
+function routeForOnboardingStep(step: OnboardingStep) {
+  if (step === 'rank') return appRoutes.onboarding.rank;
+  if (step === 'lane') return appRoutes.onboarding.lane;
+  if (step === 'hero_selection') return appRoutes.onboarding.heroSelection;
+  if (step === 'habits') return appRoutes.onboarding.habits;
+  if (step === 'profile_media') return appRoutes.onboarding.profileMedia;
+  return appRoutes.onboarding.profileSetup;
 }
 
 function RouteAccessLoading() {

@@ -25,6 +25,8 @@ export type OnboardingStep =
   | 'profile_media';
 
 export type OnboardingDraftData = {
+  completedAt?: string;
+  coreProfileCompletedAt?: string;
   habits?: HabitPayload;
   heroIds?: string[];
   laneIds?: string[];
@@ -167,7 +169,13 @@ export function getPersistedOnboardingDraft() {
 export async function updatePersistedOnboardingDraft(
   update: (current: OnboardingDraftEnvelope) => OnboardingDraftEnvelope,
 ): Promise<OnboardingDraftEnvelope> {
+  const expectedAccountId = requireReadyEnvelope().accountId;
+
   return enqueueOperation(async () => {
+    const activeState = usePersistedOnboardingDraftStore.getState();
+    if (activeState.accountId !== expectedAccountId) {
+      throw new Error('Tài khoản đã thay đổi trước khi lưu draft onboarding.');
+    }
     const current = requireReadyEnvelope();
     const next = normalizeEnvelope(update(current), current.accountId);
 
@@ -199,6 +207,31 @@ export async function updatePersistedOnboardingDraft(
     }
 
     return next;
+  });
+}
+
+export async function markOnboardingCoreProfileCompleted() {
+  return updatePersistedOnboardingDraft((current) => {
+    const timestamp = nowIso();
+    return {
+      ...current,
+      currentStep: 'profile_media',
+      data: { ...current.data, coreProfileCompletedAt: timestamp },
+      status: 'media_pending',
+      updatedAt: timestamp,
+    };
+  });
+}
+
+export async function markOnboardingCompleted() {
+  return updatePersistedOnboardingDraft((current) => {
+    const timestamp = nowIso();
+    return {
+      ...current,
+      data: { ...current.data, completedAt: timestamp },
+      status: 'completed',
+      updatedAt: timestamp,
+    };
   });
 }
 
@@ -306,6 +339,12 @@ function sanitizeDraftData(value: unknown): OnboardingDraftData {
   }
   if (isPendingMediaSelection(value.pendingMediaSelection)) {
     data.pendingMediaSelection = value.pendingMediaSelection;
+  }
+  if (typeof value.coreProfileCompletedAt === 'string') {
+    data.coreProfileCompletedAt = value.coreProfileCompletedAt;
+  }
+  if (typeof value.completedAt === 'string') {
+    data.completedAt = value.completedAt;
   }
 
   return data;

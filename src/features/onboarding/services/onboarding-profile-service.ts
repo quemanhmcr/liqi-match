@@ -1,23 +1,33 @@
 import { HEROES } from '@/entities/hero';
-import {
-  dbSlug,
-  type OnboardingSnapshot,
-} from '../model/onboarding-draft-store';
-import { buildRecurringAvailabilitySlots } from '../model/availability-slots';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
-import type { Tables } from '@/shared/types/database.types';
 
+import type { OnboardingDraftData } from '../model/persisted-onboarding-draft';
+import { hasCompleteOnboardingDraft } from '../model/onboarding-step-access';
+import { buildRecurringAvailabilitySlots } from '../model/availability-slots';
+
+/** Existing RPC boundary using the feature-local draft until shared contracts land. */
 export async function completeOnboardingProfile(
   session: AuthSession,
-  snapshot: OnboardingSnapshot,
+  draft: OnboardingDraftData,
 ) {
+  if (!hasCompleteOnboardingDraft(draft)) {
+    throw new Error(
+      'Dữ liệu onboarding chưa đầy đủ. Hãy kiểm tra lại các bước trước.',
+    );
+  }
+
+  const basics = requireProfileBasics(draft);
+  const rankId = requireString(draft.rankId, 'Bạn chưa chọn rank.');
+  const laneIds = requireArray(draft.laneIds, 'Bạn chưa chọn lane.');
+  const heroIds = requireArray(draft.heroIds, 'Bạn chưa chọn đủ tướng.');
+  const habits = requireHabits(draft);
   const displayName =
-    displayNameFromSnapshot(snapshot) ?? displayNameFromSession(session);
-  const habits = requireHabits(snapshot);
+    displayNameFromDraft(draft) ?? displayNameFromSession(session);
   const availabilitySlots = buildRecurringAvailabilitySlots(
     habits.online_time_presets,
   );
+
   if (!availabilitySlots.length) {
     throw new Error('Chọn ít nhất một khung giờ online trước khi hoàn tất.');
   }
@@ -26,31 +36,24 @@ export async function completeOnboardingProfile(
     availability_slots: availabilitySlots,
     display_name: displayName,
     handle: displayName,
-    profile_basics: {
-      gender: snapshot.profileBasics.gender,
-    },
     habits,
-    heroes: snapshot.heroIds.map((heroId) => {
+    heroes: heroIds.map((heroId) => {
       const hero = HEROES.find((item) => item.id === heroId);
       return {
-        slug: dbSlug(heroId),
         name: hero?.name ?? heroId,
         role_slug: roleSlug(hero?.role),
+        slug: dbSlug(heroId),
       };
     }),
     languages: ['vi'],
     locale: 'vi',
-    media_summary: {
-      avatar: snapshot.mediaDraft.avatar,
-      cover: snapshot.mediaDraft.cover,
-      profile_basics: {
-        gender: snapshot.profileBasics.gender,
-      },
-      wall_count: snapshot.mediaDraft.wallCount,
-    },
-    rank_slug: dbSlug(snapshot.rankId),
+    // The current RPC stores gender in this legacy JSON column. Do not put
+    // selected/uploading media here: media completion is tracked separately.
+    media_summary: { profile_basics: { gender: basics.gender } },
+    profile_basics: { gender: basics.gender },
+    rank_slug: dbSlug(rankId),
     regions: ['global'],
-    role_slugs: snapshot.laneIds.map(dbSlug),
+    role_slugs: laneIds.map(dbSlug),
     timezone: safeTimezone(),
   };
 
@@ -62,28 +65,34 @@ export async function completeOnboardingProfile(
   return Boolean(result?.[0]?.completed);
 }
 
-type OnboardingCompletionRow = Pick<Tables<'profile_habits'>, 'profile_id'>;
-
-export async function hasCompletedOnboarding(session: AuthSession) {
-  // `complete_onboarding` writes profile_habits last after the required
-  // profile, game profile, role, hero, availability, and preference records.
-  // A row here is therefore the smallest stable client-readable completion
-  // marker for post-login routing.
-  const rows = await supabaseRest<OnboardingCompletionRow[]>(
-    `profile_habits?select=profile_id&profile_id=eq.${session.user.id}&limit=1`,
-    { session },
-  );
-
-  return rows.length > 0;
+function requireProfileBasics(draft: OnboardingDraftData) {
+  if (!draft.profileBasics?.gender) {
+    throw new Error('Bạn chưa chọn giới tính.');
+  }
+  return draft.profileBasics;
 }
 
-function requireHabits(snapshot: OnboardingSnapshot) {
-  if (!snapshot.habits) {
+function requireHabits(draft: OnboardingDraftData) {
+  if (!draft.habits) {
     throw new Error(
       'Dữ liệu thói quen chưa hoàn tất. Vui lòng quay lại bước 5.',
     );
   }
-  return snapshot.habits;
+  return draft.habits;
+}
+
+function requireString(value: string | undefined, message: string) {
+  if (!value) throw new Error(message);
+  return value;
+}
+
+function requireArray(value: string[] | undefined, message: string) {
+  if (!value?.length) throw new Error(message);
+  return value;
+}
+
+function dbSlug(value: string) {
+  return value.replace(/-/g, '_');
 }
 
 function roleSlug(role: string | undefined) {
@@ -96,11 +105,9 @@ function roleSlug(role: string | undefined) {
   return 'mage';
 }
 
-function displayNameFromSnapshot(snapshot: OnboardingSnapshot) {
-  const name = snapshot.profileBasics.displayName
-    .replace(/[._-]+/g, ' ')
-    .trim();
-  if (name.length < 2) return undefined;
+function displayNameFromDraft(draft: OnboardingDraftData) {
+  const name = draft.profileBasics?.displayName?.replace(/[._-]+/g, ' ').trim();
+  if (!name || name.length < 2) return undefined;
   return name.slice(0, 20);
 }
 

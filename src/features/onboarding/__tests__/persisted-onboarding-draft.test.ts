@@ -117,6 +117,47 @@ describe('persisted onboarding draft infrastructure', () => {
     });
   });
 
+  it('rejects a queued write after the authenticated account changes', async () => {
+    await hydratePersistedOnboardingDraft('account-a');
+    let releaseFirstWrite: () => void = () => undefined;
+    let signalFirstWriteStarted: () => void = () => undefined;
+    const firstWritePending = new Promise<void>((resolve) => {
+      releaseFirstWrite = resolve;
+    });
+    const firstWriteStarted = new Promise<void>((resolve) => {
+      signalFirstWriteStarted = resolve;
+    });
+    let writeCount = 0;
+    jest
+      .spyOn(AsyncStorage, 'setItem')
+      .mockImplementation(async (key, value) => {
+        writeCount += 1;
+        if (writeCount === 1) {
+          signalFirstWriteStarted();
+          await firstWritePending;
+        }
+        storage.set(key, value);
+      });
+
+    const firstWrite = patchPersistedOnboardingDraftData({ rankId: 'gold' });
+    const staleWrite = patchPersistedOnboardingDraftData({ laneIds: ['mid'] });
+    const staleWriteExpectation = expect(staleWrite).rejects.toThrow(
+      'Tài khoản đã thay đổi',
+    );
+    await firstWriteStarted;
+    clearActivePersistedOnboardingDraft();
+    const hydrateB = hydratePersistedOnboardingDraft('account-b');
+    releaseFirstWrite();
+
+    await firstWrite;
+    await staleWriteExpectation;
+    await hydrateB;
+
+    const state = usePersistedOnboardingDraftStore.getState();
+    expect(state.accountId).toBe('account-b');
+    expect(state.envelope?.data).toEqual({});
+  });
+
   it('does not expose an unpersisted update when storage fails', async () => {
     await hydratePersistedOnboardingDraft('account-a');
     jest

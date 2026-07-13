@@ -25,8 +25,6 @@ export type OnboardingStepAccess = {
 
 export function resolveOnboardingStepAccess(input: {
   envelope: OnboardingDraftEnvelope;
-  hasPersistedDraft: boolean;
-  legacyCoreProfileCompleted: boolean;
   requestedStep?: OnboardingStep;
 }): OnboardingStepAccess {
   const { envelope, requestedStep } = input;
@@ -34,11 +32,7 @@ export function resolveOnboardingStepAccess(input: {
   const isDraftDataComplete = firstIncompleteStep === 'profile_media';
   const canAccessMedia =
     isDraftDataComplete || envelope.status === 'media_pending';
-  const legacyCompleted =
-    !input.hasPersistedDraft &&
-    input.legacyCoreProfileCompleted &&
-    envelope.status === 'not_started';
-  const canLeaveOnboarding = envelope.status === 'completed' || legacyCompleted;
+  const canLeaveOnboarding = envelope.status === 'completed';
 
   if (canLeaveOnboarding) {
     return {

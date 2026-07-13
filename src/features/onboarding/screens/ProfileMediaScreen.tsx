@@ -1,8 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
-import { useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -21,22 +20,31 @@ import {
   OnboardingSection,
 } from '@/features/onboarding/components/OnboardingCinematic';
 import {
-  countUploadableOnboardingMedia,
-  type LocalImageAsset,
-  type UploadProgress,
-  uploadOnboardingMedia,
-} from '../services/onboarding-media-service';
+  type MediaQueueProgress,
+  runOnboardingMediaQueue,
+  validateOnboardingMediaSelection,
+  isOnboardingMediaItemComplete,
+} from '../services/onboarding-media-queue-service';
 import {
-  getOnboardingSnapshot,
-  updateOnboardingSnapshot,
-  resetOnboardingSnapshot,
-} from '../model/onboarding-draft-store';
+  createOnboardingMediaLocalId,
+  removeOnboardingMediaItem,
+  replaceOnboardingMediaSlotItem,
+  setPendingOnboardingMediaSelection,
+  updateOnboardingMediaItem,
+  type OnboardingMediaQueueItem,
+  type OnboardingMediaSlot,
+} from '../model/onboarding-media-queue';
+import {
+  getPersistedOnboardingDraft,
+  markOnboardingCompleted,
+  markOnboardingCoreProfileCompleted,
+  usePersistedOnboardingDraftStore,
+} from '../model/persisted-onboarding-draft';
 import { completeOnboardingProfile } from '../services/onboarding-profile-service';
 import { useAuth } from '@/shared/auth/auth-context';
-import { queryKeys } from '@/shared/lib/query-keys';
 import { appRoutes } from '@/app-shell/navigation/routes';
 
-type MediaKind = 'avatar' | 'cover' | 'wall';
+type MediaKind = OnboardingMediaSlot;
 type SourceRequest = { kind: MediaKind; index?: number } | null;
 type SubmitPhase = 'idle' | 'saving' | 'media' | 'done';
 
@@ -44,40 +52,33 @@ const WALL_SLOT_COUNT = 4;
 
 export default function ProfileMediaScreen() {
   const { session } = useAuth();
-  const queryClient = useQueryClient();
-  const [avatar, setAvatar] = useState<LocalImageAsset | null>(null);
-  const [cover, setCover] = useState<LocalImageAsset | null>(null);
-  const [wallItems, setWallItems] = useState<(LocalImageAsset | null)[]>(
-    Array.from({ length: WALL_SLOT_COUNT }, () => null),
+  const envelope = usePersistedOnboardingDraftStore((state) => state.envelope);
+  const mediaQueue = envelope?.data.mediaQueue ?? [];
+  const avatar = mediaQueue.find(
+    (item) => item.slot === 'avatar' && item.position === 0,
   );
+  const cover = mediaQueue.find(
+    (item) => item.slot === 'cover' && item.position === 0,
+  );
+  const wallItems = Array.from({ length: WALL_SLOT_COUNT }, (_, position) =>
+    mediaQueue.find(
+      (item) => item.slot === 'wall' && item.position === position,
+    ),
+  );
+  const failedItems = mediaQueue.filter((item) => item.status === 'error');
   const [sourceRequest, setSourceRequest] = useState<SourceRequest>(null);
   const [submitPhase, setSubmitPhase] = useState<SubmitPhase>('idle');
-  const [uploadProgress, setUploadProgress] = useState<UploadProgress | null>(
-    null,
-  );
+  const [uploadProgress, setUploadProgress] =
+    useState<MediaQueueProgress | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const recoveredSelectionRef = useRef<string | null>(null);
 
   const wallCount = wallItems.filter(Boolean).length;
-  const selectedMediaCount =
-    Number(Boolean(avatar)) + Number(Boolean(cover)) + wallCount;
+  const selectedMediaCount = mediaQueue.length;
   const busy = submitPhase !== 'idle';
-  const uploadableMedia = useMemo(
-    () => ({
-      avatar,
-      cover,
-      wallItems: wallItems.filter((item): item is LocalImageAsset =>
-        Boolean(item),
-      ),
-    }),
-    [avatar, cover, wallItems],
-  );
-  const uploadCount = countUploadableOnboardingMedia(uploadableMedia);
-
-  const mediaDraft = {
-    avatar: Boolean(avatar),
-    cover: Boolean(cover),
-    wallCount,
-  };
+  const uploadCount = mediaQueue.filter(
+    (item) => !isOnboardingMediaItemComplete(item),
+  ).length;
 
   const openPicker = (kind: MediaKind, index?: number) => {
     if (busy) return;
@@ -85,40 +86,77 @@ export default function ProfileMediaScreen() {
     setSourceRequest({ kind, index });
   };
 
-  const assignMedia = (
-    request: Exclude<SourceRequest, null>,
-    asset: ImagePicker.ImagePickerAsset,
-  ) => {
-    const media: LocalImageAsset = {
-      fileName: asset.fileName,
-      fileSize: asset.fileSize,
-      height: asset.height,
-      mimeType: asset.mimeType,
-      uri: asset.uri,
-      width: asset.width,
-    };
+  const assignMedia = useCallback(
+    async (
+      request: Exclude<SourceRequest, null>,
+      asset: ImagePicker.ImagePickerAsset,
+    ) => {
+      const position = request.kind === 'wall' ? (request.index ?? 0) : 0;
+      const validated = validateOnboardingMediaSelection(asset, request.kind);
+      const item: OnboardingMediaQueueItem = {
+        fileName: validated.fileName,
+        fileSize: validated.fileSize,
+        height: validated.height,
+        localId: createOnboardingMediaLocalId(request.kind, position),
+        localUri: validated.uri,
+        mimeType: validated.mimeType,
+        position,
+        slot: request.kind,
+        status: 'selected',
+        width: validated.width,
+      };
+      await replaceOnboardingMediaSlotItem(item);
+    },
+    [],
+  );
 
-    if (request.kind === 'avatar') {
-      setAvatar(media);
-      return;
+  useEffect(() => {
+    const pending = envelope?.data.pendingMediaSelection;
+    if (!pending) return;
+    const recoveryKey = `${envelope.accountId}:${pending.slot}:${pending.position}`;
+    if (recoveredSelectionRef.current === recoveryKey) return;
+    recoveredSelectionRef.current = recoveryKey;
+
+    void (async () => {
+      try {
+        const result = await ImagePicker.getPendingResultAsync();
+        if (
+          !result ||
+          'code' in result ||
+          result.canceled ||
+          !result.assets?.[0]
+        ) {
+          await setPendingOnboardingMediaSelection(undefined);
+          return;
+        }
+        await assignMedia(
+          {
+            index: pending.slot === 'wall' ? pending.position : undefined,
+            kind: pending.slot,
+          },
+          result.assets[0],
+        );
+      } catch (caught) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : 'Không thể khôi phục ảnh đang chọn.',
+        );
+        await setPendingOnboardingMediaSelection(undefined).catch(
+          () => undefined,
+        );
+      }
+    })();
+  }, [assignMedia, envelope]);
+
+  const removeMedia = async (item: OnboardingMediaQueueItem | undefined) => {
+    if (!item || busy) return;
+    setError(null);
+    try {
+      await removeOnboardingMediaItem(item.localId);
+    } catch {
+      setError('Không thể cập nhật tường ảnh. Vui lòng thử lại.');
     }
-
-    if (request.kind === 'cover') {
-      setCover(media);
-      return;
-    }
-
-    if (request.index === undefined) return;
-    setWallItems((current) =>
-      current.map((item, index) => (index === request.index ? media : item)),
-    );
-  };
-
-  const removeWallImage = (indexToRemove: number) => {
-    if (busy) return;
-    setWallItems((current) =>
-      current.map((item, index) => (index === indexToRemove ? null : item)),
-    );
   };
 
   const pickImage = async (source: 'camera' | 'library') => {
@@ -127,6 +165,7 @@ export default function ProfileMediaScreen() {
 
     setSourceRequest(null);
     setError(null);
+    const position = request.kind === 'wall' ? (request.index ?? 0) : 0;
 
     try {
       if (source === 'camera') {
@@ -136,6 +175,11 @@ export default function ProfileMediaScreen() {
           return;
         }
       }
+
+      await setPendingOnboardingMediaSelection({
+        position,
+        slot: request.kind,
+      });
 
       const options: ImagePicker.ImagePickerOptions = {
         allowsEditing: request.kind !== 'wall',
@@ -155,11 +199,20 @@ export default function ProfileMediaScreen() {
           ? await ImagePicker.launchCameraAsync(options)
           : await ImagePicker.launchImageLibraryAsync(options);
 
-      if (result.canceled || !result.assets?.[0]?.uri) return;
-      const asset = result.assets[0];
-      assignMedia(request, asset);
-    } catch {
-      setError('Không thể mở hoặc xử lý ảnh này. Vui lòng thử lại.');
+      if (result.canceled || !result.assets?.[0]) {
+        await setPendingOnboardingMediaSelection(undefined);
+        return;
+      }
+      await assignMedia(request, result.assets[0]);
+    } catch (caught) {
+      await setPendingOnboardingMediaSelection(undefined).catch(
+        () => undefined,
+      );
+      setError(
+        caught instanceof Error
+          ? caught.message
+          : 'Không thể mở hoặc xử lý ảnh này. Vui lòng thử lại.',
+      );
     }
   };
 
@@ -168,11 +221,51 @@ export default function ProfileMediaScreen() {
     router.back();
   };
 
+  const retryMediaItem = async (item: OnboardingMediaQueueItem) => {
+    if (busy) return;
+    if (!session) {
+      router.replace(appRoutes.auth.login);
+      return;
+    }
+
+    setSubmitPhase('media');
+    setUploadProgress(null);
+    setError(null);
+    try {
+      const result = await runOnboardingMediaQueue({
+        items: [item],
+        onItemChange: async (nextItem) => {
+          await updateOnboardingMediaItem(nextItem);
+        },
+        onProgress: setUploadProgress,
+        session,
+      });
+      if (result.failed.length > 0) {
+        setError(result.failed[0]?.error ?? 'Không thể upload ảnh này.');
+        return;
+      }
+
+      const current = getPersistedOnboardingDraft();
+      const remaining = current.data.mediaQueue ?? [];
+      if (
+        current.status === 'media_pending' &&
+        remaining.every(isOnboardingMediaItemComplete)
+      ) {
+        await markOnboardingCompleted();
+        router.replace(appRoutes.main.home);
+      }
+    } catch (caught) {
+      setError(
+        caught instanceof Error ? caught.message : 'Không thể thử lại ảnh này.',
+      );
+    } finally {
+      setSubmitPhase('idle');
+      setUploadProgress(null);
+    }
+  };
+
   const finish = async () => {
     if (busy) return;
-
-    updateOnboardingSnapshot({ mediaDraft });
-
     if (!session) {
       router.replace(appRoutes.auth.login);
       return;
@@ -182,50 +275,56 @@ export default function ProfileMediaScreen() {
     setUploadProgress(null);
     setError(null);
 
-    let profileSaved = false;
-
     try {
-      const completed = await completeOnboardingProfile(
-        session,
-        getOnboardingSnapshot(),
-      );
-
-      if (!completed) {
-        throw new Error('Hồ sơ chưa được xác nhận hoàn tất. Vui lòng thử lại.');
+      let current = getPersistedOnboardingDraft();
+      if (current.status === 'completed') {
+        router.replace(appRoutes.main.home);
+        return;
       }
 
-      profileSaved = true;
-
-      if (uploadCount > 0) {
-        setSubmitPhase('media');
-        await uploadOnboardingMedia(session, uploadableMedia, (progress) =>
-          setUploadProgress(progress),
+      if (current.status !== 'media_pending') {
+        const completed = await completeOnboardingProfile(
+          session,
+          current.data,
         );
+        if (!completed) {
+          throw new Error(
+            'Hồ sơ chưa được xác nhận hoàn tất. Vui lòng thử lại.',
+          );
+        }
+        await markOnboardingCoreProfileCompleted();
+        current = getPersistedOnboardingDraft();
       }
 
+      const pendingMedia = current.data.mediaQueue ?? [];
+      if (pendingMedia.length > 0) {
+        setSubmitPhase('media');
+        const result = await runOnboardingMediaQueue({
+          items: pendingMedia,
+          onItemChange: async (nextItem) => {
+            await updateOnboardingMediaItem(nextItem);
+          },
+          onProgress: setUploadProgress,
+          session,
+        });
+        if (result.failed.length > 0) {
+          throw new Error(
+            `${result.failed.length} ảnh chưa hoàn tất. Bạn có thể thử lại từng ảnh mà không lưu lại hồ sơ.`,
+          );
+        }
+      }
+
+      await markOnboardingCompleted();
       setSubmitPhase('done');
-      await new Promise((resolve) => setTimeout(resolve, 700));
-      resetOnboardingSnapshot();
-      // Publish completion only when this screen is genuinely ready to leave;
-      // the onboarding gate observes this key and may redirect immediately.
-      queryClient.setQueryData(
-        queryKeys.onboardingCompletion(session.user.id),
-        true,
-      );
       router.replace(appRoutes.main.home);
     } catch (caught) {
       setSubmitPhase('idle');
       setUploadProgress(null);
-      const message =
-        caught instanceof Error ? caught.message : 'Không thể lưu hồ sơ.';
       setError(
-        profileSaved
-          ? `Hồ sơ đã lưu, nhưng ảnh chưa upload xong. ${message}`
-          : message,
+        caught instanceof Error ? caught.message : 'Không thể lưu hồ sơ.',
       );
     }
   };
-
   return (
     <View style={styles.root}>
       <OnboardingCinematicShell
@@ -234,7 +333,7 @@ export default function ProfileMediaScreen() {
           <View>
             <OnboardingPrimaryButton
               disabled={busy}
-              onPress={finish}
+              onPress={() => void finish()}
               showArrow={!busy}
               tone="orange"
             >
@@ -272,7 +371,7 @@ export default function ProfileMediaScreen() {
             <View style={styles.avatarPreview}>
               {avatar ? (
                 <Image
-                  source={{ uri: avatar.uri }}
+                  source={{ uri: avatar.localUri }}
                   style={styles.avatarImage}
                 />
               ) : (
@@ -313,7 +412,10 @@ export default function ProfileMediaScreen() {
           >
             {cover ? (
               <>
-                <Image source={{ uri: cover.uri }} style={styles.coverImage} />
+                <Image
+                  source={{ uri: cover.localUri }}
+                  style={styles.coverImage}
+                />
                 <LinearGradient
                   colors={['rgba(2,5,14,0)', 'rgba(2,5,14,0.88)']}
                   style={StyleSheet.absoluteFill}
@@ -355,7 +457,7 @@ export default function ProfileMediaScreen() {
                 {item ? (
                   <>
                     <Image
-                      source={{ uri: item.uri }}
+                      source={{ uri: item.localUri }}
                       style={styles.wallImage}
                     />
                     <LinearGradient
@@ -365,7 +467,7 @@ export default function ProfileMediaScreen() {
                     <Pressable
                       disabled={busy}
                       hitSlop={8}
-                      onPress={() => removeWallImage(index)}
+                      onPress={() => void removeMedia(item)}
                       style={styles.removeButton}
                     >
                       <Text style={styles.removeText}>×</Text>
@@ -385,18 +487,32 @@ export default function ProfileMediaScreen() {
           </Text>
           <Text style={styles.privacyText}>
             {selectedMediaCount > 0
-              ? `${selectedMediaCount} ảnh đã sẵn sàng. Khi bấm tạo hồ sơ, app sẽ lưu dữ liệu trước rồi upload ảnh lên R2 và gắn ảnh đại diện vào hồ sơ.`
+              ? `${selectedMediaCount} ảnh đã sẵn sàng. Khi bấm tạo hồ sơ, app sẽ lưu dữ liệu cốt lõi trước, sau đó upload từng ảnh và chỉ hoàn tất khi mọi mục đạt trạng thái yêu cầu.`
               : 'Bạn có thể bỏ qua ảnh ở bước này. Hồ sơ vẫn được lưu đầy đủ và bạn có thể thêm ảnh sau.'}
           </Text>
         </OnboardingInfoCard>
 
+        {failedItems.map((item) => (
+          <Pressable
+            accessibilityRole="button"
+            disabled={busy}
+            key={item.localId}
+            onPress={() => void retryMediaItem(item)}
+            style={styles.retryCard}
+          >
+            <Text style={styles.retryTitle}>
+              Thử lại {mediaItemLabel(item)}
+            </Text>
+            <Text style={styles.retryError}>{item.error}</Text>
+          </Pressable>
+        ))}
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </OnboardingCinematicShell>
 
       <SourcePicker
-        onCamera={() => pickImage('camera')}
+        onCamera={() => void pickImage('camera')}
         onClose={() => setSourceRequest(null)}
-        onLibrary={() => pickImage('library')}
+        onLibrary={() => void pickImage('library')}
         title={sourceRequestTitle(sourceRequest)}
         visible={Boolean(sourceRequest)}
       />
@@ -408,6 +524,12 @@ export default function ProfileMediaScreen() {
       />
     </View>
   );
+}
+
+function mediaItemLabel(item: OnboardingMediaQueueItem) {
+  if (item.slot === 'avatar') return 'ảnh đại diện';
+  if (item.slot === 'cover') return 'ảnh hồ sơ game';
+  return `ảnh tường số ${item.position + 1}`;
 }
 
 function sourceRequestTitle(request: SourceRequest) {
@@ -461,7 +583,7 @@ function SubmitProgressOverlay({
 }: {
   phase: SubmitPhase;
   uploadCount: number;
-  uploadProgress: UploadProgress | null;
+  uploadProgress: MediaQueueProgress | null;
 }) {
   if (phase === 'idle') return null;
 
@@ -513,7 +635,7 @@ function SubmitProgressOverlay({
 function progressDetail(input: {
   phase: SubmitPhase;
   uploadCount: number;
-  uploadProgress: UploadProgress | null;
+  uploadProgress: MediaQueueProgress | null;
 }) {
   if (input.phase === 'saving') {
     return 'Đang lưu hồ sơ, rank, lane, tướng và thói quen chơi.';
@@ -531,7 +653,7 @@ function progressDetail(input: {
 function progressPercent(input: {
   phase: SubmitPhase;
   uploadCount: number;
-  uploadProgress: UploadProgress | null;
+  uploadProgress: MediaQueueProgress | null;
 }) {
   if (input.phase === 'saving') return 38;
   if (input.phase === 'done') return 100;
@@ -713,6 +835,24 @@ const styles = StyleSheet.create({
     width: 22,
   },
   removeText: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  retryCard: {
+    backgroundColor: 'rgba(255,111,145,0.06)',
+    borderColor: 'rgba(255,151,174,0.16)',
+    borderRadius: 16,
+    borderWidth: 1,
+    gap: 4,
+    padding: 12,
+  },
+  retryError: {
+    color: 'rgba(255,215,228,0.62)',
+    fontSize: 10.5,
+    lineHeight: 14,
+  },
+  retryTitle: {
+    color: '#FFD7E4',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   root: { backgroundColor: '#02050E', flex: 1 },
   sheet: {
     backgroundColor: 'rgba(8,12,26,0.92)',

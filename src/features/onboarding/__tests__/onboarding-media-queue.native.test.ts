@@ -79,6 +79,44 @@ describe('onboarding media queue', () => {
     );
   });
 
+  it('retains the uploaded asset when avatar association fails', async () => {
+    mockUploadMediaBatch.mockResolvedValueOnce([
+      {
+        assetId: 'asset-1',
+        objectKey: 'owner/asset-1.jpg',
+        purpose: 'personal_avatar',
+        slot: 'avatar',
+      },
+    ]);
+    mockSupabaseRest.mockRejectedValueOnce(new Error('profile patch failed'));
+    const changes: OnboardingMediaQueueItem[] = [];
+
+    const result = await runOnboardingMediaQueue({
+      items: [mediaItem()],
+      onItemChange: async (item) => {
+        changes.push(item);
+      },
+      session,
+    });
+
+    expect(changes.map((item) => item.status)).toEqual([
+      'uploading',
+      'uploaded',
+      'error',
+    ]);
+    expect(result.failed[0]).toEqual(
+      expect.objectContaining({
+        error: 'profile patch failed',
+        uploadedAssetId: 'asset-1',
+        uploadedObjectKey: 'owner/asset-1.jpg',
+      }),
+    );
+
+    mockSupabaseRest.mockResolvedValueOnce(undefined);
+    await uploadOnboardingMediaQueueItem(session, result.failed[0]!);
+    expect(mockUploadMediaBatch).toHaveBeenCalledTimes(1);
+  });
+
   it('skips completed items and persists a failed item for retry', async () => {
     const completed = mediaItem({
       localId: 'cover:0:done',

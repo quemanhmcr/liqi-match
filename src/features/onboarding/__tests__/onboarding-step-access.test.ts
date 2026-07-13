@@ -19,8 +19,6 @@ describe('resolveOnboardingStepAccess', () => {
     const draft = createEmptyOnboardingDraft(accountId);
     const result = resolveOnboardingStepAccess({
       envelope: draft,
-      hasPersistedDraft: false,
-      legacyCoreProfileCompleted: false,
       requestedStep: 'profile_setup',
     });
 
@@ -34,8 +32,6 @@ describe('resolveOnboardingStepAccess', () => {
       envelope: envelope({
         data: { profileBasics: { gender: 'hidden' } },
       }),
-      hasPersistedDraft: true,
-      legacyCoreProfileCompleted: false,
       requestedStep: 'rank',
     });
 
@@ -48,8 +44,6 @@ describe('resolveOnboardingStepAccess', () => {
       envelope: envelope({
         data: { profileBasics: { gender: 'hidden' } },
       }),
-      hasPersistedDraft: true,
-      legacyCoreProfileCompleted: false,
       requestedStep: 'profile_media',
     });
 
@@ -60,8 +54,6 @@ describe('resolveOnboardingStepAccess', () => {
   it('allows media only after all core answers exist', () => {
     const result = resolveOnboardingStepAccess({
       envelope: envelope({ data: completeData() }),
-      hasPersistedDraft: true,
-      legacyCoreProfileCompleted: false,
       requestedStep: 'profile_media',
     });
 
@@ -72,8 +64,6 @@ describe('resolveOnboardingStepAccess', () => {
   it('locks media_pending users to the media step', () => {
     const result = resolveOnboardingStepAccess({
       envelope: envelope({ status: 'media_pending' }),
-      hasPersistedDraft: true,
-      legacyCoreProfileCompleted: true,
       requestedStep: 'habits',
     });
 
@@ -85,32 +75,11 @@ describe('resolveOnboardingStepAccess', () => {
   it('lets only the completed workflow leave onboarding', () => {
     const result = resolveOnboardingStepAccess({
       envelope: envelope({ status: 'completed' }),
-      hasPersistedDraft: true,
-      legacyCoreProfileCompleted: false,
       requestedStep: 'profile_media',
     });
 
     expect(result.canLeaveOnboarding).toBe(true);
     expect(result.redirectTarget).toBe('home');
-  });
-
-  it('uses profile_habits only as fallback when no persisted draft exists', () => {
-    const draft = createEmptyOnboardingDraft(accountId);
-
-    expect(
-      resolveOnboardingStepAccess({
-        envelope: draft,
-        hasPersistedDraft: false,
-        legacyCoreProfileCompleted: true,
-      }).canLeaveOnboarding,
-    ).toBe(true);
-    expect(
-      resolveOnboardingStepAccess({
-        envelope: draft,
-        hasPersistedDraft: true,
-        legacyCoreProfileCompleted: true,
-      }).canLeaveOnboarding,
-    ).toBe(false);
   });
 
   it('maps onboarding URLs to the resolver vocabulary', () => {

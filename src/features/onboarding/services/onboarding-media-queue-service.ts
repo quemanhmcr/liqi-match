@@ -109,14 +109,20 @@ export async function runOnboardingMediaQueue(input: {
       total: candidates.length,
     });
 
+    let latest = uploading;
     try {
       const uploaded = await uploadOnboardingMediaQueueItem(
         input.session,
         uploading,
+        async (intermediate) => {
+          latest = intermediate;
+          items[index] = intermediate;
+          await input.onItemChange(intermediate);
+        },
       );
       items[index] = uploaded;
       completed += 1;
-      await input.onItemChange(uploaded);
+      if (uploaded !== latest) await input.onItemChange(uploaded);
       input.onProgress?.({
         completed,
         current: uploaded,
@@ -124,7 +130,7 @@ export async function runOnboardingMediaQueue(input: {
       });
     } catch (error) {
       const errored: OnboardingMediaQueueItem = {
-        ...uploading,
+        ...latest,
         error: errorMessage(error),
         status: 'error',
       };
@@ -140,6 +146,7 @@ export async function runOnboardingMediaQueue(input: {
 export async function uploadOnboardingMediaQueueItem(
   session: AuthSession,
   item: OnboardingMediaQueueItem,
+  onUploaded?: (item: OnboardingMediaQueueItem) => Promise<void>,
 ): Promise<OnboardingMediaQueueItem> {
   if (isOnboardingMediaItemComplete(item)) return item;
 
@@ -168,6 +175,7 @@ export async function uploadOnboardingMediaQueueItem(
     uploadedObjectKey: uploaded.objectKey,
   };
 
+  await onUploaded?.(uploadedItem);
   if (item.slot !== 'avatar') return uploadedItem;
   await associateAvatar(session, uploaded.assetId);
   return { ...uploadedItem, status: 'associated' };
