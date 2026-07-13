@@ -1,23 +1,21 @@
 {
   "contractFamily": "conversation-v1",
-  "fixtureCaseCount": 22,
+  "fixtureCaseCount": 23,
   "fixtureCounts": {
-    "consumer": 5,
+    "consumer": 6,
     "provider": 8
   },
-  "schemaCount": 11,
+  "schemaCount": 9,
   "schemaHashes": {
     "advance-read-command-v1": "c5659a1b28955dc4c9a5c0bcdb0e8475f5c93f77d007f54d139bcc5af9b09473",
     "conversation-snapshot-v1": "32978a26d6788436d94acf5917753300976628fe42403e0a550e99878536dcb9",
     "message-v1": "8708254532a80293aca739b109a11acde5b4a54ed80617e71039f1944a0eb19a",
     "read-state-v1": "86704d13d75a6f7a4131f3b4f4368471a0f1c16b87e059027be2d0ae711fa3c6",
     "send-message-command-v1": "b9a8cc73c2d2f527ab65041612683af1660dc9cbcb3c2d1c2e7474dcb8c6d5f0",
-    "conversation-bootstrap-requested-v1": "9900b5d7da3f510af200c32720c3cdd613db8995ecce07e6c2029d57be3652d6",
     "conversation-closed-v1": "e3fce4b3b17af97637e67018ff645677e83eaaaea314456194a04959c6bb6665",
     "conversation-created-v1": "c3de9b651db33905927474d2bed8bd35b33d0386925266fce9ac5a51e55be390",
     "conversation-read-advanced-v1": "932dfc3d6d2f73fd4ea4e3b3df29596ceafc357e285d8d77ff60c4b325c7c185",
-    "message-sent-v1": "5ed98972f5b5fe593fcd34bf807cf56aee9f9f6ecbe92ccf7949b5fec4b012a6",
-    "notification-requested-v1": "03338863ad8f1ddb73dc00883953d1232c50a65bb68572f2c25b970c29947ebe"
+    "message-sent-v1": "5ed98972f5b5fe593fcd34bf807cf56aee9f9f6ecbe92ccf7949b5fec4b012a6"
   },
   "status": "compatible"
 }

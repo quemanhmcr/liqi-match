@@ -2,19 +2,22 @@
   "fixtureVersion": 1,
   "cases": [
     {
-      "schema": "conversation-bootstrap-requested-v1",
+      "schema": "core:ConversationBootstrapRequestedEventV1",
       "data": {
-        "eventId": "evt-bootstrap-003",
+        "eventId": "80000000-0000-4000-8000-000000000013",
         "eventType": "conversation.bootstrap_requested.v1",
-        "occurredAt": "2026-07-14T08:00:00.000Z",
-        "correlationId": "corr-match-loop-001",
-        "payload": {
-          "matchId": "10000000-0000-0000-0000-000000000001",
+        "aggregateType": "match",
+        "aggregateId": "60000000-0000-4000-8000-000000000001",
+        "occurredAt": "2026-07-14T08:05:00.000Z",
+        "correlationId": "70000000-0000-4000-8000-000000000001",
+        "causationId": null,
+        "data": {
+          "matchId": "60000000-0000-4000-8000-000000000001",
           "participantIds": [
-            "00000000-0000-0000-0000-0000000000a1",
-            "00000000-0000-0000-0000-0000000000c3"
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000003"
           ],
-          "idempotencyKey": "bootstrap:match:10000000-0000-0000-0000-000000000001"
+          "requestedAt": "2026-07-14T08:05:00.000Z"
         }
       }
     }

@@ -129,7 +129,7 @@
     "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
     "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
     "contracts:generate": "node scripts/contracts/generate-core-v1.cjs",
-    "contracts:check": "node scripts/contracts/generate-core-v1.cjs --check && node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts"
+    "contracts:check": "node scripts/contracts/generate-core-v1.cjs --check && node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts src/contracts/__tests__/conversation-v1-contracts.test.ts"
   },
   "overrides": {
     "xcode": {
