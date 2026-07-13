@@ -38,10 +38,17 @@ export function mapProfileViewModel(
   profileId = world.viewerId,
 ): ProfileViewModel {
   const profile = projectSimulationProfile(world, profileId);
+  const conversationId = Object.values(world.matches).find(
+    (match) =>
+      match.unmatchedAt === null &&
+      match.profileIds.includes(world.viewerId) &&
+      match.profileIds.includes(profileId),
+  )?.conversationId;
   return {
     avatarAssetKey: profile.avatar?.assetKey,
     bio: profile.bio,
     coverAssetKey: profile.cover?.assetKey,
+    ...(conversationId ? { conversationId } : {}),
     displayName: profile.displayName,
     favoriteHeroes: profile.favoriteHeroes.map((hero) => ({
       heroId: hero.heroId,

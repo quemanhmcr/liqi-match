@@ -23,6 +23,7 @@ import {
   LiquidGlassSurface,
   LiquidOrbButton,
 } from '@/shared/components/liquid';
+import { classifyApplicationError } from '@/shared/errors/application-error';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 import {
@@ -193,8 +194,10 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   }, [draftIndexHydrated, hydrateDraftIndex]);
 
   const activeSnapshot = inboxQuery.data?.data;
-  const isLoading = inboxQuery.isPending;
-  const hasLoadError = inboxQuery.isError;
+  const inboxFailure = classifyApplicationError(inboxQuery.error);
+  const hasResolvedInbox = Boolean(activeSnapshot);
+  const isLoading = inboxQuery.isPending && !hasResolvedInbox;
+  const hasLoadError = inboxQuery.isError && !hasResolvedInbox;
   const referenceDate = clock.now();
   const conversations = useMemo(
     () =>
@@ -360,6 +363,18 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
         })}
       </View>
 
+      {inboxQuery.isError && hasResolvedInbox ? (
+        <View
+          accessibilityLabel="Hộp thư đang hiển thị dữ liệu cũ"
+          style={styles.staleBanner}
+        >
+          <Ionicons color="#FFB86B" name="information-circle" size={16} />
+          <Text style={styles.staleText}>
+            Không thể làm mới. Đang hiển thị cuộc trò chuyện đã tải gần nhất.
+          </Text>
+        </View>
+      ) : null}
+
       {isLoading ? (
         <InboxState
           description="Đang lấy trạng thái mới nhất của cuộc trò chuyện."
@@ -369,12 +384,26 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
         />
       ) : hasLoadError ? (
         <InboxState
-          actionLabel="Thử lại"
-          description="Dữ liệu mock không phản hồi đúng contract. Hãy thử tải lại."
-          icon="cloud-offline-outline"
-          onAction={() => {
-            void inboxQuery.refetch();
-          }}
+          actionLabel={inboxFailure.retryable ? 'Thử lại' : undefined}
+          description={
+            inboxFailure.kind === 'offline'
+              ? 'Thiết bị đang offline. Kết nối lại để tải hộp thư.'
+              : inboxFailure.retryable
+                ? 'Hộp thư tạm thời chưa sẵn sàng. Hãy thử lại.'
+                : 'Yêu cầu hộp thư không thể hoàn tất.'
+          }
+          icon={
+            inboxFailure.kind === 'offline'
+              ? 'cloud-offline-outline'
+              : 'alert-circle-outline'
+          }
+          onAction={
+            inboxFailure.retryable
+              ? () => {
+                  void inboxQuery.refetch();
+                }
+              : undefined
+          }
           title="Không thể tải hộp thư"
         />
       ) : conversations.length === 0 ? (
@@ -788,6 +817,24 @@ function InboxState({
 }
 
 const styles = StyleSheet.create({
+  staleBanner: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,184,107,0.09)',
+    borderColor: 'rgba(255,184,107,0.18)',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  staleText: {
+    color: 'rgba(255,226,190,0.78)',
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
   ambientCyan: {
     backgroundColor: 'rgba(38,207,255,0.028)',
     borderRadius: 999,

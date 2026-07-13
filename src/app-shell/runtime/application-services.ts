@@ -1,6 +1,10 @@
 import type { AssetResolver } from '@/entities/media-asset';
 import type { NotificationInboxRepository } from '@/entities/notifications';
-import type { ProductionSimulationRuntime } from '@/entities/simulation';
+import type {
+  ProductionSimulationRuntime,
+  SimulationWorldSnapshot,
+} from '@/entities/simulation';
+import type { ScenarioControlPort } from '@/shared/simulation';
 import type { DiscoverRepository } from '@/features/discover';
 import type { HomeRepository } from '@/features/home';
 import type { ChatMessageTransport, ChatRepository } from '@/features/messages';
@@ -20,11 +24,13 @@ type ApplicationFeatureServices = {
 
 export type SimulationApplicationServices = ApplicationFeatureServices & {
   mode: 'simulation';
+  scenarioControl: ScenarioControlPort<SimulationWorldSnapshot>;
   simulationRuntime: ProductionSimulationRuntime;
 };
 
 export type ApiApplicationServices = ApplicationFeatureServices & {
   mode: 'api';
+  scenarioControl: null;
   simulationRuntime: null;
 };
 

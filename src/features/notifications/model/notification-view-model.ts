@@ -9,10 +9,9 @@ import {
 
 export type NotificationTone = 'blue' | 'cyan' | 'pink' | 'purple';
 
-export type NotificationDestination = {
-  conversationId: string;
-  kind: 'conversation';
-};
+export type NotificationDestination =
+  | { conversationId: string; kind: 'conversation' }
+  | { kind: 'set'; setId: string };
 
 export type NotificationAction = {
   destination?: NotificationDestination;
@@ -94,7 +93,11 @@ export function mapNotificationToViewModel(
       );
       return {
         ...shared,
-        action: { label: 'Xem set', tone: 'pink' },
+        action: {
+          destination: { kind: 'set', setId: notification.payload.setId },
+          label: 'Xem set',
+          tone: 'pink',
+        },
         messageParts: [
           'đã mời bạn vào set',
           `“${notification.payload.setName}”`,

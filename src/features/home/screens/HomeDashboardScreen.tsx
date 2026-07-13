@@ -25,6 +25,7 @@ import {
   LiquidOrbButton,
   LiquidSectionHeader,
 } from '@/shared/components/liquid';
+import { classifyApplicationError } from '@/shared/errors/application-error';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
   liquidColors,
@@ -250,6 +251,7 @@ export default function HomeDashboardScreen() {
   });
 
   const dashboard = dashboardQuery.data;
+  const dashboardFailure = classifyApplicationError(dashboardQuery.error);
   const matchedSetsToRender = dashboard?.matchedSets ?? [];
   const activeMatchCount = matchedSetsToRender.length;
   const selectedMode = useMemo(
@@ -285,12 +287,20 @@ export default function HomeDashboardScreen() {
     return (
       <HomeDashboardQueryState
         description={
-          dashboardQuery.error
-            ? 'Dữ liệu Trang chủ chưa sẵn sàng. Ứng dụng không dùng preview để che lỗi này.'
-            : 'Đang đồng bộ hồ sơ và các kết nối của bạn.'
+          !dashboardQuery.error
+            ? 'Đang đồng bộ hồ sơ và các kết nối của bạn.'
+            : dashboardFailure.kind === 'offline'
+              ? 'Thiết bị đang offline. Kết nối lại để tải Trang chủ.'
+              : dashboardFailure.retryable
+                ? 'Dữ liệu Trang chủ tạm thời chưa sẵn sàng. Hãy thử lại.'
+                : 'Yêu cầu Trang chủ không thể hoàn tất. Ứng dụng không dùng preview để che lỗi này.'
         }
         loading={!dashboardQuery.error}
-        onRetry={() => void dashboardQuery.refetch()}
+        onRetry={
+          dashboardFailure.retryable
+            ? () => void dashboardQuery.refetch()
+            : undefined
+        }
         title={
           dashboardQuery.error
             ? 'Không thể tải Trang chủ'

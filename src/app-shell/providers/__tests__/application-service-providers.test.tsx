@@ -5,7 +5,10 @@ import { Text } from 'react-native';
 
 import type { ApplicationServices } from '@/app-shell/runtime/application-services';
 import type { ApplicationRuntimeMode } from '@/app-shell/runtime/application-runtime-mode';
-import { createSimulationApplicationServices } from '@/app-shell/runtime/create-application-services';
+import {
+  createApiApplicationServices,
+  createSimulationApplicationServices,
+} from '@/app-shell/runtime/create-application-services';
 import { useHomeRepository, type HomeRepository } from '@/features/home';
 import { testAuthSession } from '@/test/render-with-providers';
 
@@ -66,18 +69,15 @@ describe('ApplicationServiceProviders replacement seam', () => {
   it.each(cases)(
     'keeps the consumer unchanged when the %s binding is selected',
     async (mode, expectedName) => {
-      const simulationServices = createSimulationApplicationServices();
       const services: ApplicationServices =
         mode === 'simulation'
           ? {
-              ...simulationServices,
+              ...createSimulationApplicationServices(),
               homeRepository: createHomeRepository(expectedName),
             }
           : {
-              ...simulationServices,
+              ...createApiApplicationServices(),
               homeRepository: createHomeRepository(expectedName),
-              mode: 'api' as const,
-              simulationRuntime: null,
             };
 
       const screen = await renderConsumer(services);

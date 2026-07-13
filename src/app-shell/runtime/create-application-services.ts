@@ -97,6 +97,7 @@ export function createSimulationApplicationServices(
         runtime: simulationRuntime,
       }),
     profileRepository: createSimulationProfileReadRepository(simulationRuntime),
+    scenarioControl: simulationRuntime,
     simulationRuntime,
   };
 }
@@ -115,6 +116,7 @@ export function createApiApplicationServices(): ApiApplicationServices {
     mode: 'api',
     notificationRepository: createUnavailableNotificationRepository(),
     profileRepository: createApiProfileRepository(),
+    scenarioControl: null,
     simulationRuntime: null,
   };
 }

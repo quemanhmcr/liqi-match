@@ -20,7 +20,10 @@ import { LiquidCard, LiquidGlassSurface } from '@/shared/components/liquid';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
-import { DiscoverQueryState } from '../components/DiscoverQueryState';
+import {
+  DiscoverQueryState,
+  DiscoverStaleBanner,
+} from '../components/DiscoverQueryState';
 import type {
   DiscoverFilterChip,
   DiscoverFilterId,
@@ -133,6 +136,9 @@ export function DiscoverSetsScreen() {
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
+      {setsQuery.isError || filterOptionsQuery.isError ? (
+        <DiscoverStaleBanner />
+      ) : null}
       <SetsBackground />
       <ScrollView
         bounces={false}

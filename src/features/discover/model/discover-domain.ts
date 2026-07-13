@@ -67,6 +67,7 @@ export type DiscoverProfileCard = {
   actionState: 'idle' | 'pending';
   actionTone: 'cyan' | 'purple';
   avatar: DiscoverResolvedMedia;
+  conversationId?: string;
   filterIds: readonly DiscoverFilterId[];
   id: string;
   match: string;

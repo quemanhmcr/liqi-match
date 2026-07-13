@@ -9,6 +9,8 @@ export const appRoutes = {
   },
   discover: {
     matches: '/discover/matches',
+    setDetail: (setId: string) =>
+      ({ pathname: '/discover/sets', params: { setId } }) as const,
     sets: '/discover/sets',
     vibes: '/discover/vibes',
   },

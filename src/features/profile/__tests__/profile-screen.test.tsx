@@ -1,4 +1,5 @@
 import { describe, expect, it, jest } from '@jest/globals';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 
 import { createAssetKey, type AssetResolver } from '@/entities/media-asset';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
@@ -17,6 +18,10 @@ jest.mock('expo-router', () => ({
   },
 }));
 
+const mockedRouter = jest.requireMock('expo-router') as {
+  router: { push: ReturnType<typeof jest.fn> };
+};
+
 const unavailableAssetResolver: AssetResolver = {
   async invalidate() {},
   async preload() {},
@@ -32,6 +37,7 @@ const unavailableAssetResolver: AssetResolver = {
 
 const canonicalProfile: ProfileViewModel = {
   bio: 'Bình tĩnh, phối hợp và không toxic.',
+  conversationId: 'conversation:canonical-player',
   displayName: 'Canonical Player',
   favoriteHeroes: [
     { heroId: 'hero-1', name: 'Aya', slug: 'aya', winRate: 61 },
@@ -95,9 +101,30 @@ describe('ProfileScreen repository consumer', () => {
     ).toBeTruthy();
   });
 
-  it('shows an explicit error instead of rendering a preview profile', async () => {
+  it('opens the canonical conversation exposed by the profile repository', async () => {
+    const screen = await renderWithProviders(
+      <ProfileScreen mode="other" userId="player-canonical-1" />,
+      {
+        serviceOverrides: {
+          profileRepository: { getProfile: async () => canonicalProfile },
+        },
+      },
+    );
+
+    await fireEvent.press(await screen.findByLabelText('Nhắn tin'));
+
+    expect(mockedRouter.router.push).toHaveBeenCalledWith({
+      pathname: '/messages/[conversationId]',
+      params: { conversationId: 'conversation:canonical-player' },
+    });
+  });
+
+  it('shows retry only for an explicit retryable profile failure', async () => {
     const getProfile = jest.fn(async () => {
-      throw new Error('Profile API unavailable');
+      throw Object.assign(new Error('Profile API unavailable'), {
+        code: 'network_error',
+        retryable: true,
+      });
     });
     const screen = await renderWithProviders(
       <ProfileScreen mode="other" userId="player-canonical-1" />,
@@ -107,6 +134,50 @@ describe('ProfileScreen repository consumer', () => {
     expect(await screen.findByText('Không thể tải hồ sơ')).toBeTruthy();
     expect(screen.queryByText('Khoa Jungle')).toBeNull();
     expect(screen.getByLabelText('Thử tải lại hồ sơ')).toBeTruthy();
+  });
+
+  it('does not offer retry for a non-retryable profile failure', async () => {
+    const getProfile = jest.fn(async () => {
+      throw Object.assign(new Error('Invalid profile request'), {
+        code: 'validation_failed',
+        retryable: false,
+      });
+    });
+    const screen = await renderWithProviders(
+      <ProfileScreen mode="other" userId="player-canonical-1" />,
+      { serviceOverrides: { profileRepository: { getProfile } } },
+    );
+
+    expect(await screen.findByText('Không thể tải hồ sơ')).toBeTruthy();
+    expect(screen.queryByLabelText('Thử tải lại hồ sơ')).toBeNull();
+  });
+
+  it('keeps the last profile projection visible when refresh fails', async () => {
+    const getProfile = jest
+      .fn<(input: unknown) => Promise<ProfileViewModel | null>>()
+      .mockResolvedValueOnce(canonicalProfile)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Profile refresh unavailable'), {
+          code: 'network_error',
+          retryable: true,
+        }),
+      );
+    const screen = await renderWithProviders(
+      <ProfileScreen mode="other" userId="player-canonical-1" />,
+      { serviceOverrides: { profileRepository: { getProfile } } },
+    );
+    expect(await screen.findByText('Canonical Player')).toBeTruthy();
+
+    await act(async () => {
+      await screen.queryClient.refetchQueries({ queryKey: ['profile-view'] });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText('Hồ sơ đang hiển thị dữ liệu cũ'),
+      ).toBeTruthy();
+    });
+    expect(screen.getByText('Canonical Player')).toBeTruthy();
   });
 
   it('renders not-found when the repository has no projection', async () => {

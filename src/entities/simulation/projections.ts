@@ -118,6 +118,7 @@ export type SimulationDiscoverRoleReference = Readonly<{
 
 export type SimulationDiscoverPlayerProjection = Readonly<{
   avatar: SimulationMediaProjection;
+  conversationId: ConversationId | null;
   capabilities: Readonly<{
     canMessage: boolean;
     canViewProfile: boolean;
@@ -419,11 +420,17 @@ function projectDiscoverPlayer(
   const score = profileCompatibility(viewer, profile);
   const reasons = matchReasons(viewer, profile);
   const primaryRole = profile.canonicalProfile.laneSelection.primary;
+  const conversationId = activeConversationId(
+    world,
+    world.viewerId,
+    profile.id,
+  );
 
   return {
     avatar: profileAvatar(world, profile),
+    conversationId,
     capabilities: {
-      canMessage: hasActiveMatch(world, world.viewerId, profile.id),
+      canMessage: conversationId !== null,
       canViewProfile: true,
       invite:
         inviteState === 'unavailable'
@@ -646,17 +653,18 @@ function requireFallbackMedia(world: SimulationWorldSnapshot) {
   return requireMediaProjection(world, fallback.key);
 }
 
-function hasActiveMatch(
+function activeConversationId(
   world: SimulationWorldSnapshot,
   left: ProfileId,
   right: ProfileId,
-) {
-  return Object.values(world.matches).some(
-    (match) =>
-      match.unmatchedAt === null &&
-      match.profileIds.includes(left) &&
-      match.profileIds.includes(right),
+): ConversationId | null {
+  const match = Object.values(world.matches).find(
+    (candidate) =>
+      candidate.unmatchedAt === null &&
+      candidate.profileIds.includes(left) &&
+      candidate.profileIds.includes(right),
   );
+  return match?.conversationId ?? null;
 }
 
 function conversationUnreadCount(

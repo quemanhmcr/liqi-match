@@ -410,6 +410,7 @@ function mapPlayer(
       canViewProfile: item.capabilities.canViewProfile,
       invite: { ...item.capabilities.invite },
     },
+    conversationId: item.conversationId,
     displayName: item.displayName,
     facetIds: [...item.facetIds],
     matchReasons: item.matchReasons.map((reason) => ({ ...reason })),

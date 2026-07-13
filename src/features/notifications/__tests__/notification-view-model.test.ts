@@ -31,6 +31,14 @@ describe('notification view model', () => {
     });
 
     expect(invite).toMatchObject({
+      action: {
+        destination: {
+          kind: 'set',
+          setId:
+            records[0]?.kind === 'set-invite' ? records[0].payload.setId : '',
+        },
+        label: 'Xem set',
+      },
       category: 'set-invite',
       group: 'Hôm nay',
       isSeen: false,

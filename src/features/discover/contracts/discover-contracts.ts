@@ -161,6 +161,7 @@ export const DiscoverPlayerRecommendationSchema = z
         targetSetId: z.string().min(1).optional(),
       }),
     }),
+    conversationId: z.string().min(1).nullable().optional(),
     displayName: z.string().min(1),
     facetIds: z.array(DiscoverFacetIdSchema),
     matchReasons: z.array(

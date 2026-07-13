@@ -7,6 +7,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { usePreloadAssetSurface } from '@/entities/media-asset';
 import { LiquidButton, LiquidOrbButton } from '@/shared/components/liquid';
+import { classifyApplicationError } from '@/shared/errors/application-error';
 import { useAuth } from '@/shared/auth/auth-context';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
@@ -58,6 +59,7 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
   });
 
   const profile = profileQuery.data;
+  const profileFailure = classifyApplicationError(profileQuery.error);
 
   if (!session || (mode === 'other' && !userId)) {
     return (
@@ -80,13 +82,23 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
     );
   }
 
-  if (profileQuery.isError) {
+  if (profileQuery.isError && !profile) {
     return (
       <ProfileReadState
         mode={mode}
-        onRetry={() => void profileQuery.refetch()}
+        onRetry={
+          profileFailure.retryable
+            ? () => void profileQuery.refetch()
+            : undefined
+        }
         title="Không thể tải hồ sơ"
-        description="Repository trả về lỗi. Ứng dụng không dùng fixture để che trạng thái này."
+        description={
+          profileFailure.kind === 'offline'
+            ? 'Thiết bị đang offline. Kết nối lại để tải hồ sơ.'
+            : profileFailure.retryable
+              ? 'Repository tạm thời chưa phản hồi. Hãy thử lại.'
+              : 'Yêu cầu hồ sơ không thể hoàn tất. Ứng dụng không dùng fixture để che trạng thái này.'
+        }
       />
     );
   }
@@ -114,11 +126,27 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
         mode={mode}
         onSettings={openProfileSettings}
       />
+      {profileQuery.isError ? (
+        <View
+          accessibilityLabel="Hồ sơ đang hiển thị dữ liệu cũ"
+          style={styles.staleBanner}
+        >
+          <Ionicons color="#FFB86B" name="information-circle" size={16} />
+          <ProfileText style={styles.staleText}>
+            Không thể làm mới. Đang hiển thị hồ sơ đã tải gần nhất.
+          </ProfileText>
+        </View>
+      ) : null}
       <ProfileHeroCard
         mode={mode}
         onEdit={mode === 'self' ? openProfileEditor : selectionImpact}
         onInvite={impactLight}
-        onMessage={selectionImpact}
+        onMessage={() => {
+          selectionImpact();
+          if (profile.conversationId) {
+            router.push(appRoutes.messages.detail(profile.conversationId));
+          }
+        }}
         onShare={openProfileShare}
         profile={profile}
         vibe={vibe}
@@ -234,6 +262,24 @@ function selectionImpact() {
 }
 
 const styles = StyleSheet.create({
+  staleBanner: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,184,107,0.09)',
+    borderColor: 'rgba(255,184,107,0.18)',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  staleText: {
+    color: 'rgba(255,226,190,0.78)',
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
   readStateDescription: {
     color: 'rgba(224,230,248,0.72)',
     fontSize: 14,

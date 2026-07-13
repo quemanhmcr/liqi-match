@@ -116,7 +116,8 @@ export function presentPlayer(
   assetResolver: AssetResolver,
 ): DiscoverProfileCard {
   const inviteState = player.capabilities.invite.state;
-  const actionKind = inviteState === 'unavailable' ? 'view' : 'invite';
+  const actionKind =
+    player.conversationId || inviteState === 'unavailable' ? 'view' : 'invite';
   return {
     actionKind,
     actionLabel: actionKind === 'invite' ? 'Mời vào' : 'Xem hồ sơ',
@@ -125,6 +126,7 @@ export function presentPlayer(
       profileToneOverrides[player.profileId] ??
       (actionKind === 'invite' ? 'cyan' : 'purple'),
     avatar: resolveMedia(player.avatar, assetResolver),
+    ...(player.conversationId ? { conversationId: player.conversationId } : {}),
     filterIds: player.facetIds,
     id: player.profileId,
     match: `Hợp vibe ${player.matchScore}%`,

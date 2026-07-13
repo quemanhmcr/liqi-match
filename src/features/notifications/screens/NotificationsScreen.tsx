@@ -30,6 +30,10 @@ import {
   LiquidOrbButton,
 } from '@/shared/components/liquid';
 import type { EdgeGlowSegment } from '@/shared/components/liquid';
+import {
+  classifyApplicationError,
+  type ApplicationErrorKind,
+} from '@/shared/errors/application-error';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
   liquidColors,
@@ -266,6 +270,7 @@ export function NotificationsScreen() {
   );
 
   const hasResolvedFeed = Boolean(inboxQuery.data);
+  const inboxFailure = classifyApplicationError(inboxQuery.error);
 
   return (
     <LiquidScreen
@@ -287,10 +292,26 @@ export function NotificationsScreen() {
         }}
         unreadCount={unseenCount}
       />
+      {inboxQuery.isError && hasResolvedFeed ? (
+        <View
+          accessibilityLabel="Thông báo đang hiển thị dữ liệu cũ"
+          style={styles.staleBanner}
+        >
+          <Ionicons color="#FFB86B" name="information-circle" size={16} />
+          <NotificationText style={styles.staleText}>
+            Không thể làm mới. Đang hiển thị thông báo đã tải gần nhất.
+          </NotificationText>
+        </View>
+      ) : null}
       {inboxQuery.isPending && !hasResolvedFeed ? (
         <NotificationLoadingState />
       ) : inboxQuery.isError && !hasResolvedFeed ? (
-        <NotificationErrorState onRetry={() => void inboxQuery.refetch()} />
+        <NotificationErrorState
+          kind={inboxFailure.kind}
+          onRetry={
+            inboxFailure.retryable ? () => void inboxQuery.refetch() : undefined
+          }
+        />
       ) : groupedNotifications.length ? (
         groupedNotifications.map(([group, items]) => (
           <View
@@ -782,6 +803,9 @@ function navigateNotificationDestination(destination: NotificationDestination) {
     case 'conversation':
       router.push(appRoutes.messages.detail(destination.conversationId));
       return;
+    case 'set':
+      router.push(appRoutes.discover.setDetail(destination.setId));
+      return;
   }
 }
 
@@ -810,7 +834,19 @@ function NotificationLoadingState() {
   );
 }
 
-function NotificationErrorState({ onRetry }: { onRetry: () => void }) {
+function NotificationErrorState({
+  kind,
+  onRetry,
+}: {
+  kind: ApplicationErrorKind;
+  onRetry?: () => void;
+}) {
+  const description =
+    kind === 'offline'
+      ? 'Thiết bị đang offline. Kết nối lại để tải thông báo.'
+      : onRetry
+        ? 'Dữ liệu tạm thời chưa sẵn sàng. Hãy thử lại.'
+        : 'Yêu cầu thông báo không thể hoàn tất.';
   return (
     <LiquidCard
       contentStyle={styles.emptyContent}
@@ -829,20 +865,22 @@ function NotificationErrorState({ onRetry }: { onRetry: () => void }) {
         Không tải được thông báo
       </NotificationText>
       <NotificationText style={styles.emptyBody}>
-        Kiểm tra kết nối rồi thử lại nhé.
+        {description}
       </NotificationText>
-      <LiquidButton
-        accessibilityLabel="Thử tải lại thông báo"
-        contentStyle={styles.retryButtonContent}
-        onPress={onRetry}
-        radius={16}
-        style={styles.retryButton}
-        textStyle={styles.actionButtonText}
-        variant="secondary"
-        withShadow={false}
-      >
-        Thử lại
-      </LiquidButton>
+      {onRetry ? (
+        <LiquidButton
+          accessibilityLabel="Thử tải lại thông báo"
+          contentStyle={styles.retryButtonContent}
+          onPress={onRetry}
+          radius={16}
+          style={styles.retryButton}
+          textStyle={styles.actionButtonText}
+          variant="secondary"
+          withShadow={false}
+        >
+          Thử lại
+        </LiquidButton>
+      ) : null}
     </LiquidCard>
   );
 }
@@ -890,6 +928,24 @@ function selectionImpact() {
 }
 
 const styles = StyleSheet.create({
+  staleBanner: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,184,107,0.09)',
+    borderColor: 'rgba(255,184,107,0.18)',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  staleText: {
+    color: 'rgba(255,226,190,0.78)',
+    flex: 1,
+    fontSize: 11,
+    lineHeight: 15,
+  },
   actionButton: {
     minWidth: 56,
   },

@@ -6,6 +6,8 @@ import {
   View,
 } from 'react-native';
 
+import { classifyApplicationError } from '@/shared/errors/application-error';
+
 export function DiscoverQueryState({
   error,
   onRetry,
@@ -22,28 +24,64 @@ export function DiscoverQueryState({
     );
   }
 
+  const presentation = classifyApplicationError(error);
+  const description =
+    presentation.kind === 'offline'
+      ? 'Thiết bị đang offline. Kết nối lại để tải dữ liệu Khám phá.'
+      : presentation.retryable
+        ? 'Dữ liệu tạm thời chưa sẵn sàng. Hãy thử lại.'
+        : 'Yêu cầu không thể hoàn tất. Ứng dụng không dùng dữ liệu mô phỏng để che lỗi này.';
+
   return (
     <View accessibilityLabel="Không thể tải Khám phá" style={styles.screen}>
       <Text style={styles.title}>Không thể tải Khám phá</Text>
-      <Text style={styles.description}>
-        Dữ liệu chưa sẵn sàng. Nội dung mô phỏng sẽ không được dùng để che lỗi
-        này.
+      <Text style={styles.description}>{description}</Text>
+      {presentation.retryable ? (
+        <Pressable
+          accessibilityLabel="Thử tải lại Khám phá"
+          onPress={onRetry}
+          style={({ pressed }) => [
+            styles.button,
+            pressed && styles.buttonPressed,
+          ]}
+        >
+          <Text style={styles.buttonText}>Thử lại</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+export function DiscoverStaleBanner() {
+  return (
+    <View
+      accessibilityLabel="Khám phá đang hiển thị dữ liệu cũ"
+      style={styles.staleBanner}
+    >
+      <Text style={styles.staleText}>
+        Không thể làm mới. Đang hiển thị dữ liệu Khám phá đã tải gần nhất.
       </Text>
-      <Pressable
-        accessibilityLabel="Thử tải lại Khám phá"
-        onPress={onRetry}
-        style={({ pressed }) => [
-          styles.button,
-          pressed && styles.buttonPressed,
-        ]}
-      >
-        <Text style={styles.buttonText}>Thử lại</Text>
-      </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  staleBanner: {
+    backgroundColor: 'rgba(255,184,107,0.09)',
+    borderColor: 'rgba(255,184,107,0.18)',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginHorizontal: 20,
+    marginTop: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  staleText: {
+    color: 'rgba(255,226,190,0.78)',
+    fontSize: 11.5,
+    lineHeight: 16,
+    textAlign: 'center',
+  },
   button: {
     backgroundColor: 'rgba(168,100,255,0.24)',
     borderColor: 'rgba(212,176,255,0.46)',

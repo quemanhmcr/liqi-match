@@ -1,7 +1,10 @@
 import { describe, expect, it } from '@jest/globals';
 
 import { goldenWorldAssetKeys } from '@/entities/media-asset';
-import { GOLDEN_CONVERSATION_IDS } from '@/entities/simulation';
+import {
+  GOLDEN_CONVERSATION_IDS,
+  GOLDEN_PROFILE_IDS,
+} from '@/entities/simulation';
 
 import { ApplicationServiceUnavailableError } from '../application-service-error';
 import {
@@ -32,6 +35,7 @@ describe('application service composition', () => {
       first.assetResolver.resolve(goldenWorldAssetKeys.shared.avatarFallback)
         .state,
     ).toBe('ready');
+    expect(first.scenarioControl).toBe(first.simulationRuntime);
     expect(first.simulationRuntime).not.toBe(second.simulationRuntime);
     expect(first.simulationRuntime.getNamespace()).toBe(
       'application-services-first',
@@ -95,7 +99,9 @@ describe('application service composition', () => {
       query: '',
       sort: 'best_match',
     });
-    const discoverPlayer = response.data.items[0];
+    const discoverPlayer = response.data.items.find(
+      (item) => item.profileId === GOLDEN_PROFILE_IDS.minhAnh,
+    );
     expect(discoverPlayer).toBeDefined();
     if (!discoverPlayer) return;
 
@@ -112,6 +118,8 @@ describe('application service composition', () => {
         ? discoverPlayer.avatar.assetKey
         : undefined,
     );
+    expect(discoverPlayer.conversationId).toBe(GOLDEN_CONVERSATION_IDS.minhAnh);
+    expect(profile?.conversationId).toBe(discoverPlayer.conversationId);
   });
 
   it('shares one canonical world across Messages and Notifications', async () => {
@@ -180,6 +188,7 @@ describe('application service composition', () => {
     const services = createApiApplicationServices();
 
     expect(services.mode).toBe('api');
+    expect(services.scenarioControl).toBeNull();
     expect(services.simulationRuntime).toBeNull();
     await expect(
       services.messageRepository.listConversations(),

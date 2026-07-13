@@ -24,7 +24,10 @@ import {
 import { liquidColors, liquidLayout } from '@/shared/theme/liquid-glass.tokens';
 
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
-import { DiscoverQueryState } from '../components/DiscoverQueryState';
+import {
+  DiscoverQueryState,
+  DiscoverStaleBanner,
+} from '../components/DiscoverQueryState';
 import { DiscoverResolvedImage } from '../components/DiscoverResolvedImage';
 import type {
   DiscoverFilterChip,
@@ -163,6 +166,7 @@ export function ExploreScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Header horizontalPadding={horizontalPadding} />
+        {overviewQuery.isError ? <DiscoverStaleBanner /> : null}
         <SearchAndFilters
           activeFilterCount={activeFilterIds.length}
           filtersExpanded={filtersExpanded}
@@ -750,6 +754,7 @@ function ProfileMatchCard({
       return;
     }
     openProfile(card.id);
+    router.push(appRoutes.profile.detail(card.id));
   };
 
   return (
@@ -817,7 +822,13 @@ function ProfileMatchCard({
             accessibilityLabel={`Nhắn ${card.name}`}
             accessibilityRole="button"
             android_ripple={null}
-            onPress={() => router.push(appRoutes.main.messages)}
+            onPress={() =>
+              router.push(
+                card.conversationId
+                  ? appRoutes.messages.detail(card.conversationId)
+                  : appRoutes.main.messages,
+              )
+            }
             style={({ pressed }) => [styles.chatOrb, pressed && styles.pressed]}
           >
             <Ionicons

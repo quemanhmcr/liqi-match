@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
@@ -219,13 +219,56 @@ describe('HomeDashboardScreen', () => {
     expect(screen.getByLabelText('Avatar offline-unavailable')).toBeTruthy();
   });
 
-  it('shows the repository error instead of silently rendering preview data', async () => {
+  it('shows a retry action for a retryable repository failure', async () => {
     const result = await renderHomeDashboard(async () => {
-      throw new Error('Home API unavailable');
+      throw Object.assign(new Error('Home API unavailable'), {
+        code: 'network_error',
+        retryable: true,
+      });
     }, false);
 
     expect(await result.findByText('Không thể tải Trang chủ')).toBeTruthy();
     expect(result.queryByText('Minh Anh')).toBeNull();
     expect(result.getByLabelText('Thử tải lại Trang chủ')).toBeTruthy();
+  });
+
+  it('does not offer retry for a non-retryable repository failure', async () => {
+    const result = await renderHomeDashboard(async () => {
+      throw Object.assign(new Error('Invalid home request'), {
+        code: 'validation_failed',
+        retryable: false,
+      });
+    }, false);
+
+    expect(await result.findByText('Không thể tải Trang chủ')).toBeTruthy();
+    expect(result.queryByLabelText('Thử tải lại Trang chủ')).toBeNull();
+  });
+
+  it('keeps the latest dashboard visible when a refresh fails', async () => {
+    const getDashboard = jest
+      .fn<() => Promise<HomeDashboard>>()
+      .mockResolvedValueOnce(syncedDashboard)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Refresh unavailable'), {
+          code: 'network_error',
+          retryable: true,
+        }),
+      );
+    const result = await renderHomeDashboard(getDashboard);
+
+    await act(async () => {
+      await result.queryClient.refetchQueries({
+        queryKey: ['home-dashboard'],
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        result.getByText(
+          'Không thể làm mới. Đang hiển thị dữ liệu đã tải gần nhất.',
+        ),
+      ).toBeTruthy();
+    });
+    expect(result.getAllByText('Minh Anh').length).toBeGreaterThan(0);
   });
 });

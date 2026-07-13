@@ -150,6 +150,7 @@ export type ProfileViewModel = {
   bio: string;
   coverAssetKey?: AssetKey;
   coverUrl?: string;
+  conversationId?: string;
   displayName: string;
   favoriteHeroes: ProfileFavoriteHero[];
   gender: ProfileGender;

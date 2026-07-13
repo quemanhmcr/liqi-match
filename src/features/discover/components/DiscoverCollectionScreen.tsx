@@ -24,7 +24,7 @@ import {
 } from '@/shared/components/liquid';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
-import { DiscoverQueryState } from './DiscoverQueryState';
+import { DiscoverQueryState, DiscoverStaleBanner } from './DiscoverQueryState';
 import { DiscoverResolvedImage } from './DiscoverResolvedImage';
 
 import type {
@@ -234,6 +234,9 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
     <View style={styles.screen} testID={`discover-collection-${kind}`}>
       <StatusBar style="light" />
       <CollectionBackground />
+      {collectionQuery.isError || filterOptionsQuery.isError ? (
+        <DiscoverStaleBanner />
+      ) : null}
       <ScrollView
         bounces={false}
         contentContainerStyle={[
@@ -830,6 +833,7 @@ function CollectionProfileCard({
       return;
     }
     openProfile(card.id);
+    router.push(appRoutes.profile.detail(card.id));
   };
   return (
     <LiquidCard
@@ -897,7 +901,13 @@ function CollectionProfileCard({
         <Pressable
           accessibilityLabel={`Nhắn ${card.name}`}
           accessibilityRole="button"
-          onPress={() => router.push(appRoutes.main.messages)}
+          onPress={() =>
+            router.push(
+              card.conversationId
+                ? appRoutes.messages.detail(card.conversationId)
+                : appRoutes.main.messages,
+            )
+          }
           style={({ pressed }) => [
             styles.messageButton,
             pressed && styles.pressed,
