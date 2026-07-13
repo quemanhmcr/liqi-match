@@ -32,6 +32,8 @@ export const CompletePlayerOnboardingCommandV1Schema = z.object({
   idempotencyKey: IdempotencyKeySchema,
   expectedProfileVersion: z.number().int().nonnegative(),
   profile: MinimumActiveProfileV1Schema,
+  /** Expand/migrate bridge only; lifecycle activation is verified from persisted canonical fields. */
+  legacyProfilePayload: z.record(z.string(), z.unknown()),
 });
 
 export const CompletePlayerOnboardingResultV1Schema = z.object({
