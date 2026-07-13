@@ -56,20 +56,6 @@ const settingsDefaults = {
   show_win_rate: true,
 };
 
-const defaultHabitInsert = {
-  comeback_response: 'Vẫn cố gắng đến cuối',
-  communication_channels: ['Voice khi cần'],
-  decision_style: 'Cùng trao đổi trước khi quyết định',
-  feedback_style: 'Chỉ nhắc ngắn gọn trong trận',
-  loss_response: 'Chơi tiếp ngay',
-  online_time_presets: ['Tối'],
-  seriousness: 'Cân bằng',
-  session_length: '3-5 trận',
-  strategy_styles: [],
-  team_atmospheres: ['Bình tĩnh, không tạo áp lực'],
-  team_goals: ['Leo rank nghiêm túc'],
-};
-
 export async function fetchProfileSettings(
   session: AuthSession,
 ): Promise<ProfileSettingsState> {
@@ -121,8 +107,14 @@ export async function updateProfileSoftSettings(
   const rows = await supabaseRest<ProfileSettingsHabitRow[]>(
     `profile_habits?select=media_summary&profile_id=eq.${encodeURIComponent(profileId)}&limit=1`,
     { session },
-  ).catch(() => [] as ProfileSettingsHabitRow[]);
-  const mediaSummary = mediaSummaryRecord(rows[0]?.media_summary);
+  );
+  const row = rows[0];
+  if (!row) {
+    throw new Error(
+      'Chưa thể lưu cài đặt mềm trước khi hồ sơ hoàn tất. Không có dữ liệu thói quen nào được tạo.',
+    );
+  }
+  const mediaSummary = mediaSummaryRecord(row.media_summary);
   const currentSettings = settingsFromMediaSummary(mediaSummary);
   const nextSettings = {
     ...currentSettings,
@@ -134,19 +126,20 @@ export async function updateProfileSoftSettings(
       : { show_win_rate: input.showWinRate }),
   };
 
-  await supabaseRest('profile_habits?on_conflict=profile_id', {
-    body: {
-      ...defaultHabitInsert,
-      media_summary: {
-        ...mediaSummary,
-        settings: nextSettings,
+  await supabaseRest(
+    `profile_habits?profile_id=eq.${encodeURIComponent(profileId)}`,
+    {
+      body: {
+        media_summary: {
+          ...mediaSummary,
+          settings: nextSettings,
+        },
       },
-      profile_id: profileId,
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      session,
     },
-    method: 'POST',
-    prefer: 'resolution=merge-duplicates,return=minimal',
-    session,
-  });
+  );
 }
 
 export async function fetchBlockedProfiles(
