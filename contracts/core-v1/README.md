@@ -1,9 +1,11 @@
-# Core V1 contracts
+# Core V1 executable contracts
 
-`manifest.json` is the executable semantic authority for Mission 1 provider seams.
-Generated TypeScript types, Zod runtime schemas, fixtures, and the compatibility
-report must never be edited directly.
+The TypeScript/Zod modules in this directory are the single executable semantic
+authority for the Production Match Loop v1. Types are inferred from runtime
+schemas, so provider and consumer code cannot drift from validation semantics.
+JSON fixtures are compatibility vectors and are validated by `contracts:check`.
 
-Run `npm run contracts:generate` after changing the manifest and
-`npm run contracts:check` in CI. Markdown explains decisions; it does not define
-runtime semantics.
+Ownership follows `compatibility-manifest.json`. Identity, lifecycle, profile,
+discovery, match, conversation, notification, events, and errors stay in their
+bounded files; no second manifest or generated schema tree may redefine them.
+Markdown explains decisions only and is not an executable authority.
