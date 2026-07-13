@@ -10,7 +10,7 @@ export type GetProfileInput = {
 };
 
 export interface ProfileReadRepository {
-  getProfile(input: GetProfileInput): Promise<ProfileViewModel>;
+  getProfile(input: GetProfileInput): Promise<ProfileViewModel | null>;
 }
 
 const ProfileReadRepositoryContext =

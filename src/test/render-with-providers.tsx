@@ -24,10 +24,19 @@ export const testAuthSession: AuthSession = {
 export async function renderWithProviders(
   ui: ReactElement,
   {
-    services = createSimulationApplicationServices(),
+    serviceOverrides,
+    services,
     session = testAuthSession,
-  }: { services?: ApplicationServices; session?: AuthSession | null } = {},
+  }: {
+    serviceOverrides?: Partial<ApplicationServices>;
+    services?: ApplicationServices;
+    session?: AuthSession | null;
+  } = {},
 ) {
+  const resolvedServices = services ?? {
+    ...createSimulationApplicationServices(),
+    ...serviceOverrides,
+  };
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { gcTime: Infinity, retry: false },
@@ -43,7 +52,7 @@ export async function renderWithProviders(
       }}
     >
       <AuthStateProvider initialSession={session}>
-        <ApplicationServiceProviders services={services}>
+        <ApplicationServiceProviders services={resolvedServices}>
           <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
         </ApplicationServiceProviders>
       </AuthStateProvider>

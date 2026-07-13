@@ -42,14 +42,12 @@ import {
 } from '@/shared/theme/liquid-glow.presets';
 
 import {
-  buildPreviewHomeDashboard,
-  fetchHomeDashboard,
   homeReadyModes,
   type HomeReadyMode,
   type MatchedSet,
   type MatchedSetStatus,
 } from '../home-dashboard-service';
-import { homePreviewProfileId } from '../data/home-preview.fixture';
+import { useHomeRepository } from '../runtime/HomeRepositoryProvider';
 import {
   buildMatchedSetTags,
   chatActionAccessibilityLabel,
@@ -221,50 +219,6 @@ function buttonVariantForKind(kind: MatchedSet['kind']) {
   return 'primary' as const;
 }
 
-const templateMatchedSets: MatchedSet[] = [
-  {
-    actionLabel: 'Vào set',
-    createdAt: 'template-1',
-    heroNames: ['Aya', 'Helen', 'Annette'],
-    id: 'template-minh-anh',
-    kind: 'Tri kỉ',
-    meta: 'Tối · Có voice',
-    name: 'Minh Anh',
-    profileId: homePreviewProfileId,
-    rankName: 'Cao Thủ',
-    roleNames: ['Trợ Thủ'],
-    status: 'ready',
-    subtitle: 'Cao Thủ · Trợ Thủ · Global',
-    unreadCount: 1,
-  },
-  {
-    actionLabel: 'Vào set',
-    createdAt: 'template-2',
-    heroNames: ['Nakroth', 'Aoi', 'Keera'],
-    id: 'template-khoa-jungle',
-    kind: 'Rank',
-    meta: 'Rank nghiêm túc',
-    name: 'Khoa Jungle',
-    rankName: 'Chiến Tướng',
-    roleNames: ['Đi Rừng'],
-    status: 'online',
-    subtitle: 'Chiến Tướng · Đi Rừng · Global',
-  },
-  {
-    actionLabel: 'Vào lobby',
-    createdAt: 'template-3',
-    heroNames: ['Liliana', 'Yue', 'Lorion'],
-    id: 'template-team-sao-bang',
-    kind: 'Team Rank',
-    meta: 'Team 4/5 · Thiếu Mid',
-    name: 'Team Sao Băng',
-    rankName: 'Đại Cao Thủ',
-    roleNames: ['Đường Giữa'],
-    status: 'idle',
-    subtitle: 'Đại Cao Thủ · Đường Giữa · Global',
-  },
-];
-
 function HomeText(props: TextProps) {
   return <RNText maxFontSizeMultiplier={1} {...props} />;
 }
@@ -281,6 +235,7 @@ function selectionImpact() {
 
 export default function HomeDashboardScreen() {
   const { session } = useAuth();
+  const homeRepository = useHomeRepository();
   const notificationSummaryQuery = useNotificationInboxSummary(session);
   const hasUnreadNotifications =
     (notificationSummaryQuery.data?.unseenCount ?? 0) > 0;
@@ -292,15 +247,13 @@ export default function HomeDashboardScreen() {
     enabled: Boolean(session),
     queryFn: () => {
       if (!session) throw new Error('Missing auth session');
-      return fetchHomeDashboard(session);
+      return homeRepository.getDashboard(session);
     },
     queryKey: ['home-dashboard', session?.user.id],
   });
 
-  const dashboard = dashboardQuery.data ?? buildPreviewHomeDashboard(session);
-  const matchedSetsToRender = ensureMinhAnhMatchedSet(
-    dashboard.matchedSets.length ? dashboard.matchedSets : templateMatchedSets,
-  );
+  const dashboard = dashboardQuery.data;
+  const matchedSetsToRender = dashboard?.matchedSets ?? [];
   const activeMatchCount = matchedSetsToRender.length;
   const selectedMode = useMemo(
     () =>
@@ -321,6 +274,34 @@ export default function HomeDashboardScreen() {
     impactLight();
     setReadyEnabled((value) => !value);
   };
+
+  if (!session) {
+    return (
+      <HomeDashboardQueryState
+        description="Phiên đăng nhập không còn hợp lệ."
+        title="Không thể mở Trang chủ"
+      />
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <HomeDashboardQueryState
+        description={
+          dashboardQuery.error
+            ? 'Dữ liệu Trang chủ chưa sẵn sàng. Ứng dụng không dùng preview để che lỗi này.'
+            : 'Đang đồng bộ hồ sơ và các kết nối của bạn.'
+        }
+        loading={!dashboardQuery.error}
+        onRetry={() => void dashboardQuery.refetch()}
+        title={
+          dashboardQuery.error
+            ? 'Không thể tải Trang chủ'
+            : 'Đang tải Trang chủ'
+        }
+      />
+    );
+  }
 
   return (
     <LiquidScreen
@@ -388,9 +369,7 @@ export default function HomeDashboardScreen() {
         <View style={styles.previewBanner}>
           <Ionicons color="#FFB86B" name="information-circle" size={16} />
           <HomeText style={styles.previewText}>
-            {dashboardQuery.isError
-              ? 'Chưa đọc được dữ liệu match thật, đang hiển thị layout preview.'
-              : 'Preview giao diện Trang chủ với set đã match.'}
+            Không thể làm mới. Đang hiển thị dữ liệu đã tải gần nhất.
           </HomeText>
         </View>
       ) : null}
@@ -585,6 +564,37 @@ export default function HomeDashboardScreen() {
   );
 }
 
+function HomeDashboardQueryState({
+  description,
+  loading = false,
+  onRetry,
+  title,
+}: {
+  description: string;
+  loading?: boolean;
+  onRetry?: () => void;
+  title: string;
+}) {
+  return (
+    <LiquidScreen
+      contentContainerStyle={styles.queryStateScreen}
+      withHeader={false}
+    >
+      {loading ? <ActivityIndicator color="#C679FF" size="large" /> : null}
+      <HomeText style={styles.queryStateTitle}>{title}</HomeText>
+      <HomeText style={styles.queryStateDescription}>{description}</HomeText>
+      {!loading && onRetry ? (
+        <LiquidButton
+          accessibilityLabel="Thử tải lại Trang chủ"
+          onPress={onRetry}
+        >
+          Thử lại
+        </LiquidButton>
+      ) : null}
+    </LiquidScreen>
+  );
+}
+
 function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
   const statusStyle = statusStyles[set.status];
   const tone = matchTones[set.kind];
@@ -593,7 +603,7 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
   const actionGlowPreset = actionGlowPresets[set.kind];
   const chipVariant = chipVariantForKind(set.kind);
   const buttonVariant = buttonVariantForKind(set.kind);
-  const profileId = profileIdForMatchedSet(set, index);
+  const profileId = set.profileId;
   const displayKind = matchedSetKindLabel(set.kind);
   const displayStatus = matchedSetStatusLabel(set.status);
   const tags = buildMatchedSetTags({
@@ -673,9 +683,12 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
             <Pressable
               accessibilityLabel={`Mở hồ sơ ${set.name}`}
               accessibilityRole="button"
+              accessibilityState={{ disabled: !profileId }}
+              disabled={!profileId}
               hitSlop={8}
               onPress={(event) => {
                 event.stopPropagation();
+                if (!profileId) return;
                 selectionImpact();
                 router.push(appRoutes.profile.detail(profileId));
               }}
@@ -861,34 +874,6 @@ function EmptyMatchedSets() {
   );
 }
 
-function ensureMinhAnhMatchedSet(sets: MatchedSet[]) {
-  const hasMinhAnh = sets.some(
-    (set) =>
-      set.profileId === homePreviewProfileId ||
-      normalizeProfileName(set.name).includes('minh anh'),
-  );
-  if (hasMinhAnh) return sets;
-  return [templateMatchedSets[0], ...sets].filter((set): set is MatchedSet =>
-    Boolean(set),
-  );
-}
-
-function profileIdForMatchedSet(set: MatchedSet, index: number) {
-  if (set.profileId) return set.profileId;
-  if (normalizeProfileName(set.name).includes('minh anh') || index === 0) {
-    return homePreviewProfileId;
-  }
-  return set.id;
-}
-
-function normalizeProfileName(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
 function Avatar({
   fallbackUri,
   name,
@@ -984,6 +969,26 @@ const statusStyles: Record<MatchedSetStatus, { dot: string; text: string }> = {
 };
 
 const styles = StyleSheet.create({
+  queryStateDescription: {
+    color: 'rgba(224,230,248,0.72)',
+    fontSize: 14,
+    lineHeight: 21,
+    maxWidth: 320,
+    textAlign: 'center',
+  },
+  queryStateScreen: {
+    alignItems: 'center',
+    flexGrow: 1,
+    gap: 14,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  queryStateTitle: {
+    color: '#F7F8FF',
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   bgCyanGlow: {
     backgroundColor: 'rgba(60,210,255,0.016)',
     borderRadius: 300,

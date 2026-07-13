@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
-import { LiquidOrbButton } from '@/shared/components/liquid';
+import { LiquidButton, LiquidOrbButton } from '@/shared/components/liquid';
 import { useAuth } from '@/shared/auth/auth-context';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
@@ -21,11 +21,7 @@ import {
 import { ProfileHighlights } from '../components/ProfileHighlights';
 import { ProfilePlayStyle } from '../components/ProfilePlayStyle';
 import { ProfileText } from '../components/ProfileShared';
-import { profileMockVibe } from '../data/profile.fixture';
-import {
-  buildPreviewProfile,
-  fetchProfileView,
-} from '../services/profile-service';
+import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
 
 export type ProfileScreenProps = {
   mode: ProfileHeroMode;
@@ -34,6 +30,7 @@ export type ProfileScreenProps = {
 
 export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
   const { session } = useAuth();
+  const profileRepository = useProfileReadRepository();
   const openProfileEditor = () => {
     selectionImpact();
     router.push(appRoutes.profile.edit);
@@ -50,7 +47,7 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
     enabled: Boolean(session && (mode === 'self' || userId)),
     queryFn: () => {
       if (!session) throw new Error('Missing auth session');
-      return fetchProfileView({
+      return profileRepository.getProfile({
         session,
         userId: mode === 'other' ? userId : undefined,
       });
@@ -58,9 +55,51 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
     queryKey: ['profile-view', mode, userId ?? session?.user.id],
   });
 
-  const profile =
-    profileQuery.data ??
-    buildPreviewProfile(session, mode === 'other' ? userId : session?.user.id);
+  const profile = profileQuery.data;
+
+  if (!session || (mode === 'other' && !userId)) {
+    return (
+      <ProfileReadState
+        mode={mode}
+        title="Không thể mở hồ sơ"
+        description="Thiếu phiên đăng nhập hoặc định danh hồ sơ canonical."
+      />
+    );
+  }
+
+  if (profileQuery.isPending) {
+    return (
+      <ProfileReadState
+        loading
+        mode={mode}
+        title="Đang tải hồ sơ"
+        description="Đang đồng bộ dữ liệu người chơi."
+      />
+    );
+  }
+
+  if (profileQuery.isError) {
+    return (
+      <ProfileReadState
+        mode={mode}
+        onRetry={() => void profileQuery.refetch()}
+        title="Không thể tải hồ sơ"
+        description="Repository trả về lỗi. Ứng dụng không dùng fixture để che trạng thái này."
+      />
+    );
+  }
+
+  if (!profile) {
+    return (
+      <ProfileReadState
+        mode={mode}
+        title="Không tìm thấy hồ sơ"
+        description="Định danh này không tồn tại trong runtime hiện tại."
+      />
+    );
+  }
+
+  const vibe = Math.max(0, Math.min(100, Math.round(profile.stats.reputation)));
 
   return (
     <LiquidScreen
@@ -80,7 +119,7 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
         onMessage={selectionImpact}
         onShare={openProfileShare}
         profile={profile}
-        vibe={profileMockVibe}
+        vibe={vibe}
       />
       <ProfileFavoriteHeroes
         heroes={profile.favoriteHeroes}
@@ -89,10 +128,38 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
       />
       <ProfilePlayStyle tags={profile.playStyleTags} />
       <ProfileHighlights mode={mode} />
-      {profileQuery.isError ? (
-        <ProfileText style={styles.errorText}>
-          Chưa đọc được dữ liệu hồ sơ thật, đang hiển thị layout preview.
-        </ProfileText>
+    </LiquidScreen>
+  );
+}
+
+function ProfileReadState({
+  description,
+  loading = false,
+  mode,
+  onRetry,
+  title,
+}: {
+  description: string;
+  loading?: boolean;
+  mode: ProfileHeroMode;
+  onRetry?: () => void;
+  title: string;
+}) {
+  return (
+    <LiquidScreen
+      contentContainerStyle={styles.readStateScreen}
+      withBottomNavPadding={mode === 'self'}
+      withHeader={false}
+    >
+      {loading ? <ActivityIndicator color="#C679FF" size="large" /> : null}
+      <ProfileText style={styles.readStateTitle}>{title}</ProfileText>
+      <ProfileText style={styles.readStateDescription}>
+        {description}
+      </ProfileText>
+      {!loading && onRetry ? (
+        <LiquidButton accessibilityLabel="Thử tải lại hồ sơ" onPress={onRetry}>
+          Thử lại
+        </LiquidButton>
       ) : null}
     </LiquidScreen>
   );
@@ -165,13 +232,25 @@ function selectionImpact() {
 }
 
 const styles = StyleSheet.create({
-  errorText: {
-    color: 'rgba(255,216,168,0.78)',
-    fontSize: 12,
-    fontWeight: '600',
-    lineHeight: 18,
-    marginTop: 14,
-    paddingHorizontal: 5,
+  readStateDescription: {
+    color: 'rgba(224,230,248,0.72)',
+    fontSize: 14,
+    lineHeight: 21,
+    maxWidth: 320,
+    textAlign: 'center',
+  },
+  readStateScreen: {
+    alignItems: 'center',
+    flexGrow: 1,
+    gap: 14,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  readStateTitle: {
+    color: liquidColors.text.primary,
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
   },
   scrollContent: {
     paddingTop: 3,

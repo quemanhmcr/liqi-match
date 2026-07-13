@@ -435,11 +435,8 @@ export async function uploadEditableProfileMedia(
 export async function fetchProfileView(input: {
   session: AuthSession;
   userId?: string;
-}): Promise<ProfileViewModel> {
+}): Promise<ProfileViewModel | null> {
   const targetUserId = input.userId ?? input.session.user.id;
-  if (isMinhAnhMockProfile(targetUserId)) {
-    return buildMinhAnhPreviewProfile();
-  }
 
   const rows = await supabaseRest<ProfileRow[]>(
     `profiles?id=eq.${encodeURIComponent(targetUserId)}&select=${profileSelect}&limit=1`,
@@ -447,9 +444,7 @@ export async function fetchProfileView(input: {
   );
 
   const row = rows[0];
-  if (!row) {
-    return buildPreviewProfile(input.session, targetUserId);
-  }
+  if (!row) return null;
 
   const gameProfile = first(row.game_profiles);
   const habits = first(row.profile_habits);
