@@ -1,3 +1,5 @@
+import type { AssetResolver } from '@/entities/media-asset';
+
 import {
   DiscoverOverviewParamsSchema,
   DiscoverPlayerListParamsSchema,
@@ -61,6 +63,7 @@ export function canonicalizePlayerParams(params: DiscoverPlayerListParams) {
 
 export async function fetchDiscoverOverview(
   repository: DiscoverRepository,
+  assetResolver: AssetResolver,
   context: DiscoverRequestContext,
   params: DiscoverOverviewParams,
 ) {
@@ -68,11 +71,16 @@ export async function fetchDiscoverOverview(
     context,
     canonicalizeOverviewParams(params),
   );
-  return presentOverview(response.data, response.meta.generatedAt);
+  return presentOverview(
+    response.data,
+    response.meta.generatedAt,
+    assetResolver,
+  );
 }
 
 export async function fetchDiscoverVibes(
   repository: DiscoverRepository,
+  assetResolver: AssetResolver,
   context: DiscoverRequestContext,
   params: DiscoverVibeListParams,
 ) {
@@ -82,12 +90,13 @@ export async function fetchDiscoverVibes(
   );
   return {
     ...response.data,
-    items: response.data.items.map(presentVibe),
+    items: response.data.items.map((vibe) => presentVibe(vibe, assetResolver)),
   };
 }
 
 export async function fetchDiscoverSets(
   repository: DiscoverRepository,
+  assetResolver: AssetResolver,
   context: DiscoverRequestContext,
   params: DiscoverSetListParams,
 ) {
@@ -98,13 +107,14 @@ export async function fetchDiscoverSets(
   return {
     ...response.data,
     items: response.data.items.map((item) =>
-      presentSet(item, response.meta.generatedAt),
+      presentSet(item, response.meta.generatedAt, assetResolver),
     ),
   };
 }
 
 export async function fetchDiscoverPlayers(
   repository: DiscoverRepository,
+  assetResolver: AssetResolver,
   context: DiscoverRequestContext,
   params: DiscoverPlayerListParams,
 ) {
@@ -112,7 +122,12 @@ export async function fetchDiscoverPlayers(
     context,
     canonicalizePlayerParams(params),
   );
-  return { ...response.data, items: response.data.items.map(presentPlayer) };
+  return {
+    ...response.data,
+    items: response.data.items.map((player) =>
+      presentPlayer(player, assetResolver),
+    ),
+  };
 }
 
 export function requestDiscoverSetJoin(

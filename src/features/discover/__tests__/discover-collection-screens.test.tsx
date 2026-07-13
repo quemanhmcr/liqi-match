@@ -4,6 +4,7 @@ import { Dimensions, StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 
+import { discoverResolvedMediaSource } from '../model/discover-domain';
 import { discoverAllVibeCards } from '../data/discover.mock';
 import { resetDiscoverState } from '../model/discover-store';
 import { renderDiscoverScreen } from './discover-test-utils';
@@ -91,7 +92,11 @@ describe('Discover child collection screens', () => {
     const vibeBackdrop = getByTestId('discover-vibe-backdrop-late-night-rank');
     const vibeArtwork = getByTestId('discover-vibe-artwork-late-night-rank');
     expect(vibeBackdrop.props.resizeMode).toBe('cover');
-    expect(vibeBackdrop.props.source).toBe(discoverAllVibeCards[0]?.background);
+    expect(vibeBackdrop.props.source).toBe(
+      discoverAllVibeCards[0]
+        ? discoverResolvedMediaSource(discoverAllVibeCards[0].background)
+        : undefined,
+    );
     expect(StyleSheet.flatten(vibeBackdrop.props.style)).toMatchObject({
       bottom: 0,
       left: 0,
@@ -102,7 +107,11 @@ describe('Discover child collection screens', () => {
       'transform',
     );
     expect(vibeArtwork.props.resizeMode).toBe('contain');
-    expect(vibeArtwork.props.source).toBe(discoverAllVibeCards[0]?.background);
+    expect(vibeArtwork.props.source).toBe(
+      discoverAllVibeCards[0]
+        ? discoverResolvedMediaSource(discoverAllVibeCards[0].background)
+        : undefined,
+    );
     expect(StyleSheet.flatten(vibeArtwork.props.style)).toMatchObject({
       bottom: 0,
       height: 150,
@@ -174,10 +183,14 @@ describe('Discover child collection screens', () => {
 
         expect(cardStyle.height).toBe(150);
         expect(backdrop.props.resizeMode).toBe('cover');
-        expect(backdrop.props.source).toBe(card.background);
+        expect(backdrop.props.source).toBe(
+          discoverResolvedMediaSource(card.background),
+        );
         expect(backdropStyle).not.toHaveProperty('transform');
         expect(artwork.props.resizeMode).toBe('contain');
-        expect(artwork.props.source).toBe(card.background);
+        expect(artwork.props.source).toBe(
+          discoverResolvedMediaSource(card.background),
+        );
         expect(artworkStyle).toMatchObject({
           bottom: 0,
           height: cardStyle.height,

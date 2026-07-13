@@ -9,6 +9,10 @@ import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { AuthSession } from '@/shared/auth/auth-service';
+import {
+  AssetResolverProvider,
+  createGoldenWorldAssetResolver,
+} from '@/entities/media-asset';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
 import { MockDiscoverRepository } from '../services/discover-mock-repository';
 import { DiscoverRepositoryProvider } from '../runtime/DiscoverRepositoryProvider';
@@ -49,15 +53,18 @@ export function renderDiscoverScreen(
   });
 
   const repository = new MockDiscoverRepository();
+  const assetResolver = createGoldenWorldAssetResolver();
 
   return render(
     <AuthStateProvider initialSession={discoverTestSession}>
       <QueryClientProvider client={queryClient}>
-        <DiscoverRepositoryProvider repository={repository}>
-          <SafeAreaProvider initialMetrics={initialMetrics}>
-            {ui}
-          </SafeAreaProvider>
-        </DiscoverRepositoryProvider>
+        <AssetResolverProvider resolver={assetResolver}>
+          <DiscoverRepositoryProvider repository={repository}>
+            <SafeAreaProvider initialMetrics={initialMetrics}>
+              {ui}
+            </SafeAreaProvider>
+          </DiscoverRepositoryProvider>
+        </AssetResolverProvider>
       </QueryClientProvider>
     </AuthStateProvider>,
   );

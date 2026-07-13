@@ -1,5 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import {
+  useAssetResolver,
+  usePreloadAssetSurface,
+} from '@/entities/media-asset';
 import { useAuth } from '@/shared/auth/auth-context';
 
 import type {
@@ -26,40 +30,48 @@ import { discoverQueryKeys } from './discover-query-keys';
 
 export function useDiscoverOverviewQuery(params: DiscoverOverviewParams) {
   const repository = useDiscoverRepository();
+  const assetResolver = useDiscoverAssetResolver();
   const context = useDiscoverRequestContext();
   const canonical = canonicalizeOverviewParams(params);
   return useQuery({
-    queryFn: () => fetchDiscoverOverview(repository, context, canonical),
+    queryFn: () =>
+      fetchDiscoverOverview(repository, assetResolver, context, canonical),
     queryKey: discoverQueryKeys.overview(context.viewerId, canonical),
   });
 }
 
 export function useDiscoverVibesQuery(params: DiscoverVibeListParams) {
   const repository = useDiscoverRepository();
+  const assetResolver = useDiscoverAssetResolver();
   const context = useDiscoverRequestContext();
   const canonical = canonicalizeVibeParams(params);
   return useQuery({
-    queryFn: () => fetchDiscoverVibes(repository, context, canonical),
+    queryFn: () =>
+      fetchDiscoverVibes(repository, assetResolver, context, canonical),
     queryKey: discoverQueryKeys.vibes(context.viewerId, canonical),
   });
 }
 
 export function useDiscoverSetsQuery(params: DiscoverSetListParams) {
   const repository = useDiscoverRepository();
+  const assetResolver = useDiscoverAssetResolver();
   const context = useDiscoverRequestContext();
   const canonical = canonicalizeSetParams(params);
   return useQuery({
-    queryFn: () => fetchDiscoverSets(repository, context, canonical),
+    queryFn: () =>
+      fetchDiscoverSets(repository, assetResolver, context, canonical),
     queryKey: discoverQueryKeys.sets(context.viewerId, canonical),
   });
 }
 
 export function useDiscoverPlayersQuery(params: DiscoverPlayerListParams) {
   const repository = useDiscoverRepository();
+  const assetResolver = useDiscoverAssetResolver();
   const context = useDiscoverRequestContext();
   const canonical = canonicalizePlayerParams(params);
   return useQuery({
-    queryFn: () => fetchDiscoverPlayers(repository, context, canonical),
+    queryFn: () =>
+      fetchDiscoverPlayers(repository, assetResolver, context, canonical),
     queryKey: discoverQueryKeys.players(context.viewerId, canonical),
   });
 }
@@ -125,6 +137,11 @@ export function useInvitePlayerMutation() {
   });
 }
 
+function useDiscoverAssetResolver() {
+  usePreloadAssetSurface('discover');
+  return useAssetResolver();
+}
+
 function useDiscoverRequestContext(): DiscoverRequestContext {
   const { session } = useAuth();
   return {
@@ -167,6 +184,7 @@ export function useDiscoverCollectionQuery(
   },
 ) {
   const repository = useDiscoverRepository();
+  const assetResolver = useDiscoverAssetResolver();
   const context = useDiscoverRequestContext();
   const vibeParams = canonicalizeVibeParams({
     facetIds: params.facetIds,
@@ -205,12 +223,22 @@ export function useDiscoverCollectionQuery(
   return useQuery<DiscoverCollectionPage>({
     queryFn: () => {
       if (kind === 'vibes') {
-        return fetchDiscoverVibes(repository, context, vibeParams);
+        return fetchDiscoverVibes(
+          repository,
+          assetResolver,
+          context,
+          vibeParams,
+        );
       }
       if (kind === 'sets') {
-        return fetchDiscoverSets(repository, context, setParams);
+        return fetchDiscoverSets(repository, assetResolver, context, setParams);
       }
-      return fetchDiscoverPlayers(repository, context, playerParams);
+      return fetchDiscoverPlayers(
+        repository,
+        assetResolver,
+        context,
+        playerParams,
+      );
     },
     queryKey:
       kind === 'vibes'

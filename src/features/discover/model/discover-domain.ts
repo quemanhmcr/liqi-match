@@ -1,8 +1,27 @@
 import type { ImageSourcePropType } from 'react-native';
 
+import type { ResolvedAsset } from '@/entities/media-asset';
+
 import type { DiscoverFilterId } from '../contracts/discover-contracts';
 
 export type { DiscoverFilterId } from '../contracts/discover-contracts';
+
+export type DiscoverResolvedMedia =
+  | { kind: 'asset'; resolved: ResolvedAsset }
+  | { kind: 'remote'; source: ImageSourcePropType; state: 'ready' }
+  | { kind: 'unresolved'; state: 'missing' };
+
+export function discoverResolvedMediaSource(
+  media: DiscoverResolvedMedia,
+): ImageSourcePropType | undefined {
+  if (media.kind === 'asset') return media.resolved.source;
+  if (media.kind === 'remote') return media.source;
+  return undefined;
+}
+
+export function discoverResolvedMediaState(media: DiscoverResolvedMedia) {
+  return media.kind === 'asset' ? media.resolved.state : media.state;
+}
 
 export type DiscoverFilterChip = {
   icon: string;
@@ -11,11 +30,11 @@ export type DiscoverFilterChip = {
 };
 
 export type DiscoverVibeCard = {
-  background: ImageSourcePropType;
+  background: DiscoverResolvedMedia;
   filterIds: readonly DiscoverFilterId[];
   id: string;
   interestedLabel: string;
-  participantSources: readonly ImageSourcePropType[];
+  participantSources: readonly DiscoverResolvedMedia[];
   surplusLabel: string;
   title: string;
 };
@@ -25,12 +44,12 @@ export type DiscoverSetCard = {
   actionLabel: string;
   actionState: 'idle' | 'pending';
   actionTone: 'cyan' | 'purple';
-  avatarSources: readonly ImageSourcePropType[];
+  avatarSources: readonly DiscoverResolvedMedia[];
   badgeLabel: string;
   badgeTone: 'cyan' | 'orange';
   filterIds: readonly DiscoverFilterId[];
   id: string;
-  image: ImageSourcePropType;
+  image: DiscoverResolvedMedia;
   matchScore: number;
   meta: string;
   openedMinutesAgo: number;
@@ -47,7 +66,7 @@ export type DiscoverProfileCard = {
   actionLabel: string;
   actionState: 'idle' | 'pending';
   actionTone: 'cyan' | 'purple';
-  avatar: ImageSourcePropType;
+  avatar: DiscoverResolvedMedia;
   filterIds: readonly DiscoverFilterId[];
   id: string;
   match: string;

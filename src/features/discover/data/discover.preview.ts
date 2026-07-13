@@ -1,3 +1,5 @@
+import { createGoldenWorldAssetResolver } from '@/entities/media-asset';
+
 import {
   presentOverview,
   presentPlayer,
@@ -14,6 +16,7 @@ const context: DiscoverRequestContext = {
   viewerId: 'preview',
 };
 const repository = new MockDiscoverRepository();
+const assetResolver = createGoldenWorldAssetResolver();
 const overviewResponse = repository.peekOverview(context, {
   facetIds: [],
   previewLimit: 3,
@@ -43,15 +46,20 @@ const vibeResponse = repository.peekVibes(context, {
 const overview = presentOverview(
   overviewResponse.data,
   overviewResponse.meta.generatedAt,
+  assetResolver,
 );
 
 /** Test/Storybook compatibility data. Runtime screens use injected repositories. */
 export const previewDiscoverData = {
-  allProfiles: playerResponse.data.items.map(presentPlayer),
-  allSets: setResponse.data.items.map((item) =>
-    presentSet(item, setResponse.meta.generatedAt),
+  allProfiles: playerResponse.data.items.map((player) =>
+    presentPlayer(player, assetResolver),
   ),
-  allVibes: vibeResponse.data.items.map(presentVibe),
+  allSets: setResponse.data.items.map((item) =>
+    presentSet(item, setResponse.meta.generatedAt, assetResolver),
+  ),
+  allVibes: vibeResponse.data.items.map((vibe) =>
+    presentVibe(vibe, assetResolver),
+  ),
   filterChips: overview.filterChips,
   metrics: overview.metrics,
   overview,

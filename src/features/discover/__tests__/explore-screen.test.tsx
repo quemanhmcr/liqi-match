@@ -11,6 +11,7 @@ import { Dimensions, processColor, StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 
+import { discoverResolvedMediaSource } from '../model/discover-domain';
 import { discoverVibeCards } from '../data/discover.mock';
 import { resetDiscoverState } from '../model/discover-store';
 import { renderDiscoverScreen } from './discover-test-utils';
@@ -129,7 +130,9 @@ describe('ExploreScreen', () => {
       expectAbsoluteFillLayer(gradientStyle);
       expectBottomAnchoredContent(contentStyle);
       expect(vibeBackground.props.resizeMode).toBe('cover');
-      expect(vibeBackground.props.source).toBe(card.background);
+      expect(vibeBackground.props.source).toBe(
+        discoverResolvedMediaSource(card.background),
+      );
       expect(vibeGradient.props.colors).toEqual(
         [
           'rgba(4,7,16,0.03)',
@@ -349,7 +352,9 @@ describe('ExploreScreen', () => {
 
         expect(cardStyle.height).toBe(134);
         expectSizedArtworkLayer(backgroundStyle, cardStyle.width);
-        expect(vibeBackground.props.source).toBe(card.background);
+        expect(vibeBackground.props.source).toBe(
+          discoverResolvedMediaSource(card.background),
+        );
         expectAbsoluteFillLayer(StyleSheet.flatten(vibeGradient.props.style));
         expectBottomAnchoredContent(
           StyleSheet.flatten(vibeContent.props.style),

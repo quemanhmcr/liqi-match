@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { useDeferredValue, useState } from 'react';
 import {
-  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -13,7 +12,6 @@ import {
   TextInput,
   View,
   useWindowDimensions,
-  type ImageSourcePropType,
   type TextProps,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,11 +25,13 @@ import {
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
 import { DiscoverQueryState } from './DiscoverQueryState';
+import { DiscoverResolvedImage } from './DiscoverResolvedImage';
 
 import type {
   DiscoverFilterChip,
   DiscoverFilterId,
   DiscoverProfileCard,
+  DiscoverResolvedMedia,
   DiscoverSetCard,
   DiscoverVibeCard,
 } from '../model/discover-domain';
@@ -645,15 +645,15 @@ function CollectionVibeCard({
         pressed && styles.pressed,
       ]}
     >
-      <Image
+      <DiscoverResolvedImage
+        media={card.background}
         resizeMode="cover"
-        source={card.background}
         style={styles.vibeBackdrop}
         testID={`discover-vibe-backdrop-${card.id}`}
       />
-      <Image
+      <DiscoverResolvedImage
+        media={card.background}
         resizeMode="contain"
-        source={card.background}
         style={[styles.vibeArtwork, { height, width: height }]}
         testID={`discover-vibe-artwork-${card.id}`}
       />
@@ -753,7 +753,7 @@ function CollectionSetCard({
     >
       <View style={styles.setTopRow}>
         <View style={styles.setImageShell}>
-          <Image source={card.image} style={styles.setImage} />
+          <DiscoverResolvedImage media={card.image} style={styles.setImage} />
         </View>
         <View style={styles.setCopy}>
           <View style={styles.titleBadgeRow}>
@@ -850,7 +850,10 @@ function CollectionProfileCard({
     >
       <View style={styles.profileTopRow}>
         <View style={styles.profileAvatarShell}>
-          <Image source={card.avatar} style={styles.profileAvatar} />
+          <DiscoverResolvedImage
+            media={card.avatar}
+            style={styles.profileAvatar}
+          />
           {card.online ? (
             <View
               style={styles.onlineDot}
@@ -990,15 +993,15 @@ function AvatarStack({
   sources,
   surplus,
 }: {
-  sources: readonly ImageSourcePropType[];
+  sources: readonly DiscoverResolvedMedia[];
   surplus?: string;
 }) {
   return (
     <View style={styles.avatarStack}>
       {sources.map((source, index) => (
-        <Image
+        <DiscoverResolvedImage
           key={index}
-          source={source}
+          media={source}
           style={[styles.stackAvatar, index > 0 && styles.stackAvatarOverlap]}
         />
       ))}

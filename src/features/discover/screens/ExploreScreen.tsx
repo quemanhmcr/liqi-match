@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useDeferredValue } from 'react';
 import {
-  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -12,7 +11,6 @@ import {
   Text as RNText,
   View,
   useWindowDimensions,
-  type ImageSourcePropType,
   type TextProps,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,11 +25,13 @@ import { liquidColors, liquidLayout } from '@/shared/theme/liquid-glass.tokens';
 
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
 import { DiscoverQueryState } from '../components/DiscoverQueryState';
+import { DiscoverResolvedImage } from '../components/DiscoverResolvedImage';
 import type {
   DiscoverFilterChip,
   DiscoverFilterId,
   DiscoverMetricCard,
   DiscoverProfileCard,
+  DiscoverResolvedMedia,
   DiscoverVibeCard,
 } from '../model/discover-domain';
 import {
@@ -668,9 +668,9 @@ function VibeCard({
       ]}
       testID={`vibe-card-${card.title}`}
     >
-      <Image
+      <DiscoverResolvedImage
+        media={card.background}
         resizeMode="cover"
-        source={card.background}
         style={[
           styles.vibeBackgroundLayer,
           { height: VIBE_CARD_HEIGHT, width },
@@ -773,7 +773,10 @@ function ProfileMatchCard({
       withShadow={false}
     >
       <View style={styles.profileAvatarShell}>
-        <Image source={card.avatar} style={styles.profileAvatar} />
+        <DiscoverResolvedImage
+          media={card.avatar}
+          style={styles.profileAvatar}
+        />
         {card.online ? <View style={styles.onlineDot} /> : null}
       </View>
 
@@ -961,16 +964,16 @@ function AvatarStack({
   surplus,
 }: {
   size?: 'compact' | 'regular';
-  sources: readonly ImageSourcePropType[];
+  sources: readonly DiscoverResolvedMedia[];
   surplus?: string;
 }) {
   const compact = size === 'compact';
   return (
     <View style={[styles.avatarStack, compact && styles.avatarStackCompact]}>
       {sources.map((source, index) => (
-        <Image
+        <DiscoverResolvedImage
           key={index}
-          source={source}
+          media={source}
           style={[
             styles.stackAvatar,
             compact && styles.stackAvatarCompact,
