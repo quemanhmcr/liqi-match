@@ -1,10 +1,13 @@
 const fs = require('node:fs');
 
 const migrationPath =
-  'supabase/migrations/202607140001_production_match_authority_v1.sql';
+  'supabase/migrations/202607140002_production_match_authority_v1.sql';
+const lifecycleMigrationPath =
+  'supabase/migrations/202607140001_secure_identity_lifecycle_v1.sql';
 const testPath =
   'supabase/tests/database/production_match_authority_v1.test.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8');
+const lifecycleMigration = fs.readFileSync(lifecycleMigrationPath, 'utf8');
 const databaseTest = fs.readFileSync(testPath, 'utf8');
 
 const activationStart = migration.indexOf(
@@ -17,7 +20,6 @@ const legacyStart = migration.indexOf(
   'create or replace function public.record_swipe',
   decisionStart,
 );
-
 const activation = migration.slice(activationStart, decisionStart);
 const decision = migration.slice(decisionStart, legacyStart);
 const legacy = migration.slice(legacyStart);
@@ -34,23 +36,47 @@ requireInvariant(
   'authoritative and legacy function boundaries must be present in order',
 );
 requireInvariant(
-  activation.indexOf('stored_response is not null') <
+  lifecycleMigration.includes('create table private.command_receipts_v1'),
+  'Mission 1 shared command receipt authority must precede Match Authority',
+);
+requireInvariant(
+  !migration.includes('create table private.command_idempotency_v1'),
+  'Match Authority must not create a second command receipt semantic engine',
+);
+requireInvariant(
+  activation.indexOf('command_state.repeated') <
     activation.indexOf('match_intent_writes_enabled_v1'),
   'Match Intent replay must precede current rollout-policy checks',
 );
 requireInvariant(
-  decision.indexOf('stored_response is not null') <
+  decision.indexOf('command_state.repeated') <
     decision.indexOf('match_decision_writes_enabled_v1'),
   'decision replay must precede current rollout-policy checks',
 );
 requireInvariant(
-  decision.indexOf('actor_account_id, true') >
-    decision.indexOf('pg_advisory_xact_lock'),
-  'no provider lifecycle row may be locked before the canonical pair lock',
+  decision.indexOf('pg_advisory_xact_lock') <
+    decision.indexOf(
+      'from public.players players',
+      decision.indexOf('pg_advisory_xact_lock'),
+    ),
+  'canonical pair lock must precede authoritative lifecycle row locks',
 );
 requireInvariant(
-  decision.includes('actor_snapshot.player_id = low_player_id'),
-  'lifecycle rows must be locked in deterministic player order',
+  /from public\.players players[\s\S]*?order by players\.id[\s\S]*?for update/.test(
+    decision,
+  ),
+  'authoritative player lifecycle rows must be locked in PlayerId order',
+);
+requireInvariant(
+  /from public\.player_profiles_v1 profiles[\s\S]*?order by profiles\.player_id[\s\S]*?for update/.test(
+    decision,
+  ),
+  'canonical profile rows must be locked in PlayerId order',
+);
+requireInvariant(
+  decision.includes('private.assert_discovery_eligible_v1') &&
+    migration.includes('private.is_player_discovery_eligible_v1(p_player_id)'),
+  'command-time eligibility must consume the Mission 1 lifecycle authority through one wrapper',
 );
 requireInvariant(
   /where id in \(actor_intent\.id, target_intent\.id\)/.test(decision),
@@ -61,12 +87,24 @@ requireInvariant(
   'Mission 2 must not create conversations directly',
 );
 requireInvariant(
+  /on conflict \(profile_low_id, profile_high_id\) do update[\s\S]*?player_low_id = excluded\.player_low_id/.test(
+    decision,
+  ),
+  'v1 must adopt an existing legacy match row instead of creating a duplicate',
+);
+requireInvariant(
   decision.includes("'conversation.bootstrap_requested.v1'"),
   'Mission 2 must emit the conversation bootstrap request',
 );
 requireInvariant(
   /player_low_id is not null/.test(legacy),
   'legacy matching must remain blocked after the first authoritative match',
+);
+requireInvariant(
+  !migration.includes(
+    'drop constraint if exists outbox_events_event_type_check',
+  ),
+  'Match Authority must not replace the shared additive event-type policy',
 );
 requireInvariant(
   !/language plpgsql\s+language plpgsql/i.test(migration),
@@ -76,13 +114,10 @@ requireInvariant(
   !/\) values \(\s*\) values \(/i.test(migration),
   'SQL contains a duplicate values clause',
 );
-requireInvariant(
-  !/where actor_account_id = actor_account_id/i.test(migration),
-  'SQL contains a shadowed idempotency predicate',
-);
 
 const assertionCount = (
-  databaseTest.match(/select\s+(?:is|throws_ok)\s*\(/gi) ?? []
+  databaseTest.match(/select\s+(?:is|isnt|ok|throws_ok|throws_like)\s*\(/gi) ??
+  []
 ).length;
 const plannedCount = Number(databaseTest.match(/select plan\((\d+)\)/i)?.[1]);
 requireInvariant(

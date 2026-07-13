@@ -1,5 +1,9 @@
 import { z } from 'zod';
-import { MatchIntentIdSchema, PlayerIdSchema } from '../identity/semantic-ids';
+import {
+  IdempotencyKeySchema,
+  MatchIntentIdSchema,
+  PlayerIdSchema,
+} from '../identity/semantic-ids';
 
 export const MatchIntentStateV1Schema = z.enum([
   'inactive',
@@ -43,12 +47,12 @@ export const ActivateMatchIntentReceiptV1Schema =
 
 export const ActivateMatchIntentCommandV1Schema = z.object({
   filters: MatchIntentFiltersV1Schema,
-  idempotencyKey: z.string().min(16).max(200),
+  idempotencyKey: IdempotencyKeySchema,
   expectedVersion: z.number().int().positive().optional(),
 });
 
 export const PauseMatchIntentCommandV1Schema = z.object({
-  idempotencyKey: z.string().min(16).max(200),
+  idempotencyKey: IdempotencyKeySchema,
   expectedVersion: z.number().int().positive(),
 });
 

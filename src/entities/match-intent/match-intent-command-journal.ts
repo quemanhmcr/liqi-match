@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import {
   AccountIdSchema,
+  IdempotencyKeySchema,
   MatchIntentFiltersV1Schema,
   type MatchIntentFiltersV1,
 } from '@/shared/contracts/core-v1';
@@ -11,18 +12,18 @@ const activationEntrySchema = z.object({
   accountId: AccountIdSchema,
   expectedVersion: z.number().int().positive().nullable(),
   filters: MatchIntentFiltersV1Schema,
-  idempotencyKey: z.string().min(16).max(200),
+  idempotencyKey: IdempotencyKeySchema,
   version: z.literal(1),
 });
 
 const commandIdentitySchema = z.object({
-  idempotencyKey: z.string().min(16).max(200),
+  idempotencyKey: IdempotencyKeySchema,
 });
 
 const pauseEntrySchema = z.object({
   accountId: AccountIdSchema,
   expectedVersion: z.number().int().positive(),
-  idempotencyKey: z.string().min(16).max(200),
+  idempotencyKey: IdempotencyKeySchema,
   version: z.literal(1),
 });
 

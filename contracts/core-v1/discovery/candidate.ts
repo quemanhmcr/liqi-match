@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PlayerIdSchema } from '../identity/semantic-ids';
+import { IdempotencyKeySchema, PlayerIdSchema } from '../identity/semantic-ids';
 import { PlayerSummaryV1Schema } from '../profile/player-summary';
 
 export const RelationshipStateV1Schema = z.enum([
@@ -33,7 +33,7 @@ export const DiscoveryCursorV1Schema = z.object({
 export const PlayerDecisionCommandV1Schema = z.object({
   targetPlayerId: PlayerIdSchema,
   decision: z.enum(['like', 'pass']),
-  idempotencyKey: z.string().min(16).max(200),
+  idempotencyKey: IdempotencyKeySchema,
   correlationId: z.string().uuid(),
   expectedIntentVersion: z.number().int().positive(),
   expectedTargetProfileVersion: z.number().int().nonnegative(),
