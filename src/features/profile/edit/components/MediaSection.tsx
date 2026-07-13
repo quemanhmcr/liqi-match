@@ -26,8 +26,8 @@ export function MediaSection({
 }) {
   const avatar = media.staged.avatar;
   const cover = media.staged.cover;
-  const avatarUrl = avatar?.asset.uri ?? media.avatarUrl;
-  const coverUrl = cover?.asset.uri ?? media.coverUrl;
+  const avatarUrl = mediaPreviewUrl(avatar, media.avatarUrl);
+  const coverUrl = mediaPreviewUrl(cover, media.coverUrl);
 
   return (
     <ProfileEditSection
@@ -151,4 +151,12 @@ function mediaStatusLabel(status: string) {
   if (status === 'uploaded-unassociated') return 'Đã upload · chờ liên kết';
   if (status === 'associated') return 'Đã liên kết';
   return 'Cần chọn lại hoặc retry';
+}
+
+function mediaPreviewUrl(
+  item: ProfileEditMedia['staged']['avatar'] | undefined,
+  fallback: string | undefined,
+) {
+  if (item?.uploadedAssetId && item.uploadedUrl) return item.uploadedUrl;
+  return item?.asset.uri ?? fallback;
 }

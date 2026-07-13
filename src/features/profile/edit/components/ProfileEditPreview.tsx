@@ -33,8 +33,14 @@ export function ProfileEditPreview({
     (roleId) =>
       draft.roles.find((role) => role.id === roleId)?.label ?? 'Lane cũ',
   );
-  const avatarUrl = form.media.staged.avatar?.asset.uri ?? form.media.avatarUrl;
-  const coverUrl = form.media.staged.cover?.asset.uri ?? form.media.coverUrl;
+  const avatarUrl = mediaPreviewUrl(
+    form.media.staged.avatar,
+    form.media.avatarUrl,
+  );
+  const coverUrl = mediaPreviewUrl(
+    form.media.staged.cover,
+    form.media.coverUrl,
+  );
 
   return (
     <LiquidCard
@@ -104,4 +110,12 @@ export function ProfileEditPreview({
       </ProfileText>
     </LiquidCard>
   );
+}
+
+function mediaPreviewUrl(
+  item: ProfileEditForm['media']['staged']['avatar'] | undefined,
+  fallback: string | undefined,
+) {
+  if (item?.uploadedAssetId && item.uploadedUrl) return item.uploadedUrl;
+  return item?.asset.uri ?? fallback;
 }

@@ -1,50 +1,46 @@
-import type { ProfileEditForm } from '../model/profile-edit-model';
-import {
-  ProfileEditSection,
-  ProfileEditStringMultiGroup,
-} from './ProfileEditPrimitives';
+import { View } from 'react-native';
 
-const temporaryAvailabilityOptions = [
-  'Sáng',
-  'Trưa',
-  'Chiều',
-  'Tối',
-  'Khuya',
-] as const;
+import { LiquidChip } from '@/shared/components/liquid';
+
+import { ProfileText } from '../../components/ProfileShared';
+import type { ProfileEditForm } from '../model/profile-edit-model';
+import { ProfileEditSection } from './ProfileEditPrimitives';
+import { profileEditStyles as styles } from './profile-edit-styles';
 
 export function AvailabilitySection({
   availability,
-  onChange,
-  onLimitReached,
 }: {
   availability: ProfileEditForm['availability'];
-  onChange: (availability: ProfileEditForm['availability']) => void;
-  onLimitReached: () => void;
 }) {
+  const presets = availability.presets ?? [];
   return (
     <ProfileEditSection
       icon="calendar-outline"
-      subtitle="Hiện chỉ cập nhật preset đã tồn tại. Recurring slots sẽ dùng primitive chung sau khi contract được merge."
+      subtitle="Chỉ đọc cho đến khi primitive availability chung được merge. Profile Edit không tự sao chép catalog hoặc logic recurring slots."
       title="Thời gian chơi"
     >
-      <ProfileEditStringMultiGroup
-        label="Khung giờ thường chơi"
-        limit={5}
-        onToggle={(value) => {
-          const current = availability.presets ?? [];
-          if (current.includes(value)) {
-            onChange({ presets: current.filter((item) => item !== value) });
-            return;
-          }
-          if (current.length >= 5) {
-            onLimitReached();
-            return;
-          }
-          onChange({ presets: [...current, value] });
-        }}
-        options={temporaryAvailabilityOptions}
-        selected={availability.presets}
-      />
+      {presets.length ? (
+        <View style={styles.chipWrap}>
+          {presets.map((preset) => (
+            <LiquidChip
+              accessibilityLabel={`Khung giờ hiện tại ${preset}`}
+              density="compact"
+              disabled
+              key={preset}
+              selected
+              textStyle={styles.chipText}
+              variant="purple"
+            >
+              {preset}
+            </LiquidChip>
+          ))}
+        </View>
+      ) : (
+        <ProfileText style={styles.errorText}>
+          Chưa có availability. Field này sẽ không được tự điền hoặc lưu bằng
+          logic tạm.
+        </ProfileText>
+      )}
     </ProfileEditSection>
   );
 }
