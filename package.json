@@ -59,7 +59,11 @@
     "jest-expo": "~56.0.5",
     "patch-package": "^8.0.1",
     "prettier": "^3.9.4",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "json-schema-to-typescript": "^15.0.4",
+    "json-schema-to-zod": "^2.8.1"
   },
   "scripts": {
     "start": "expo start --dev-client",
@@ -124,8 +128,9 @@
     "task:review": "node scripts/worktree/worktree-cli.cjs overlay",
     "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
     "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
-    "contracts:check": "node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts src/contracts/__tests__/mission1-provider-contracts.test.ts",
-    "match-authority:check": "node scripts/contracts/check-match-authority-v1.cjs"
+    "contracts:check": "node scripts/contracts/generate-core-v1.cjs --check && node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts src/contracts/__tests__/mission1-provider-contracts.test.ts",
+    "match-authority:check": "node scripts/contracts/check-match-authority-v1.cjs",
+    "contracts:generate": "node scripts/contracts/generate-core-v1.cjs"
   },
   "overrides": {
     "xcode": {

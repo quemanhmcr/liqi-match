@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.liqi.app/core-v1/messagesent-v1.schema.json",
+  "title": "MessageSentV1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Globally unique event identifier."
+    },
+    "eventType": {
+      "const": "message.sent.v1"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC event time."
+    },
+    "correlationId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Cross-mission correlation identifier."
+    },
+    "causationId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Identifier of the command or event that caused this event."
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "message": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "messageId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "MessageId."
+            },
+            "conversationId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "ConversationId."
+            },
+            "senderPlayerId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "PlayerId."
+            },
+            "clientMessageId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128,
+              "description": "Client-generated idempotency identifier scoped to sender and conversation."
+            },
+            "sequence": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "content": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "text"
+                    },
+                    "text": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4000
+                    }
+                  },
+                  "required": ["kind", "text"]
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "media"
+                    },
+                    "assetId": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 128,
+                      "description": "Authoritative media asset identifier."
+                    },
+                    "caption": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 4000
+                    }
+                  },
+                  "required": ["kind", "assetId"]
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "kind": {
+                      "const": "system"
+                    },
+                    "eventType": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 120
+                    }
+                  },
+                  "required": ["kind", "eventType"]
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string",
+              "format": "date-time",
+              "description": "Authoritative server creation time."
+            }
+          },
+          "required": [
+            "messageId",
+            "conversationId",
+            "senderPlayerId",
+            "clientMessageId",
+            "sequence",
+            "content",
+            "createdAt"
+          ]
+        },
+        "recipientPlayerIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "description": "PlayerId."
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        }
+      },
+      "required": ["message", "recipientPlayerIds"]
+    }
+  },
+  "required": ["eventId", "eventType", "occurredAt", "correlationId", "payload"]
+}

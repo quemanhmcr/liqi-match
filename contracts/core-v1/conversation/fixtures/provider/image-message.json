@@ -1,0 +1,52 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "message-v1",
+      "data": {
+        "messageId": "30000000-0000-0000-0000-000000000002",
+        "conversationId": "20000000-0000-0000-0000-000000000001",
+        "senderPlayerId": "00000000-0000-0000-0000-0000000000a1",
+        "clientMessageId": "client-a-0002",
+        "sequence": 2,
+        "content": {
+          "kind": "media",
+          "assetId": "40000000-0000-0000-0000-000000000001",
+          "caption": "Build mình đang dùng"
+        },
+        "createdAt": "2026-07-14T08:02:00.000Z"
+      }
+    },
+    {
+      "schema": "message-sent-v1",
+      "data": {
+        "eventId": "evt-message-002",
+        "eventType": "message.sent.v1",
+        "occurredAt": "2026-07-14T08:00:00.000Z",
+        "correlationId": "corr-match-loop-001",
+        "payload": {
+          "message": {
+            "messageId": "30000000-0000-0000-0000-000000000002",
+            "conversationId": "20000000-0000-0000-0000-000000000001",
+            "senderPlayerId": "00000000-0000-0000-0000-0000000000a1",
+            "clientMessageId": "client-a-0002",
+            "sequence": 2,
+            "content": {
+              "kind": "media",
+              "assetId": "40000000-0000-0000-0000-000000000001",
+              "caption": "Build mình đang dùng"
+            },
+            "createdAt": "2026-07-14T08:02:00.000Z"
+          },
+          "recipientPlayerIds": ["00000000-0000-0000-0000-0000000000b2"]
+        },
+        "causationId": "client-a-0002"
+      }
+    }
+  ],
+  "expectation": {
+    "attachmentAssociationCount": 1,
+    "messageCreateCount": 1,
+    "sequence": 2
+  }
+}

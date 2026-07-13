@@ -1,11 +1,18 @@
 # Core V1 executable contracts
 
-The TypeScript/Zod modules in this directory are the single executable semantic
-authority for the Production Match Loop v1. Types are inferred from runtime
-schemas, so provider and consumer code cannot drift from validation semantics.
-JSON fixtures are compatibility vectors and are validated by `contracts:check`.
+This directory is the single executable semantic authority for Production Match
+Loop v1.
 
-Ownership follows `compatibility-manifest.json`. Identity, lifecycle, profile,
-discovery, match, conversation, notification, events, and errors stay in their
-bounded files; no second manifest or generated schema tree may redefine them.
-Markdown explains decisions only and is not an executable authority.
+Shared identity, lifecycle, profile, discovery, match, notification, event, and
+error contracts are TypeScript/Zod modules. Types are inferred from runtime
+schemas so provider and consumer validation cannot drift.
+
+The conversation bounded context uses JSON Schema under `conversation/` and its
+conversation-owned event schemas. Its generated TypeScript/Zod transport
+artifacts live under `src/features/messages/contracts/generated`. Cross-mission
+events such as match bootstrap and notification remain owned by
+`events/events.ts`; a bounded generator must not redefine them.
+
+JSON fixtures are compatibility vectors validated by `contracts:check`.
+Ownership follows `compatibility-manifest.json`. Markdown explains decisions but
+never overrides executable contracts.

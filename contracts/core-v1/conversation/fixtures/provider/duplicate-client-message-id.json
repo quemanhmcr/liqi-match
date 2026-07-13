@@ -1,0 +1,35 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "send-message-command-v1",
+      "data": {
+        "conversationId": "20000000-0000-0000-0000-000000000001",
+        "clientMessageId": "client-a-retry",
+        "content": {
+          "kind": "text",
+          "text": "Retry-safe"
+        },
+        "clientCreatedAt": "2026-07-14T08:03:00.000Z",
+        "correlationId": "corr-send-retry"
+      }
+    },
+    {
+      "schema": "send-message-command-v1",
+      "data": {
+        "conversationId": "20000000-0000-0000-0000-000000000001",
+        "clientMessageId": "client-a-retry",
+        "content": {
+          "kind": "text",
+          "text": "Retry-safe"
+        },
+        "clientCreatedAt": "2026-07-14T08:03:00.000Z",
+        "correlationId": "corr-send-retry"
+      }
+    }
+  ],
+  "expectation": {
+    "messageCreateCount": 1,
+    "returnsSameMessage": true
+  }
+}

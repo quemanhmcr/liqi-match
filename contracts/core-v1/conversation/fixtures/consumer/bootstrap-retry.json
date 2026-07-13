@@ -1,0 +1,27 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "conversation-bootstrap-requested-v1",
+      "data": {
+        "eventId": "evt-bootstrap-002",
+        "eventType": "conversation.bootstrap_requested.v1",
+        "occurredAt": "2026-07-14T08:00:00.000Z",
+        "correlationId": "corr-match-loop-001",
+        "payload": {
+          "matchId": "10000000-0000-0000-0000-000000000001",
+          "participantIds": [
+            "00000000-0000-0000-0000-0000000000a1",
+            "00000000-0000-0000-0000-0000000000b2"
+          ],
+          "idempotencyKey": "bootstrap:match:10000000-0000-0000-0000-000000000001"
+        }
+      }
+    }
+  ],
+  "expectation": {
+    "conversationCreateCount": 0,
+    "returnsSameConversation": true,
+    "result": "idempotent_replay"
+  }
+}

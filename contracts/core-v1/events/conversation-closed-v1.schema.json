@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.liqi.app/core-v1/conversationclosed-v1.schema.json",
+  "title": "ConversationClosedV1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Globally unique event identifier."
+    },
+    "eventType": {
+      "const": "conversation.closed.v1"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "UTC event time."
+    },
+    "correlationId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Cross-mission correlation identifier."
+    },
+    "causationId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "Identifier of the command or event that caused this event."
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "conversationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "ConversationId."
+        },
+        "matchId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "description": "MatchId."
+        },
+        "reason": {
+          "enum": ["unmatched", "blocked", "retention", "administrative"]
+        },
+        "closedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Authoritative close time."
+        },
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": ["conversationId", "matchId", "reason", "closedAt", "version"]
+    }
+  },
+  "required": ["eventId", "eventType", "occurredAt", "correlationId", "payload"]
+}
