@@ -28,7 +28,17 @@ jest.mock(
 );
 
 jest.mock('@/features/onboarding/services/onboarding-profile-service', () => ({
-  completeOnboardingProfile: jest.fn(async () => true),
+  completeOnboardingProfile: jest.fn(async () => ({
+    completed: true,
+    warnings: [
+      {
+        code: 'lane_priority_not_persisted',
+        message: 'Current backend does not persist lane priority.',
+        path: 'laneSelection',
+        severity: 'warning',
+      },
+    ],
+  })),
 }));
 
 const mockCompleteOnboardingProfile = jest.mocked(completeOnboardingProfile);
@@ -43,6 +53,7 @@ describe('ProfileMediaScreen', () => {
       envelope: onboardingEnvelope(),
       hydration: 'ready',
       hydrationError: null,
+      migrationIssues: [],
       persistenceError: null,
       source: 'persisted',
     });
@@ -137,6 +148,12 @@ describe('ProfileMediaScreen', () => {
       );
     });
     expect(mockCompleteOnboardingProfile).toHaveBeenCalledTimes(1);
+    expect(
+      usePersistedOnboardingDraftStore.getState().envelope?.data
+        .compatibilityWarnings,
+    ).toEqual([
+      expect.objectContaining({ code: 'lane_priority_not_persisted' }),
+    ]);
   });
 
   it('keeps media_pending when an upload fails after core completion', async () => {

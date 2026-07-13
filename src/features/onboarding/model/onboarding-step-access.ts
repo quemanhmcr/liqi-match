@@ -1,3 +1,8 @@
+import {
+  CompletedHabitAnswersSchema,
+  CompletedProfileDraftSchema,
+} from '@/entities/player-profile';
+
 import type {
   OnboardingDraftData,
   OnboardingDraftEnvelope,
@@ -80,13 +85,27 @@ export function resolveOnboardingStepAccess(input: {
 export function findFirstIncompleteStep(
   data: OnboardingDraftData,
 ): OnboardingStep | null {
-  if (!data.profileBasics?.gender) return 'profile_setup';
-  if (!data.rankId) return 'rank';
-  if (!data.laneIds || data.laneIds.length < 1 || data.laneIds.length > 2) {
-    return 'lane';
+  const profile = data.profile;
+  const basics = profile.profileBasics;
+  if (
+    basics.displayName.trim().length < 2 ||
+    !basics.gameHandle ||
+    basics.gameHandle.trim().length < 2 ||
+    !basics.genderId
+  ) {
+    return 'profile_setup';
   }
-  if (!data.heroIds || data.heroIds.length !== 3) return 'hero_selection';
-  if (!hasCompleteHabits(data)) return 'habits';
+  if (!profile.rankId) return 'rank';
+  if (!profile.laneSelection) return 'lane';
+  if (profile.favoriteHeroes.length !== 3) return 'hero_selection';
+  if (
+    !CompletedHabitAnswersSchema.safeParse(profile.habits).success ||
+    !profile.timezone ||
+    !profile.recurringAvailability ||
+    profile.recurringAvailability.slots.length === 0
+  ) {
+    return 'habits';
+  }
   return 'profile_media';
 }
 
@@ -104,25 +123,7 @@ export function onboardingStepFromPathname(
 }
 
 export function hasCompleteOnboardingDraft(data: OnboardingDraftData) {
-  return findFirstIncompleteStep(data) === 'profile_media';
-}
-
-function hasCompleteHabits(data: OnboardingDraftData) {
-  const habits = data.habits;
-  return Boolean(
-    habits &&
-    habits.communication_channels.length > 0 &&
-    habits.online_time_presets.length > 0 &&
-    habits.decision_style &&
-    habits.session_length &&
-    habits.team_goals.length > 0 &&
-    habits.seriousness &&
-    habits.strategy_styles.length > 0 &&
-    habits.team_atmospheres.length > 0 &&
-    habits.feedback_style &&
-    habits.loss_response &&
-    habits.comeback_response,
-  );
+  return CompletedProfileDraftSchema.safeParse(data.profile).success;
 }
 
 function stepIndex(step: OnboardingStep) {

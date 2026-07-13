@@ -283,16 +283,16 @@ export default function ProfileMediaScreen() {
       }
 
       if (current.status !== 'media_pending') {
-        const completed = await completeOnboardingProfile(
+        const completion = await completeOnboardingProfile(
           session,
           current.data,
         );
-        if (!completed) {
+        if (!completion.completed) {
           throw new Error(
             'Hồ sơ chưa được xác nhận hoàn tất. Vui lòng thử lại.',
           );
         }
-        await markOnboardingCoreProfileCompleted();
+        await markOnboardingCoreProfileCompleted(completion.warnings);
         current = getPersistedOnboardingDraft();
       }
 

@@ -1,7 +1,23 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 
-import type { HabitPayload } from '../habit-options';
+import {
+  GENDER_CATALOG,
+  LANE_CATALOG,
+  OnboardingDraftSchema,
+  PROFILE_LIMITS,
+  RANK_CATALOG,
+  TimezoneSchema,
+  adaptLegacyHabitAnswers,
+  buildRecurringAvailabilityFromTimePreferences,
+  createEmptyOnboardingDraft as createEmptyProfileDraft,
+  resolveCatalogId,
+  resolveHeroId,
+  type HeroId,
+  type LegacyProfileAdapterIssue,
+  type OnboardingDraft,
+} from '@/entities/player-profile';
+
 import {
   isPendingMediaSelection,
   sanitizeOnboardingMediaItem,
@@ -9,9 +25,8 @@ import {
   type PendingMediaSelection,
 } from './onboarding-media-state';
 
-export const ONBOARDING_DRAFT_VERSION = 1;
-
-export type ProfileGender = 'male' | 'female' | 'hidden';
+export const ONBOARDING_DRAFT_VERSION = 2 as const;
+const LEGACY_ONBOARDING_DRAFT_VERSION = 1 as const;
 
 export type OnboardingStatus =
   'not_started' | 'in_progress' | 'media_pending' | 'completed';
@@ -24,19 +39,24 @@ export type OnboardingStep =
   | 'habits'
   | 'profile_media';
 
+export type OnboardingDraftMigrationIssue = Readonly<{
+  code:
+    | 'legacy_availability_expanded_all_days'
+    | 'legacy_completed_status_downgraded'
+    | 'legacy_game_handle_missing'
+    | 'legacy_value_invalid';
+  message: string;
+  path: string;
+  severity: 'error' | 'warning';
+}>;
+
 export type OnboardingDraftData = {
+  compatibilityWarnings?: LegacyProfileAdapterIssue[];
   completedAt?: string;
   coreProfileCompletedAt?: string;
-  habits?: HabitPayload;
-  heroIds?: string[];
-  laneIds?: string[];
   mediaQueue?: OnboardingMediaQueueItem[];
   pendingMediaSelection?: PendingMediaSelection;
-  profileBasics?: {
-    displayName?: string;
-    gender?: ProfileGender;
-  };
-  rankId?: string;
+  profile: OnboardingDraft;
 };
 
 export type OnboardingDraftEnvelope = {
@@ -57,6 +77,7 @@ type PersistedOnboardingDraftState = {
   envelope: OnboardingDraftEnvelope | null;
   hydration: OnboardingDraftHydration;
   hydrationError: string | null;
+  migrationIssues: OnboardingDraftMigrationIssue[];
   persistenceError: string | null;
   source: DraftSource;
 };
@@ -66,6 +87,7 @@ const initialState: PersistedOnboardingDraftState = {
   envelope: null,
   hydration: 'idle',
   hydrationError: null,
+  migrationIssues: [],
   persistenceError: null,
   source: 'empty',
 };
@@ -80,13 +102,17 @@ export function onboardingDraftStorageKey(accountId: string) {
   return `@liqi/onboarding-draft/v${ONBOARDING_DRAFT_VERSION}/${encodeURIComponent(accountId)}`;
 }
 
+export function legacyOnboardingDraftStorageKey(accountId: string) {
+  return `@liqi/onboarding-draft/v${LEGACY_ONBOARDING_DRAFT_VERSION}/${encodeURIComponent(accountId)}`;
+}
+
 export function createEmptyOnboardingDraft(
   accountId: string,
 ): OnboardingDraftEnvelope {
   return {
     accountId,
     currentStep: 'profile_setup',
-    data: {},
+    data: { profile: createEmptyProfileDraft() },
     status: 'not_started',
     updatedAt: nowIso(),
     version: ONBOARDING_DRAFT_VERSION,
@@ -100,28 +126,54 @@ export async function hydratePersistedOnboardingDraft(accountId: string) {
     envelope: null,
     hydration: 'hydrating',
     hydrationError: null,
+    migrationIssues: [],
     persistenceError: null,
     source: 'empty',
   });
 
   try {
     await operationQueue.catch(() => undefined);
-    const raw = await AsyncStorage.getItem(
-      onboardingDraftStorageKey(accountId),
-    );
+    const currentKey = onboardingDraftStorageKey(accountId);
+    const legacyKey = legacyOnboardingDraftStorageKey(accountId);
+    const currentRaw = await AsyncStorage.getItem(currentKey);
+    const legacyRaw = currentRaw ? null : await AsyncStorage.getItem(legacyKey);
     if (generation !== hydrationGeneration) return;
 
-    const envelope = raw
-      ? migrateOnboardingDraft(JSON.parse(raw), accountId)
-      : createEmptyOnboardingDraft(accountId);
+    if (!currentRaw && !legacyRaw) {
+      usePersistedOnboardingDraftStore.setState({
+        accountId,
+        envelope: createEmptyOnboardingDraft(accountId),
+        hydration: 'ready',
+        hydrationError: null,
+        migrationIssues: [],
+        persistenceError: null,
+        source: 'empty',
+      });
+      return;
+    }
+
+    const parsedRaw = JSON.parse(currentRaw ?? legacyRaw!);
+    const migrated = migrateOnboardingDraftWithIssues(parsedRaw, accountId);
+    const requiresRewrite =
+      legacyRaw !== null ||
+      (isRecord(parsedRaw) && parsedRaw.version !== ONBOARDING_DRAFT_VERSION);
+
+    if (requiresRewrite) {
+      await AsyncStorage.setItem(currentKey, JSON.stringify(migrated.envelope));
+    }
+    if (legacyRaw) {
+      await AsyncStorage.removeItem(legacyKey);
+    }
+    if (generation !== hydrationGeneration) return;
 
     usePersistedOnboardingDraftStore.setState({
       accountId,
-      envelope,
+      envelope: migrated.envelope,
       hydration: 'ready',
       hydrationError: null,
+      migrationIssues: migrated.issues,
       persistenceError: null,
-      source: raw ? 'persisted' : 'empty',
+      source: 'persisted',
     });
   } catch (error) {
     if (generation !== hydrationGeneration) return;
@@ -133,6 +185,7 @@ export async function hydratePersistedOnboardingDraft(accountId: string) {
         error,
         'Không thể khôi phục tiến độ onboarding.',
       ),
+      migrationIssues: [],
       persistenceError: null,
       source: 'empty',
     });
@@ -147,6 +200,7 @@ export function clearActivePersistedOnboardingDraft() {
 export async function resetPersistedOnboardingDraft(accountId: string) {
   return enqueueOperation(async () => {
     await AsyncStorage.removeItem(onboardingDraftStorageKey(accountId));
+    await AsyncStorage.removeItem(legacyOnboardingDraftStorageKey(accountId));
 
     const state = usePersistedOnboardingDraftStore.getState();
     if (state.accountId !== accountId) return;
@@ -156,6 +210,7 @@ export async function resetPersistedOnboardingDraft(accountId: string) {
       envelope: createEmptyOnboardingDraft(accountId),
       hydration: 'ready',
       hydrationError: null,
+      migrationIssues: [],
       persistenceError: null,
       source: 'empty',
     });
@@ -177,7 +232,7 @@ export async function updatePersistedOnboardingDraft(
       throw new Error('Tài khoản đã thay đổi trước khi lưu draft onboarding.');
     }
     const current = requireReadyEnvelope();
-    const next = normalizeEnvelope(update(current), current.accountId);
+    const next = normalizeCurrentEnvelope(update(current), current.accountId);
 
     try {
       await AsyncStorage.setItem(
@@ -210,13 +265,19 @@ export async function updatePersistedOnboardingDraft(
   });
 }
 
-export async function markOnboardingCoreProfileCompleted() {
+export async function markOnboardingCoreProfileCompleted(
+  compatibilityWarnings: LegacyProfileAdapterIssue[],
+) {
   return updatePersistedOnboardingDraft((current) => {
     const timestamp = nowIso();
     return {
       ...current,
       currentStep: 'profile_media',
-      data: { ...current.data, coreProfileCompletedAt: timestamp },
+      data: {
+        ...current.data,
+        compatibilityWarnings,
+        coreProfileCompletedAt: timestamp,
+      },
       status: 'media_pending',
       updatedAt: timestamp,
     };
@@ -236,13 +297,19 @@ export async function markOnboardingCompleted() {
 }
 
 export async function savePersistedOnboardingStep(
-  patch: Partial<OnboardingDraftData>,
+  profilePatch: Partial<OnboardingDraft>,
   nextStep: OnboardingStep,
 ) {
   return updatePersistedOnboardingDraft((current) => ({
     ...current,
     currentStep: nextStep,
-    data: { ...current.data, ...patch },
+    data: {
+      ...current.data,
+      profile: OnboardingDraftSchema.parse({
+        ...current.data.profile,
+        ...profilePatch,
+      }),
+    },
     status: current.status === 'not_started' ? 'in_progress' : current.status,
     updatedAt: nowIso(),
   }));
@@ -258,25 +325,33 @@ export async function patchPersistedOnboardingDraftData(
   }));
 }
 
-/**
- * Versioned deserialization boundary. Future schema owners can add migrations
- * here without changing account isolation, hydration, or write serialization.
- */
 export function migrateOnboardingDraft(
   raw: unknown,
   accountId: string,
 ): OnboardingDraftEnvelope {
-  if (!isRecord(raw)) throw new Error('Draft onboarding không đúng định dạng.');
-  if (raw.version !== ONBOARDING_DRAFT_VERSION) {
-    throw new Error(
-      `Chưa hỗ trợ draft onboarding phiên bản ${String(raw.version)}.`,
-    );
-  }
-
-  return normalizeEnvelope(raw, accountId);
+  return migrateOnboardingDraftWithIssues(raw, accountId).envelope;
 }
 
-function normalizeEnvelope(
+function migrateOnboardingDraftWithIssues(
+  raw: unknown,
+  accountId: string,
+): {
+  envelope: OnboardingDraftEnvelope;
+  issues: OnboardingDraftMigrationIssue[];
+} {
+  if (!isRecord(raw)) throw new Error('Draft onboarding không đúng định dạng.');
+  if (raw.version === ONBOARDING_DRAFT_VERSION) {
+    return { envelope: normalizeCurrentEnvelope(raw, accountId), issues: [] };
+  }
+  if (raw.version === LEGACY_ONBOARDING_DRAFT_VERSION) {
+    return migrateLegacyFeatureEnvelope(raw, accountId);
+  }
+  throw new Error(
+    `Chưa hỗ trợ draft onboarding phiên bản ${String(raw.version)}.`,
+  );
+}
+
+function normalizeCurrentEnvelope(
   raw: unknown,
   accountId: string,
 ): OnboardingDraftEnvelope {
@@ -284,11 +359,15 @@ function normalizeEnvelope(
   if (raw.accountId !== accountId) {
     throw new Error('Draft onboarding không thuộc tài khoản hiện tại.');
   }
+  if (raw.version !== ONBOARDING_DRAFT_VERSION) {
+    throw new Error('Draft onboarding không đúng phiên bản hiện tại.');
+  }
 
+  const data = sanitizeCurrentDraftData(raw.data);
   return {
     accountId,
     currentStep: onboardingStep(raw.currentStep),
-    data: sanitizeDraftData(raw.data),
+    data,
     status: onboardingStatus(raw.status),
     updatedAt:
       typeof raw.updatedAt === 'string' && raw.updatedAt
@@ -296,6 +375,208 @@ function normalizeEnvelope(
         : nowIso(),
     version: ONBOARDING_DRAFT_VERSION,
   };
+}
+
+function migrateLegacyFeatureEnvelope(
+  raw: Record<string, unknown>,
+  accountId: string,
+): {
+  envelope: OnboardingDraftEnvelope;
+  issues: OnboardingDraftMigrationIssue[];
+} {
+  if (raw.accountId !== accountId) {
+    throw new Error('Draft onboarding không thuộc tài khoản hiện tại.');
+  }
+
+  const data = isRecord(raw.data) ? raw.data : {};
+  const issues: OnboardingDraftMigrationIssue[] = [];
+  const mediaQueue = sanitizeMediaQueue(data.mediaQueue);
+  let profile = createEmptyProfileDraft();
+
+  if (isRecord(data.profileBasics)) {
+    const displayName =
+      optionalString(data.profileBasics.displayName)?.trim() ?? '';
+    if (displayName.length > PROFILE_LIMITS.displayName) {
+      return resetLegacyEnvelope(accountId, 'profileBasics.displayName');
+    }
+    const gender = resolveOptionalCatalogValue(
+      GENDER_CATALOG,
+      data.profileBasics.gender,
+    );
+    if (gender === 'invalid') {
+      return resetLegacyEnvelope(accountId, 'profileBasics.gender');
+    }
+    profile = {
+      ...profile,
+      profileBasics: {
+        displayName,
+        gameHandle: null,
+        genderId: gender,
+      },
+    };
+  }
+
+  const rank = resolveOptionalCatalogValue(RANK_CATALOG, data.rankId);
+  if (rank === 'invalid') return resetLegacyEnvelope(accountId, 'rankId');
+  profile = { ...profile, rankId: rank };
+
+  const lanes = resolveLegacyList(LANE_CATALOG, data.laneIds, 2);
+  if (!lanes.ok) return resetLegacyEnvelope(accountId, 'laneIds');
+  profile = {
+    ...profile,
+    laneSelection: lanes.values[0]
+      ? {
+          primary: lanes.values[0],
+          secondary: lanes.values[1] ?? null,
+        }
+      : null,
+  };
+
+  const heroes = resolveLegacyHeroes(data.heroIds);
+  if (!heroes.ok) return resetLegacyEnvelope(accountId, 'heroIds');
+  profile = {
+    ...profile,
+    favoriteHeroes: heroes.values.map((heroId, index) => ({
+      heroId,
+      priority: index + 1,
+    })),
+  };
+
+  const habits = adaptLegacyHabitAnswers(data.habits);
+  if (!habits.lossless) return resetLegacyEnvelope(accountId, 'habits');
+  profile = { ...profile, habits: habits.value };
+
+  const timezone = deviceTimezone();
+  if (timezone) {
+    profile = { ...profile, timezone };
+    if (profile.habits.timePreferenceIds.length > 0) {
+      profile = {
+        ...profile,
+        recurringAvailability: buildRecurringAvailabilityFromTimePreferences({
+          daysOfWeek: [0, 1, 2, 3, 4, 5, 6],
+          timePreferenceIds: profile.habits.timePreferenceIds,
+          timezone,
+        }),
+      };
+      issues.push({
+        code: 'legacy_availability_expanded_all_days',
+        message:
+          'Khung giờ cũ được mở rộng cho cả bảy ngày vì draft cũ không lưu thứ trong tuần.',
+        path: 'profile.recurringAvailability',
+        severity: 'warning',
+      });
+    }
+  }
+
+  issues.push({
+    code: 'legacy_game_handle_missing',
+    message: 'Draft cũ chưa có tên trong game riêng; người dùng cần bổ sung.',
+    path: 'profile.profileBasics.gameHandle',
+    severity: 'warning',
+  });
+
+  const legacyStatus = onboardingStatus(raw.status);
+  const status =
+    legacyStatus === 'media_pending' || legacyStatus === 'completed'
+      ? 'in_progress'
+      : legacyStatus;
+  if (status !== legacyStatus) {
+    issues.push({
+      code: 'legacy_completed_status_downgraded',
+      message:
+        'Trạng thái cũ được đưa về in_progress cho đến khi profile canonical hợp lệ.',
+      path: 'status',
+      severity: 'warning',
+    });
+  }
+
+  const syncedProfile = syncProfileMediaSelection(profile, mediaQueue);
+  return {
+    envelope: {
+      accountId,
+      currentStep: onboardingStep(raw.currentStep),
+      data: {
+        mediaQueue: mediaQueue.length ? mediaQueue : undefined,
+        pendingMediaSelection: isPendingMediaSelection(
+          data.pendingMediaSelection,
+        )
+          ? data.pendingMediaSelection
+          : undefined,
+        profile: syncedProfile,
+      },
+      status,
+      updatedAt:
+        typeof raw.updatedAt === 'string' && raw.updatedAt
+          ? raw.updatedAt
+          : nowIso(),
+      version: ONBOARDING_DRAFT_VERSION,
+    },
+    issues,
+  };
+}
+
+function resetLegacyEnvelope(accountId: string, path: string) {
+  return {
+    envelope: createEmptyOnboardingDraft(accountId),
+    issues: [
+      {
+        code: 'legacy_value_invalid' as const,
+        message:
+          'Draft cũ chứa giá trị không thuộc canonical catalog và đã được đặt lại an toàn.',
+        path,
+        severity: 'error' as const,
+      },
+    ],
+  };
+}
+
+function sanitizeCurrentDraftData(value: unknown): OnboardingDraftData {
+  if (!isRecord(value))
+    throw new Error('Dữ liệu draft onboarding không hợp lệ.');
+  const mediaQueue = sanitizeMediaQueue(value.mediaQueue);
+  const profile = syncProfileMediaSelection(
+    OnboardingDraftSchema.parse(value.profile),
+    mediaQueue,
+  );
+  const data: OnboardingDraftData = { profile };
+
+  if (mediaQueue.length) data.mediaQueue = mediaQueue;
+  if (isPendingMediaSelection(value.pendingMediaSelection)) {
+    data.pendingMediaSelection = value.pendingMediaSelection;
+  }
+  if (typeof value.coreProfileCompletedAt === 'string') {
+    data.coreProfileCompletedAt = value.coreProfileCompletedAt;
+  }
+  if (typeof value.completedAt === 'string') {
+    data.completedAt = value.completedAt;
+  }
+  const warnings = sanitizeCompatibilityWarnings(value.compatibilityWarnings);
+  if (warnings.length) data.compatibilityWarnings = warnings;
+  return data;
+}
+
+function sanitizeMediaQueue(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map(sanitizeOnboardingMediaItem)
+    .filter((item): item is OnboardingMediaQueueItem => Boolean(item));
+}
+
+function syncProfileMediaSelection(
+  profile: OnboardingDraft,
+  mediaQueue: OnboardingMediaQueueItem[],
+): OnboardingDraft {
+  return OnboardingDraftSchema.parse({
+    ...profile,
+    mediaSelection: {
+      avatarSelected: mediaQueue.some((item) => item.slot === 'avatar'),
+      coverSelected: mediaQueue.some((item) => item.slot === 'cover'),
+      wallPositions: mediaQueue
+        .filter((item) => item.slot === 'wall')
+        .map((item) => item.position)
+        .sort((left, right) => left - right),
+    },
+  });
 }
 
 function requireReadyEnvelope() {
@@ -315,56 +596,72 @@ function enqueueOperation<T>(operation: () => Promise<T>): Promise<T> {
   return next;
 }
 
-function sanitizeDraftData(value: unknown): OnboardingDraftData {
-  if (!isRecord(value)) return {};
-  const data: OnboardingDraftData = {};
-
-  if (isRecord(value.profileBasics)) {
-    const displayName = optionalString(value.profileBasics.displayName);
-    const gender = profileGender(value.profileBasics.gender);
-    if (displayName !== undefined || gender !== undefined) {
-      data.profileBasics = { displayName, gender };
-    }
-  }
-  if (typeof value.rankId === 'string' && value.rankId) {
-    data.rankId = value.rankId;
-  }
-  if (isStringArray(value.laneIds)) data.laneIds = [...value.laneIds];
-  if (isStringArray(value.heroIds)) data.heroIds = [...value.heroIds];
-  if (isHabitPayload(value.habits)) data.habits = value.habits;
-  if (Array.isArray(value.mediaQueue)) {
-    data.mediaQueue = value.mediaQueue
-      .map(sanitizeOnboardingMediaItem)
-      .filter((item): item is OnboardingMediaQueueItem => Boolean(item));
-  }
-  if (isPendingMediaSelection(value.pendingMediaSelection)) {
-    data.pendingMediaSelection = value.pendingMediaSelection;
-  }
-  if (typeof value.coreProfileCompletedAt === 'string') {
-    data.coreProfileCompletedAt = value.coreProfileCompletedAt;
-  }
-  if (typeof value.completedAt === 'string') {
-    data.completedAt = value.completedAt;
-  }
-
-  return data;
+function resolveOptionalCatalogValue<
+  const Options extends readonly {
+    id: string;
+    label: string;
+    legacyValue: string;
+  }[],
+>(options: Options, value: unknown): Options[number]['id'] | null | 'invalid' {
+  if (value === null || value === undefined || value === '') return null;
+  const resolved = resolveCatalogId(options, value);
+  return resolved.ok ? resolved.id : 'invalid';
 }
 
-function isHabitPayload(value: unknown): value is HabitPayload {
-  if (!isRecord(value)) return false;
-  return (
-    isStringArray(value.communication_channels) &&
-    isStringArray(value.online_time_presets) &&
-    typeof value.decision_style === 'string' &&
-    typeof value.session_length === 'string' &&
-    isStringArray(value.team_goals) &&
-    typeof value.seriousness === 'string' &&
-    isStringArray(value.strategy_styles) &&
-    isStringArray(value.team_atmospheres) &&
-    typeof value.feedback_style === 'string' &&
-    typeof value.loss_response === 'string' &&
-    typeof value.comeback_response === 'string'
-  );
+function resolveLegacyList<
+  const Options extends readonly {
+    id: string;
+    label: string;
+    legacyValue: string;
+  }[],
+>(options: Options, value: unknown, limit: number) {
+  if (value === null || value === undefined) {
+    return { ok: true as const, values: [] as Options[number]['id'][] };
+  }
+  if (!Array.isArray(value)) return { ok: false as const, values: [] };
+  const values: Options[number]['id'][] = [];
+  for (const item of value) {
+    const resolved = resolveCatalogId(options, item);
+    if (!resolved.ok) return { ok: false as const, values: [] };
+    if (!values.includes(resolved.id) && values.length < limit) {
+      values.push(resolved.id);
+    }
+  }
+  return { ok: true as const, values };
+}
+
+function resolveLegacyHeroes(
+  value: unknown,
+): { ok: true; values: HeroId[] } | { ok: false; values: [] } {
+  if (value === null || value === undefined) {
+    return { ok: true, values: [] };
+  }
+  if (!Array.isArray(value)) return { ok: false, values: [] };
+  const values: HeroId[] = [];
+  for (const item of value) {
+    const resolved = resolveHeroId(item);
+    if (!resolved.ok) return { ok: false, values: [] };
+    if (
+      !values.includes(resolved.id) &&
+      values.length < PROFILE_LIMITS.favoriteHeroes
+    ) {
+      values.push(resolved.id);
+    }
+  }
+  return { ok: true, values };
+}
+
+function sanitizeCompatibilityWarnings(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is LegacyProfileAdapterIssue => {
+    if (!isRecord(item)) return false;
+    return (
+      typeof item.code === 'string' &&
+      typeof item.message === 'string' &&
+      typeof item.path === 'string' &&
+      (item.severity === 'error' || item.severity === 'warning')
+    );
+  });
 }
 
 function onboardingStatus(value: unknown): OnboardingStatus {
@@ -393,20 +690,18 @@ function onboardingStep(value: unknown): OnboardingStep {
   throw new Error('Bước onboarding không hợp lệ.');
 }
 
-function profileGender(value: unknown) {
-  if (value === 'male' || value === 'female' || value === 'hidden')
-    return value;
-  return undefined;
+function deviceTimezone() {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const parsed = TimezoneSchema.safeParse(timezone);
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((item) => typeof item === 'string')
-  );
 }
 
 function optionalString(value: unknown) {

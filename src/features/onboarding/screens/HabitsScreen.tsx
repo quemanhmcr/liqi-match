@@ -1,7 +1,38 @@
 import { router } from 'expo-router';
 import { useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
+import { appRoutes } from '@/app-shell/navigation/routes';
+import {
+  COMEBACK_RESPONSE_CATALOG,
+  COMMUNICATION_PREFERENCE_CATALOG,
+  CompletedHabitAnswersSchema,
+  DECISION_STYLE_CATALOG,
+  FEEDBACK_STYLE_CATALOG,
+  LOSS_RESPONSE_CATALOG,
+  PROFILE_LIMITS,
+  SERIOUSNESS_CATALOG,
+  SESSION_LENGTH_CATALOG,
+  STRATEGY_STYLE_CATALOG,
+  TEAM_ATMOSPHERE_CATALOG,
+  TEAM_GOAL_CATALOG,
+  TIME_PREFERENCE_CATALOG,
+  TimezoneSchema,
+  buildRecurringAvailabilityFromTimePreferences,
+  type AvailabilityDayOfWeek,
+  type CatalogOption,
+  type ComebackResponseId,
+  type CommunicationPreferenceId,
+  type DecisionStyleId,
+  type FeedbackStyleId,
+  type LossResponseId,
+  type SeriousnessId,
+  type SessionLengthId,
+  type StrategyStyleId,
+  type TeamAtmosphereId,
+  type TeamGoalId,
+  type TimePreferenceId,
+} from '@/entities/player-profile';
 import {
   OnboardingChip,
   OnboardingCinematicShell,
@@ -9,32 +40,30 @@ import {
   OnboardingSecondaryAction,
   OnboardingSection,
 } from '@/features/onboarding/components/OnboardingCinematic';
-import { appRoutes } from '@/app-shell/navigation/routes';
-import {
-  comebackResponses,
-  communicationChannels,
-  decisionStyles,
-  feedbackStyles,
-  lossResponses,
-  seriousnessDescriptions,
-  sessionLengths,
-  strategyStyles,
-  teamAtmospheres,
-  teamGoals,
-  timePresets,
-  type HabitPayload,
-  type Seriousness,
-  type TimePreset,
-} from '@/features/onboarding/habit-options';
+
 import {
   savePersistedOnboardingStep,
   usePersistedOnboardingDraftStore,
 } from '../model/persisted-onboarding-draft';
 
-const MAX_COMMUNICATION_CHANNELS = 2;
-const MAX_TEAM_GOALS = 2;
-const MAX_STRATEGY_STYLES = 3;
-const MAX_TEAM_ATMOSPHERES = 2;
+const dayOptions: readonly {
+  id: AvailabilityDayOfWeek;
+  label: string;
+}[] = [
+  { id: 1, label: 'T2' },
+  { id: 2, label: 'T3' },
+  { id: 3, label: 'T4' },
+  { id: 4, label: 'T5' },
+  { id: 5, label: 'T6' },
+  { id: 6, label: 'T7' },
+  { id: 0, label: 'CN' },
+];
+
+const seriousnessDescriptions: Record<SeriousnessId, string> = {
+  'seriousness.balanced': 'Muốn thắng nhưng vẫn giữ không khí dễ chịu.',
+  'seriousness.casual': 'Ưu tiên vui vẻ, không áp lực kết quả.',
+  'seriousness.competitive': 'Ưu tiên hiệu suất, tập trung và cải thiện.',
+};
 
 type ChipProps = {
   disabled?: boolean;
@@ -44,24 +73,7 @@ type ChipProps = {
   selected: boolean;
 };
 
-type MultiSectionProps = {
-  limit?: number;
-  onToggle: (value: string) => void;
-  options: readonly string[];
-  selected: string[];
-  subtitle?: string;
-  title: string;
-};
-
-type SingleSectionProps = {
-  onSelect: (value: string) => void;
-  options: readonly string[];
-  selected?: string;
-  subtitle?: string;
-  title: string;
-};
-
-function toggleValue<T extends string>(current: T[], value: T, limit?: number) {
+function toggleValue<T>(current: T[], value: T, limit?: number) {
   if (current.includes(value)) return current.filter((item) => item !== value);
   if (limit && current.length >= limit) return current;
   return [...current, value];
@@ -79,14 +91,21 @@ function Chip({ disabled, label, meta, onPress, selected }: ChipProps) {
   );
 }
 
-function MultiSection({
+function MultiCatalogSection<Id extends string>({
   limit,
   onToggle,
   options,
   selected,
   subtitle,
   title,
-}: MultiSectionProps) {
+}: {
+  limit?: number;
+  onToggle: (value: Id) => void;
+  options: readonly CatalogOption<Id>[];
+  selected: Id[];
+  subtitle?: string;
+  title: string;
+}) {
   return (
     <OnboardingSection
       meta={limit ? `${selected.length}/${limit}` : undefined}
@@ -98,15 +117,14 @@ function MultiSection({
           const disabled =
             Boolean(limit) &&
             selected.length >= Number(limit) &&
-            !selected.includes(option);
-
+            !selected.includes(option.id);
           return (
             <Chip
               disabled={disabled}
-              key={option}
-              label={option}
-              onPress={() => onToggle(option)}
-              selected={selected.includes(option)}
+              key={option.id}
+              label={option.label}
+              onPress={() => onToggle(option.id)}
+              selected={selected.includes(option.id)}
             />
           );
         })}
@@ -115,52 +133,28 @@ function MultiSection({
   );
 }
 
-function SingleSection({
+function SingleCatalogSection<Id extends string>({
   onSelect,
   options,
   selected,
   subtitle,
   title,
-}: SingleSectionProps) {
+}: {
+  onSelect: (value: Id) => void;
+  options: readonly CatalogOption<Id>[];
+  selected: Id | null;
+  subtitle?: string;
+  title: string;
+}) {
   return (
     <OnboardingSection subtitle={subtitle} title={title}>
       <View style={styles.chipWrap}>
         {options.map((option) => (
           <Chip
-            key={option}
-            label={option}
-            onPress={() => onSelect(option)}
-            selected={selected === option}
-          />
-        ))}
-      </View>
-    </OnboardingSection>
-  );
-}
-
-function TimeSection({
-  selected,
-  toggleTime,
-}: {
-  selected: TimePreset[];
-  toggleTime: (value: TimePreset) => void;
-}) {
-  const options = Object.keys(timePresets) as TimePreset[];
-
-  return (
-    <OnboardingSection
-      meta={`${selected.length}/5`}
-      subtitle="Chọn các khung giờ bạn thường chơi để match đúng nhịp online."
-      title="Thời gian online"
-    >
-      <View style={styles.timeGrid}>
-        {options.map((option) => (
-          <Chip
-            key={option}
-            label={option}
-            meta={timePresets[option]}
-            onPress={() => toggleTime(option)}
-            selected={selected.includes(option)}
+            key={option.id}
+            label={option.label}
+            onPress={() => onSelect(option.id)}
+            selected={selected === option.id}
           />
         ))}
       </View>
@@ -169,76 +163,76 @@ function TimeSection({
 }
 
 export default function HabitsScreen() {
-  const persistedHabits = usePersistedOnboardingDraftStore(
-    (state) => state.envelope?.data.habits,
+  const persistedProfile = usePersistedOnboardingDraftStore(
+    (state) => state.envelope?.data.profile,
   );
-  const [communication, setCommunication] = useState<string[]>(
-    persistedHabits?.communication_channels ?? [],
+  const persistedHabits = persistedProfile?.habits;
+  const [communication, setCommunication] = useState<
+    CommunicationPreferenceId[]
+  >(persistedHabits?.communicationPreferenceIds ?? []);
+  const [onlineTimes, setOnlineTimes] = useState<TimePreferenceId[]>(
+    persistedHabits?.timePreferenceIds ?? [],
   );
-  const [onlineTimes, setOnlineTimes] = useState<TimePreset[]>(
-    (persistedHabits?.online_time_presets ?? []).filter(isTimePreset),
+  const [days, setDays] = useState<AvailabilityDayOfWeek[]>(() =>
+    persistedProfile?.recurringAvailability
+      ? [
+          ...new Set(
+            persistedProfile.recurringAvailability.slots.map(
+              (slot) => slot.dayOfWeek,
+            ),
+          ),
+        ]
+      : [],
   );
-  const [decisionStyle, setDecisionStyle] = useState<string | undefined>(
-    persistedHabits?.decision_style,
+  const [decisionStyle, setDecisionStyle] = useState<DecisionStyleId | null>(
+    persistedHabits?.decisionStyleId ?? null,
   );
-  const [sessionLength, setSessionLength] = useState<string | undefined>(
-    persistedHabits?.session_length,
+  const [sessionLength, setSessionLength] = useState<SessionLengthId | null>(
+    persistedHabits?.sessionLengthId ?? null,
   );
-  const [goals, setGoals] = useState<string[]>(
-    persistedHabits?.team_goals ?? [],
+  const [goals, setGoals] = useState<TeamGoalId[]>(
+    persistedHabits?.teamGoalIds ?? [],
   );
-  const [seriousness, setSeriousness] = useState<Seriousness | undefined>(
-    isSeriousness(persistedHabits?.seriousness)
-      ? persistedHabits.seriousness
-      : undefined,
+  const [seriousness, setSeriousness] = useState<SeriousnessId | null>(
+    persistedHabits?.seriousnessId ?? null,
   );
-  const [strategies, setStrategies] = useState<string[]>(
-    persistedHabits?.strategy_styles ?? [],
+  const [strategies, setStrategies] = useState<StrategyStyleId[]>(
+    persistedHabits?.strategyStyleIds ?? [],
   );
-  const [atmospheres, setAtmospheres] = useState<string[]>(
-    persistedHabits?.team_atmospheres ?? [],
+  const [atmospheres, setAtmospheres] = useState<TeamAtmosphereId[]>(
+    persistedHabits?.teamAtmosphereIds ?? [],
   );
-  const [feedbackStyle, setFeedbackStyle] = useState<string | undefined>(
-    persistedHabits?.feedback_style,
+  const [feedbackStyle, setFeedbackStyle] = useState<FeedbackStyleId | null>(
+    persistedHabits?.feedbackStyleId ?? null,
   );
-  const [lossResponse, setLossResponse] = useState<string | undefined>(
-    persistedHabits?.loss_response,
+  const [lossResponse, setLossResponse] = useState<LossResponseId | null>(
+    persistedHabits?.lossResponseId ?? null,
   );
-  const [comebackResponse, setComebackResponse] = useState<string | undefined>(
-    persistedHabits?.comeback_response,
+  const [comebackResponse, setComebackResponse] =
+    useState<ComebackResponseId | null>(
+      persistedHabits?.comebackResponseId ?? null,
+    );
+  const [timezone] = useState(
+    () => persistedProfile?.timezone ?? detectDeviceTimezone(),
   );
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  const payload = useMemo<HabitPayload | null>(() => {
-    if (
-      communication.length === 0 ||
-      onlineTimes.length === 0 ||
-      !decisionStyle ||
-      !sessionLength ||
-      goals.length === 0 ||
-      !seriousness ||
-      strategies.length === 0 ||
-      atmospheres.length === 0 ||
-      !feedbackStyle ||
-      !lossResponse ||
-      !comebackResponse
-    ) {
-      return null;
-    }
-
-    return {
-      comeback_response: comebackResponse,
-      communication_channels: communication,
-      decision_style: decisionStyle,
-      feedback_style: feedbackStyle,
-      loss_response: lossResponse,
-      online_time_presets: onlineTimes,
-      seriousness,
-      session_length: sessionLength,
-      strategy_styles: strategies,
-      team_atmospheres: atmospheres,
-      team_goals: goals,
-    };
+  const habits = useMemo(() => {
+    const parsed = CompletedHabitAnswersSchema.safeParse({
+      comebackResponseId: comebackResponse,
+      communicationPreferenceIds: communication,
+      decisionStyleId: decisionStyle,
+      feedbackStyleId: feedbackStyle,
+      lossResponseId: lossResponse,
+      seriousnessId: seriousness,
+      sessionLengthId: sessionLength,
+      strategyStyleIds: strategies,
+      teamAtmosphereIds: atmospheres,
+      teamGoalIds: goals,
+      timePreferenceIds: onlineTimes,
+    });
+    return parsed.success ? parsed.data : null;
   }, [
     atmospheres,
     comebackResponse,
@@ -253,166 +247,236 @@ export default function HabitsScreen() {
     strategies,
   ]);
 
+  const canSubmit = Boolean(habits && timezone && days.length > 0 && !saving);
+
   const submit = async () => {
-    if (!payload || saving) return;
+    if (!habits || !timezone || days.length === 0 || saving) return;
     setSaving(true);
+    setSaveError(null);
     try {
-      await savePersistedOnboardingStep({ habits: payload }, 'profile_media');
+      const recurringAvailability =
+        buildRecurringAvailabilityFromTimePreferences({
+          daysOfWeek: days,
+          timePreferenceIds: habits.timePreferenceIds,
+          timezone,
+        });
+      await savePersistedOnboardingStep(
+        { habits, recurringAvailability, timezone },
+        'profile_media',
+      );
       router.push(appRoutes.onboarding.profileMedia);
-    } finally {
+    } catch (error) {
+      setSaveError(
+        error instanceof Error
+          ? error.message
+          : 'Không thể lưu thói quen chơi đội.',
+      );
       setSaving(false);
     }
   };
 
-  const goBack = () => {
-    router.back();
-  };
   return (
     <OnboardingCinematicShell
       contentContainerStyle={styles.content}
       footer={
         <View>
           <OnboardingPrimaryButton
-            disabled={!payload || saving}
+            disabled={!canSubmit}
             onPress={() => void submit()}
             tone="cyan"
           >
             Tiếp tục
           </OnboardingPrimaryButton>
-          <OnboardingSecondaryAction onPress={goBack}>
+          <OnboardingSecondaryAction onPress={() => router.back()}>
             Quay lại
           </OnboardingSecondaryAction>
         </View>
       }
       headerDensity="compact"
       step={5}
-      subtitle="Tín hiệu về giờ online, giao tiếp và không khí đội giúp Liqi chọn đúng người cùng gu."
+      subtitle="Tín hiệu về lịch online, giao tiếp và không khí đội giúp Liqi chọn đúng người cùng gu."
       title="Thói quen chơi đội"
       tone="cyan"
     >
-      <MultiSection
-        limit={MAX_COMMUNICATION_CHANNELS}
+      <MultiCatalogSection
+        limit={PROFILE_LIMITS.communicationPreferences}
         onToggle={(value) =>
           setCommunication((current) =>
-            toggleValue(current, value, MAX_COMMUNICATION_CHANNELS),
+            toggleValue(
+              current,
+              value,
+              PROFILE_LIMITS.communicationPreferences,
+            ),
           )
         }
-        options={communicationChannels}
+        options={COMMUNICATION_PREFERENCE_CATALOG}
         selected={communication}
         subtitle="Cách bạn muốn phối hợp khi chơi."
         title="Giao tiếp"
       />
 
-      <TimeSection
-        selected={onlineTimes}
-        toggleTime={(value) =>
-          setOnlineTimes((current) => toggleValue(current, value))
-        }
-      />
+      <OnboardingSection
+        meta={`${days.length}/7`}
+        subtitle="Chọn chính xác các ngày bạn thường có thể chơi."
+        title="Ngày thường chơi"
+      >
+        <View style={styles.chipWrap}>
+          {dayOptions.map((option) => (
+            <Chip
+              key={option.id}
+              label={option.label}
+              onPress={() =>
+                setDays((current) => toggleValue(current, option.id))
+              }
+              selected={days.includes(option.id)}
+            />
+          ))}
+        </View>
+      </OnboardingSection>
 
-      <SingleSection
+      <OnboardingSection
+        meta={`${onlineTimes.length}/${TIME_PREFERENCE_CATALOG.length}`}
+        subtitle="Các khoảng giờ được hiểu theo timezone của thiết bị."
+        title="Thời gian online"
+      >
+        <View style={styles.chipWrap}>
+          {TIME_PREFERENCE_CATALOG.map((option) => (
+            <Chip
+              key={option.id}
+              label={option.label}
+              meta={formatTimeWindow(option.window)}
+              onPress={() =>
+                setOnlineTimes((current) => toggleValue(current, option.id))
+              }
+              selected={onlineTimes.includes(option.id)}
+            />
+          ))}
+        </View>
+        <Text style={styles.timezone}>
+          {timezone
+            ? `Múi giờ: ${timezone}`
+            : 'Không xác định được múi giờ IANA trên thiết bị này.'}
+        </Text>
+      </OnboardingSection>
+
+      <SingleCatalogSection
         onSelect={setDecisionStyle}
-        options={decisionStyles}
+        options={DECISION_STYLE_CATALOG}
         selected={decisionStyle}
         subtitle="Kỳ vọng về gọi kèo và nghe call."
         title="Cách quyết định"
       />
-
-      <SingleSection
+      <SingleCatalogSection
         onSelect={setSessionLength}
-        options={sessionLengths}
+        options={SESSION_LENGTH_CATALOG}
         selected={sessionLength}
         subtitle="Một phiên chơi bình thường nên kéo dài bao lâu."
         title="Độ dài phiên chơi"
       />
-
-      <MultiSection
-        limit={MAX_TEAM_GOALS}
+      <MultiCatalogSection
+        limit={PROFILE_LIMITS.teamGoals}
         onToggle={(value) =>
-          setGoals((current) => toggleValue(current, value, MAX_TEAM_GOALS))
+          setGoals((current) =>
+            toggleValue(current, value, PROFILE_LIMITS.teamGoals),
+          )
         }
-        options={teamGoals}
+        options={TEAM_GOAL_CATALOG}
         selected={goals}
         subtitle="Điều bạn đang muốn từ đồng đội."
         title="Mục tiêu ghép đội"
       />
-
-      <SingleSection
-        onSelect={(value) => setSeriousness(value as Seriousness)}
-        options={Object.keys(seriousnessDescriptions)}
+      <SingleCatalogSection
+        onSelect={setSeriousness}
+        options={SERIOUSNESS_CATALOG}
         selected={seriousness}
         subtitle={
           seriousness ? seriousnessDescriptions[seriousness] : undefined
         }
         title="Mức độ nghiêm túc"
       />
-
-      <MultiSection
-        limit={MAX_STRATEGY_STYLES}
+      <MultiCatalogSection
+        limit={PROFILE_LIMITS.strategyStyles}
         onToggle={(value) =>
           setStrategies((current) =>
-            toggleValue(current, value, MAX_STRATEGY_STYLES),
+            toggleValue(current, value, PROFILE_LIMITS.strategyStyles),
           )
         }
-        options={strategyStyles}
+        options={STRATEGY_STYLE_CATALOG}
         selected={strategies}
         subtitle="Sở thích lối chơi, không phải cam kết kỹ năng."
         title="Lối chơi chiến thuật"
       />
-
-      <MultiSection
-        limit={MAX_TEAM_ATMOSPHERES}
+      <MultiCatalogSection
+        limit={PROFILE_LIMITS.teamAtmospheres}
         onToggle={(value) =>
           setAtmospheres((current) =>
-            toggleValue(current, value, MAX_TEAM_ATMOSPHERES),
+            toggleValue(current, value, PROFILE_LIMITS.teamAtmospheres),
           )
         }
-        options={teamAtmospheres}
+        options={TEAM_ATMOSPHERE_CATALOG}
         selected={atmospheres}
         subtitle="Không khí đội bạn muốn ghép cùng."
         title="Không khí đội"
       />
-
-      <SingleSection
+      <SingleCatalogSection
         onSelect={setFeedbackStyle}
-        options={feedbackStyles}
+        options={FEEDBACK_STYLE_CATALOG}
         selected={feedbackStyle}
         subtitle="Cách góp ý trong hoặc sau trận."
         title="Cách góp ý"
       />
-
-      <SingleSection
+      <SingleCatalogSection
         onSelect={setLossResponse}
-        options={lossResponses}
+        options={LOSS_RESPONSE_CATALOG}
         selected={lossResponse}
         subtitle="Bạn muốn xử lý thế nào sau vài trận thua."
         title="Sau chuỗi thua"
       />
-
-      <SingleSection
+      <SingleCatalogSection
         onSelect={setComebackResponse}
-        options={comebackResponses}
+        options={COMEBACK_RESPONSE_CATALOG}
         selected={comebackResponse}
         subtitle="Cách bạn quyết định khi trận đấu đang xấu đi."
         title="Khi trận đấu bất lợi"
       />
+      {saveError ? <Text style={styles.error}>{saveError}</Text> : null}
     </OnboardingCinematicShell>
   );
 }
 
-function isTimePreset(value: string): value is TimePreset {
-  return Object.prototype.hasOwnProperty.call(timePresets, value);
+function detectDeviceTimezone() {
+  try {
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const parsed = TimezoneSchema.safeParse(timezone);
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
 }
 
-function isSeriousness(value: string | undefined): value is Seriousness {
-  return Boolean(
-    value &&
-    Object.prototype.hasOwnProperty.call(seriousnessDescriptions, value),
-  );
+function formatTimeWindow(window: { endMinute: number; startMinute: number }) {
+  return `${formatMinute(window.startMinute)}-${formatMinute(window.endMinute)}`;
+}
+
+function formatMinute(minute: number) {
+  const normalized = minute % (24 * 60);
+  return `${String(Math.floor(normalized / 60)).padStart(2, '0')}:${String(
+    normalized % 60,
+  ).padStart(2, '0')}`;
 }
 
 const styles = StyleSheet.create({
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
   content: { gap: 8, paddingBottom: 8 },
-  timeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  error: {
+    color: '#FF9AAB',
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+  },
+  timezone: {
+    color: 'rgba(222,228,251,0.42)',
+    fontSize: 10.5,
+    marginTop: 8,
+  },
 });

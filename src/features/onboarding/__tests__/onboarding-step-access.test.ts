@@ -1,36 +1,68 @@
 import { describe, expect, it } from '@jest/globals';
 
-import {
-  createEmptyOnboardingDraft,
-  ONBOARDING_DRAFT_VERSION,
-  type OnboardingDraftData,
-  type OnboardingDraftEnvelope,
-  type OnboardingStatus,
-} from '../model/persisted-onboarding-draft';
+import { createEmptyOnboardingDraft } from '../model/persisted-onboarding-draft';
 import {
   onboardingStepFromPathname,
   resolveOnboardingStepAccess,
 } from '../model/onboarding-step-access';
 
-const accountId = '00000000-0000-0000-0000-000000000001';
+import {
+  completeOnboardingDraftData,
+  completeProfileDraft,
+  onboardingEnvelope,
+  testAccountId,
+} from './onboarding-test-fixtures';
 
 describe('resolveOnboardingStepAccess', () => {
   it('starts a new user at profile setup without synthetic answers', () => {
-    const draft = createEmptyOnboardingDraft(accountId);
+    const draft = createEmptyOnboardingDraft(testAccountId);
     const result = resolveOnboardingStepAccess({
       envelope: draft,
       requestedStep: 'profile_setup',
     });
 
-    expect(draft.data).toEqual({});
+    expect(draft.data.profile).toEqual(
+      expect.objectContaining({
+        favoriteHeroes: [],
+        laneSelection: null,
+        profileBasics: {
+          displayName: '',
+          gameHandle: null,
+          genderId: null,
+        },
+        rankId: null,
+      }),
+    );
     expect(result.currentStep).toBe('profile_setup');
     expect(result.canLeaveOnboarding).toBe(false);
   });
 
-  it('resumes at the first unanswered step', () => {
+  it('requires an explicit game handle before rank', () => {
+    const profile = completeProfileDraft();
     const result = resolveOnboardingStepAccess({
-      envelope: envelope({
-        data: { profileBasics: { gender: 'hidden' } },
+      envelope: onboardingEnvelope({
+        data: {
+          profile: {
+            ...profile,
+            profileBasics: {
+              ...profile.profileBasics,
+              gameHandle: null,
+            },
+          },
+        },
+      }),
+      requestedStep: 'rank',
+    });
+
+    expect(result.currentStep).toBe('profile_setup');
+    expect(result.canAccessRequestedStep).toBe(false);
+  });
+
+  it('resumes at rank after canonical profile basics are complete', () => {
+    const profile = completeProfileDraft();
+    const result = resolveOnboardingStepAccess({
+      envelope: onboardingEnvelope({
+        data: { profile: { ...profile, rankId: null } },
       }),
       requestedStep: 'rank',
     });
@@ -40,9 +72,10 @@ describe('resolveOnboardingStepAccess', () => {
   });
 
   it('blocks a deep link that skips prerequisites', () => {
+    const profile = completeProfileDraft();
     const result = resolveOnboardingStepAccess({
-      envelope: envelope({
-        data: { profileBasics: { gender: 'hidden' } },
+      envelope: onboardingEnvelope({
+        data: { profile: { ...profile, rankId: null } },
       }),
       requestedStep: 'profile_media',
     });
@@ -51,9 +84,9 @@ describe('resolveOnboardingStepAccess', () => {
     expect(result.redirectTarget).toBe('rank');
   });
 
-  it('allows media only after all core answers exist', () => {
+  it('allows media only after the canonical profile is complete', () => {
     const result = resolveOnboardingStepAccess({
-      envelope: envelope({ data: completeData() }),
+      envelope: onboardingEnvelope({ data: completeOnboardingDraftData() }),
       requestedStep: 'profile_media',
     });
 
@@ -63,7 +96,7 @@ describe('resolveOnboardingStepAccess', () => {
 
   it('locks media_pending users to the media step', () => {
     const result = resolveOnboardingStepAccess({
-      envelope: envelope({ status: 'media_pending' }),
+      envelope: onboardingEnvelope({ status: 'media_pending' }),
       requestedStep: 'habits',
     });
 
@@ -74,7 +107,7 @@ describe('resolveOnboardingStepAccess', () => {
 
   it('lets only the completed workflow leave onboarding', () => {
     const result = resolveOnboardingStepAccess({
-      envelope: envelope({ status: 'completed' }),
+      envelope: onboardingEnvelope({ status: 'completed' }),
       requestedStep: 'profile_media',
     });
 
@@ -92,38 +125,3 @@ describe('resolveOnboardingStepAccess', () => {
     expect(onboardingStepFromPathname('/home')).toBeUndefined();
   });
 });
-
-function completeData(): OnboardingDraftData {
-  return {
-    habits: {
-      comeback_response: 'Theo quyết định chung của đội',
-      communication_channels: ['Voice khi cần'],
-      decision_style: 'Cùng trao đổi trước khi quyết định',
-      feedback_style: 'Chỉ nhắc ngắn gọn trong trận',
-      loss_response: 'Nghỉ 5-15 phút',
-      online_time_presets: ['Tối'],
-      seriousness: 'Cân bằng',
-      session_length: '3-5 trận',
-      strategy_styles: ['Ưu tiên kiểm soát mục tiêu'],
-      team_atmospheres: ['Nghiêm túc nhưng tôn trọng'],
-      team_goals: ['Leo rank nghiêm túc'],
-    },
-    heroIds: ['edras', 'goverra', 'heino'],
-    laneIds: ['jungle'],
-    profileBasics: { displayName: 'Liqi Pro', gender: 'hidden' },
-    rankId: 'master',
-  };
-}
-
-function envelope(
-  input: { data?: OnboardingDraftData; status?: OnboardingStatus } = {},
-): OnboardingDraftEnvelope {
-  return {
-    accountId,
-    currentStep: 'profile_media',
-    data: input.data ?? completeData(),
-    status: input.status ?? 'in_progress',
-    updatedAt: '2026-07-13T00:00:00.000Z',
-    version: ONBOARDING_DRAFT_VERSION,
-  };
-}

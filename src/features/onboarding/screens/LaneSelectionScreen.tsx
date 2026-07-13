@@ -2,38 +2,45 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { appRoutes } from '@/app-shell/navigation/routes';
+import { LANE_CATALOG, type LaneSlug } from '@/entities/player-profile';
 import {
   OnboardingCinematicShell,
   OnboardingOptionRow,
   OnboardingPrimaryButton,
   OnboardingSecondaryAction,
 } from '@/features/onboarding/components/OnboardingCinematic';
-import { appRoutes } from '@/app-shell/navigation/routes';
+
 import {
   savePersistedOnboardingStep,
   usePersistedOnboardingDraftStore,
 } from '../model/persisted-onboarding-draft';
 
-const lanes = [
-  [
-    'slayer',
-    'Đường Tà thần',
-    'Solo pressure, split push và mở góc giao tranh.',
-  ],
-  ['jungle', 'Đi rừng', 'Tempo, mục tiêu lớn và nhịp call của cả đội.'],
-  ['mid', 'Đường giữa', 'Roam nhanh, kiểm soát mid wave và burst chủ lực.'],
-  ['dragon', 'Đường Rồng', 'DPS ổn định, giữ vị trí và chuyển hoá lợi thế.'],
-  ['support', 'Trợ thủ', 'Cover chủ lực, mở combat và giữ vision tình huống.'],
-] as const;
+const laneDescriptions: Record<LaneSlug, string> = {
+  dragon: 'DPS ổn định, giữ vị trí và chuyển hoá lợi thế.',
+  jungle: 'Tempo, mục tiêu lớn và nhịp call của cả đội.',
+  mid: 'Roam nhanh, kiểm soát mid wave và burst chủ lực.',
+  slayer: 'Solo pressure, split push và mở góc giao tranh.',
+  support: 'Cover chủ lực, mở combat và giữ vision tình huống.',
+};
 
 export default function LaneSelectionScreen() {
-  const persistedLaneIds = usePersistedOnboardingDraftStore(
-    (state) => state.envelope?.data.laneIds,
+  const persistedSelection = usePersistedOnboardingDraftStore(
+    (state) => state.envelope?.data.profile.laneSelection,
   );
-  const [selected, setSelected] = useState<string[]>(persistedLaneIds ?? []);
+  const [selected, setSelected] = useState<LaneSlug[]>(() =>
+    persistedSelection
+      ? [
+          persistedSelection.primary,
+          ...(persistedSelection.secondary
+            ? [persistedSelection.secondary]
+            : []),
+        ]
+      : [],
+  );
   const [saving, setSaving] = useState(false);
 
-  const toggleLane = (id: string) => {
+  const toggleLane = (id: LaneSlug) => {
     setSelected((current) => {
       if (current.includes(id)) return current.filter((item) => item !== id);
       if (current.length >= 2) return [current[0]!, id];
@@ -42,11 +49,17 @@ export default function LaneSelectionScreen() {
   };
 
   const submit = async () => {
-    if (selected.length < 1 || selected.length > 2 || saving) return;
+    const primary = selected[0];
+    if (!primary || selected.length > 2 || saving) return;
     setSaving(true);
     try {
       await savePersistedOnboardingStep(
-        { laneIds: selected },
+        {
+          laneSelection: {
+            primary,
+            secondary: selected[1] ?? null,
+          },
+        },
         'hero_selection',
       );
       router.push(appRoutes.onboarding.heroSelection);
@@ -55,17 +68,8 @@ export default function LaneSelectionScreen() {
     }
   };
 
-  const goBack = () => {
-    router.back();
-  };
-
   return (
     <OnboardingCinematicShell
-      headerDensity="compact"
-      step={3}
-      subtitle="Chọn tối đa 2 lane để mọi người hiểu vai trò bạn tự tin nhất khi vào set."
-      title="Chọn lane của bạn"
-      tone="cyan"
       footer={
         <View>
           <OnboardingPrimaryButton
@@ -75,24 +79,28 @@ export default function LaneSelectionScreen() {
           >
             Tiếp tục
           </OnboardingPrimaryButton>
-          <OnboardingSecondaryAction onPress={goBack}>
+          <OnboardingSecondaryAction onPress={() => router.back()}>
             Quay lại
           </OnboardingSecondaryAction>
         </View>
       }
+      headerDensity="compact"
+      step={3}
+      subtitle="Lane đầu tiên là ưu tiên chính; lane thứ hai là lựa chọn bổ sung khi ghép đội."
+      title="Chọn lane của bạn"
+      tone="cyan"
     >
       <View style={styles.list}>
-        {lanes.map(([id, name, meta]) => {
-          const isSelected = selected.includes(id);
-          const isPrimary = selected[0] === id;
-
+        {LANE_CATALOG.map((option) => {
+          const isSelected = selected.includes(option.id);
+          const isPrimary = selected[0] === option.id;
           return (
             <OnboardingOptionRow
-              key={id}
-              meta={meta}
-              onPress={() => toggleLane(id)}
+              key={option.id}
+              meta={laneDescriptions[option.id]}
+              onPress={() => toggleLane(option.id)}
               selected={isSelected}
-              title={name}
+              title={option.label}
               trailing={
                 <View style={styles.trailingStack}>
                   {isPrimary ? (

@@ -11,6 +11,8 @@ import { act, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
 
+import type { OnboardingDraft } from '@/entities/player-profile';
+
 import {
   clearActivePersistedOnboardingDraft,
   onboardingDraftStorageKey,
@@ -81,7 +83,7 @@ describe('RouteAccessGate onboarding integration', () => {
     jest.spyOn(AsyncStorage, 'getItem').mockResolvedValue(
       JSON.stringify(
         envelope({
-          data: { profileBasics: { displayName: '', gender: 'hidden' } },
+          data: { profile: { ...completeProfile(), rankId: null } },
         }),
       ),
     );
@@ -143,6 +145,7 @@ describe('RouteAccessGate onboarding integration', () => {
         }),
         hydration: 'ready',
         hydrationError: null,
+        migrationIssues: [],
         persistenceError: null,
         source: 'persisted',
       });
@@ -186,26 +189,50 @@ describe('RouteAccessGate onboarding integration', () => {
   });
 });
 
-function completeData(): OnboardingDraftEnvelope['data'] {
+function completeProfile(): OnboardingDraft {
   return {
+    favoriteHeroes: [
+      { heroId: 'edras', priority: 1 },
+      { heroId: 'goverra', priority: 2 },
+      { heroId: 'heino', priority: 3 },
+    ],
     habits: {
-      comeback_response: 'Theo quyết định chung của đội',
-      communication_channels: ['Voice khi cần'],
-      decision_style: 'Cùng trao đổi trước khi quyết định',
-      feedback_style: 'Chỉ nhắc ngắn gọn trong trận',
-      loss_response: 'Nghỉ 5-15 phút',
-      online_time_presets: ['Tối'],
-      seriousness: 'Cân bằng',
-      session_length: '3-5 trận',
-      strategy_styles: ['Ưu tiên kiểm soát mục tiêu'],
-      team_atmospheres: ['Nghiêm túc nhưng tôn trọng'],
-      team_goals: ['Leo rank nghiêm túc'],
+      comebackResponseId: 'comeback.team-decision',
+      communicationPreferenceIds: ['communication.voice-as-needed'],
+      decisionStyleId: 'decision.discuss',
+      feedbackStyleId: 'feedback.brief',
+      lossResponseId: 'loss.short-break',
+      seriousnessId: 'seriousness.balanced',
+      sessionLengthId: 'session.three-five',
+      strategyStyleIds: ['strategy.objectives'],
+      teamAtmosphereIds: ['atmosphere.respectful'],
+      teamGoalIds: ['goal.rank-climb'],
+      timePreferenceIds: ['time.evening'],
     },
-    heroIds: ['edras', 'goverra', 'heino'],
-    laneIds: ['jungle'],
-    profileBasics: { displayName: 'Liqi Pro', gender: 'hidden' },
+    laneSelection: { primary: 'jungle', secondary: null },
+    localeId: 'vi-VN',
+    matchIntent: null,
+    mediaSelection: {
+      avatarSelected: false,
+      coverSelected: false,
+      wallPositions: [],
+    },
+    profileBasics: {
+      displayName: 'Liqi Pro',
+      gameHandle: 'LiqiGame#123',
+      genderId: 'hidden',
+    },
     rankId: 'master',
+    recurringAvailability: {
+      slots: [{ dayOfWeek: 6, endMinute: 1440, startMinute: 1080 }],
+      timezone: 'Asia/Ho_Chi_Minh',
+    },
+    timezone: 'Asia/Ho_Chi_Minh',
   };
+}
+
+function completeData(): OnboardingDraftEnvelope['data'] {
+  return { profile: completeProfile() };
 }
 
 function envelope(
