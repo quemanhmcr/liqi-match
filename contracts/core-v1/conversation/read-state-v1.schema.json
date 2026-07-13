@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://contracts.liqi.app/core-v1/readstate-v1.schema.json",
+  "title": "ReadStateV1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "conversationId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "ConversationId."
+    },
+    "playerId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "description": "PlayerId."
+    },
+    "lastReadSequence": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unreadCount": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Authoritative server update time."
+    }
+  },
+  "required": [
+    "conversationId",
+    "playerId",
+    "lastReadSequence",
+    "unreadCount",
+    "updatedAt"
+  ],
+  "description": "Authoritative per-participant read watermark and derived unread count."
+}

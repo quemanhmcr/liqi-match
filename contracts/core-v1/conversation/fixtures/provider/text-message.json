@@ -1,0 +1,49 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "message-v1",
+      "data": {
+        "messageId": "30000000-0000-0000-0000-000000000001",
+        "conversationId": "20000000-0000-0000-0000-000000000001",
+        "senderPlayerId": "00000000-0000-0000-0000-0000000000a1",
+        "clientMessageId": "client-a-0001",
+        "sequence": 1,
+        "content": {
+          "kind": "text",
+          "text": "Chào bạn, mình duo rank nhé?"
+        },
+        "createdAt": "2026-07-14T08:01:00.000Z"
+      }
+    },
+    {
+      "schema": "message-sent-v1",
+      "data": {
+        "eventId": "evt-message-001",
+        "eventType": "message.sent.v1",
+        "occurredAt": "2026-07-14T08:00:00.000Z",
+        "correlationId": "corr-match-loop-001",
+        "payload": {
+          "message": {
+            "messageId": "30000000-0000-0000-0000-000000000001",
+            "conversationId": "20000000-0000-0000-0000-000000000001",
+            "senderPlayerId": "00000000-0000-0000-0000-0000000000a1",
+            "clientMessageId": "client-a-0001",
+            "sequence": 1,
+            "content": {
+              "kind": "text",
+              "text": "Chào bạn, mình duo rank nhé?"
+            },
+            "createdAt": "2026-07-14T08:01:00.000Z"
+          },
+          "recipientPlayerIds": ["00000000-0000-0000-0000-0000000000b2"]
+        },
+        "causationId": "client-a-0001"
+      }
+    }
+  ],
+  "expectation": {
+    "messageCreateCount": 1,
+    "sequence": 1
+  }
+}

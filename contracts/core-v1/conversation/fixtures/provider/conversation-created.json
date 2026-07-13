@@ -1,0 +1,49 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "conversation-snapshot-v1",
+      "data": {
+        "conversationId": "20000000-0000-0000-0000-000000000001",
+        "matchId": "10000000-0000-0000-0000-000000000001",
+        "participantIds": [
+          "00000000-0000-0000-0000-0000000000a1",
+          "00000000-0000-0000-0000-0000000000b2"
+        ],
+        "state": "open",
+        "lastMessage": null,
+        "unreadCount": 0,
+        "version": 1
+      }
+    },
+    {
+      "schema": "conversation-created-v1",
+      "data": {
+        "eventId": "evt-conversation-001",
+        "eventType": "conversation.created.v1",
+        "occurredAt": "2026-07-14T08:00:00.000Z",
+        "correlationId": "corr-match-loop-001",
+        "payload": {
+          "conversation": {
+            "conversationId": "20000000-0000-0000-0000-000000000001",
+            "matchId": "10000000-0000-0000-0000-000000000001",
+            "participantIds": [
+              "00000000-0000-0000-0000-0000000000a1",
+              "00000000-0000-0000-0000-0000000000b2"
+            ],
+            "state": "open",
+            "lastMessage": null,
+            "unreadCount": 0,
+            "version": 1
+          },
+          "idempotencyKey": "bootstrap:match:10000000-0000-0000-0000-000000000001"
+        },
+        "causationId": "evt-bootstrap-001"
+      }
+    }
+  ],
+  "expectation": {
+    "conversationCreateCount": 1,
+    "matchMappingCount": 1
+  }
+}

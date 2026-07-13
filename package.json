@@ -52,11 +52,15 @@
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "29.5.14",
     "@types/react": "~19.2.2",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~56.0.4",
     "eslint-config-prettier": "^10.1.8",
     "jest": "~29.7.0",
     "jest-expo": "~56.0.5",
+    "json-schema-to-typescript": "^15.0.4",
+    "json-schema-to-zod": "^2.8.1",
     "patch-package": "^8.0.1",
     "prettier": "^3.9.4",
     "typescript": "~6.0.3"
@@ -120,10 +124,12 @@
     "task:start": "node scripts/worktree/worktree-cli.cjs create",
     "task:inspect": "node scripts/worktree/worktree-cli.cjs doctor",
     "task:list": "node scripts/worktree/worktree-cli.cjs list",
-    "task:check": "npm run repository:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
+    "task:check": "npm run repository:check && npm run contracts:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
     "task:review": "node scripts/worktree/worktree-cli.cjs overlay",
     "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
-    "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup"
+    "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
+    "contracts:generate": "node scripts/contracts/generate-core-v1.cjs",
+    "contracts:check": "node scripts/contracts/generate-core-v1.cjs --check"
   },
   "overrides": {
     "xcode": {
