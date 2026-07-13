@@ -1,8 +1,9 @@
 import {
+  DayOfWeekSchema,
   GENDER_CATALOG,
   LANE_CATALOG,
   RANK_CATALOG,
-  RecurringAvailabilitySchema,
+  normalizeRecurringAvailability,
   adaptLegacyHabitAnswers,
   resolveCatalogId,
   resolveHeroId,
@@ -417,20 +418,22 @@ function buildAvailability(
   if (!rows.length) return null;
   const candidate = {
     slots: rows.map((row) => ({
-      dayOfWeek: row.day_of_week,
+      dayOfWeek: DayOfWeekSchema.parse(row.day_of_week),
       endMinute: parseClockMinute(row.ends_at, true),
       startMinute: parseClockMinute(row.starts_at, false),
     })),
     timezone: timezone ?? '',
   };
-  const parsed = RecurringAvailabilitySchema.safeParse(candidate);
-  if (parsed.success) return parsed.data;
-  issues.push({
-    code: 'invalid_availability',
-    path: 'availability',
-    value: candidate,
-  });
-  return null;
+  try {
+    return normalizeRecurringAvailability(candidate);
+  } catch {
+    issues.push({
+      code: 'invalid_availability',
+      path: 'availability',
+      value: candidate,
+    });
+    return null;
+  }
 }
 
 function parseClockMinute(value: string, isEnd: boolean) {

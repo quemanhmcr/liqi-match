@@ -88,7 +88,8 @@ describe('fetchProfileEditDraft', () => {
   it('resolves exact backend values to canonical IDs and keeps DB UUIDs in metadata', async () => {
     mockReads({
       availability: [
-        { day_of_week: 1, starts_at: '18:00:00', ends_at: '23:59:59' },
+        { day_of_week: 1, starts_at: '18:00:00', ends_at: '21:00:00' },
+        { day_of_week: 1, starts_at: '21:00:00', ends_at: '23:59:59' },
       ],
       backendHeroes: [{ id: 'hero-db-edras', slug: 'edras' }],
       profile: {
