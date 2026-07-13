@@ -2,11 +2,13 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 
+import { createProductionSimulationRuntime } from '@/entities/simulation';
 import {
   clearProfileMediaDraftItem,
   persistProfileMediaDraftItem,
   restoreProfileMediaDraft,
 } from '@/features/profile/edit/model/profile-media-picker-recovery';
+import { createProfileEditSimulationResetParticipant } from '@/features/profile/edit/runtime/profile-edit-simulation-reset';
 import { makeProfileMediaItem } from './profile-edit-test-fixtures';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
@@ -129,6 +131,40 @@ describe('Profile media recovery', () => {
     expect(mockGetInfoAsync).not.toHaveBeenCalledWith(
       expect.stringContaining('cover:0:uploaded-1'),
     );
+  });
+
+  it('restores a runtime snapshot without deleting its durable media files', async () => {
+    const persisted = await persistProfileMediaDraftItem(
+      profileId,
+      makeProfileMediaItem({
+        localId: 'avatar:0:snapshot-1',
+        slot: 'avatar',
+        status: 'ready',
+        uri: 'file:///cache/snapshot-avatar.jpg',
+      }),
+    );
+    const runtime = createProductionSimulationRuntime({
+      namespace: 'profile-media-snapshot',
+    });
+    runtime.registerResetParticipant(
+      createProfileEditSimulationResetParticipant(profileId),
+    );
+    const snapshot = await runtime.snapshot();
+    mockDeleteAsync.mockClear();
+
+    await runtime.reset();
+
+    expect(storage.has(storageKey)).toBe(false);
+    expect(existingFiles.has(persisted.asset.uri)).toBe(true);
+    expect(mockDeleteAsync).not.toHaveBeenCalled();
+
+    await runtime.restore(snapshot);
+
+    expect(existingFiles.has(persisted.asset.uri)).toBe(true);
+    expect(await restoreProfileMediaDraft(profileId)).toEqual({
+      avatar: persisted,
+    });
+    expect(mockDeleteAsync).not.toHaveBeenCalled();
   });
 
   it('records cleanup attempt, deletes only its managed local file, then removes metadata', async () => {

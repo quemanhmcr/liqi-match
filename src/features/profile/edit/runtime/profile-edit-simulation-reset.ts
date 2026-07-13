@@ -4,12 +4,13 @@ import type {
 } from '@/shared/simulation';
 
 import {
-  clearProfileMediaDraft,
-  persistProfileMediaDraftItem,
+  clearProfileMediaDraftRecord,
+  replaceProfileMediaDraft,
   restoreProfileMediaDraft,
+  type ProfileMediaDraftSnapshot,
 } from '../model/profile-media-picker-recovery';
 
-type ProfileMediaDraft = Awaited<ReturnType<typeof restoreProfileMediaDraft>>;
+type ProfileMediaDraft = ProfileMediaDraftSnapshot;
 
 export type ProfileEditRecoveryPort = {
   clear(profileId: string): Promise<void>;
@@ -18,13 +19,9 @@ export type ProfileEditRecoveryPort = {
 };
 
 const defaultProfileEditRecoveryPort: ProfileEditRecoveryPort = {
-  clear: clearProfileMediaDraft,
+  clear: clearProfileMediaDraftRecord,
   load: restoreProfileMediaDraft,
-  async save(profileId, draft) {
-    for (const item of Object.values(draft)) {
-      if (item) await persistProfileMediaDraftItem(profileId, item);
-    }
-  },
+  save: replaceProfileMediaDraft,
 };
 
 export function createProfileEditSimulationResetParticipant(
