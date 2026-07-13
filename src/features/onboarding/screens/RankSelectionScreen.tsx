@@ -2,83 +2,88 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 
+import { appRoutes } from '@/app-shell/navigation/routes';
+import { RANK_CATALOG, type RankId } from '@/entities/player-profile';
 import {
   OnboardingCinematicShell,
   OnboardingOptionRow,
   OnboardingPrimaryButton,
   OnboardingSecondaryAction,
 } from '@/features/onboarding/components/OnboardingCinematic';
-import { appRoutes } from '@/app-shell/navigation/routes';
-import { updateOnboardingSnapshot } from '../model/onboarding-draft-store';
 
-const ranks = [
-  ['bronze', 'Đồng', 'Vừa bắt đầu, ưu tiên set vui và học map.'],
-  ['silver', 'Bạc', 'Đã quen nhịp trận, cần đồng đội ổn định.'],
-  ['gold', 'Vàng', 'Nắm cơ bản, bắt đầu tối ưu lane và macro.'],
-  ['platinum', 'Bạch Kim', 'Có vai trò rõ, cần team cùng gu leo rank.'],
-  ['diamond', 'Kim Cương', 'Đọc giao tranh tốt, ưu tiên phối hợp chắc.'],
-  ['veteran', 'Tinh Anh', 'Cần đồng đội biết call mục tiêu và giữ tempo.'],
-  ['master', 'Cao Thủ', 'Mặc định đề xuất: tín hiệu rank đủ sắc để match.'],
-  [
-    'grandmaster-iv',
-    'Đại Cao Thủ IV',
-    'Ưu tiên team nghiêm túc, vào set nhanh.',
-  ],
-  [
-    'grandmaster-iii',
-    'Đại Cao Thủ III',
-    'Đồng đội cần cùng nhịp combat và macro.',
-  ],
-  [
-    'grandmaster-ii',
-    'Đại Cao Thủ II',
-    'Match theo chất lượng phối hợp, không spam.',
-  ],
-  ['grandmaster-i', 'Đại Cao Thủ I', 'Tệp người chơi cao, kỳ vọng call rõ.'],
-  ['conqueror', 'Chiến Tướng', 'Ghép đội cạnh tranh, giữ performance ổn định.'],
-  ['legendary', 'Chiến Thần', 'Hồ sơ nổi bật, ưu tiên match chuẩn gu cao.'],
-] as const;
+import {
+  savePersistedOnboardingStep,
+  usePersistedOnboardingDraftStore,
+} from '../model/persisted-onboarding-draft';
+
+const rankDescriptions: Record<RankId, string> = {
+  bronze: 'Vừa bắt đầu, ưu tiên set vui và học map.',
+  conqueror: 'Ghép đội cạnh tranh, giữ performance ổn định.',
+  diamond: 'Đọc giao tranh tốt, ưu tiên phối hợp chắc.',
+  gold: 'Nắm cơ bản, bắt đầu tối ưu lane và macro.',
+  'grandmaster-i': 'Tệp người chơi cao, kỳ vọng call rõ.',
+  'grandmaster-ii': 'Match theo chất lượng phối hợp, không spam.',
+  'grandmaster-iii': 'Đồng đội cần cùng nhịp combat và macro.',
+  'grandmaster-iv': 'Ưu tiên team nghiêm túc, vào set nhanh.',
+  iron: 'Đang làm quen, ưu tiên đồng đội kiên nhẫn.',
+  legendary: 'Hồ sơ nổi bật, ưu tiên match chuẩn gu cao.',
+  master: 'Tín hiệu rank đủ sắc để match đúng kỳ vọng.',
+  platinum: 'Có vai trò rõ, cần team cùng gu leo rank.',
+  silver: 'Đã quen nhịp trận, cần đồng đội ổn định.',
+  veteran: 'Cần đồng đội biết call mục tiêu và giữ tempo.',
+};
 
 export default function RankSelectionScreen() {
-  const [selected, setSelected] = useState('master');
+  const persistedRankId = usePersistedOnboardingDraftStore(
+    (state) => state.envelope?.data.profile.rankId,
+  );
+  const [selected, setSelected] = useState<RankId | null>(
+    persistedRankId ?? null,
+  );
+  const [saving, setSaving] = useState(false);
 
-  const submit = () => {
-    updateOnboardingSnapshot({ rankId: selected });
-    router.push(appRoutes.onboarding.lane);
-  };
-
-  const goBack = () => {
-    router.back();
+  const submit = async () => {
+    if (!selected || saving) return;
+    setSaving(true);
+    try {
+      await savePersistedOnboardingStep({ rankId: selected }, 'lane');
+      router.push(appRoutes.onboarding.lane);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <OnboardingCinematicShell
+      footer={
+        <View>
+          <OnboardingPrimaryButton
+            disabled={!selected || saving}
+            onPress={() => void submit()}
+          >
+            Tiếp tục
+          </OnboardingPrimaryButton>
+          <OnboardingSecondaryAction onPress={() => router.back()}>
+            Quay lại
+          </OnboardingSecondaryAction>
+        </View>
+      }
       headerDensity="compact"
       step={2}
       subtitle="Chọn mức rank gần nhất để Liqi ghép bạn với đúng nhịp leo rank và kỳ vọng đồng đội."
       title="Chọn mức rank hiện tại"
       tone="purple"
-      footer={
-        <View>
-          <OnboardingPrimaryButton onPress={submit}>
-            Tiếp tục
-          </OnboardingPrimaryButton>
-          <OnboardingSecondaryAction onPress={goBack}>
-            Quay lại
-          </OnboardingSecondaryAction>
-        </View>
-      }
     >
       <View style={styles.list}>
-        {ranks.map(([id, name, meta]) => (
+        {RANK_CATALOG.map((option) => (
           <OnboardingOptionRow
-            key={id}
-            meta={meta}
-            onPress={() => setSelected(id)}
-            selected={selected === id}
-            title={name}
+            key={option.id}
+            meta={rankDescriptions[option.id]}
+            onPress={() => setSelected(option.id)}
+            selected={selected === option.id}
+            title={option.label}
             trailing={
-              selected === id ? (
+              selected === option.id ? (
                 <Text style={styles.selectedMark}>✓</Text>
               ) : null
             }

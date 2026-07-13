@@ -12,15 +12,16 @@ jest.mock('react-native-safe-area-context', () => ({
 
 describe('HeroSelectionScreen', () => {
   it('renders the connected hero selection step', async () => {
-    const { getAllByText, getByText } = await renderWithProviders(
-      <HeroSelectionScreen />,
-    );
+    const { getAllByText, getByLabelText, getByText } =
+      await renderWithProviders(<HeroSelectionScreen />);
 
     expect(getByText('Bước 4/6')).toBeTruthy();
     expect(getByText('Chọn 3 tướng tủ')).toBeTruthy();
     expect(getAllByText('Edras').length).toBeGreaterThan(0);
     expect(getAllByText('Goverra').length).toBeGreaterThan(0);
     expect(getAllByText('Heino').length).toBeGreaterThan(0);
+    expect(getByText(/Đã chọn 0\/3/)).toBeTruthy();
+    expect(getByLabelText('Ô tướng trống 1')).toBeTruthy();
     expect(getByText('Tiếp tục')).toBeTruthy();
     expect(getByText('Quay lại')).toBeTruthy();
   });
@@ -30,6 +31,9 @@ describe('HeroSelectionScreen', () => {
       <HeroSelectionScreen />,
     );
 
+    await fireEvent.press(getByText('Edras'));
+    await fireEvent.press(getByText('Goverra'));
+    await fireEvent.press(getByText('Heino'));
     await fireEvent.press(getByText('Billow'));
 
     expect(getByText(/Đã chọn 3\/3/)).toBeTruthy();
@@ -41,6 +45,9 @@ describe('HeroSelectionScreen', () => {
       <HeroSelectionScreen />,
     );
 
+    await fireEvent.press(getByText('Edras'));
+    await fireEvent.press(getByText('Goverra'));
+    await fireEvent.press(getByText('Heino'));
     await fireEvent.press(getByLabelText('Xoá tướng Edras'));
 
     await waitFor(() => {
