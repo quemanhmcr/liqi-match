@@ -14,6 +14,40 @@ import {
 const assetResolver = createGoldenWorldAssetResolver();
 
 describe('message surface presenters', () => {
+  it('carries team invite artwork from the repository contract into the render model', () => {
+    const invite = MessageTimelineItemSchema.parse({
+      artwork: {
+        assetKey: 'asset:set:sao-bang:artwork',
+        kind: 'fixture',
+      },
+      createdAt: '2026-07-12T10:05:00.000Z',
+      direction: 'incoming',
+      id: 'invite-1',
+      kind: 'team_invite',
+      members: ['Yue', 'Lorian'],
+      missingRole: 'Mid',
+      mode: 'Team Rank',
+      teamName: 'Team Sao Băng',
+      teamSize: '4/5',
+      text: 'Mời bạn vào lobby',
+    });
+
+    const rendered = presentTimelineMessage(invite, assetResolver);
+
+    expect(rendered).toMatchObject({
+      artwork: {
+        kind: 'asset',
+        resolved: {
+          key: 'asset:set:sao-bang:artwork',
+          state: 'ready',
+        },
+      },
+      id: 'invite-1',
+      kind: 'team-invite',
+      teamName: 'Team Sao Băng',
+    });
+  });
+
   it('presents received media and typing as stable render-model items', () => {
     const media = MessageTimelineItemSchema.parse({
       caption: 'Build mới',

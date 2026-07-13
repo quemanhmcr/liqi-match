@@ -178,6 +178,7 @@ export const MessageTimelineBuildShareSchema = MessageTimelineBaseSchema.extend(
 
 export const MessageTimelineTeamInviteSchema = MessageTimelineBaseSchema.extend(
   {
+    artwork: MessageAssetRefSchema,
     kind: z.literal('team_invite'),
     members: z.array(z.string().min(1)),
     missingRole: z.string().min(1),

@@ -431,6 +431,7 @@ function timelineItem(
       }
       return {
         ...base,
+        artwork: fixtureAsset(world, set.artworkAssetKey),
         kind: 'team_invite',
         members: set.memberIds.map(
           (id) =>

@@ -301,6 +301,7 @@ function timelineMessageFromFixture(
   if (message.kind === 'team-invite') {
     return {
       ...base,
+      artwork: fixtureAsset('asset:set:sao-bang:artwork', message.teamName),
       kind: 'team_invite',
       members: [...message.members],
       missingRole: message.missingRole,

@@ -158,6 +158,7 @@ export function presentTimelineMessage(
 
   return {
     ...base,
+    artwork: resolveMessageMedia(message.artwork, assetResolver),
     direction: 'incoming',
     kind: 'team-invite',
     members: message.members,

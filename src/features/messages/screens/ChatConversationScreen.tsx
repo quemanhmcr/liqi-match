@@ -34,7 +34,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 import {
-  goldenWorldAssetKeys,
   useAssetResolver,
   usePreloadAssetSurface,
 } from '@/entities/media-asset';
@@ -2056,14 +2055,6 @@ function TeamInviteCard({
 }: {
   message: Extract<ChatMessage, { kind: 'team-invite' }>;
 }) {
-  const assetResolver = useAssetResolver();
-  const teamEmblem = {
-    kind: 'asset' as const,
-    resolved: assetResolver.resolve(
-      goldenWorldAssetKeys.sets.teamSaoBangArtwork,
-    ),
-  };
-
   return (
     <Pressable
       accessibilityLabel={`Xem set ${message.teamName}`}
@@ -2089,7 +2080,7 @@ function TeamInviteCard({
         <View style={styles.teamTopRow}>
           <View style={styles.teamEmblemFrame}>
             <MessageResolvedImage
-              media={teamEmblem}
+              media={message.artwork}
               style={styles.teamEmblem}
             />
           </View>

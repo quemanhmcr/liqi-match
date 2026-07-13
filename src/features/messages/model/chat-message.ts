@@ -107,6 +107,7 @@ export type ChatMessage =
       text: string;
     })
   | (TimestampedMessage & {
+      artwork: MessageResolvedMedia;
       direction: 'incoming';
       id: string;
       kind: 'team-invite';

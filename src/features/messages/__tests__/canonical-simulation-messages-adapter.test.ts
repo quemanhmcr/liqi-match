@@ -2,6 +2,7 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   createProductionSimulationRuntime,
+  GOLDEN_ASSET_KEYS,
   GOLDEN_CONVERSATION_IDS,
   GOLDEN_PROFILE_IDS,
   VIEWER_READY_HAPPY_PATH_SCENARIO,
@@ -49,6 +50,34 @@ describe('canonical simulation Messages adapter', () => {
           ),
       ),
     ).toBe(true);
+    adapter.dispose();
+  });
+
+  it('projects team invite artwork from the canonical set for authorized members', async () => {
+    const runtime = createProductionSimulationRuntime({
+      initialScenarioId: VIEWER_READY_HAPPY_PATH_SCENARIO.id,
+      namespace: 'canonical-team-invite-artwork',
+    });
+    const adapter = createCanonicalSimulationMessagesAdapter({
+      runtime,
+      viewerIdForRequest: () => GOLDEN_PROFILE_IDS.khoaJungle,
+    });
+
+    const timeline = await adapter.getMessagePage(
+      GOLDEN_CONVERSATION_IDS.saoBang,
+      { limit: 20 },
+    );
+    const teamInvite = timeline.data.items.find(
+      (message) => message.kind === 'team_invite',
+    );
+
+    expect(teamInvite).toMatchObject({
+      artwork: {
+        assetKey: GOLDEN_ASSET_KEYS.setSaoBang,
+        kind: 'fixture',
+      },
+      kind: 'team_invite',
+    });
     adapter.dispose();
   });
 

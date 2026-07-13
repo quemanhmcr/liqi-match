@@ -64,6 +64,7 @@ const minhAnhMessages: readonly ChatMessage[] = [
     createdAt: fixtureTimestamp(20, 32),
   },
   {
+    artwork: fixtureSource('asset:set:sao-bang:artwork'),
     direction: 'incoming',
     id: 'minh-5',
     kind: 'team-invite',
