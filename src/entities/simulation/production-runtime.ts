@@ -12,9 +12,9 @@ import {
   applySimulationDomainEvent as applyCanonicalSimulationDomainEvent,
   SIMULATION_OPERATION_IDS,
 } from './mutations';
-import type { SimulationFault as DomainSimulationFault } from './scenario-schema';
 import {
   SimulationDomainEventSchema,
+  type SimulationFault as DomainSimulationFault,
   type SimulationDomainEvent,
   type SimulationMutationKind,
   type SimulationScenarioDefinition,
@@ -161,7 +161,7 @@ function scenarioScheduledActions(
   scenario: SimulationScenarioDefinition,
 ): SimulationScheduledAction[] {
   let sequence = 0;
-  const actions: Array<SimulationScheduledAction & { sequence: number }> = [];
+  const actions: (SimulationScheduledAction & { sequence: number })[] = [];
   const add = (action: SimulationScheduledAction) => {
     sequence += 1;
     actions.push({ ...action, sequence });

@@ -4,23 +4,21 @@ import type {
   MessageConversationDetail,
   MessageConversationSummary,
 } from '../contracts/messages-contracts';
-import { MessagesServiceError } from '../contracts/messages-contracts';
 import {
   createSimulationMessagesAdapter,
   SIMULATION_MESSAGE_OPERATIONS,
   successfulMessageMutation,
 } from '../services/simulation-messages-adapter';
 import type { SendChatTextCommand } from '../services/chat-message-transport';
-import { ChatTransportError } from '../services/chat-message-transport';
 import { createSimulationRuntime } from '@/shared/simulation';
 
 type TestWorld = {
-  sent: Array<{
+  sent: {
     acceptedAt: string;
     clientMessageId: string;
     conversationId: string;
     text: string;
-  }>;
+  }[];
 };
 
 const command: SendChatTextCommand = {

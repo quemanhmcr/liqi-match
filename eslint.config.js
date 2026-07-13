@@ -7,6 +7,13 @@ module.exports = defineConfig([
   expoConfig,
   prettierConfig,
   {
+    settings: {
+      'import/resolver': {
+        node: {
+          extensions: ['.js', '.jsx', '.ts', '.tsx', '.json'],
+        },
+      },
+    },
     ignores: [
       'node_modules/',
       '.expo/',

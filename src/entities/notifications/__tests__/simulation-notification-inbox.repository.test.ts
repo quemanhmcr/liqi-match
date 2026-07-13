@@ -11,7 +11,6 @@ import {
 } from '../model/notification';
 import {
   createSimulationNotificationInboxRepository,
-  NotificationSimulationError,
   partialSimulationItems,
   SIMULATION_NOTIFICATION_OPERATIONS,
   type SimulationNotificationLens,
