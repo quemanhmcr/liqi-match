@@ -1,0 +1,322 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "contractSet": "core-v1",
+  "version": "1.0.0",
+  "description": "Machine-readable provider contracts for secure identity and authoritative player lifecycle.",
+  "schemas": {
+    "AccountId": {
+      "type": "string",
+      "format": "uuid",
+      "x-semantic": "auth subject / sub"
+    },
+    "PlayerId": {
+      "type": "string",
+      "format": "uuid",
+      "x-semantic": "canonical player identity"
+    },
+    "ProfileId": {
+      "type": "string",
+      "format": "uuid",
+      "x-semantic": "canonical profile identity"
+    },
+    "SessionId": { "type": "string", "minLength": 1, "maxLength": 160 },
+    "RequestId": { "type": "string", "minLength": 8, "maxLength": 160 },
+    "IdempotencyKey": {
+      "type": "string",
+      "minLength": 16,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "PlayerLifecycleStateV1": {
+      "type": "string",
+      "enum": [
+        "registered",
+        "onboarding",
+        "active",
+        "suspended",
+        "deleting",
+        "deleted"
+      ]
+    },
+    "AuthenticatedPrincipalV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "accountId",
+        "playerId",
+        "sessionId",
+        "issuedAt",
+        "expiresAt"
+      ],
+      "properties": {
+        "accountId": { "$ref": "#/schemas/AccountId" },
+        "playerId": {
+          "anyOf": [{ "$ref": "#/schemas/PlayerId" }, { "type": "null" }]
+        },
+        "sessionId": { "$ref": "#/schemas/SessionId" },
+        "issuedAt": { "type": "string", "format": "date-time" },
+        "expiresAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "PlayerLifecycleSnapshotV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "playerId",
+        "profileId",
+        "state",
+        "version",
+        "discoverable",
+        "messagingAllowed",
+        "updatedAt"
+      ],
+      "properties": {
+        "playerId": { "$ref": "#/schemas/PlayerId" },
+        "profileId": { "$ref": "#/schemas/ProfileId" },
+        "state": { "$ref": "#/schemas/PlayerLifecycleStateV1" },
+        "version": { "type": "integer", "minimum": 0 },
+        "discoverable": { "type": "boolean" },
+        "messagingAllowed": { "type": "boolean" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "MinimumActiveProfileV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "displayName",
+        "gameHandle",
+        "rankId",
+        "roleIds",
+        "favoriteHeroIds",
+        "timezone"
+      ],
+      "properties": {
+        "displayName": { "type": "string", "minLength": 2, "maxLength": 40 },
+        "gameHandle": { "type": "string", "minLength": 2, "maxLength": 64 },
+        "rankId": { "type": "string", "minLength": 1, "maxLength": 80 },
+        "roleIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 80 }
+        },
+        "favoriteHeroIds": {
+          "type": "array",
+          "minItems": 3,
+          "maxItems": 3,
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 80 }
+        },
+        "timezone": { "type": "string", "minLength": 1, "maxLength": 80 }
+      }
+    },
+    "CompletePlayerOnboardingCommandV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["idempotencyKey", "expectedProfileVersion", "profile"],
+      "properties": {
+        "idempotencyKey": { "$ref": "#/schemas/IdempotencyKey" },
+        "expectedProfileVersion": { "type": "integer", "minimum": 0 },
+        "profile": { "$ref": "#/schemas/MinimumActiveProfileV1" }
+      }
+    },
+    "CompletePlayerOnboardingResultV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal", "lifecycle", "profileVersion", "replayed"],
+      "properties": {
+        "principal": { "$ref": "#/schemas/AuthenticatedPrincipalV1" },
+        "lifecycle": { "$ref": "#/schemas/PlayerLifecycleSnapshotV1" },
+        "profileVersion": { "type": "integer", "minimum": 1 },
+        "replayed": { "type": "boolean" }
+      }
+    },
+    "CoreErrorCodeV1": {
+      "type": "string",
+      "enum": [
+        "authentication_required",
+        "session_expired",
+        "player_not_found",
+        "player_suspended",
+        "player_deleting",
+        "player_deleted",
+        "profile_incomplete",
+        "profile_version_conflict",
+        "invalid_lifecycle_transition",
+        "idempotency_key_reused",
+        "request_validation_failed"
+      ]
+    },
+    "CoreErrorV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "message", "requestId", "retryable"],
+      "properties": {
+        "code": { "$ref": "#/schemas/CoreErrorCodeV1" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "requestId": { "$ref": "#/schemas/RequestId" },
+        "retryable": { "type": "boolean" },
+        "details": { "type": "object", "additionalProperties": true }
+      }
+    },
+    "PlayerLifecycleEventTypeV1": {
+      "type": "string",
+      "enum": [
+        "player.activated.v1",
+        "player.profile_updated.v1",
+        "player.suspended.v1",
+        "player.deletion_requested.v1",
+        "player.deleted.v1"
+      ]
+    },
+    "PlayerLifecycleEventV1": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "eventId",
+        "eventType",
+        "occurredAt",
+        "accountId",
+        "playerId",
+        "profileId",
+        "lifecycleVersion"
+      ],
+      "properties": {
+        "eventId": { "type": "string", "format": "uuid" },
+        "eventType": { "$ref": "#/schemas/PlayerLifecycleEventTypeV1" },
+        "occurredAt": { "type": "string", "format": "date-time" },
+        "accountId": { "$ref": "#/schemas/AccountId" },
+        "playerId": { "$ref": "#/schemas/PlayerId" },
+        "profileId": { "$ref": "#/schemas/ProfileId" },
+        "lifecycleVersion": { "type": "integer", "minimum": 1 },
+        "profileVersion": { "type": "integer", "minimum": 0 },
+        "reasonCode": { "type": "string", "minLength": 1, "maxLength": 120 }
+      }
+    }
+  },
+  "providerFixtures": {
+    "authenticatedPrincipal.valid": {
+      "schema": "AuthenticatedPrincipalV1",
+      "value": {
+        "accountId": "00000000-0000-4000-8000-000000000101",
+        "playerId": "10000000-0000-4000-8000-000000000101",
+        "sessionId": "session-00000000-0000-4000-8000-000000000101",
+        "issuedAt": "2026-07-14T00:00:00.000Z",
+        "expiresAt": "2026-07-14T01:00:00.000Z"
+      }
+    },
+    "authenticatedPrincipal.expired": {
+      "schema": "AuthenticatedPrincipalV1",
+      "value": {
+        "accountId": "00000000-0000-4000-8000-000000000102",
+        "playerId": "10000000-0000-4000-8000-000000000102",
+        "sessionId": "session-expired-00000000-0000-4000-8000-000000000102",
+        "issuedAt": "2026-07-13T00:00:00.000Z",
+        "expiresAt": "2026-07-13T01:00:00.000Z"
+      }
+    },
+    "lifecycle.onboarding": {
+      "schema": "PlayerLifecycleSnapshotV1",
+      "value": {
+        "playerId": "10000000-0000-4000-8000-000000000103",
+        "profileId": "20000000-0000-4000-8000-000000000103",
+        "state": "onboarding",
+        "version": 1,
+        "discoverable": false,
+        "messagingAllowed": false,
+        "updatedAt": "2026-07-14T00:05:00.000Z"
+      }
+    },
+    "lifecycle.active": {
+      "schema": "PlayerLifecycleSnapshotV1",
+      "value": {
+        "playerId": "10000000-0000-4000-8000-000000000104",
+        "profileId": "20000000-0000-4000-8000-000000000104",
+        "state": "active",
+        "version": 2,
+        "discoverable": true,
+        "messagingAllowed": true,
+        "updatedAt": "2026-07-14T00:10:00.000Z"
+      }
+    },
+    "lifecycle.suspended": {
+      "schema": "PlayerLifecycleSnapshotV1",
+      "value": {
+        "playerId": "10000000-0000-4000-8000-000000000105",
+        "profileId": "20000000-0000-4000-8000-000000000105",
+        "state": "suspended",
+        "version": 3,
+        "discoverable": false,
+        "messagingAllowed": false,
+        "updatedAt": "2026-07-14T00:15:00.000Z"
+      }
+    },
+    "lifecycle.deleting": {
+      "schema": "PlayerLifecycleSnapshotV1",
+      "value": {
+        "playerId": "10000000-0000-4000-8000-000000000106",
+        "profileId": "20000000-0000-4000-8000-000000000106",
+        "state": "deleting",
+        "version": 4,
+        "discoverable": false,
+        "messagingAllowed": false,
+        "updatedAt": "2026-07-14T00:20:00.000Z"
+      }
+    },
+    "error.profileVersionConflict": {
+      "schema": "CoreErrorV1",
+      "value": {
+        "code": "profile_version_conflict",
+        "message": "Profile changed on another session.",
+        "requestId": "request-profile-conflict-0001",
+        "retryable": true,
+        "details": { "expectedVersion": 2, "actualVersion": 3 }
+      }
+    },
+    "completion.idempotentReplay": {
+      "schema": "CompletePlayerOnboardingResultV1",
+      "value": {
+        "principal": {
+          "accountId": "00000000-0000-4000-8000-000000000107",
+          "playerId": "10000000-0000-4000-8000-000000000107",
+          "sessionId": "session-00000000-0000-4000-8000-000000000107",
+          "issuedAt": "2026-07-14T00:00:00.000Z",
+          "expiresAt": "2026-07-14T01:00:00.000Z"
+        },
+        "lifecycle": {
+          "playerId": "10000000-0000-4000-8000-000000000107",
+          "profileId": "20000000-0000-4000-8000-000000000107",
+          "state": "active",
+          "version": 2,
+          "discoverable": true,
+          "messagingAllowed": true,
+          "updatedAt": "2026-07-14T00:30:00.000Z"
+        },
+        "profileVersion": 1,
+        "replayed": true
+      }
+    }
+  },
+  "consumerFixtures": {
+    "mission2.discoveryEligibility": [
+      "lifecycle.onboarding",
+      "lifecycle.active",
+      "lifecycle.suspended",
+      "lifecycle.deleting"
+    ],
+    "mission3.messagingAuthorization": [
+      "authenticatedPrincipal.valid",
+      "lifecycle.active",
+      "lifecycle.suspended",
+      "lifecycle.deleting"
+    ],
+    "mission4.sessionAndDeepLinks": [
+      "authenticatedPrincipal.valid",
+      "authenticatedPrincipal.expired",
+      "lifecycle.onboarding",
+      "lifecycle.deleting"
+    ]
+  }
+}

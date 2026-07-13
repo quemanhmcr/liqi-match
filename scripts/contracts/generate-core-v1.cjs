@@ -1,229 +1,189 @@
+#!/usr/bin/env node
 const crypto = require('node:crypto');
-const fs = require('node:fs/promises');
+const fs = require('node:fs');
 const path = require('node:path');
-
-const Ajv2020 = require('ajv/dist/2020').default;
-const addFormats = require('ajv-formats');
-const { compile } = require('json-schema-to-typescript');
-const { jsonSchemaToZod } = require('json-schema-to-zod');
 const prettier = require('prettier');
 
-const repositoryRoot = path.resolve(__dirname, '..', '..');
-const contractsRoot = path.join(repositoryRoot, 'contracts', 'core-v1');
-const generatedRoot = path.join(
-  repositoryRoot,
+const root = process.cwd();
+const manifestPath = path.join(root, 'contracts', 'core-v1', 'manifest.json');
+const generatedTsPath = path.join(
+  root,
   'src',
-  'features',
-  'messages',
+  'shared',
   'contracts',
+  'core-v1',
+  'generated.ts',
+);
+const reportPath = path.join(
+  root,
+  'contracts',
+  'core-v1',
   'generated',
+  'compatibility-report.json',
 );
-const compatibilityPath = path.join(
-  contractsRoot,
-  'compatibility',
-  'conversation-v1.report.json',
-);
-const checkOnly = process.argv.includes('--check');
+const check = process.argv.includes('--check');
 
-async function listFiles(root, predicate) {
-  const result = [];
-  async function visit(directory) {
-    for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
-      const absolute = path.join(directory, entry.name);
-      if (entry.isDirectory()) await visit(absolute);
-      else if (predicate(absolute)) result.push(absolute);
-    }
-  }
-  await visit(root);
-  return result.sort();
+function refName(ref) {
+  const match = /^#\/schemas\/([A-Za-z0-9_]+)$/.exec(ref);
+  if (!match) throw new Error(`Unsupported contract ref: ${ref}`);
+  return match[1];
 }
 
-function normalizedJson(value) {
-  return `${JSON.stringify(value, null, 2)}\n`;
-}
-
-function sha256(value) {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-async function formatTypeScript(source) {
-  return prettier.format(source, {
-    parser: 'typescript',
-    singleQuote: true,
-    trailingComma: 'all',
-  });
-}
-
-async function createArtifacts() {
-  const schemaFiles = await listFiles(contractsRoot, (file) =>
-    file.endsWith('.schema.json'),
-  );
-  const schemas = new Map();
-
-  for (const file of schemaFiles) {
-    const schema = JSON.parse(await fs.readFile(file, 'utf8'));
-    const name = path.basename(file, '.schema.json');
-    if (!schema.title || typeof schema.title !== 'string') {
-      throw new Error(
-        `${path.relative(repositoryRoot, file)} is missing title.`,
-      );
-    }
-    schemas.set(name, { file, schema });
-  }
-
-  const ajv = new Ajv2020({ allErrors: true, strict: true });
-  addFormats(ajv);
-  const validators = new Map();
-  for (const [name, { file, schema }] of schemas) {
-    try {
-      validators.set(name, ajv.compile(schema));
-    } catch (error) {
-      throw new Error(
-        `Invalid schema ${path.relative(repositoryRoot, file)}: ${error.message}`,
-      );
-    }
-  }
-
-  const artifacts = new Map();
-  const exportLines = [];
-  for (const [name, { schema }] of schemas) {
-    const title = schema.title;
-    const types = await compile(schema, title, {
-      bannerComment:
-        '/* AUTO-GENERATED from contracts/core-v1. DO NOT EDIT. */',
-      additionalProperties: false,
-      enableConstEnums: false,
-      format: false,
-      unknownAny: true,
-    });
-    const zod = jsonSchemaToZod(schema, {
-      depth: 24,
-      module: 'esm',
-      name: `${title}Schema`,
-      type: title,
-      withJsdocs: true,
-      zodVersion: 4,
-    });
-
-    artifacts.set(`${name}.types.ts`, await formatTypeScript(types));
-    const lintBanner = zod.includes(' == ')
-      ? '/* eslint-disable eqeqeq -- json-schema-to-zod emits loose equality for uniqueItems. */\n'
-      : '';
-    artifacts.set(
-      `${name}.schema.ts`,
-      await formatTypeScript(
-        `/* AUTO-GENERATED from contracts/core-v1. DO NOT EDIT. */\n${lintBanner}${zod}\n`,
-      ),
+function tsType(schema) {
+  if (schema.$ref) return refName(schema.$ref);
+  if (schema.anyOf) return schema.anyOf.map(tsType).join(' | ');
+  if (schema.enum)
+    return schema.enum.map((value) => JSON.stringify(value)).join(' | ');
+  if (schema.type === 'null') return 'null';
+  if (schema.type === 'string') return 'string';
+  if (schema.type === 'integer' || schema.type === 'number') return 'number';
+  if (schema.type === 'boolean') return 'boolean';
+  if (schema.type === 'array') return `readonly (${tsType(schema.items)})[]`;
+  if (schema.type === 'object') {
+    const required = new Set(schema.required || []);
+    const properties = Object.entries(schema.properties || {}).map(
+      ([key, value]) =>
+        `readonly ${JSON.stringify(key)}${required.has(key) ? '' : '?'}: ${tsType(value)};`,
     );
-    exportLines.push(`export type { ${title} } from './${name}.types';`);
-    exportLines.push(`export { ${title}Schema } from './${name}.schema';`);
+    if (schema.additionalProperties === true)
+      properties.push('readonly [key: string]: unknown;');
+    return `{ ${properties.join(' ')} }`;
   }
-  artifacts.set(
-    'index.ts',
-    await formatTypeScript(
-      `/* AUTO-GENERATED from contracts/core-v1. DO NOT EDIT. */\n${exportLines.join('\n')}\n`,
-    ),
-  );
-
-  const fixtureFiles = await listFiles(
-    path.join(contractsRoot, 'conversation', 'fixtures'),
-    (file) =>
-      file.includes(`${path.sep}fixtures${path.sep}`) && file.endsWith('.json'),
-  );
-  let fixtureCaseCount = 0;
-  const fixtureCounts = { consumer: 0, provider: 0 };
-  for (const file of fixtureFiles) {
-    const fixture = JSON.parse(await fs.readFile(file, 'utf8'));
-    if (fixture.fixtureVersion !== 1 || !Array.isArray(fixture.cases)) {
-      throw new Error(
-        `Invalid fixture envelope: ${path.relative(repositoryRoot, file)}`,
-      );
-    }
-    const kind = file.includes(`${path.sep}provider${path.sep}`)
-      ? 'provider'
-      : 'consumer';
-    fixtureCounts[kind] += 1;
-    for (const [index, testCase] of fixture.cases.entries()) {
-      if (testCase.schema.startsWith('core:')) {
-        fixtureCaseCount += 1;
-        continue;
-      }
-      const validate = validators.get(testCase.schema);
-      if (!validate) {
-        throw new Error(
-          `${path.relative(repositoryRoot, file)} case ${index} references unknown schema ${testCase.schema}.`,
-        );
-      }
-      fixtureCaseCount += 1;
-      if (!validate(testCase.data)) {
-        throw new Error(
-          `${path.relative(repositoryRoot, file)} case ${index} violates ${testCase.schema}: ${ajv.errorsText(validate.errors, { separator: '; ' })}`,
-        );
-      }
-    }
-  }
-
-  const schemaHashes = {};
-  for (const [name, { schema }] of schemas) {
-    schemaHashes[name] = sha256(normalizedJson(schema));
-  }
-  const report = {
-    contractFamily: 'conversation-v1',
-    fixtureCaseCount,
-    fixtureCounts,
-    schemaCount: schemas.size,
-    schemaHashes,
-    status: 'compatible',
-  };
-
-  return { artifacts, report: normalizedJson(report) };
+  throw new Error(`Unsupported TypeScript schema: ${JSON.stringify(schema)}`);
 }
 
-async function assertFile(file, expected) {
-  let actual;
-  try {
-    actual = await fs.readFile(file, 'utf8');
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      throw new Error(
-        `Missing generated artifact: ${path.relative(repositoryRoot, file)}`,
-      );
+function zodType(schema) {
+  if (schema.$ref) return `z.lazy(() => ${refName(schema.$ref)}Schema)`;
+  if (schema.anyOf) return `z.union([${schema.anyOf.map(zodType).join(', ')}])`;
+  if (schema.enum) return `z.enum(${JSON.stringify(schema.enum)})`;
+  if (schema.type === 'null') return 'z.null()';
+  if (schema.type === 'string') {
+    let expression = 'z.string()';
+    if (schema.format === 'uuid') expression += '.uuid()';
+    if (schema.format === 'date-time')
+      expression += '.datetime({ offset: true })';
+    if (schema.minLength !== undefined)
+      expression += `.min(${schema.minLength})`;
+    if (schema.maxLength !== undefined)
+      expression += `.max(${schema.maxLength})`;
+    if (schema.pattern)
+      expression += `.regex(new RegExp(${JSON.stringify(schema.pattern)}))`;
+    return expression;
+  }
+  if (schema.type === 'integer') {
+    let expression = 'z.number().int()';
+    if (schema.minimum !== undefined) expression += `.min(${schema.minimum})`;
+    if (schema.maximum !== undefined) expression += `.max(${schema.maximum})`;
+    return expression;
+  }
+  if (schema.type === 'number') return 'z.number()';
+  if (schema.type === 'boolean') return 'z.boolean()';
+  if (schema.type === 'array') {
+    let expression = `z.array(${zodType(schema.items)})`;
+    if (schema.minItems !== undefined) expression += `.min(${schema.minItems})`;
+    if (schema.maxItems !== undefined) expression += `.max(${schema.maxItems})`;
+    if (schema.uniqueItems) {
+      expression +=
+        '.refine((items) => new Set(items).size === items.length, "Array items must be unique.")';
     }
-    throw error;
+    return expression;
   }
-  if (actual !== expected) {
-    throw new Error(
-      `Generated artifact is stale: ${path.relative(repositoryRoot, file)}. Run npm run contracts:generate.`,
+  if (schema.type === 'object') {
+    const required = new Set(schema.required || []);
+    const properties = Object.entries(schema.properties || {}).map(
+      ([key, value]) => {
+        const expression =
+          zodType(value) + (required.has(key) ? '' : '.optional()');
+        return `${JSON.stringify(key)}: ${expression}`;
+      },
     );
+    let expression = `z.object({ ${properties.join(', ')} })`;
+    expression +=
+      schema.additionalProperties === true ? '.passthrough()' : '.strict()';
+    return expression;
   }
+  throw new Error(`Unsupported Zod schema: ${JSON.stringify(schema)}`);
 }
 
 async function main() {
-  const { artifacts, report } = await createArtifacts();
-  if (checkOnly) {
-    for (const [name, content] of artifacts) {
-      await assertFile(path.join(generatedRoot, name), content);
+  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  const schemas = manifest.schemas;
+
+  const header = `// Generated by scripts/contracts/generate-core-v1.cjs. Do not edit.\nimport { z } from 'zod';\n\nexport const CORE_V1_CONTRACT_VERSION = ${JSON.stringify(manifest.version)} as const;\n`;
+  const declarations = Object.entries(schemas)
+    .map(
+      ([name, schema]) =>
+        `\nexport type ${name} = ${tsType(schema)};\nexport const ${name}Schema: z.ZodType<${name}> = ${zodType(schema)};\n`,
+    )
+    .join('');
+  const fixtureEntries = Object.entries(manifest.providerFixtures)
+    .map(
+      ([name, fixture]) =>
+        `${JSON.stringify(name)}: { schema: ${JSON.stringify(fixture.schema)}, value: ${JSON.stringify(fixture.value, null, 2)} }`,
+    )
+    .join(',\n');
+  const consumerEntries = Object.entries(manifest.consumerFixtures)
+    .map(
+      ([name, values]) => `${JSON.stringify(name)}: ${JSON.stringify(values)}`,
+    )
+    .join(',\n');
+  const generatedTsRaw = `${header}${declarations}\nexport const coreV1ProviderFixtures = {\n${fixtureEntries}\n} as const;\n\nexport const coreV1ConsumerFixtures = {\n${consumerEntries}\n} as const;\n\nexport function parseCoreV1Fixture(name: keyof typeof coreV1ProviderFixtures) {\n  const fixture = coreV1ProviderFixtures[name];\n  const schema = coreV1Schemas[fixture.schema];\n  return schema.parse(fixture.value);\n}\n\nexport const coreV1Schemas = {\n${Object.keys(
+    schemas,
+  )
+    .map((name) => `  ${name}: ${name}Schema`)
+    .join(',\n')}\n} as const;\n`;
+
+  const canonicalSchemas = Object.fromEntries(
+    Object.entries(schemas).sort(([a], [b]) => a.localeCompare(b)),
+  );
+  const report = {
+    contractSet: manifest.contractSet,
+    version: manifest.version,
+    status: 'initial-compatible-baseline',
+    generatedAt: 'deterministic',
+    schemaCount: Object.keys(schemas).length,
+    fixtureCount: Object.keys(manifest.providerFixtures).length,
+    breakingChanges: [],
+    schemaFingerprint: crypto
+      .createHash('sha256')
+      .update(JSON.stringify(canonicalSchemas))
+      .digest('hex'),
+    schemas: Object.keys(schemas).sort(),
+  };
+  const reportJson = `${JSON.stringify(report, null, 2)}\n`;
+
+  function writeOrCheck(file, content) {
+    const existing = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+    if (check) {
+      if (existing !== content) {
+        console.error(
+          `${path.relative(root, file)} is stale. Run npm run contracts:generate.`,
+        );
+        process.exitCode = 1;
+      }
+      return;
     }
-    await assertFile(compatibilityPath, report);
-    console.log(
-      `Core v1 contracts valid: ${artifacts.size - 1} generated schema/type artifacts checked.`,
-    );
-    return;
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, content);
   }
 
-  await fs.rm(generatedRoot, { force: true, recursive: true });
-  await fs.mkdir(generatedRoot, { recursive: true });
-  for (const [name, content] of artifacts) {
-    await fs.writeFile(path.join(generatedRoot, name), content, 'utf8');
-  }
-  await fs.mkdir(path.dirname(compatibilityPath), { recursive: true });
-  await fs.writeFile(compatibilityPath, report, 'utf8');
-  console.log(
-    `Generated ${artifacts.size - 1} Conversation v1 schema/type artifacts and compatibility report.`,
-  );
+  const prettierConfig = (await prettier.resolveConfig(generatedTsPath)) ?? {};
+  const generatedTs = await prettier.format(generatedTsRaw, {
+    ...prettierConfig,
+    filepath: generatedTsPath,
+  });
+
+  writeOrCheck(generatedTsPath, generatedTs);
+  writeOrCheck(reportPath, reportJson);
+  if (!process.exitCode)
+    console.log(
+      check
+        ? 'Core V1 generated contracts are current.'
+        : 'Generated Core V1 contracts.',
+    );
 }
 
 main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error);
+  console.error(error);
   process.exitCode = 1;
 });
