@@ -20,6 +20,14 @@
     "Unknown additive fields must be ignored by consumers."
   ],
   "providerFixtures": [
+    "authenticated-principal-valid.json",
+    "authenticated-principal-expired.json",
+    "player-lifecycle-onboarding.json",
+    "player-lifecycle-active.json",
+    "player-lifecycle-suspended.json",
+    "player-lifecycle-deleting.json",
+    "profile-version-conflict.json",
+    "onboarding-completion-replay.json",
     "active-intent.json",
     "paused-intent.json",
     "expired-intent.json",

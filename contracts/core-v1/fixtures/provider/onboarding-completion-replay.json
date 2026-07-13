@@ -1,0 +1,22 @@
+{
+  "principal": {
+    "accountId": "01000000-0000-4000-8000-000000000020",
+    "playerId": "20000000-0000-4000-8000-000000000020",
+    "sessionId": "09000000-0000-4000-8000-000000000020",
+    "issuedAt": "2026-07-14T08:00:00.000Z",
+    "expiresAt": "2026-07-14T09:00:00.000Z"
+  },
+  "lifecycle": {
+    "accountId": "01000000-0000-4000-8000-000000000020",
+    "playerId": "20000000-0000-4000-8000-000000000020",
+    "profileId": "30000000-0000-4000-8000-000000000020",
+    "state": "active",
+    "discoverable": true,
+    "messagingAllowed": true,
+    "profileVersion": 1,
+    "version": 2,
+    "updatedAt": "2026-07-14T08:05:00.000Z"
+  },
+  "profileVersion": 1,
+  "repeated": true
+}

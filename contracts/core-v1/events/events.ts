@@ -5,7 +5,9 @@ import {
   EventIdSchema,
   MatchIdSchema,
   MatchIntentIdSchema,
+  AccountIdSchema,
   PlayerIdSchema,
+  ProfileIdSchema,
   SetIdSchema,
 } from '../identity/semantic-ids';
 import { MatchCreatedV1Schema } from '../match/match-created';
@@ -100,3 +102,50 @@ export const NotificationRequestedEventV1Schema =
       ]),
     }),
   });
+
+const PlayerLifecycleEventDataV1Schema = z.object({
+  accountId: AccountIdSchema,
+  playerId: PlayerIdSchema,
+  profileId: ProfileIdSchema,
+  lifecycleVersion: z.number().int().positive(),
+  profileVersion: z.number().int().nonnegative(),
+});
+
+export const PlayerActivatedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
+  eventType: z.literal('player.activated.v1'),
+  aggregateType: z.literal('player'),
+  aggregateId: PlayerIdSchema,
+  data: PlayerLifecycleEventDataV1Schema,
+});
+
+export const PlayerProfileUpdatedEventV1Schema =
+  EventEnvelopeBaseV1Schema.extend({
+    eventType: z.literal('player.profile_updated.v1'),
+    aggregateType: z.literal('player'),
+    aggregateId: PlayerIdSchema,
+    data: PlayerLifecycleEventDataV1Schema,
+  });
+
+export const PlayerSuspendedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
+  eventType: z.literal('player.suspended.v1'),
+  aggregateType: z.literal('player'),
+  aggregateId: PlayerIdSchema,
+  data: PlayerLifecycleEventDataV1Schema.extend({
+    reasonCode: z.string().min(1).max(120),
+  }),
+});
+
+export const PlayerDeletionRequestedEventV1Schema =
+  EventEnvelopeBaseV1Schema.extend({
+    eventType: z.literal('player.deletion_requested.v1'),
+    aggregateType: z.literal('player'),
+    aggregateId: PlayerIdSchema,
+    data: PlayerLifecycleEventDataV1Schema,
+  });
+
+export const PlayerDeletedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
+  eventType: z.literal('player.deleted.v1'),
+  aggregateType: z.literal('player'),
+  aggregateId: PlayerIdSchema,
+  data: PlayerLifecycleEventDataV1Schema,
+});
