@@ -1,20 +1,18 @@
 import type { ComponentProps } from 'react';
-import type { ImageSourcePropType } from 'react-native';
+import { canonicalAssetKey, type AssetResolver } from '@/entities/media-asset';
 
 import type {
+  MessageAssetRef,
   MessageConversationDetail,
   MessageConversationSummary,
   MessageRelationship,
   MessageTimelineItem,
 } from '../contracts/messages-contracts';
-import {
-  resolveMessageAsset,
-  resolveMessageAssetUri,
-} from '../data/message-assets';
 import type {
   ChatDeliveryStatus,
   ChatMessage,
   ChatThread,
+  MessageResolvedMedia,
   OutgoingChatMessage,
 } from './chat-message';
 import { getOutgoingMessagePreviewText } from './chat-message';
@@ -28,7 +26,7 @@ export type MessageConversationTone = 'cyan' | 'muted' | 'orange' | 'purple';
 
 export type MessageInboxConversationViewModel = {
   activityAt?: string;
-  avatar?: ImageSourcePropType;
+  avatar?: MessageResolvedMedia;
   canMessage: boolean;
   icon?: IoniconName;
   id: string;
@@ -83,6 +81,7 @@ function fallbackDeliveryStatus(
 
 export function presentTimelineMessage(
   message: MessageTimelineItem,
+  assetResolver: AssetResolver,
 ): ChatMessage {
   const base = {
     createdAt: message.createdAt,
@@ -108,7 +107,8 @@ export function presentTimelineMessage(
   }
 
   if (message.kind === 'media') {
-    const uri = resolveMessageAssetUri(message.source) ?? '';
+    const resolvedMedia = resolveMessageMedia(message.source, assetResolver);
+    const uri = resolvedMedia.kind === 'remote' ? resolvedMedia.uri : '';
     const attachment = {
       altText: message.altText,
       durationMs: message.durationMs,
@@ -116,6 +116,7 @@ export function presentTimelineMessage(
       fileSize: message.fileSize,
       height: message.height,
       mediaType: message.mediaType,
+      resolvedMedia,
       thumbnailUri: message.mediaType === 'image' ? uri : undefined,
       uri,
       width: message.width,
@@ -140,16 +141,8 @@ export function presentTimelineMessage(
   }
 
   if (message.kind === 'build_share') {
-    const preview = resolveMessageAsset(message.preview);
-    const roleIcon = resolveMessageAsset(message.roleIcon);
-    if (!preview || !roleIcon) {
-      return {
-        ...base,
-        direction: 'incoming',
-        kind: 'text',
-        text: message.text,
-      };
-    }
+    const preview = resolveMessageMedia(message.preview, assetResolver);
+    const roleIcon = resolveMessageMedia(message.roleIcon, assetResolver);
     return {
       ...base,
       direction: 'incoming',
@@ -165,6 +158,9 @@ export function presentTimelineMessage(
 
   return {
     ...base,
+    artwork: message.artwork
+      ? resolveMessageMedia(message.artwork, assetResolver)
+      : { kind: 'unresolved', state: 'missing' },
     direction: 'incoming',
     kind: 'team-invite',
     members: message.members,
@@ -179,8 +175,11 @@ export function presentTimelineMessage(
 export function presentConversationThread(
   conversation: MessageConversationDetail,
   timeline: readonly MessageTimelineItem[],
+  assetResolver: AssetResolver,
 ): ChatThread {
-  const messages = timeline.map(presentTimelineMessage);
+  const messages = timeline.map((message) =>
+    presentTimelineMessage(message, assetResolver),
+  );
   if (conversation.liveState.typingParticipantIds.length > 0) {
     messages.push({
       direction: 'incoming',
@@ -190,7 +189,9 @@ export function presentConversationThread(
   }
 
   return {
-    avatar: resolveMessageAsset(conversation.avatar),
+    avatar: conversation.avatar
+      ? resolveMessageMedia(conversation.avatar, assetResolver)
+      : undefined,
     firstUnreadMessageId: conversation.viewerState.firstUnreadMessageId,
     icon: conversation.fallbackIcon as IoniconName | undefined,
     id: conversation.id,
@@ -204,6 +205,7 @@ export function presentConversationThread(
 }
 
 export function presentInboxConversation({
+  assetResolver,
   conversation,
   draftPreview,
   draftUpdatedAt,
@@ -211,6 +213,7 @@ export function presentInboxConversation({
   referenceDate,
   runtimeMessages,
 }: {
+  assetResolver: AssetResolver;
   conversation: MessageConversationSummary;
   draftPreview?: string;
   draftUpdatedAt?: number;
@@ -243,7 +246,9 @@ export function presentInboxConversation({
 
   return {
     activityAt,
-    avatar: resolveMessageAsset(conversation.avatar),
+    avatar: conversation.avatar
+      ? resolveMessageMedia(conversation.avatar, assetResolver)
+      : undefined,
     canMessage: conversation.capabilities.canMessage,
     icon: conversation.fallbackIcon as IoniconName | undefined,
     id: conversation.id,
@@ -273,4 +278,21 @@ export function presentInboxConversation({
         ? conversation.viewerState.unreadCount || undefined
         : undefined,
   };
+}
+
+function resolveMessageMedia(
+  asset: MessageAssetRef,
+  assetResolver: AssetResolver,
+): MessageResolvedMedia {
+  if (asset.kind === 'remote') {
+    return {
+      kind: 'remote',
+      source: { uri: asset.url },
+      state: 'ready',
+      uri: asset.url,
+    };
+  }
+  const assetKey = canonicalAssetKey(asset.assetKey);
+  if (!assetKey) return { kind: 'unresolved', state: 'missing' };
+  return { kind: 'asset', resolved: assetResolver.resolve(assetKey) };
 }

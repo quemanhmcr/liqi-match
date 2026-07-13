@@ -1,18 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
 import {
-  Image,
   Pressable,
   StyleSheet,
   Text as RNText,
   View,
-  type ImageSourcePropType,
   type TextProps,
 } from 'react-native';
 
 import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
-import type { DiscoverSetCard as DiscoverSetCardData } from '../model/discover-domain';
+import { DiscoverResolvedImage } from './DiscoverResolvedImage';
+import type {
+  DiscoverResolvedMedia,
+  DiscoverSetCard as DiscoverSetCardData,
+} from '../model/discover-domain';
 import { useDiscoverStore } from '../model/discover-store';
 import { useRequestSetJoinMutation } from '../queries/discover-queries';
 
@@ -223,7 +225,11 @@ function SetImage({
     <View
       style={[styles.imageShell, listPresentation && styles.imageShellList]}
     >
-      <Image resizeMode="cover" source={card.image} style={styles.image} />
+      <DiscoverResolvedImage
+        media={card.image}
+        resizeMode="cover"
+        style={styles.image}
+      />
     </View>
   );
 }
@@ -344,15 +350,15 @@ function AvatarStack({
   sources,
   surplus,
 }: {
-  sources: readonly ImageSourcePropType[];
+  sources: readonly DiscoverResolvedMedia[];
   surplus?: string;
 }) {
   return (
     <View style={styles.avatarStack}>
       {sources.map((source, index) => (
-        <Image
+        <DiscoverResolvedImage
           key={index}
-          source={source}
+          media={source}
           style={[styles.stackAvatar, index > 0 && styles.stackAvatarOverlap]}
         />
       ))}

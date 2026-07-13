@@ -10,7 +10,6 @@ import { fireEvent, waitFor, within } from '@testing-library/react-native';
 import { Dimensions, StyleSheet } from 'react-native';
 
 import { resetDiscoverState, useDiscoverStore } from '../model/discover-store';
-import { resetMockDiscoverData } from '../services/discover-service';
 import { renderDiscoverScreen } from './discover-test-utils';
 import { DiscoverSetsScreen } from '../screens/DiscoverSetsScreen';
 
@@ -53,7 +52,6 @@ const setWindowMetrics = (width: number, fontScale = 1) => {
 
 beforeEach(() => {
   resetDiscoverState();
-  resetMockDiscoverData();
   mockExpoRouter.router.back.mockClear();
   mockExpoRouter.router.push.mockClear();
 });

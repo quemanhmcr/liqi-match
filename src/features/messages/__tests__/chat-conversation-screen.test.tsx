@@ -85,6 +85,21 @@ const writableConversationIds = [
   'team-sao-bang',
 ] as const;
 
+function renderChatWithProviders(
+  ui: Parameters<typeof renderWithProviders>[0],
+  options: Parameters<typeof renderWithProviders>[1] = {},
+) {
+  const scenario = createChatScenarioController();
+  return renderWithProviders(ui, {
+    ...options,
+    serviceOverrides: {
+      messageRepository: createLocalChatRepository(),
+      messageTransport: scenario.transport,
+      ...options?.serviceOverrides,
+    },
+  });
+}
+
 function mockImageSelection() {
   return jest.spyOn(ImagePicker, 'launchImageLibraryAsync').mockResolvedValue({
     assets: [
@@ -120,7 +135,7 @@ describe('ChatConversationScreen', () => {
   });
   it('renders the relationship-priority chat experience', async () => {
     const { getByLabelText, getByPlaceholderText, getByText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen conversationId="minh-anh" />,
       );
 
@@ -143,7 +158,7 @@ describe('ChatConversationScreen', () => {
   });
 
   it('uses one native IME owner with a stable viewport and sticky composer dock', async () => {
-    const { getByTestId, queryByTestId } = await renderWithProviders(
+    const { getByTestId, queryByTestId } = await renderChatWithProviders(
       <SafeAreaProvider
         initialMetrics={{
           frame: { height: 800, width: 400, x: 0, y: 0 },
@@ -188,7 +203,7 @@ describe('ChatConversationScreen', () => {
   });
 
   it('reserves composer space in normal flow instead of a synthetic inset', async () => {
-    const { getByTestId } = await renderWithProviders(
+    const { getByTestId } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="minh-anh" />,
     );
     const chatScrollView = getByTestId('chat-message-list');
@@ -205,7 +220,7 @@ describe('ChatConversationScreen', () => {
       .getState()
       .hydrateDraft('minh-anh', 'Draft leo rank tối nay');
 
-    const { getByTestId } = await renderWithProviders(
+    const { getByTestId } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="minh-anh" />,
     );
 
@@ -220,7 +235,7 @@ describe('ChatConversationScreen', () => {
     const dismiss = jest.mocked(KeyboardController.dismiss);
     const requestFrame = jest.spyOn(globalThis, 'requestAnimationFrame');
     const { getByLabelText, getByTestId, queryByLabelText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen conversationId="minh-anh" />,
       );
 
@@ -239,9 +254,10 @@ describe('ChatConversationScreen', () => {
   });
 
   it('opens composer utilities and inserts a quick emoji into the draft', async () => {
-    const { getByLabelText, getByPlaceholderText } = await renderWithProviders(
-      <ChatConversationScreen conversationId="minh-anh" />,
-    );
+    const { getByLabelText, getByPlaceholderText } =
+      await renderChatWithProviders(
+        <ChatConversationScreen conversationId="minh-anh" />,
+      );
 
     await fireEvent.press(getByLabelText('Thêm nội dung'));
     expect(getByLabelText('Tuỳ chọn đính kèm')).toBeTruthy();
@@ -273,7 +289,7 @@ describe('ChatConversationScreen', () => {
       },
     };
     const { getByLabelText, getByTestId, getByText, queryByTestId } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen
           conversationId="minh-anh"
           messageTransport={messageTransport}
@@ -349,7 +365,7 @@ describe('ChatConversationScreen', () => {
         return { clientMessageId: input.clientMessageId };
       },
     };
-    const { getByLabelText, getByText } = await renderWithProviders(
+    const { getByLabelText, getByText } = await renderChatWithProviders(
       <ChatConversationScreen
         conversationId="minh-anh"
         messageTransport={messageTransport}
@@ -387,7 +403,7 @@ describe('ChatConversationScreen', () => {
   it('retries a failed media send without creating a second bubble', async () => {
     mockImageSelection();
     const scenario = createChatScenarioController({ failNextMedia: 'unknown' });
-    const { getByLabelText, getByText } = await renderWithProviders(
+    const { getByLabelText, getByText } = await renderChatWithProviders(
       <ChatConversationScreen
         conversationId="minh-anh"
         messageTransport={scenario.transport}
@@ -416,7 +432,7 @@ describe('ChatConversationScreen', () => {
   });
 
   it('renders session timestamps and exposes initial scroll anchors', async () => {
-    const { getAllByLabelText, getByTestId } = await renderWithProviders(
+    const { getAllByLabelText, getByTestId } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="minh-anh" />,
     );
     const list = getByTestId('chat-message-list');
@@ -432,7 +448,7 @@ describe('ChatConversationScreen', () => {
   });
 
   it('anchors a short conversation near the composer', async () => {
-    const { getByTestId } = await renderWithProviders(
+    const { getByTestId } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="khoa-jungle" />,
     );
 
@@ -449,7 +465,7 @@ describe('ChatConversationScreen', () => {
     const baseRepository = createLocalChatRepository({ pageSize: 3 });
     const getMessagePage = jest.fn(baseRepository.getMessagePage);
     const repository = { ...baseRepository, getMessagePage };
-    const { getByTestId } = await renderWithProviders(
+    const { getByTestId } = await renderChatWithProviders(
       <ChatConversationScreen
         conversationId="minh-anh"
         repository={repository}
@@ -478,7 +494,7 @@ describe('ChatConversationScreen', () => {
 
   it('renders a gaming build card for Khoa Jungle', async () => {
     const { getByLabelText, getByText, queryByText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen conversationId="khoa-jungle" />,
       );
 
@@ -501,7 +517,7 @@ describe('ChatConversationScreen', () => {
       sendText: () => pending.promise,
     };
     const { getByLabelText, getByPlaceholderText, getByTestId, getByText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen
           conversationId="minh-anh"
           messageTransport={messageTransport}
@@ -564,7 +580,7 @@ describe('ChatConversationScreen', () => {
       sendText: () => pending.promise,
     };
     const { getByLabelText, getByPlaceholderText, getByTestId } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen
           conversationId="khoa-jungle"
           messageTransport={messageTransport}
@@ -652,7 +668,7 @@ describe('ChatConversationScreen', () => {
         },
       };
       const { getByLabelText, getByPlaceholderText, getByTestId, unmount } =
-        await renderWithProviders(
+        await renderChatWithProviders(
           <ChatConversationScreen
             conversationId={conversationId}
             messageTransport={messageTransport}
@@ -708,7 +724,7 @@ describe('ChatConversationScreen', () => {
     }
 
     const { getByLabelText, getByPlaceholderText, getByTestId, getByText } =
-      await renderWithProviders(<RouteHarness />);
+      await renderChatWithProviders(<RouteHarness />);
     const minhList = getByTestId('chat-message-list');
     await fireEvent(minhList, 'contentSizeChange', 360, 900);
     scrollToEnd.mockClear();
@@ -773,7 +789,7 @@ describe('ChatConversationScreen', () => {
       sendText: () => pending.promise,
     };
     const { getByLabelText, getByPlaceholderText, getByTestId } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen
           conversationId="minh-anh"
           messageTransport={messageTransport}
@@ -812,7 +828,7 @@ describe('ChatConversationScreen', () => {
       },
     };
     const { getByLabelText, getByPlaceholderText, getByText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen
           conversationId="minh-anh"
           messageTransport={messageTransport}
@@ -862,12 +878,13 @@ Dòng hai`,
         };
       },
     };
-    const { getByLabelText, getByPlaceholderText } = await renderWithProviders(
-      <ChatConversationScreen
-        conversationId={conversationId}
-        messageTransport={messageTransport}
-      />,
-    );
+    const { getByLabelText, getByPlaceholderText } =
+      await renderChatWithProviders(
+        <ChatConversationScreen
+          conversationId={conversationId}
+          messageTransport={messageTransport}
+        />,
+      );
 
     await fireEvent.changeText(
       getByPlaceholderText('Nhắn tin...'),
@@ -885,12 +902,13 @@ Dòng hai`,
         return { clientMessageId: 'another-client-message' };
       },
     };
-    const { getByLabelText, getByPlaceholderText } = await renderWithProviders(
-      <ChatConversationScreen
-        conversationId="minh-anh"
-        messageTransport={messageTransport}
-      />,
-    );
+    const { getByLabelText, getByPlaceholderText } =
+      await renderChatWithProviders(
+        <ChatConversationScreen
+          conversationId="minh-anh"
+          messageTransport={messageTransport}
+        />,
+      );
 
     await fireEvent.changeText(
       getByPlaceholderText('Nhắn tin...'),
@@ -917,7 +935,7 @@ Dòng hai`,
       },
     };
     const { getByLabelText, getByPlaceholderText, getByText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen
           conversationId="minh-anh"
           messageTransport={messageTransport}
@@ -945,7 +963,7 @@ Dòng hai`,
     const setItem = jest
       .spyOn(AsyncStorage, 'setItem')
       .mockResolvedValue(undefined);
-    const { getByPlaceholderText } = await renderWithProviders(
+    const { getByPlaceholderText } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="khoa-jungle" />,
     );
     const input = getByPlaceholderText('Nhắn tin...');
@@ -980,7 +998,7 @@ Dòng hai`,
         callback(0);
         return 1;
       });
-    const { getByTestId } = await renderWithProviders(
+    const { getByTestId } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="khoa-jungle" />,
     );
     const inputBeforeHydration = getByTestId('chat-composer-input');
@@ -1017,7 +1035,7 @@ Dòng hai`,
 
   it('does not subscribe to React Native keyboard layout events', async () => {
     const addListener = jest.spyOn(Keyboard, 'addListener');
-    const { unmount } = await renderWithProviders(
+    const { unmount } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="minh-anh" />,
     );
 
@@ -1028,7 +1046,7 @@ Dòng hai`,
 
   it('renders an explicit not-found state instead of falling back to another thread', async () => {
     const { getByLabelText, queryByPlaceholderText, queryByText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen conversationId="missing-conversation" />,
       );
 
@@ -1052,7 +1070,7 @@ Dòng hai`,
         return baseRepository.getConversation(...args);
       },
     };
-    const { getByLabelText, getByText } = await renderWithProviders(
+    const { getByLabelText, getByText } = await renderChatWithProviders(
       <ChatConversationScreen
         conversationId="minh-anh"
         repository={repository}
@@ -1092,7 +1110,7 @@ Dòng hai`,
       },
     };
     const { queryByLabelText, getByPlaceholderText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen
           conversationId="minh-anh"
           repository={repository}
@@ -1109,7 +1127,7 @@ Dòng hai`,
   it('queues an offline message and flushes it when the deterministic transport reconnects', async () => {
     const scenario = createChatScenarioController({ network: 'offline' });
     const { getByLabelText, getByPlaceholderText, queryByLabelText } =
-      await renderWithProviders(
+      await renderChatWithProviders(
         <ChatConversationScreen
           conversationId="minh-anh"
           messageTransport={scenario.transport}
@@ -1156,7 +1174,7 @@ Dòng hai`,
       getByText,
       queryByLabelText,
       queryByPlaceholderText,
-    } = await renderWithProviders(
+    } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="system" />,
     );
 

@@ -3,7 +3,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useDeferredValue } from 'react';
 import {
-  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -12,7 +11,6 @@ import {
   Text as RNText,
   View,
   useWindowDimensions,
-  type ImageSourcePropType,
   type TextProps,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,11 +24,17 @@ import {
 import { liquidColors, liquidLayout } from '@/shared/theme/liquid-glass.tokens';
 
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
+import {
+  DiscoverQueryState,
+  DiscoverStaleBanner,
+} from '../components/DiscoverQueryState';
+import { DiscoverResolvedImage } from '../components/DiscoverResolvedImage';
 import type {
   DiscoverFilterChip,
   DiscoverFilterId,
   DiscoverMetricCard,
   DiscoverProfileCard,
+  DiscoverResolvedMedia,
   DiscoverVibeCard,
 } from '../model/discover-domain';
 import {
@@ -120,13 +124,14 @@ export function ExploreScreen() {
     previewLimit: 3,
     query: deferredQuery,
   });
+  const overview = overviewQuery.data;
   const filteredContent = {
-    profiles: overviewQuery.data.profiles,
-    sets: overviewQuery.data.sets,
-    vibes: overviewQuery.data.vibes,
+    profiles: overview?.profiles ?? [],
+    sets: overview?.sets ?? [],
+    vibes: overview?.vibes ?? [],
   };
-  const discoverFilterChips = overviewQuery.data.filterChips;
-  const discoverMetricCards = overviewQuery.data.metrics;
+  const discoverFilterChips = overview?.filterChips ?? [];
+  const discoverMetricCards = overview?.metrics ?? [];
   const resultCount = countDiscoverResults(filteredContent);
   const hasResults = resultCount > 0;
   const activeFilterLabels = discoverFilterChips
@@ -134,6 +139,15 @@ export function ExploreScreen() {
     .map((chip) => chip.label);
   const criteriaActive = activeFilterIds.length > 0 || query.trim().length > 0;
   const searchUpdating = deferredQuery !== query;
+
+  if (!overview) {
+    return (
+      <DiscoverQueryState
+        error={overviewQuery.error}
+        onRetry={() => void overviewQuery.refetch()}
+      />
+    );
+  }
 
   return (
     <View style={styles.screen}>
@@ -152,6 +166,7 @@ export function ExploreScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Header horizontalPadding={horizontalPadding} />
+        {overviewQuery.isError ? <DiscoverStaleBanner /> : null}
         <SearchAndFilters
           activeFilterCount={activeFilterIds.length}
           filtersExpanded={filtersExpanded}
@@ -657,9 +672,9 @@ function VibeCard({
       ]}
       testID={`vibe-card-${card.title}`}
     >
-      <Image
+      <DiscoverResolvedImage
+        media={card.background}
         resizeMode="cover"
-        source={card.background}
         style={[
           styles.vibeBackgroundLayer,
           { height: VIBE_CARD_HEIGHT, width },
@@ -739,6 +754,7 @@ function ProfileMatchCard({
       return;
     }
     openProfile(card.id);
+    router.push(appRoutes.profile.detail(card.id));
   };
 
   return (
@@ -762,7 +778,10 @@ function ProfileMatchCard({
       withShadow={false}
     >
       <View style={styles.profileAvatarShell}>
-        <Image source={card.avatar} style={styles.profileAvatar} />
+        <DiscoverResolvedImage
+          media={card.avatar}
+          style={styles.profileAvatar}
+        />
         {card.online ? <View style={styles.onlineDot} /> : null}
       </View>
 
@@ -803,7 +822,13 @@ function ProfileMatchCard({
             accessibilityLabel={`Nhắn ${card.name}`}
             accessibilityRole="button"
             android_ripple={null}
-            onPress={() => router.push(appRoutes.main.messages)}
+            onPress={() =>
+              router.push(
+                card.conversationId
+                  ? appRoutes.messages.detail(card.conversationId)
+                  : appRoutes.main.messages,
+              )
+            }
             style={({ pressed }) => [styles.chatOrb, pressed && styles.pressed]}
           >
             <Ionicons
@@ -950,16 +975,16 @@ function AvatarStack({
   surplus,
 }: {
   size?: 'compact' | 'regular';
-  sources: readonly ImageSourcePropType[];
+  sources: readonly DiscoverResolvedMedia[];
   surplus?: string;
 }) {
   const compact = size === 'compact';
   return (
     <View style={[styles.avatarStack, compact && styles.avatarStackCompact]}>
       {sources.map((source, index) => (
-        <Image
+        <DiscoverResolvedImage
           key={index}
-          source={source}
+          media={source}
           style={[
             styles.stackAvatar,
             compact && styles.stackAvatarCompact,

@@ -11,6 +11,21 @@ module.exports = {
   testPathIgnorePatterns: ['\\.native\\.test\\.ts$'],
   testTimeout: 5_000,
   transform: {
+    '^.+\.tsx$': [
+      '@swc/jest',
+      {
+        jsc: {
+          parser: { syntax: 'typescript', tsx: true },
+          target: 'es2022',
+          transform: {
+            hidden: { jest: true },
+            react: { runtime: 'automatic' },
+          },
+        },
+        module: { type: 'commonjs' },
+        sourceMaps: 'inline',
+      },
+    ],
     '^.+\\.ts$': [
       '@swc/jest',
       {

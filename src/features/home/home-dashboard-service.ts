@@ -1,3 +1,4 @@
+import type { AssetKey } from '@/entities/media-asset';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
 import { homePreviewProfileId } from './data/home-preview.fixture';
@@ -74,6 +75,7 @@ export type HomeReadyMode = {
 };
 
 export type CurrentHomeProfile = {
+  avatarAssetKey?: AssetKey;
   avatarFallbackUrl?: string;
   avatarUrl?: string;
   displayName: string;
@@ -87,6 +89,7 @@ export type MatchedSetStatus = 'ready' | 'online' | 'idle' | 'offline';
 
 export type MatchedSet = {
   actionLabel: string;
+  avatarAssetKey?: AssetKey;
   avatarUrl?: string;
   conversationId?: string;
   createdAt: string;

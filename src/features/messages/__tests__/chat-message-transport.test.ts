@@ -6,7 +6,6 @@ import {
   createSendChatMediaCommand,
   createSendChatTextCommand,
   normalizeChatText,
-  previewChatMessageTransport,
 } from '@/features/messages/services/chat-message-transport';
 
 describe('chat message transport contract', () => {
@@ -52,7 +51,7 @@ describe('chat message transport contract', () => {
     });
 
     await expect(
-      previewChatMessageTransport.sendText(command),
+      createChatScenarioController().transport.sendText(command),
     ).resolves.toEqual({
       acceptedAt: command.clientCreatedAt,
       canonicalMessageId: command.clientMessageId,
@@ -75,7 +74,7 @@ describe('chat message transport contract', () => {
 
     expect(command.caption).toBe('Ảnh lobby');
     await expect(
-      previewChatMessageTransport.sendMedia?.(command),
+      createChatScenarioController().transport.sendMedia?.(command),
     ).resolves.toEqual({
       acceptedAt: command.clientCreatedAt,
       canonicalMessageId: command.clientMessageId,

@@ -5,22 +5,25 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
   View,
-  type ImageStyle,
 } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import {
+  useAssetResolver,
+  usePreloadAssetSurface,
+} from '@/entities/media-asset';
 import {
   LiquidCard,
   LiquidChip,
   LiquidGlassSurface,
   LiquidOrbButton,
 } from '@/shared/components/liquid';
+import { classifyApplicationError } from '@/shared/errors/application-error';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 import {
@@ -31,6 +34,7 @@ import {
   type LiquidGlowPreset,
 } from '@/shared/theme/liquid-glow.presets';
 
+import { MessageResolvedImage } from '../components/MessageResolvedImage';
 import type { MessageInboxFilter } from '../contracts/messages-contracts';
 import { loadChatDraftIndex } from '../model/chat-draft-store';
 import type { ChatDeliveryStatus } from '../model/chat-message';
@@ -41,10 +45,8 @@ import {
 } from '../model/message-surface-presenters';
 import { useChatRuntimeStore } from '../model/chat-runtime-store';
 import { useMessagesInboxQuery } from '../queries/messages-queries';
-import {
-  localChatRepository,
-  type ChatRepository,
-} from '../services/chat-repository';
+import { useMessagesServices } from '../runtime/MessagesServicesProvider';
+import type { ChatRepository } from '../services/chat-repository';
 
 const inboxFilters: readonly {
   id: MessageInboxFilter;
@@ -142,10 +144,12 @@ function compareActivity(
   return (right.activityAt ?? '').localeCompare(left.activityAt ?? '');
 }
 
-export function MessagesScreen({
-  clock = systemMessagesClock,
-  repository = localChatRepository,
-}: MessagesScreenProps = {}) {
+export function MessagesScreen(props: MessagesScreenProps = {}) {
+  const services = useMessagesServices();
+  const assetResolver = useAssetResolver();
+  usePreloadAssetSurface('messages');
+  const clock = props.clock ?? systemMessagesClock;
+  const repository = props.repository ?? services.repository;
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] =
     useState<MessageInboxFilter>('all');
@@ -190,13 +194,16 @@ export function MessagesScreen({
   }, [draftIndexHydrated, hydrateDraftIndex]);
 
   const activeSnapshot = inboxQuery.data?.data;
-  const isLoading = inboxQuery.isPending;
-  const hasLoadError = inboxQuery.isError;
+  const inboxFailure = classifyApplicationError(inboxQuery.error);
+  const hasResolvedInbox = Boolean(activeSnapshot);
+  const isLoading = inboxQuery.isPending && !hasResolvedInbox;
+  const hasLoadError = inboxQuery.isError && !hasResolvedInbox;
   const referenceDate = clock.now();
   const conversations = useMemo(
     () =>
       (activeSnapshot?.items ?? []).map((conversation) =>
         presentInboxConversation({
+          assetResolver,
           conversation,
           draftPreview: draftPreviewsByConversation[conversation.id],
           draftUpdatedAt: draftUpdatedAtByConversation[conversation.id],
@@ -207,6 +214,7 @@ export function MessagesScreen({
       ),
     [
       activeSnapshot?.items,
+      assetResolver,
       draftPreviewsByConversation,
       draftUpdatedAtByConversation,
       readConversationIds,
@@ -355,6 +363,18 @@ export function MessagesScreen({
         })}
       </View>
 
+      {inboxQuery.isError && hasResolvedInbox ? (
+        <View
+          accessibilityLabel="Hộp thư đang hiển thị dữ liệu cũ"
+          style={styles.staleBanner}
+        >
+          <Ionicons color="#FFB86B" name="information-circle" size={16} />
+          <Text style={styles.staleText}>
+            Không thể làm mới. Đang hiển thị cuộc trò chuyện đã tải gần nhất.
+          </Text>
+        </View>
+      ) : null}
+
       {isLoading ? (
         <InboxState
           description="Đang lấy trạng thái mới nhất của cuộc trò chuyện."
@@ -364,12 +384,26 @@ export function MessagesScreen({
         />
       ) : hasLoadError ? (
         <InboxState
-          actionLabel="Thử lại"
-          description="Dữ liệu mock không phản hồi đúng contract. Hãy thử tải lại."
-          icon="cloud-offline-outline"
-          onAction={() => {
-            void inboxQuery.refetch();
-          }}
+          actionLabel={inboxFailure.retryable ? 'Thử lại' : undefined}
+          description={
+            inboxFailure.kind === 'offline'
+              ? 'Thiết bị đang offline. Kết nối lại để tải hộp thư.'
+              : inboxFailure.retryable
+                ? 'Hộp thư tạm thời chưa sẵn sàng. Hãy thử lại.'
+                : 'Yêu cầu hộp thư không thể hoàn tất.'
+          }
+          icon={
+            inboxFailure.kind === 'offline'
+              ? 'cloud-offline-outline'
+              : 'alert-circle-outline'
+          }
+          onAction={
+            inboxFailure.retryable
+              ? () => {
+                  void inboxQuery.refetch();
+                }
+              : undefined
+          }
           title="Không thể tải hộp thư"
         />
       ) : conversations.length === 0 ? (
@@ -607,9 +641,9 @@ function ConversationAvatar({
       ]}
     >
       {conversation.avatar ? (
-        <Image
-          source={conversation.avatar}
-          style={styles.avatarImage as ImageStyle}
+        <MessageResolvedImage
+          media={conversation.avatar}
+          style={styles.avatarImage}
         />
       ) : (
         <View style={[styles.avatarFallback, { backgroundColor: tone.iconBg }]}>
@@ -783,6 +817,24 @@ function InboxState({
 }
 
 const styles = StyleSheet.create({
+  staleBanner: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,184,107,0.09)',
+    borderColor: 'rgba(255,184,107,0.18)',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  staleText: {
+    color: 'rgba(255,226,190,0.78)',
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 16,
+  },
   ambientCyan: {
     backgroundColor: 'rgba(38,207,255,0.028)',
     borderRadius: 999,

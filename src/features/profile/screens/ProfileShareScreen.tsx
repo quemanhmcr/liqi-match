@@ -30,6 +30,7 @@ import {
   LiquidOrbButton,
 } from '@/shared/components/liquid';
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { useAssetResolver } from '@/entities/media-asset';
 import { useAuth } from '@/shared/auth/auth-context';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
@@ -38,11 +39,9 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 
 import { ProfileText } from '../components/ProfileShared';
-import {
-  buildPreviewProfile,
-  fetchProfileView,
-  type ProfileViewModel,
-} from '../services/profile-service';
+import { resolveProfileMedia } from '../model/profile-media';
+import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
+import type { ProfileViewModel } from '../services/profile-service';
 import { fetchProfileSettings } from '../services/profile-settings-service';
 
 type ShareRatio = 'story' | 'feed' | 'square';
@@ -92,6 +91,7 @@ const templateOptions: Option<ShareTemplate>[] = [
 
 export function ProfileShareScreen() {
   const { session } = useAuth();
+  const profileRepository = useProfileReadRepository();
   const [template, setTemplate] = useState<ShareTemplate>('fantasy');
   const [ratio, setRatio] = useState<ShareRatio>('story');
   const [cta, setCta] = useState<ShareCta>('teamup');
@@ -102,7 +102,7 @@ export function ProfileShareScreen() {
     enabled: Boolean(session),
     queryFn: () => {
       if (!session) throw new Error('Missing auth session');
-      return fetchProfileView({ session });
+      return profileRepository.getProfile({ session });
     },
     queryKey: ['profile-view', 'self', session?.user.id],
   });
@@ -115,8 +115,6 @@ export function ProfileShareScreen() {
     queryKey: ['profile-settings', session?.user.id],
   });
 
-  const profile =
-    profileQuery.data ?? buildPreviewProfile(session, session?.user.id);
   const selectedCta = useMemo(
     () => ctaOptions.find((item) => item.id === cta) ?? ctaOptions[0]!,
     [cta],
@@ -199,6 +197,57 @@ export function ProfileShareScreen() {
         >
           Bạn đã tắt “Cho phép tạo ảnh chia sẻ”. Bật lại trong Cài đặt nếu muốn
           xuất PNG social từ hồ sơ.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
+
+  if (profileQuery.isPending) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading />
+        <ShareGuardCard icon="hourglass-outline" title="Đang tải hồ sơ">
+          Đang đồng bộ dữ liệu người chơi trước khi render ảnh chia sẻ.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
+
+  if (profileQuery.isError) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading={false} />
+        <ShareGuardCard
+          icon="warning-outline"
+          primaryLabel="Thử lại"
+          title="Không thể tải hồ sơ"
+          onPrimaryPress={() => void profileQuery.refetch()}
+        >
+          Repository trả về lỗi. Ứng dụng không render ảnh từ fixture thay thế.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
+
+  const profile = profileQuery.data;
+  if (!profile) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading={false} />
+        <ShareGuardCard icon="person-outline" title="Không tìm thấy hồ sơ">
+          Tài khoản hiện tại chưa có projection hồ sơ trong runtime.
         </ShareGuardCard>
       </LiquidScreen>
     );
@@ -429,6 +478,11 @@ function SocialProfileCard({
   ratio: ShareRatio;
   template: ShareTemplate;
 }) {
+  const assetResolver = useAssetResolver();
+  const coverMedia = resolveProfileMedia(assetResolver, {
+    assetKey: profile.coverAssetKey,
+    uri: profile.coverUrl,
+  });
   const ratioStyle =
     ratio === 'square'
       ? styles.cardSquare
@@ -452,17 +506,17 @@ function SocialProfileCard({
       renderToHardwareTextureAndroid
       style={[styles.socialCard, ratioStyle]}
     >
-      {profile.coverUrl ? (
+      {coverMedia.source ? (
         <>
           <Image
             blurRadius={isMinimal ? 2 : 5}
             resizeMode="cover"
-            source={{ uri: profile.coverUrl }}
+            source={coverMedia.source}
             style={styles.cardCoverBlur}
           />
           <Image
             resizeMode="cover"
-            source={{ uri: profile.coverUrl }}
+            source={coverMedia.source}
             style={styles.cardCoverClarity}
           />
         </>
@@ -577,6 +631,12 @@ function SocialProfileCard({
 }
 
 function AvatarPoster({ profile }: { profile: ProfileViewModel }) {
+  const assetResolver = useAssetResolver();
+  const avatarMedia = resolveProfileMedia(assetResolver, {
+    assetKey: profile.avatarAssetKey,
+    uri: profile.avatarUrl ?? profile.avatarFallbackUrl,
+  });
+
   return (
     <LinearGradient
       colors={['rgba(142,92,255,0.92)', 'rgba(103,232,255,0.82)']}
@@ -585,11 +645,8 @@ function AvatarPoster({ profile }: { profile: ProfileViewModel }) {
       style={styles.avatarRingOuter}
     >
       <View style={styles.avatarRingInner}>
-        {profile.avatarUrl ? (
-          <Image
-            source={{ uri: profile.avatarUrl }}
-            style={styles.avatarImage}
-          />
+        {avatarMedia.source ? (
+          <Image source={avatarMedia.source} style={styles.avatarImage} />
         ) : (
           <ProfileText style={styles.avatarInitial}>
             {profile.displayName.charAt(0).toUpperCase() || 'L'}

@@ -48,6 +48,9 @@ jobs:
       - name: Check repository operating contract
         run: npm run repository:check
 
+      - name: Validate asset manifest and bundle budget
+        run: npm run assets:check
+
       - name: Check architecture boundaries
         run: npm run architecture:check
 

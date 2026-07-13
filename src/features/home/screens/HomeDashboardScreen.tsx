@@ -25,6 +25,7 @@ import {
   LiquidOrbButton,
   LiquidSectionHeader,
 } from '@/shared/components/liquid';
+import { classifyApplicationError } from '@/shared/errors/application-error';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
   liquidColors,
@@ -32,6 +33,11 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { useNotificationInboxSummary } from '@/entities/notifications';
+import {
+  useAssetResolver,
+  usePreloadAssetSurface,
+  type AssetKey,
+} from '@/entities/media-asset';
 import {
   ctaPurpleCyanGlowSegments,
   heroGlowSegments,
@@ -42,14 +48,12 @@ import {
 } from '@/shared/theme/liquid-glow.presets';
 
 import {
-  buildPreviewHomeDashboard,
-  fetchHomeDashboard,
   homeReadyModes,
   type HomeReadyMode,
   type MatchedSet,
   type MatchedSetStatus,
 } from '../home-dashboard-service';
-import { homePreviewProfileId } from '../data/home-preview.fixture';
+import { useHomeRepository } from '../runtime/HomeRepositoryProvider';
 import {
   buildMatchedSetTags,
   chatActionAccessibilityLabel,
@@ -59,15 +63,6 @@ import {
   matchedSetKindLabel,
   matchedSetStatusLabel,
 } from '../model/home-dashboard-view-model';
-
-const heroBackground =
-  require('../../../../assets/anh_mau_3/background_hero_trang_chu.png') as number;
-const avatarMinhAnh =
-  require('../../../../assets/anh_mau_3/avatar_minh_anh_support.png') as number;
-const avatarKhoaJungle =
-  require('../../../../assets/anh_mau_3/avatar_khoa_jungle_assassin.png') as number;
-const avatarTeamSaoBang =
-  require('../../../../assets/anh_mau_3/avatar_team_sao_bang_emblem.png') as number;
 
 const defaultMode: HomeReadyMode = homeReadyModes[0] ?? {
   accent: '#C679FF',
@@ -221,50 +216,6 @@ function buttonVariantForKind(kind: MatchedSet['kind']) {
   return 'primary' as const;
 }
 
-const templateMatchedSets: MatchedSet[] = [
-  {
-    actionLabel: 'Vào set',
-    createdAt: 'template-1',
-    heroNames: ['Aya', 'Helen', 'Annette'],
-    id: 'template-minh-anh',
-    kind: 'Tri kỉ',
-    meta: 'Tối · Có voice',
-    name: 'Minh Anh',
-    profileId: homePreviewProfileId,
-    rankName: 'Cao Thủ',
-    roleNames: ['Trợ Thủ'],
-    status: 'ready',
-    subtitle: 'Cao Thủ · Trợ Thủ · Global',
-    unreadCount: 1,
-  },
-  {
-    actionLabel: 'Vào set',
-    createdAt: 'template-2',
-    heroNames: ['Nakroth', 'Aoi', 'Keera'],
-    id: 'template-khoa-jungle',
-    kind: 'Rank',
-    meta: 'Rank nghiêm túc',
-    name: 'Khoa Jungle',
-    rankName: 'Chiến Tướng',
-    roleNames: ['Đi Rừng'],
-    status: 'online',
-    subtitle: 'Chiến Tướng · Đi Rừng · Global',
-  },
-  {
-    actionLabel: 'Vào lobby',
-    createdAt: 'template-3',
-    heroNames: ['Liliana', 'Yue', 'Lorion'],
-    id: 'template-team-sao-bang',
-    kind: 'Team Rank',
-    meta: 'Team 4/5 · Thiếu Mid',
-    name: 'Team Sao Băng',
-    rankName: 'Đại Cao Thủ',
-    roleNames: ['Đường Giữa'],
-    status: 'idle',
-    subtitle: 'Đại Cao Thủ · Đường Giữa · Global',
-  },
-];
-
 function HomeText(props: TextProps) {
   return <RNText maxFontSizeMultiplier={1} {...props} />;
 }
@@ -280,7 +231,9 @@ function selectionImpact() {
 }
 
 export default function HomeDashboardScreen() {
+  usePreloadAssetSurface('home');
   const { session } = useAuth();
+  const homeRepository = useHomeRepository();
   const notificationSummaryQuery = useNotificationInboxSummary(session);
   const hasUnreadNotifications =
     (notificationSummaryQuery.data?.unseenCount ?? 0) > 0;
@@ -292,15 +245,14 @@ export default function HomeDashboardScreen() {
     enabled: Boolean(session),
     queryFn: () => {
       if (!session) throw new Error('Missing auth session');
-      return fetchHomeDashboard(session);
+      return homeRepository.getDashboard(session);
     },
     queryKey: ['home-dashboard', session?.user.id],
   });
 
-  const dashboard = dashboardQuery.data ?? buildPreviewHomeDashboard(session);
-  const matchedSetsToRender = ensureMinhAnhMatchedSet(
-    dashboard.matchedSets.length ? dashboard.matchedSets : templateMatchedSets,
-  );
+  const dashboard = dashboardQuery.data;
+  const dashboardFailure = classifyApplicationError(dashboardQuery.error);
+  const matchedSetsToRender = dashboard?.matchedSets ?? [];
   const activeMatchCount = matchedSetsToRender.length;
   const selectedMode = useMemo(
     () =>
@@ -321,6 +273,42 @@ export default function HomeDashboardScreen() {
     impactLight();
     setReadyEnabled((value) => !value);
   };
+
+  if (!session) {
+    return (
+      <HomeDashboardQueryState
+        description="Phiên đăng nhập không còn hợp lệ."
+        title="Không thể mở Trang chủ"
+      />
+    );
+  }
+
+  if (!dashboard) {
+    return (
+      <HomeDashboardQueryState
+        description={
+          !dashboardQuery.error
+            ? 'Đang đồng bộ hồ sơ và các kết nối của bạn.'
+            : dashboardFailure.kind === 'offline'
+              ? 'Thiết bị đang offline. Kết nối lại để tải Trang chủ.'
+              : dashboardFailure.retryable
+                ? 'Dữ liệu Trang chủ tạm thời chưa sẵn sàng. Hãy thử lại.'
+                : 'Yêu cầu Trang chủ không thể hoàn tất. Ứng dụng không dùng preview để che lỗi này.'
+        }
+        loading={!dashboardQuery.error}
+        onRetry={
+          dashboardFailure.retryable
+            ? () => void dashboardQuery.refetch()
+            : undefined
+        }
+        title={
+          dashboardQuery.error
+            ? 'Không thể tải Trang chủ'
+            : 'Đang tải Trang chủ'
+        }
+      />
+    );
+  }
 
   return (
     <LiquidScreen
@@ -344,7 +332,7 @@ export default function HomeDashboardScreen() {
             fallbackUri={dashboard.currentProfile.avatarFallbackUrl}
             name={dashboard.currentProfile.displayName}
             size={50}
-            source={avatarKhoaJungle}
+            assetKey={dashboard.currentProfile.avatarAssetKey}
             uri={dashboard.currentProfile.avatarUrl}
           />
           <View style={styles.greetingBlock}>
@@ -388,9 +376,7 @@ export default function HomeDashboardScreen() {
         <View style={styles.previewBanner}>
           <Ionicons color="#FFB86B" name="information-circle" size={16} />
           <HomeText style={styles.previewText}>
-            {dashboardQuery.isError
-              ? 'Chưa đọc được dữ liệu match thật, đang hiển thị layout preview.'
-              : 'Preview giao diện Trang chủ với set đã match.'}
+            Không thể làm mới. Đang hiển thị dữ liệu đã tải gần nhất.
           </HomeText>
         </View>
       ) : null}
@@ -416,9 +402,9 @@ export default function HomeDashboardScreen() {
         withInnerReflection={false}
         withShadow={false}
       >
-        <Image
-          resizeMode="cover"
-          source={heroBackground}
+        <View
+          accessibilityLabel="Nền sẵn sàng trung tính"
+          pointerEvents="none"
           style={styles.readyHeroImage}
           testID="home-ready-hero-background"
         />
@@ -574,8 +560,8 @@ export default function HomeDashboardScreen() {
 
       {matchedSetsToRender.length ? (
         <View style={styles.matchList}>
-          {matchedSetsToRender.map((set, index) => (
-            <MatchedSetCard index={index} key={set.id} set={set} />
+          {matchedSetsToRender.map((set) => (
+            <MatchedSetCard key={set.id} set={set} />
           ))}
         </View>
       ) : (
@@ -585,15 +571,45 @@ export default function HomeDashboardScreen() {
   );
 }
 
-function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
+function HomeDashboardQueryState({
+  description,
+  loading = false,
+  onRetry,
+  title,
+}: {
+  description: string;
+  loading?: boolean;
+  onRetry?: () => void;
+  title: string;
+}) {
+  return (
+    <LiquidScreen
+      contentContainerStyle={styles.queryStateScreen}
+      withHeader={false}
+    >
+      {loading ? <ActivityIndicator color="#C679FF" size="large" /> : null}
+      <HomeText style={styles.queryStateTitle}>{title}</HomeText>
+      <HomeText style={styles.queryStateDescription}>{description}</HomeText>
+      {!loading && onRetry ? (
+        <LiquidButton
+          accessibilityLabel="Thử tải lại Trang chủ"
+          onPress={onRetry}
+        >
+          Thử lại
+        </LiquidButton>
+      ) : null}
+    </LiquidScreen>
+  );
+}
+
+function MatchedSetCard({ set }: { set: MatchedSet }) {
   const statusStyle = statusStyles[set.status];
   const tone = matchTones[set.kind];
-  const avatarSource = mockAvatarSource(set, index);
   const matchGlowPreset = matchGlowPresets[set.kind];
   const actionGlowPreset = actionGlowPresets[set.kind];
   const chipVariant = chipVariantForKind(set.kind);
   const buttonVariant = buttonVariantForKind(set.kind);
-  const profileId = profileIdForMatchedSet(set, index);
+  const profileId = set.profileId;
   const displayKind = matchedSetKindLabel(set.kind);
   const displayStatus = matchedSetStatusLabel(set.status);
   const tags = buildMatchedSetTags({
@@ -673,9 +689,12 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
             <Pressable
               accessibilityLabel={`Mở hồ sơ ${set.name}`}
               accessibilityRole="button"
+              accessibilityState={{ disabled: !profileId }}
+              disabled={!profileId}
               hitSlop={8}
               onPress={(event) => {
                 event.stopPropagation();
+                if (!profileId) return;
                 selectionImpact();
                 router.push(appRoutes.profile.detail(profileId));
               }}
@@ -684,7 +703,7 @@ function MatchedSetCard({ index, set }: { index: number; set: MatchedSet }) {
               <Avatar
                 name={set.name}
                 size={54}
-                source={avatarSource}
+                assetKey={set.avatarAssetKey}
                 uri={set.avatarUrl}
               />
             </Pressable>
@@ -861,58 +880,36 @@ function EmptyMatchedSets() {
   );
 }
 
-function ensureMinhAnhMatchedSet(sets: MatchedSet[]) {
-  const hasMinhAnh = sets.some(
-    (set) =>
-      set.profileId === homePreviewProfileId ||
-      normalizeProfileName(set.name).includes('minh anh'),
-  );
-  if (hasMinhAnh) return sets;
-  return [templateMatchedSets[0], ...sets].filter((set): set is MatchedSet =>
-    Boolean(set),
-  );
-}
-
-function profileIdForMatchedSet(set: MatchedSet, index: number) {
-  if (set.profileId) return set.profileId;
-  if (normalizeProfileName(set.name).includes('minh anh') || index === 0) {
-    return homePreviewProfileId;
-  }
-  return set.id;
-}
-
-function normalizeProfileName(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\\u0300-\\u036f]/g, '')
-    .toLowerCase()
-    .trim();
-}
-
 function Avatar({
+  assetKey,
   fallbackUri,
   name,
   size,
-  source,
   uri,
 }: {
+  assetKey?: AssetKey;
   fallbackUri?: string;
   name: string;
   size: number;
-  source?: ImageSourcePropType;
   uri?: string;
 }) {
+  const assetResolver = useAssetResolver();
   const initials = getInitials(name);
   const [failedUri, setFailedUri] = useState<string | undefined>();
+  const [failedAssetKey, setFailedAssetKey] = useState<AssetKey | undefined>();
   const activeUri =
     uri && failedUri !== uri
       ? uri
       : fallbackUri && failedUri !== fallbackUri
         ? fallbackUri
         : undefined;
+  const resolvedAsset =
+    assetKey && failedAssetKey !== assetKey
+      ? assetResolver.resolve(assetKey)
+      : undefined;
   const imageSource: ImageSourcePropType | undefined = activeUri
     ? { uri: activeUri }
-    : source;
+    : (resolvedAsset?.source as ImageSourcePropType | undefined);
 
   return (
     <LinearGradient
@@ -927,7 +924,11 @@ function Avatar({
       {imageSource ? (
         <Image
           onError={() => {
-            if (activeUri) setFailedUri(activeUri);
+            if (activeUri) {
+              setFailedUri(activeUri);
+              return;
+            }
+            if (assetKey) setFailedAssetKey(assetKey);
           }}
           source={imageSource}
           style={{
@@ -938,6 +939,11 @@ function Avatar({
         />
       ) : (
         <View
+          accessibilityLabel={
+            assetKey
+              ? `Avatar ${resolvedAsset?.state ?? 'missing'}`
+              : `Avatar initials ${name}`
+          }
           style={[
             styles.avatarFallback,
             {
@@ -952,15 +958,6 @@ function Avatar({
       )}
     </LinearGradient>
   );
-}
-
-function mockAvatarSource(set: MatchedSet, index: number): ImageSourcePropType {
-  const normalized = `${set.id} ${set.name}`.toLowerCase();
-  if (normalized.includes('minh') || index === 0) return avatarMinhAnh;
-  if (normalized.includes('khoa') || index === 1) return avatarKhoaJungle;
-  if (normalized.includes('team') || normalized.includes('sao') || index === 2)
-    return avatarTeamSaoBang;
-  return index % 2 === 0 ? avatarMinhAnh : avatarKhoaJungle;
 }
 
 function displayFirstName(name: string) {
@@ -984,6 +981,26 @@ const statusStyles: Record<MatchedSetStatus, { dot: string; text: string }> = {
 };
 
 const styles = StyleSheet.create({
+  queryStateDescription: {
+    color: 'rgba(224,230,248,0.72)',
+    fontSize: 14,
+    lineHeight: 21,
+    maxWidth: 320,
+    textAlign: 'center',
+  },
+  queryStateScreen: {
+    alignItems: 'center',
+    flexGrow: 1,
+    gap: 14,
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  queryStateTitle: {
+    color: '#F7F8FF',
+    fontSize: 20,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
   bgCyanGlow: {
     backgroundColor: 'rgba(60,210,255,0.016)',
     borderRadius: 300,

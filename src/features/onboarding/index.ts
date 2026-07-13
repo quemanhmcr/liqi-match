@@ -14,3 +14,8 @@ export {
   onboardingStepFromPathname,
   resolveOnboardingStepAccess,
 } from './model/onboarding-step-access';
+
+export {
+  createOnboardingSimulationResetParticipant,
+  type OnboardingDraftPort,
+} from './runtime/onboarding-simulation-reset';

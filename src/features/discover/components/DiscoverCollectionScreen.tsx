@@ -4,7 +4,6 @@ import { StatusBar } from 'expo-status-bar';
 import { router } from 'expo-router';
 import { useDeferredValue, useState } from 'react';
 import {
-  Image,
   Keyboard,
   Pressable,
   ScrollView,
@@ -13,7 +12,6 @@ import {
   TextInput,
   View,
   useWindowDimensions,
-  type ImageSourcePropType,
   type TextProps,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -26,10 +24,14 @@ import {
 } from '@/shared/components/liquid';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
+import { DiscoverQueryState, DiscoverStaleBanner } from './DiscoverQueryState';
+import { DiscoverResolvedImage } from './DiscoverResolvedImage';
+
 import type {
   DiscoverFilterChip,
   DiscoverFilterId,
   DiscoverProfileCard,
+  DiscoverResolvedMedia,
   DiscoverSetCard,
   DiscoverVibeCard,
 } from '../model/discover-domain';
@@ -189,8 +191,8 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
     query: deferredQuery,
     sort: sortId,
   });
-  const items = collectionQuery.data.items;
-  const discoverFilterChips = filterOptionsQuery.data.filterChips;
+  const items = collectionQuery.data?.items ?? [];
+  const discoverFilterChips = filterOptionsQuery.data?.filterChips ?? [];
 
   const selectedSort =
     sortOptions[kind].find((option) => option.id === sortId) ?? defaultSort;
@@ -216,10 +218,25 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
     setSortExpanded(false);
   };
 
+  if (!collectionQuery.data || !filterOptionsQuery.data) {
+    return (
+      <DiscoverQueryState
+        error={collectionQuery.error ?? filterOptionsQuery.error}
+        onRetry={() => {
+          void collectionQuery.refetch();
+          void filterOptionsQuery.refetch();
+        }}
+      />
+    );
+  }
+
   return (
     <View style={styles.screen} testID={`discover-collection-${kind}`}>
       <StatusBar style="light" />
       <CollectionBackground />
+      {collectionQuery.isError || filterOptionsQuery.isError ? (
+        <DiscoverStaleBanner />
+      ) : null}
       <ScrollView
         bounces={false}
         contentContainerStyle={[
@@ -631,15 +648,15 @@ function CollectionVibeCard({
         pressed && styles.pressed,
       ]}
     >
-      <Image
+      <DiscoverResolvedImage
+        media={card.background}
         resizeMode="cover"
-        source={card.background}
         style={styles.vibeBackdrop}
         testID={`discover-vibe-backdrop-${card.id}`}
       />
-      <Image
+      <DiscoverResolvedImage
+        media={card.background}
         resizeMode="contain"
-        source={card.background}
         style={[styles.vibeArtwork, { height, width: height }]}
         testID={`discover-vibe-artwork-${card.id}`}
       />
@@ -739,7 +756,7 @@ function CollectionSetCard({
     >
       <View style={styles.setTopRow}>
         <View style={styles.setImageShell}>
-          <Image source={card.image} style={styles.setImage} />
+          <DiscoverResolvedImage media={card.image} style={styles.setImage} />
         </View>
         <View style={styles.setCopy}>
           <View style={styles.titleBadgeRow}>
@@ -816,6 +833,7 @@ function CollectionProfileCard({
       return;
     }
     openProfile(card.id);
+    router.push(appRoutes.profile.detail(card.id));
   };
   return (
     <LiquidCard
@@ -836,7 +854,10 @@ function CollectionProfileCard({
     >
       <View style={styles.profileTopRow}>
         <View style={styles.profileAvatarShell}>
-          <Image source={card.avatar} style={styles.profileAvatar} />
+          <DiscoverResolvedImage
+            media={card.avatar}
+            style={styles.profileAvatar}
+          />
           {card.online ? (
             <View
               style={styles.onlineDot}
@@ -880,7 +901,13 @@ function CollectionProfileCard({
         <Pressable
           accessibilityLabel={`Nhắn ${card.name}`}
           accessibilityRole="button"
-          onPress={() => router.push(appRoutes.main.messages)}
+          onPress={() =>
+            router.push(
+              card.conversationId
+                ? appRoutes.messages.detail(card.conversationId)
+                : appRoutes.main.messages,
+            )
+          }
           style={({ pressed }) => [
             styles.messageButton,
             pressed && styles.pressed,
@@ -976,15 +1003,15 @@ function AvatarStack({
   sources,
   surplus,
 }: {
-  sources: readonly ImageSourcePropType[];
+  sources: readonly DiscoverResolvedMedia[];
   surplus?: string;
 }) {
   return (
     <View style={styles.avatarStack}>
       {sources.map((source, index) => (
-        <Image
+        <DiscoverResolvedImage
           key={index}
-          source={source}
+          media={source}
           style={[styles.stackAvatar, index > 0 && styles.stackAvatarOverlap]}
         />
       ))}

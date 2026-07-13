@@ -191,11 +191,3 @@ export function createChatScenarioController(
     transport,
   };
 }
-
-/**
- * Preview-only adapter used until a product transport is provided by the app
- * composition layer. It performs no network, auth or database IO and is fully
- * deterministic for tests and local product review.
- */
-export const previewChatMessageTransport =
-  createChatScenarioController().transport;

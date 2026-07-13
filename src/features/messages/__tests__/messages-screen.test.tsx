@@ -119,8 +119,13 @@ function repositoryForItems(
 async function renderMessagesScreen(
   props: Omit<MessagesScreenProps, 'clock'> = {},
 ) {
+  const repository = props.repository ?? createLocalChatRepository();
   const screen = await renderWithProviders(
-    <MessagesScreen clock={fixedInboxClock} {...props} />,
+    <MessagesScreen
+      clock={fixedInboxClock}
+      {...props}
+      repository={repository}
+    />,
   );
   await waitFor(() =>
     expect(screen.queryByText('Đang tải cuộc trò chuyện')).toBeNull(),
@@ -324,6 +329,75 @@ describe('MessagesScreen', () => {
       ).toBeTruthy(),
     );
     expect(screen.getByLabelText('Tin nhắn đang chờ mạng')).toBeTruthy();
+  });
+
+  it('offers retry for a retryable inbox failure', async () => {
+    const base = createLocalChatRepository();
+    const repository: ChatRepository = {
+      ...base,
+      async listConversations() {
+        throw Object.assign(new Error('Messages network failure'), {
+          code: 'network_error',
+          retryable: true,
+        });
+      },
+    };
+    const screen = await renderMessagesScreen({ repository });
+
+    expect(screen.getByText('Không thể tải hộp thư')).toBeTruthy();
+    expect(screen.getByLabelText('Thử lại')).toBeTruthy();
+  });
+
+  it('does not offer retry for a non-retryable inbox failure', async () => {
+    const base = createLocalChatRepository();
+    const repository: ChatRepository = {
+      ...base,
+      async listConversations() {
+        throw Object.assign(new Error('Invalid messages request'), {
+          code: 'validation_failed',
+          retryable: false,
+        });
+      },
+    };
+    const screen = await renderMessagesScreen({ repository });
+
+    expect(screen.getByText('Không thể tải hộp thư')).toBeTruthy();
+    expect(screen.queryByLabelText('Thử lại')).toBeNull();
+  });
+
+  it('keeps the latest inbox visible when refresh fails', async () => {
+    const page = response({
+      items: [conversationSummary()],
+      pageInfo: { hasNextPage: false, nextCursor: null },
+      totalCount: 1,
+      unreadConversationCount: 1,
+    });
+    const listConversations = jest
+      .fn<ChatRepository['listConversations']>()
+      .mockResolvedValueOnce(page)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Messages refresh failure'), {
+          code: 'network_error',
+          retryable: true,
+        }),
+      );
+    const repository: ChatRepository = {
+      ...createLocalChatRepository(),
+      listConversations,
+    };
+    const screen = await renderMessagesScreen({ repository });
+    expect(await screen.findByText('Người chưa đọc')).toBeTruthy();
+
+    await act(async () => {
+      await screen.queryClient.refetchQueries({ queryKey: ['messages'] });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText('Hộp thư đang hiển thị dữ liệu cũ'),
+      ).toBeTruthy();
+    });
+    expect(screen.getByText('Người chưa đọc')).toBeTruthy();
   });
 
   it('hydrates one persisted draft index without reading every full draft', async () => {

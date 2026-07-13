@@ -1,5 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { goldenWorldAssetKeys, isAssetKey } from '@/entities/media-asset';
+
 import {
   compareNotificationWatermarks,
   countUnseenNotifications,
@@ -234,10 +236,12 @@ export function createMockNotificationSeed(
       now.getTime() - Math.max(minutesAgo - 1, 0) * 60_000,
     ).toISOString();
   const minhAnh = {
+    avatarAssetKey: goldenWorldAssetKeys.profiles.minhAnhAvatar,
     displayName: 'Minh Anh',
     id: 'profile-minh-anh',
   } as const;
   const khoaJungle = {
+    avatarAssetKey: goldenWorldAssetKeys.profiles.khoaJungleAvatar,
     displayName: 'Khoa Jungle',
     id: 'profile-khoa-jungle',
   } as const;
@@ -276,8 +280,16 @@ export function createMockNotificationSeed(
       payload: {
         actors: [
           minhAnh,
-          { displayName: 'Linh Mid', id: 'profile-linh-mid' },
-          { displayName: 'Vy Carry', id: 'profile-vy-carry' },
+          {
+            avatarAssetKey: goldenWorldAssetKeys.library.avatars.cyberGirl,
+            displayName: 'Linh Mid',
+            id: 'profile-linh-mid',
+          },
+          {
+            avatarAssetKey: goldenWorldAssetKeys.library.avatars.pinkCarry,
+            displayName: 'Vy Carry',
+            id: 'profile-vy-carry',
+          },
         ],
         count: 2,
       },
@@ -303,7 +315,11 @@ export function createMockNotificationSeed(
       kind: 'profile-liked',
       occurredAt: occurredAt(120),
       payload: {
-        actor: { displayName: 'Aya Only', id: 'profile-aya-only' },
+        actor: {
+          avatarAssetKey: goldenWorldAssetKeys.library.avatars.pinkSupport,
+          displayName: 'Aya Only',
+          id: 'profile-aya-only',
+        },
         profileId: 'profile-aya-only',
       },
       readAt: readTimestamp(120),
@@ -446,6 +462,9 @@ function isNotificationActor(value: unknown) {
     isRecord(value) &&
     isNonEmptyString(value.id) &&
     isNonEmptyString(value.displayName) &&
+    (value.avatarAssetKey === undefined ||
+      (typeof value.avatarAssetKey === 'string' &&
+        isAssetKey(value.avatarAssetKey))) &&
     (value.avatarUrl === undefined || typeof value.avatarUrl === 'string')
   );
 }

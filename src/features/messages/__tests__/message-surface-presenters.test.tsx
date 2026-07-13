@@ -1,5 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 
+import { createGoldenWorldAssetResolver } from '@/entities/media-asset';
+
 import {
   MessageConversationDetailSchema,
   MessageTimelineItemSchema,
@@ -9,7 +11,43 @@ import {
   presentTimelineMessage,
 } from '@/features/messages/model/message-surface-presenters';
 
+const assetResolver = createGoldenWorldAssetResolver();
+
 describe('message surface presenters', () => {
+  it('carries team invite artwork from the repository contract into the render model', () => {
+    const invite = MessageTimelineItemSchema.parse({
+      artwork: {
+        assetKey: 'asset:set:sao-bang:artwork',
+        kind: 'fixture',
+      },
+      createdAt: '2026-07-12T10:05:00.000Z',
+      direction: 'incoming',
+      id: 'invite-1',
+      kind: 'team_invite',
+      members: ['Yue', 'Lorian'],
+      missingRole: 'Mid',
+      mode: 'Team Rank',
+      teamName: 'Team Sao Băng',
+      teamSize: '4/5',
+      text: 'Mời bạn vào lobby',
+    });
+
+    const rendered = presentTimelineMessage(invite, assetResolver);
+
+    expect(rendered).toMatchObject({
+      artwork: {
+        kind: 'asset',
+        resolved: {
+          key: 'asset:set:sao-bang:artwork',
+          state: 'ready',
+        },
+      },
+      id: 'invite-1',
+      kind: 'team-invite',
+      teamName: 'Team Sao Băng',
+    });
+  });
+
   it('presents received media and typing as stable render-model items', () => {
     const media = MessageTimelineItemSchema.parse({
       caption: 'Build mới',
@@ -26,7 +64,7 @@ describe('message surface presenters', () => {
       },
       width: 1200,
     });
-    const rendered = presentTimelineMessage(media);
+    const rendered = presentTimelineMessage(media, assetResolver);
 
     expect(rendered).toMatchObject({
       attachment: {
@@ -66,7 +104,11 @@ describe('message surface presenters', () => {
         unreadCount: 0,
       },
     });
-    const thread = presentConversationThread(conversation, [media]);
+    const thread = presentConversationThread(
+      conversation,
+      [media],
+      assetResolver,
+    );
 
     expect(thread.kind).toBe('Team');
     expect(thread.messages.at(-1)).toEqual({

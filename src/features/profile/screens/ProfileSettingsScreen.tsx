@@ -15,6 +15,7 @@ import {
   type ImageSourcePropType,
 } from 'react-native';
 
+import { useAssetResolver } from '@/entities/media-asset';
 import { useAuth } from '@/shared/auth/auth-context';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import {
@@ -31,10 +32,8 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 
 import { ProfileText } from '../components/ProfileShared';
-import {
-  buildPreviewProfile,
-  fetchProfileView,
-} from '../services/profile-service';
+import { resolveProfileMedia } from '../model/profile-media';
+import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
 import {
   deleteOwnAccount,
   fetchProfileSettings,
@@ -55,6 +54,8 @@ type SettingsMutationKey =
 
 export function ProfileSettingsScreen() {
   const { session, signOut } = useAuth();
+  const profileRepository = useProfileReadRepository();
+  const assetResolver = useAssetResolver();
   const queryClient = useQueryClient();
   const [pendingKey, setPendingKey] = useState<SettingsMutationKey | null>(
     null,
@@ -65,7 +66,7 @@ export function ProfileSettingsScreen() {
     enabled: Boolean(session),
     queryFn: () => {
       if (!session) throw new Error('Missing auth session');
-      return fetchProfileView({ session });
+      return profileRepository.getProfile({ session });
     },
     queryKey: ['profile-settings-view', session?.user.id],
   });
@@ -78,8 +79,13 @@ export function ProfileSettingsScreen() {
     queryKey: ['profile-settings', session?.user.id],
   });
 
-  const profile =
-    profileQuery.data ?? buildPreviewProfile(session, session?.user.id);
+  const profile = profileQuery.data;
+  const profileAvatarSource = profile
+    ? resolveProfileMedia(assetResolver, {
+        assetKey: profile.avatarAssetKey,
+        uri: profile.avatarUrl ?? profile.avatarFallbackUrl,
+      }).source
+    : undefined;
   const accountSubtitle = useMemo(
     () => session?.user.email ?? compactUserId(session?.user.id),
     [session?.user.email, session?.user.id],
@@ -247,14 +253,29 @@ export function ProfileSettingsScreen() {
         Tinh chỉnh tài khoản, hồ sơ và quyền riêng tư của bạn.
       </ProfileText>
 
-      <AccountSummaryCard
-        accountSubtitle={accountSubtitle}
-        displayName={profile.displayName}
-        isPreview={profileQuery.isError}
-        onPress={openProfile}
-        source={profile.avatarUrl ? { uri: profile.avatarUrl } : undefined}
-        statusLabel={profile.statusLabel}
-      />
+      {profile ? (
+        <AccountSummaryCard
+          accountSubtitle={accountSubtitle}
+          displayName={profile.displayName}
+          onPress={openProfile}
+          source={profileAvatarSource}
+          statusLabel={profile.statusLabel}
+        />
+      ) : (
+        <ProfileReadStatusCard
+          loading={profileQuery.isPending}
+          onRetry={
+            profileQuery.isError ? () => void profileQuery.refetch() : undefined
+          }
+          title={
+            profileQuery.isPending
+              ? 'Đang tải hồ sơ'
+              : profileQuery.isError
+                ? 'Không thể tải hồ sơ'
+                : 'Không tìm thấy hồ sơ'
+          }
+        />
+      )}
 
       <SettingsSection label="HỒ SƠ" title="Hồ sơ & chia sẻ">
         <SettingsRow
@@ -398,17 +419,58 @@ const defaultSettingsState: ProfileSettingsState = {
   showWinRate: true,
 };
 
+function ProfileReadStatusCard({
+  loading,
+  onRetry,
+  title,
+}: {
+  loading: boolean;
+  onRetry?: () => void;
+  title: string;
+}) {
+  return (
+    <LiquidCard
+      density="list"
+      glowIntensity="low"
+      style={styles.accountCard}
+      withShadow={false}
+    >
+      <View style={styles.profileReadStateRow}>
+        <Ionicons
+          color="rgba(178,235,255,0.78)"
+          name={loading ? 'cloud-download-outline' : 'warning-outline'}
+          size={20}
+        />
+        <View style={styles.accountCopy}>
+          <ProfileText style={styles.accountName}>{title}</ProfileText>
+          <ProfileText style={styles.accountMeta}>
+            {loading
+              ? 'Đang đồng bộ dữ liệu người chơi.'
+              : 'Không dùng dữ liệu preview để thay thế kết quả repository.'}
+          </ProfileText>
+        </View>
+        {!loading && onRetry ? (
+          <LiquidButton
+            accessibilityLabel="Thử tải lại hồ sơ"
+            onPress={onRetry}
+          >
+            Thử lại
+          </LiquidButton>
+        ) : null}
+      </View>
+    </LiquidCard>
+  );
+}
+
 function AccountSummaryCard({
   accountSubtitle,
   displayName,
-  isPreview,
   onPress,
   source,
   statusLabel,
 }: {
   accountSubtitle: string;
   displayName: string;
-  isPreview: boolean;
   onPress: () => void;
   source?: ImageSourcePropType;
   statusLabel: string;
@@ -441,11 +503,6 @@ function AccountSummaryCard({
             <ProfileText numberOfLines={1} style={styles.accountMeta}>
               {accountSubtitle}
             </ProfileText>
-            {isPreview ? (
-              <ProfileText style={styles.accountWarning}>
-                Đang dùng dữ liệu preview vì chưa đọc được hồ sơ thật.
-              </ProfileText>
-            ) : null}
           </View>
           <Ionicons
             color="rgba(219,226,255,0.38)"
@@ -745,12 +802,11 @@ const styles = StyleSheet.create({
     gap: 11,
     minHeight: 60,
   },
-  accountWarning: {
-    color: 'rgba(255,216,168,0.76)',
-    fontSize: 11.5,
-    fontWeight: '600',
-    lineHeight: 16,
-    marginTop: 5,
+  profileReadStateRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 11,
+    minHeight: 60,
   },
   avatarImage: { height: '100%', width: '100%' },
   avatarInitials: {

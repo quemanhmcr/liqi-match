@@ -23,7 +23,6 @@ import {
   TextInput,
   View,
   useWindowDimensions,
-  type ImageSourcePropType,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   type ScrollViewProps,
@@ -34,12 +33,17 @@ import { KeyboardController } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import {
+  useAssetResolver,
+  usePreloadAssetSurface,
+} from '@/entities/media-asset';
 import { ChatComposerDock } from '../components/ChatComposerDock';
 import {
   ChatKeyboardScrollView,
   type ChatKeyboardScrollViewRef,
 } from '../components/ChatKeyboardScrollView';
 import { ChatMediaViewer } from '../components/ChatMediaViewer';
+import { MessageResolvedImage } from '../components/MessageResolvedImage';
 import {
   LiquidGlassSurface,
   LiquidOrbButton,
@@ -63,11 +67,16 @@ import {
 } from '../model/chat-follow-intent';
 import { calculateChatMediaPreviewMetrics } from '../model/chat-media-layout';
 import { resolveChatKeyboardGeometry } from '../model/chat-keyboard-ownership';
+import {
+  messageResolvedMediaSource,
+  messageResolvedMediaState,
+} from '../model/chat-message';
 import type {
   ChatMediaAttachment,
   ChatMessage,
   ChatThread,
   IncomingMediaMessage,
+  MessageResolvedMedia,
   OutgoingChatMessage,
   OutgoingMediaMessage,
   OutgoingTextMessage,
@@ -105,18 +114,14 @@ import {
   createSendChatTextCommand,
   MAX_CHAT_TEXT_LENGTH,
   normalizeChatText,
-  previewChatMessageTransport,
   type ChatMessageTransport,
   type ChatNetworkState,
 } from '../services/chat-message-transport';
+import { useMessagesServices } from '../runtime/MessagesServicesProvider';
 import {
   DEFAULT_CHAT_MESSAGE_PAGE_SIZE,
-  localChatRepository,
   type ChatRepository,
 } from '../services/chat-repository';
-
-const teamEmblem =
-  require('../../../../assets/anh_mau_3/avatar_team_sao_bang_emblem.png') as ImageSourcePropType;
 
 export type ChatConversationScreenProps = {
   conversationId?: string;
@@ -232,11 +237,13 @@ export function ChatConversationScreen(props: ChatConversationScreenProps) {
   );
 }
 
-function ChatConversationSession({
-  conversationId,
-  messageTransport = previewChatMessageTransport,
-  repository = localChatRepository,
-}: ChatConversationScreenProps) {
+function ChatConversationSession(props: ChatConversationScreenProps) {
+  const services = useMessagesServices();
+  const assetResolver = useAssetResolver();
+  usePreloadAssetSurface('messages');
+  const conversationId = props.conversationId;
+  const messageTransport = props.messageTransport ?? services.messageTransport;
+  const repository = props.repository ?? services.repository;
   const conversationKey = conversationId ?? '';
   const { bottom: bottomInset } = useSafeAreaInsets();
   const keyboardGeometry = useMemo(
@@ -331,6 +338,7 @@ function ChatConversationSession({
         const thread = presentConversationThread(
           surface,
           pageResponse.data.items,
+          assetResolver,
         );
         setConversationData({
           conversationId,
@@ -354,7 +362,7 @@ function ChatConversationSession({
     return () => {
       active = false;
     };
-  }, [conversationId, loadRetrySequence, repository]);
+  }, [assetResolver, conversationId, loadRetrySequence, repository]);
 
   useEffect(() => {
     const subscription = messageTransport.subscribeNetworkState?.((state) => {
@@ -529,7 +537,7 @@ function ChatConversationSession({
           ...current,
           historyMessages: [
             ...page.items
-              .map(presentTimelineMessage)
+              .map((message) => presentTimelineMessage(message, assetResolver))
               .filter((message) => !existing.has(message.id)),
             ...current.historyMessages,
           ],
@@ -546,7 +554,14 @@ function ChatConversationSession({
         );
       }
     }
-  }, [conversationId, isLoadingOlder, loadState, nextCursor, repository]);
+  }, [
+    assetResolver,
+    conversationId,
+    isLoadingOlder,
+    loadState,
+    nextCursor,
+    repository,
+  ]);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -1498,8 +1513,17 @@ function IncomingMediaMessageBubble({
 }) {
   const viewport = useWindowDimensions();
   const [viewerOpen, setViewerOpen] = useState(false);
+  const resolvedMedia = message.attachment.resolvedMedia;
+  const resolvedSource = resolvedMedia
+    ? messageResolvedMediaSource(resolvedMedia)
+    : undefined;
+  const resolvedState = resolvedMedia
+    ? messageResolvedMediaState(resolvedMedia)
+    : 'ready';
+  const canOpenViewer = Boolean(message.attachment.uri);
   const [imageLoading, setImageLoading] = useState(
-    message.attachment.mediaType === 'image',
+    message.attachment.mediaType === 'image' &&
+      Boolean(resolvedSource ?? message.attachment.uri),
   );
   const preview = useMemo(
     () =>
@@ -1529,7 +1553,10 @@ function IncomingMediaMessageBubble({
           <Pressable
             accessibilityLabel={mediaLabel}
             accessibilityRole="imagebutton"
-            onPress={() => setViewerOpen(true)}
+            disabled={!canOpenViewer}
+            onPress={() => {
+              if (canOpenViewer) setViewerOpen(true);
+            }}
             style={({ pressed }) => [
               styles.mediaPreview,
               { height: preview.height, width: preview.width },
@@ -1557,6 +1584,16 @@ function IncomingMediaMessageBubble({
                   </Text>
                 ) : null}
               </View>
+            ) : resolvedMedia ? (
+              <MessageResolvedImage
+                accessibilityIgnoresInvertColors
+                fadeDuration={120}
+                media={resolvedMedia}
+                onLoadEnd={() => setImageLoading(false)}
+                onLoadStart={() => setImageLoading(true)}
+                resizeMode={preview.resizeMode}
+                style={StyleSheet.absoluteFill}
+              />
             ) : (
               <Image
                 accessibilityIgnoresInvertColors
@@ -1568,7 +1605,31 @@ function IncomingMediaMessageBubble({
                 style={StyleSheet.absoluteFill}
               />
             )}
-            {imageLoading && !isVideo ? (
+            {resolvedState !== 'ready' && !resolvedSource ? (
+              <View
+                accessibilityLabel={`Media ${resolvedState}`}
+                pointerEvents="none"
+                style={styles.mediaStateOverlay}
+              >
+                <Ionicons
+                  color="rgba(235,241,255,0.82)"
+                  name={
+                    resolvedState === 'offline-unavailable'
+                      ? 'cloud-offline-outline'
+                      : 'image-outline'
+                  }
+                  size={24}
+                />
+                <Text style={styles.mediaStateTitle}>
+                  {resolvedState === 'offline-unavailable'
+                    ? 'Media chưa có khi offline'
+                    : 'Media không khả dụng'}
+                </Text>
+              </View>
+            ) : null}
+            {imageLoading &&
+            !isVideo &&
+            Boolean(resolvedSource ?? message.attachment.uri) ? (
               <View pointerEvents="none" style={styles.mediaLoadingOverlay}>
                 <ActivityIndicator
                   color="rgba(242,246,255,0.72)"
@@ -1587,7 +1648,7 @@ function IncomingMediaMessageBubble({
       <Text style={styles.incomingTime}>
         {formatChatClock(message.createdAt)}
       </Text>
-      {viewerOpen ? (
+      {viewerOpen && canOpenViewer ? (
         <ChatMediaViewer
           attachment={message.attachment}
           caption={message.caption}
@@ -2018,7 +2079,10 @@ function TeamInviteCard({
         <View pointerEvents="none" style={styles.teamGlow} />
         <View style={styles.teamTopRow}>
           <View style={styles.teamEmblemFrame}>
-            <Image source={teamEmblem} style={styles.teamEmblem} />
+            <MessageResolvedImage
+              media={message.artwork}
+              style={styles.teamEmblem}
+            />
           </View>
           <View style={styles.teamCopy}>
             <View style={styles.teamTitleRow}>
@@ -2098,15 +2162,18 @@ function BuildShareMessage({
               style={styles.buildCard}
             >
               <View style={styles.buildPreviewFrame}>
-                <Image source={message.preview} style={styles.buildPreview} />
+                <MessageResolvedImage
+                  media={message.preview}
+                  style={styles.buildPreview}
+                />
                 <LinearGradient
                   colors={['transparent', 'rgba(6,10,22,0.88)']}
                   pointerEvents="none"
                   style={StyleSheet.absoluteFill}
                 />
                 <View style={styles.buildRoleBadge}>
-                  <Image
-                    source={message.roleIcon}
+                  <MessageResolvedImage
+                    media={message.roleIcon}
                     style={styles.buildRoleIcon}
                   />
                 </View>
@@ -2192,7 +2259,7 @@ function Avatar({
   online = false,
   size,
 }: {
-  avatar?: ImageSourcePropType;
+  avatar?: MessageResolvedMedia;
   icon?: keyof typeof Ionicons.glyphMap;
   online?: boolean;
   size: number;
@@ -2205,8 +2272,8 @@ function Avatar({
       ]}
     >
       {avatar ? (
-        <Image
-          source={avatar}
+        <MessageResolvedImage
+          media={avatar}
           style={[styles.avatarImage, { borderRadius: size / 2 }]}
         />
       ) : (

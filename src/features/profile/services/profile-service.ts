@@ -3,6 +3,7 @@ import {
   uploadProfileMediaAsset,
   type LocalImageAsset,
 } from '@/shared/services/media-upload';
+import type { AssetKey } from '@/entities/media-asset';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
 import { supabaseRest } from '@/shared/services/supabase-rest';
@@ -143,10 +144,13 @@ export type ProfileHeroPickerOption = ProfileFavoriteHero & {
 };
 
 export type ProfileViewModel = {
+  avatarAssetKey?: AssetKey;
   avatarFallbackUrl?: string;
   avatarUrl?: string;
   bio: string;
+  coverAssetKey?: AssetKey;
   coverUrl?: string;
+  conversationId?: string;
   displayName: string;
   favoriteHeroes: ProfileFavoriteHero[];
   gender: ProfileGender;
@@ -160,6 +164,7 @@ export type ProfileViewModel = {
   statusLabel: string;
   statusValue: ProfileStatusValue;
   verified: boolean;
+  wallAssetKeys?: AssetKey[];
 };
 
 export type ProfileReferenceOption = {
@@ -239,6 +244,13 @@ const defaultProfileStats: ProfileStats = {
   winRate: profileMockStats.winRate,
 };
 
+const emptyProfileStats: ProfileStats = {
+  matches: 0,
+  rating: 0,
+  reputation: 0,
+  winRate: 0,
+};
+
 const defaultEditHabits: ProfileEditHabits = {
   comeback_response: 'Vẫn cố gắng đến cuối',
   communication_channels: ['Voice khi cần'],
@@ -289,7 +301,7 @@ export async function fetchProfileEditDraft(
       supabaseRest<RoleRow[]>('roles?select=id,slug,name&order=name.asc', {
         session,
       }),
-      fetchProfileHeroRows(session, profileId),
+      fetchProfileHeroRows(session, profileId, { allowPartialRecovery: true }),
       supabaseRest<HeroRow[]>('heroes?select=id,slug,name&order=name.asc', {
         session,
       }),
@@ -302,7 +314,9 @@ export async function fetchProfileEditDraft(
   const mediaSummary = mediaSummaryRecord(habits?.media_summary);
   const gender = profileGenderFromSummary(mediaSummary);
   const stats = profileStatsFromSummary(mediaSummary);
-  const fallbackCover = await fetchUploadedProfileCover(session, profileId);
+  const fallbackCover = await fetchUploadedProfileCover(session, profileId, {
+    allowPartialRecovery: true,
+  });
   const explicitCoverMediaId = mediaIdFromSummary(
     mediaSummary,
     'cover_media_id',
@@ -435,11 +449,8 @@ export async function uploadEditableProfileMedia(
 export async function fetchProfileView(input: {
   session: AuthSession;
   userId?: string;
-}): Promise<ProfileViewModel> {
+}): Promise<ProfileViewModel | null> {
   const targetUserId = input.userId ?? input.session.user.id;
-  if (isMinhAnhMockProfile(targetUserId)) {
-    return buildMinhAnhPreviewProfile();
-  }
 
   const rows = await supabaseRest<ProfileRow[]>(
     `profiles?id=eq.${encodeURIComponent(targetUserId)}&select=${profileSelect}&limit=1`,
@@ -447,9 +458,7 @@ export async function fetchProfileView(input: {
   );
 
   const row = rows[0];
-  if (!row) {
-    return buildPreviewProfile(input.session, targetUserId);
-  }
+  if (!row) return null;
 
   const gameProfile = first(row.game_profiles);
   const habits = first(row.profile_habits);
@@ -458,10 +467,15 @@ export async function fetchProfileView(input: {
     row.profile_roles?.map((item) => first(item.roles)?.name) ?? [],
   );
   const heroRows = await fetchProfileHeroRows(input.session, row.id);
-  const avatarFallbackUrl =
-    targetUserId === input.session.user.id
-      ? avatarUrlFromSession(input.session)
-      : undefined;
+  const isSelf = targetUserId === input.session.user.id;
+  const avatarFallbackUrl = isSelf
+    ? avatarUrlFromSession(input.session)
+    : undefined;
+  const displayName =
+    row.display_name?.trim() ||
+    gameProfile?.handle?.trim() ||
+    (isSelf ? displayNameFromSession(input.session) : undefined) ||
+    'Người chơi Liqi';
   const avatarUrl = mediaUrl(row.avatar_media_id) ?? avatarFallbackUrl;
   const explicitCoverMediaId = mediaIdFromSummary(
     mediaSummary,
@@ -473,19 +487,15 @@ export async function fetchProfileView(input: {
   const coverUrl = mediaUrl(explicitCoverMediaId) ?? fallbackCover?.url;
   const gender = profileGenderFromSummary(mediaSummary);
   const showWinRate = showWinRateFromSummary(mediaSummary);
-  const stats = profileStatsFromSummary(mediaSummary);
+  const stats = profileStatsFromSummary(mediaSummary, emptyProfileStats);
   const statusValue = statusFromSummary(mediaSummary);
 
   return {
     avatarFallbackUrl,
     avatarUrl,
     coverUrl,
-    bio: row.bio?.trim() || profileMockQuote,
-    displayName:
-      row.display_name ??
-      gameProfile?.handle ??
-      displayNameFromSession(input.session) ??
-      'Liqi Player',
+    bio: row.bio?.trim() ?? '',
+    displayName,
     favoriteHeroes: buildFavoriteHeroes(heroRows, false, mediaSummary),
     gender,
     id: row.id,
@@ -497,7 +507,7 @@ export async function fetchProfileView(input: {
     stats,
     statusLabel: statusLabel(statusValue),
     statusValue,
-    verified: true,
+    verified: false,
   };
 }
 
@@ -566,9 +576,14 @@ function isMinhAnhMockProfile(userId: string | undefined) {
   return userId === profileMockMinhAnhUserId;
 }
 
+type ProfileReadRecoveryOptions = {
+  allowPartialRecovery?: boolean;
+};
+
 async function fetchUploadedProfileCover(
   session: AuthSession,
   ownerId: string,
+  options: ProfileReadRecoveryOptions = {},
 ): Promise<{ id: string; url?: string } | undefined> {
   try {
     const rows = await supabaseRest<ProfileCoverMediaRow[]>(
@@ -588,12 +603,17 @@ async function fetchUploadedProfileCover(
     const id = rows[0]?.id;
     return id ? { id, url: mediaUrl(id) } : undefined;
   } catch (error) {
+    if (!options.allowPartialRecovery) throw error;
     console.warn('[profile] Cannot load uploaded profile cover media', error);
     return undefined;
   }
 }
 
-async function fetchProfileHeroRows(session: AuthSession, profileId: string) {
+async function fetchProfileHeroRows(
+  session: AuthSession,
+  profileId: string,
+  options: ProfileReadRecoveryOptions = {},
+) {
   try {
     return await supabaseRest<ProfileHeroRow[]>(
       [
@@ -604,6 +624,7 @@ async function fetchProfileHeroRows(session: AuthSession, profileId: string) {
       { session },
     );
   } catch (error) {
+    if (!options.allowPartialRecovery) throw error;
     console.warn('[profile] Cannot load profile heroes', error);
     return [];
   }
@@ -924,7 +945,7 @@ function buildPlayStyleTags(habits: ProfileHabitEmbed | undefined) {
     .filter((tag): tag is string => Boolean(tag))
     .slice(0, 6);
 
-  return tags.length ? tags : [...profileMockPlayStyleTags];
+  return tags;
 }
 
 function formatPlayStyleTag(value: string) {
@@ -1000,43 +1021,40 @@ function profileGenderFromSummary(summary: MediaSummary): ProfileGender {
 }
 
 function normalizeProfileGender(value: unknown): ProfileGender {
-  if (value === 'female' || value === 'hidden') return value;
-  return 'male';
+  if (value === 'male' || value === 'female') return value;
+  return 'hidden';
 }
 
-function profileStatsFromSummary(summary: MediaSummary): ProfileStats {
+function profileStatsFromSummary(
+  summary: MediaSummary,
+  fallback: ProfileStats = defaultProfileStats,
+): ProfileStats {
   const stats = mediaSummaryRecord(summary.profile_stats);
-  return normalizeProfileStats({
-    matches: stats.matches,
-    rating: stats.rating,
-    reputation: stats.reputation,
-    winRate: stats.win_rate ?? stats.winRate,
-  });
+  return normalizeProfileStats(
+    {
+      matches: stats.matches,
+      rating: stats.rating,
+      reputation: stats.reputation,
+      winRate: stats.win_rate ?? stats.winRate,
+    },
+    fallback,
+  );
 }
 
 function normalizeProfileStats(
   value: Partial<Record<keyof ProfileStats, unknown>>,
+  fallback: ProfileStats = defaultProfileStats,
 ): ProfileStats {
   return {
-    matches: normalizeStatNumber(
-      value.matches,
-      defaultProfileStats.matches,
-      0,
-      99999,
-    ),
-    rating: normalizeRatingNumber(value.rating),
+    matches: normalizeStatNumber(value.matches, fallback.matches, 0, 99999),
+    rating: normalizeRatingNumber(value.rating, fallback.rating),
     reputation: normalizeStatNumber(
       value.reputation,
-      defaultProfileStats.reputation,
+      fallback.reputation,
       0,
       100,
     ),
-    winRate: normalizeStatNumber(
-      value.winRate,
-      defaultProfileStats.winRate,
-      0,
-      100,
-    ),
+    winRate: normalizeStatNumber(value.winRate, fallback.winRate, 0, 100),
   };
 }
 
@@ -1052,18 +1070,21 @@ function normalizeStatNumber(
   return Math.max(min, Math.min(max, Math.round(number)));
 }
 
-function normalizeRatingNumber(value: unknown) {
+function normalizeRatingNumber(
+  value: unknown,
+  fallback = defaultProfileStats.rating,
+) {
   if (value === null || value === undefined || value === '') {
-    return defaultProfileStats.rating;
+    return fallback;
   }
   const number = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(number)) return defaultProfileStats.rating;
+  if (!Number.isFinite(number)) return fallback;
   return Math.max(0, Math.min(5, Math.round(number * 10) / 10));
 }
 
 function showWinRateFromSummary(summary: MediaSummary) {
   const settings = mediaSummaryRecord(summary.settings);
-  return settings.show_win_rate === false ? false : true;
+  return settings.show_win_rate === true;
 }
 
 function statusFromSummary(summary: MediaSummary): ProfileStatusValue {
@@ -1071,9 +1092,15 @@ function statusFromSummary(summary: MediaSummary): ProfileStatusValue {
 }
 
 function normalizeStatus(value: unknown): ProfileStatusValue {
-  if (value === 'busy' || value === 'offline' || value === 'friends')
+  if (
+    value === 'ready' ||
+    value === 'busy' ||
+    value === 'offline' ||
+    value === 'friends'
+  ) {
     return value;
-  return 'ready';
+  }
+  return 'offline';
 }
 
 function statusLabel(value: ProfileStatusValue) {

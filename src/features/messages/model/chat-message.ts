@@ -1,9 +1,36 @@
 import type { ComponentProps } from 'react';
 import type { ImageSourcePropType } from 'react-native';
 
+import type { ResolvedAsset } from '@/entities/media-asset';
+
 type IoniconName = ComponentProps<
   typeof import('@expo/vector-icons').Ionicons
 >['name'];
+
+export type MessageResolvedMedia =
+  | { kind: 'asset'; resolved: ResolvedAsset }
+  | { kind: 'remote'; source: ImageSourcePropType; state: 'ready'; uri: string }
+  | { kind: 'unresolved'; state: 'missing' };
+
+export function messageResolvedMediaSource(
+  media: MessageResolvedMedia,
+): ImageSourcePropType | undefined {
+  if (media.kind === 'asset') return media.resolved.source;
+  if (media.kind === 'remote') return media.source;
+  return undefined;
+}
+
+export function messageResolvedMediaState(media: MessageResolvedMedia) {
+  return media.kind === 'asset' ? media.resolved.state : media.state;
+}
+
+export function messageResolvedMediaUri(media: MessageResolvedMedia) {
+  if (media.kind === 'remote') return media.uri;
+  const source = messageResolvedMediaSource(media);
+  return typeof source === 'object' && source && 'uri' in source
+    ? source.uri
+    : undefined;
+}
 
 export type ChatDeliveryStatus =
   'queued' | 'sending' | 'sent' | 'delivered' | 'read' | 'failed';
@@ -15,6 +42,7 @@ export type ChatMediaAttachment = {
   fileSize?: number;
   height?: number;
   mediaType: 'image' | 'video';
+  resolvedMedia?: MessageResolvedMedia;
   mimeType?: string;
   thumbnailUri?: string;
   uri: string;
@@ -72,13 +100,14 @@ export type ChatMessage =
       heroName: string;
       id: string;
       kind: 'build-share';
-      preview: ImageSourcePropType;
-      roleIcon: ImageSourcePropType;
+      preview: MessageResolvedMedia;
+      roleIcon: MessageResolvedMedia;
       summary: string;
       tags: readonly string[];
       text: string;
     })
   | (TimestampedMessage & {
+      artwork: MessageResolvedMedia;
       direction: 'incoming';
       id: string;
       kind: 'team-invite';
@@ -96,7 +125,7 @@ export type ChatMessage =
     };
 
 export type ChatThread = {
-  avatar?: ImageSourcePropType;
+  avatar?: MessageResolvedMedia;
   icon?: IoniconName;
   firstUnreadMessageId?: string;
   id: string;

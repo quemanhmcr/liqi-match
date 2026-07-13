@@ -1,24 +1,45 @@
 import type { ImageSourcePropType } from 'react-native';
 
+import type { AssetResolver, ResolvedAsset } from '@/entities/media-asset';
 import {
   notificationCategory,
+  type NotificationActor,
   type NotificationRecord,
 } from '@/entities/notifications';
 
-import { notificationActorImageSource } from '../data/notification.fixture';
-
 export type NotificationTone = 'blue' | 'cyan' | 'pink' | 'purple';
 
+export type NotificationDestination =
+  | { conversationId: string; kind: 'conversation' }
+  | { kind: 'set'; setId: string };
+
 export type NotificationAction = {
+  destination?: NotificationDestination;
   label: string;
   tone: Extract<NotificationTone, 'blue' | 'pink' | 'purple'>;
 };
+
+export type NotificationResolvedMedia =
+  | { kind: 'asset'; resolved: ResolvedAsset }
+  | { kind: 'remote'; source: ImageSourcePropType; state: 'ready' };
+
+export function notificationResolvedMediaSource(
+  media: NotificationResolvedMedia,
+): ImageSourcePropType | undefined {
+  return media.kind === 'asset' ? media.resolved.source : media.source;
+}
+
+export function notificationResolvedMediaState(
+  media: NotificationResolvedMedia,
+) {
+  return media.kind === 'asset' ? media.resolved.state : media.state;
+}
 
 export type NotificationVisual =
   | {
       badgeIcon?: string;
       kind: 'avatar';
-      source: ImageSourcePropType;
+      media: NotificationResolvedMedia;
       tone: NotificationTone;
     }
   | {
@@ -40,16 +61,21 @@ export type NotificationItem = {
   id: string;
   isSeen: boolean;
   messageParts: readonly string[];
-  previewAvatars?: readonly ImageSourcePropType[];
+  previewAvatars?: readonly NotificationResolvedMedia[];
   reward?: NotificationReward;
   timeLabel: string;
   title: string;
   visual: NotificationVisual;
 };
 
+export type MapNotificationOptions = {
+  assetResolver: AssetResolver;
+  now?: Date;
+};
+
 export function mapNotificationToViewModel(
   notification: NotificationRecord,
-  now = new Date(),
+  { assetResolver, now = new Date() }: MapNotificationOptions,
 ): NotificationItem {
   const shared = {
     category: notificationCategory(notification),
@@ -61,46 +87,64 @@ export function mapNotificationToViewModel(
 
   switch (notification.kind) {
     case 'set-invite': {
-      const source = notificationActorImageSource(notification.payload.actor);
+      const media = resolveNotificationActorMedia(
+        notification.payload.actor,
+        assetResolver,
+      );
       return {
         ...shared,
-        action: { label: 'Xem set', tone: 'pink' },
+        action: {
+          destination: { kind: 'set', setId: notification.payload.setId },
+          label: 'Xem set',
+          tone: 'pink',
+        },
         messageParts: [
           'đã mời bạn vào set',
           `“${notification.payload.setName}”`,
         ],
         title: notification.payload.actor.displayName,
-        visual: source
+        visual: media
           ? {
               badgeIcon: 'sparkles-outline',
               kind: 'avatar',
-              source,
+              media,
               tone: 'purple',
             }
           : { icon: 'people-outline', kind: 'symbol', tone: 'purple' },
       };
     }
     case 'direct-message': {
-      const source = notificationActorImageSource(notification.payload.actor);
+      const media = resolveNotificationActorMedia(
+        notification.payload.actor,
+        assetResolver,
+      );
       return {
         ...shared,
-        action: { label: 'Trả lời', tone: 'blue' },
+        action: {
+          destination: {
+            conversationId: notification.payload.conversationId,
+            kind: 'conversation',
+          },
+          label: 'Trả lời',
+          tone: 'blue',
+        },
         messageParts: ['đã nhắn cho bạn', `“${notification.payload.excerpt}”`],
         title: notification.payload.actor.displayName,
-        visual: source
+        visual: media
           ? {
               badgeIcon: 'chatbubble-ellipses-outline',
               kind: 'avatar',
-              source,
+              media,
               tone: 'blue',
             }
           : { icon: 'chatbubble-outline', kind: 'symbol', tone: 'blue' },
       };
     }
     case 'praise-received': {
-      const previewAvatars = notification.payload.actors
-        .map(notificationActorImageSource)
-        .filter((source): source is ImageSourcePropType => Boolean(source));
+      const previewAvatars = notification.payload.actors.flatMap((actor) => {
+        const media = resolveNotificationActorMedia(actor, assetResolver);
+        return media ? [media] : [];
+      });
       return {
         ...shared,
         messageParts: [
@@ -124,14 +168,17 @@ export function mapNotificationToViewModel(
         visual: { icon: 'trophy-outline', kind: 'symbol', tone: 'purple' },
       };
     case 'profile-liked': {
-      const source = notificationActorImageSource(notification.payload.actor);
+      const media = resolveNotificationActorMedia(
+        notification.payload.actor,
+        assetResolver,
+      );
       return {
         ...shared,
         messageParts: ['vừa thích hồ sơ của bạn'],
         reward: { icon: 'heart', label: '', tone: 'pink' },
         title: notification.payload.actor.displayName,
-        visual: source
-          ? { kind: 'avatar', source, tone: 'pink' }
+        visual: media
+          ? { kind: 'avatar', media, tone: 'pink' }
           : { icon: 'person-outline', kind: 'symbol', tone: 'pink' },
       };
     }
@@ -191,6 +238,20 @@ export function formatNotificationTime(occurredAt: string, now = new Date()) {
     day: '2-digit',
     month: '2-digit',
   }).format(occurred);
+}
+
+function resolveNotificationActorMedia(
+  actor: NotificationActor,
+  assetResolver: AssetResolver,
+): NotificationResolvedMedia | undefined {
+  if (actor.avatarUrl) {
+    return { kind: 'remote', source: { uri: actor.avatarUrl }, state: 'ready' };
+  }
+  if (!actor.avatarAssetKey) return undefined;
+  return {
+    kind: 'asset',
+    resolved: assetResolver.resolve(actor.avatarAssetKey),
+  };
 }
 
 function notificationGroup(occurredAt: string, now: Date) {

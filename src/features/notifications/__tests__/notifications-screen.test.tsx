@@ -7,6 +7,9 @@ import {
   jest,
 } from '@jest/globals';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+
+import { appRoutes } from '@/app-shell/navigation/routes';
+import type { NotificationInboxRepository } from '@/entities/notifications';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 
@@ -27,7 +30,10 @@ afterEach(() => {
   notificationTestQueryClients.clear();
 });
 
-function renderNotificationWithProviders(ui: ReactElement) {
+async function renderNotificationWithProviders(
+  ui: ReactElement,
+  notificationRepository: NotificationInboxRepository = mockNotificationInboxRepository,
+) {
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { gcTime: Infinity, retry: false },
@@ -36,9 +42,25 @@ function renderNotificationWithProviders(ui: ReactElement) {
   });
   notificationTestQueryClients.add(queryClient);
 
-  return renderWithProviders(
+  const result = await renderWithProviders(
     <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    {
+      serviceOverrides: { notificationRepository },
+    },
   );
+  return { ...result, notificationQueryClient: queryClient };
+}
+
+function notificationRepositoryWithList(
+  list: NotificationInboxRepository['list'],
+): NotificationInboxRepository {
+  return {
+    getSummary: (input) => mockNotificationInboxRepository.getSummary(input),
+    list,
+    markRead: (input) => mockNotificationInboxRepository.markRead(input),
+    markSeenThrough: (input) =>
+      mockNotificationInboxRepository.markSeenThrough(input),
+  };
 }
 
 type FocusEffect = () => undefined | void | (() => void);
@@ -49,15 +71,23 @@ jest.mock('expo-router', () => ({
     back: jest.fn(),
     canGoBack: jest.fn(() => false),
     navigate: jest.fn(),
+    push: jest.fn(),
   },
   useFocusEffect: (effect: FocusEffect) => {
     mockFocusEffect = effect;
   },
 }));
 
+const mockExpoRouter = jest.requireMock('expo-router') as {
+  router: {
+    push: ReturnType<typeof jest.fn>;
+  };
+};
+
 describe('NotificationsScreen', () => {
   beforeEach(async () => {
     mockFocusEffect = undefined;
+    mockExpoRouter.router.push.mockClear();
     await resetMockNotificationInboxForTesting(testAuthSession.user.id);
   });
 
@@ -114,5 +144,169 @@ describe('NotificationsScreen', () => {
       expect(summary.unseenCount).toBe(0);
     });
     await unmount();
+  });
+
+  it('offers retry for a retryable notification failure', async () => {
+    const repository = notificationRepositoryWithList(async () => {
+      throw Object.assign(new Error('Notification network failure'), {
+        code: 'network_error',
+        retryable: true,
+      });
+    });
+    const screen = await renderNotificationWithProviders(
+      <NotificationsScreen />,
+      repository,
+    );
+
+    expect(await screen.findByText('Không tải được thông báo')).toBeTruthy();
+    expect(screen.getByLabelText('Thử tải lại thông báo')).toBeTruthy();
+  });
+
+  it('does not offer retry for a non-retryable notification failure', async () => {
+    const repository = notificationRepositoryWithList(async () => {
+      throw Object.assign(new Error('Invalid notification request'), {
+        code: 'validation_failed',
+        retryable: false,
+      });
+    });
+    const screen = await renderNotificationWithProviders(
+      <NotificationsScreen />,
+      repository,
+    );
+
+    expect(await screen.findByText('Không tải được thông báo')).toBeTruthy();
+    expect(screen.queryByLabelText('Thử tải lại thông báo')).toBeNull();
+  });
+
+  it('keeps the latest notification feed visible when refresh fails', async () => {
+    const originalList = mockNotificationInboxRepository.list.bind(
+      mockNotificationInboxRepository,
+    );
+    const list = jest
+      .fn<NotificationInboxRepository['list']>()
+      .mockImplementationOnce(originalList)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Notification refresh failure'), {
+          code: 'network_error',
+          retryable: true,
+        }),
+      );
+    const repository = notificationRepositoryWithList(list);
+    const screen = await renderNotificationWithProviders(
+      <NotificationsScreen />,
+      repository,
+    );
+    expect(await screen.findByText('Minh Anh')).toBeTruthy();
+
+    await act(async () => {
+      await screen.notificationQueryClient.refetchQueries({
+        queryKey: ['notification-inbox', 'feed'],
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        screen.getByLabelText('Thông báo đang hiển thị dữ liệu cũ'),
+      ).toBeTruthy();
+    });
+    expect(screen.getByText('Minh Anh')).toBeTruthy();
+  });
+
+  it('opens the canonical set target from a set invite', async () => {
+    const screen = await renderWithProviders(<NotificationsScreen />);
+    const page = await screen.services.notificationRepository.list({
+      limit: 50,
+      session: testAuthSession,
+    });
+    const invite = page.items.find(
+      (notification) => notification.kind === 'set-invite',
+    );
+    if (invite?.kind !== 'set-invite') {
+      throw new Error('Expected a canonical set-invite notification.');
+    }
+
+    await fireEvent.press(
+      await screen.findByLabelText(
+        `Xem set ${invite.payload.actor.displayName}`,
+      ),
+    );
+
+    expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.discover.setDetail(invite.payload.setId),
+    );
+    await screen.unmount();
+  });
+
+  it('opens the canonical conversation and preserves it after marking the notification read', async () => {
+    const screen = await renderWithProviders(<NotificationsScreen />);
+    const services = screen.services;
+    const page = await services.notificationRepository.list({
+      limit: 50,
+      session: testAuthSession,
+    });
+    const directMessage = page.items.find(
+      (notification) => notification.kind === 'direct-message',
+    );
+    if (directMessage?.kind !== 'direct-message') {
+      throw new Error('Expected a canonical direct-message notification.');
+    }
+
+    const messageContext = {
+      locale: 'vi',
+      timezone: 'Asia/Bangkok',
+      viewerId: testAuthSession.user.id,
+    };
+    const conversationBefore = await services.messageRepository.getConversation(
+      directMessage.payload.conversationId,
+      messageContext,
+    );
+    if (!conversationBefore) {
+      throw new Error('Expected the notification conversation to exist.');
+    }
+    const senderBefore = conversationBefore.data.members.find(
+      (member) => member.id === directMessage.payload.actor.id,
+    );
+
+    expect(senderBefore).toMatchObject({
+      displayName: directMessage.payload.actor.displayName,
+      id: directMessage.payload.actor.id,
+    });
+    if (directMessage.payload.actor.avatarAssetKey) {
+      expect(senderBefore?.avatar).toMatchObject({
+        assetKey: directMessage.payload.actor.avatarAssetKey,
+        kind: 'fixture',
+      });
+    }
+
+    const replyButton = await screen.findByLabelText(
+      `Trả lời ${directMessage.payload.actor.displayName}`,
+    );
+    await act(async () => {
+      await fireEvent.press(replyButton);
+    });
+
+    await waitFor(() => {
+      expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
+        appRoutes.messages.detail(directMessage.payload.conversationId),
+      );
+    });
+
+    await waitFor(async () => {
+      const refreshedPage = await services.notificationRepository.list({
+        limit: 50,
+        session: testAuthSession,
+      });
+      const refreshedNotification = refreshedPage.items.find(
+        (notification) => notification.id === directMessage.id,
+      );
+      expect(refreshedNotification?.readAt).not.toBeNull();
+    });
+
+    const conversationAfter = await services.messageRepository.getConversation(
+      directMessage.payload.conversationId,
+      messageContext,
+    );
+    expect(conversationAfter?.data).toEqual(conversationBefore.data);
+    await screen.unmount();
   });
 });

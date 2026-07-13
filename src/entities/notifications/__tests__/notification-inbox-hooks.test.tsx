@@ -9,7 +9,10 @@ import {
   useNotificationInboxFeed,
   useNotificationInboxSummary,
 } from '@/entities/notifications';
-import { resetMockNotificationInboxForTesting } from '@/entities/notifications/data/mock-notification-inbox.repository';
+import {
+  mockNotificationInboxRepository,
+  resetMockNotificationInboxForTesting,
+} from '@/entities/notifications/data/mock-notification-inbox.repository';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
   renderWithProviders,
@@ -34,6 +37,11 @@ function renderNotificationWithProviders(ui: ReactElement) {
 
   return renderWithProviders(
     <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    {
+      serviceOverrides: {
+        notificationRepository: mockNotificationInboxRepository,
+      },
+    },
   );
 }
 

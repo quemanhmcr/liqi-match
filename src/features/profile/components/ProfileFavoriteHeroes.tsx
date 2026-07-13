@@ -19,9 +19,6 @@ import type { ProfileFavoriteHero } from '../services/profile-service';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
 import { ProfileText } from './ProfileShared';
 
-const fallbackHeroImage =
-  require('../../../../assets/anh_mau2/heroes/aya.webp') as ImageSourcePropType;
-
 const heroImageByKey = HEROES.reduce<Record<string, ImageSourcePropType>>(
   (images, hero) => {
     images[normalizeKey(hero.id)] = hero.image;
@@ -107,7 +104,20 @@ export function ProfileFavoriteHeroes({
                   start={{ x: 0, y: 0 }}
                   style={styles.heroAvatarRing}
                 >
-                  <Image source={heroImage(hero)} style={styles.heroAvatar} />
+                  {heroImage(hero) ? (
+                    <Image source={heroImage(hero)} style={styles.heroAvatar} />
+                  ) : (
+                    <View
+                      accessibilityLabel={`Ảnh tướng ${hero.name} không khả dụng`}
+                      style={[styles.heroAvatar, styles.heroAvatarFallback]}
+                    >
+                      <Ionicons
+                        color="rgba(205,244,255,0.72)"
+                        name="shield-outline"
+                        size={18}
+                      />
+                    </View>
+                  )}
                 </LinearGradient>
                 <View style={styles.roleBadge}>
                   <Ionicons
@@ -153,7 +163,7 @@ function heroStatsLabel(hero: ProfileFavoriteHero, showWinRate: boolean) {
 
 function heroImage(hero: ProfileFavoriteHero) {
   const key = normalizeKey(hero.slug ?? hero.name);
-  return heroImageByKey[key] ?? fallbackHeroImage;
+  return heroImageByKey[key];
 }
 
 function normalizeKey(value: string) {
@@ -180,6 +190,11 @@ const styles = StyleSheet.create({
     borderRadius: 19,
     height: 38,
     width: 38,
+  },
+  heroAvatarFallback: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(38,44,78,0.26)',
+    justifyContent: 'center',
   },
   heroAvatarRing: {
     alignItems: 'center',

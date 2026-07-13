@@ -74,9 +74,9 @@ const avatarAssetKeyByConversationId: Record<string, string | undefined> = {
   'cozy-helen': 'avatar:cozy-gamer',
   'cyber-violet': 'avatar:cyber-girl',
   'huy-hoang': 'avatar:black-fighter',
-  'khoa-jungle': 'avatar:silver-assassin',
+  'khoa-jungle': 'asset:profile:khoa-jungle:avatar',
   lorian: 'avatar:ice-prince',
-  'minh-anh': 'avatar:pink-support',
+  'minh-anh': 'asset:profile:minh-anh:avatar',
   'quoc-bao': 'avatar:blonde-mage',
   'team-sao-bang': 'team:sao-bang',
 };
@@ -301,6 +301,7 @@ function timelineMessageFromFixture(
   if (message.kind === 'team-invite') {
     return {
       ...base,
+      artwork: fixtureAsset('asset:set:sao-bang:artwork', message.teamName),
       kind: 'team_invite',
       members: [...message.members],
       missingRole: message.missingRole,
@@ -484,10 +485,3 @@ export function createLocalChatRepository({
     },
   };
 }
-
-/**
- * Frontend composition point. The current implementation is deterministic and
- * local. A backend adapter only needs to implement ChatRepository and replace
- * this binding; screens consume the versioned contract, not fixture shapes.
- */
-export const localChatRepository: ChatRepository = createLocalChatRepository();

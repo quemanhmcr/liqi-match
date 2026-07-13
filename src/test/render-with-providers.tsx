@@ -3,8 +3,24 @@ import { render } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { ApplicationServiceProviders } from '@/app-shell/providers/ApplicationServiceProviders';
+import type { ApplicationServices } from '@/app-shell/runtime/application-services';
+import { createSimulationApplicationServices } from '@/app-shell/runtime/create-application-services';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
+
+type ApplicationServiceOverrides = Partial<
+  Pick<
+    ApplicationServices,
+    | 'assetResolver'
+    | 'discoverRepository'
+    | 'homeRepository'
+    | 'messageRepository'
+    | 'messageTransport'
+    | 'notificationRepository'
+    | 'profileRepository'
+  >
+>;
 
 export const testAuthSession: AuthSession = {
   accessToken: 'test-access-token',
@@ -20,8 +36,20 @@ export const testAuthSession: AuthSession = {
 
 export async function renderWithProviders(
   ui: ReactElement,
-  { session = testAuthSession }: { session?: AuthSession | null } = {},
+  {
+    serviceOverrides,
+    services,
+    session = testAuthSession,
+  }: {
+    serviceOverrides?: ApplicationServiceOverrides;
+    services?: ApplicationServices;
+    session?: AuthSession | null;
+  } = {},
 ) {
+  const resolvedServices: ApplicationServices = services ?? {
+    ...createSimulationApplicationServices(),
+    ...serviceOverrides,
+  };
   const queryClient = new QueryClient({
     defaultOptions: {
       mutations: { gcTime: Infinity, retry: false },
@@ -37,10 +65,12 @@ export async function renderWithProviders(
       }}
     >
       <AuthStateProvider initialSession={session}>
-        <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+        <ApplicationServiceProviders services={resolvedServices}>
+          <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>
+        </ApplicationServiceProviders>
       </AuthStateProvider>
     </SafeAreaProvider>,
   );
 
-  return { ...renderResult, queryClient };
+  return { ...renderResult, queryClient, services: resolvedServices };
 }

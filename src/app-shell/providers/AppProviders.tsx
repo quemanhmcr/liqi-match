@@ -5,6 +5,13 @@ import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
 import { queryClient } from '@/shared/lib/query-client';
 
+import { getApplicationServices } from '../runtime/application-service-registry';
+import { registerQueryClientSimulationReset } from '../runtime/register-simulation-resets';
+import { ApplicationServiceProviders } from './ApplicationServiceProviders';
+
+const applicationServices = getApplicationServices();
+registerQueryClientSimulationReset(applicationServices, queryClient);
+
 /**
  * Runtime composition belongs to the application shell, not `shared`.
  * Feature code may consume the contexts it needs, but never owns their order.
@@ -13,9 +20,11 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <KeyboardProvider>
       <AuthStateProvider>
-        <QueryClientProvider client={queryClient}>
-          {children}
-        </QueryClientProvider>
+        <ApplicationServiceProviders services={applicationServices}>
+          <QueryClientProvider client={queryClient}>
+            {children}
+          </QueryClientProvider>
+        </ApplicationServiceProviders>
       </AuthStateProvider>
     </KeyboardProvider>
   );

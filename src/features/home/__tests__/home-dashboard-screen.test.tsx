@@ -1,18 +1,39 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { fireEvent, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { createAssetKey, type AssetResolver } from '@/entities/media-asset';
+import type { HomeDashboard } from '@/features/home/home-dashboard-service';
 import HomeDashboardScreen from '@/features/home/screens/HomeDashboardScreen';
 import { renderWithProviders } from '@/test/render-with-providers';
 
 let mockNotificationUnseenCount = 3;
 
-jest.mock('@/entities/notifications', () => ({
-  useNotificationInboxSummary: () => ({
-    data: { unseenCount: mockNotificationUnseenCount },
-  }),
-}));
+const unavailableAssetResolver: AssetResolver = {
+  async invalidate() {},
+  async preload() {},
+  resolve(key) {
+    return {
+      fallback: 'avatar-neutral',
+      key,
+      retryable: true,
+      state: 'offline-unavailable',
+    };
+  },
+};
+
+jest.mock('@/entities/notifications', () => {
+  const actual = jest.requireActual(
+    '@/entities/notifications',
+  ) as typeof import('@/entities/notifications');
+  return {
+    ...actual,
+    useNotificationInboxSummary: () => ({
+      data: { unseenCount: mockNotificationUnseenCount },
+    }),
+  };
+});
 
 jest.mock('expo-router', () => ({
   router: {
@@ -24,103 +45,52 @@ const mockExpoRouter = jest.requireMock('expo-router') as {
   router: { push: ReturnType<typeof jest.fn> };
 };
 
-async function renderHomeDashboard() {
-  const result = await renderWithProviders(<HomeDashboardScreen />);
-  expect(await result.findByText('Synced')).toBeTruthy();
-  expect(result.queryClient.isFetching()).toBe(0);
-  return result;
-}
-
-jest.mock('@/features/home/home-dashboard-service', () => ({
-  buildPreviewHomeDashboard: () => ({
-    activeMatchCount: 1,
-    currentProfile: {
-      displayName: 'Test Player',
-      handle: 'Test Player',
+const syncedDashboard: HomeDashboard = {
+  activeMatchCount: 1,
+  currentProfile: {
+    displayName: 'Synced Player',
+    handle: 'Synced Player',
+    rankName: 'Cao Thủ',
+    readySummary: '1 set đã match',
+    roleNames: ['Đi Rừng'],
+  },
+  matchedSets: [
+    {
+      actionLabel: 'Vào set',
+      createdAt: '2026-07-07T00:00:00Z',
+      heroNames: ['Aya', 'Helen', 'Annette', 'Alice'],
+      id: 'match-1',
+      kind: 'Tri kỉ',
+      meta: 'Tối · Có voice',
+      name: 'Minh Anh',
+      profileId: 'minh-anh',
       rankName: 'Cao Thủ',
-      readySummary: '1 set đã match',
-      roleNames: ['Đi Rừng'],
-    },
-    matchedSets: [
-      {
-        actionLabel: 'Vào set',
-        createdAt: '2026-07-07T00:00:00Z',
-        heroNames: ['Aya', 'Helen', 'Annette', 'Alice'],
-        id: 'match-1',
-        kind: 'Tri kỉ',
-        meta: 'Tối · Có voice',
-        name: 'Minh Anh',
-        profileId: 'minh-anh',
-        rankName: 'Cao Thủ',
-        roleNames: ['Trợ Thủ'],
-        status: 'ready',
-        subtitle: 'Cao Thủ · Trợ Thủ · Global',
-        unreadCount: 1,
-      },
-    ],
-    preview: false,
-  }),
-  fetchHomeDashboard: jest.fn(async () => ({
-    activeMatchCount: 1,
-    currentProfile: {
-      displayName: 'Synced Player',
-      handle: 'Synced Player',
-      rankName: 'Cao Thủ',
-      readySummary: '1 set đã match',
-      roleNames: ['Đi Rừng'],
-    },
-    matchedSets: [
-      {
-        actionLabel: 'Vào set',
-        createdAt: '2026-07-07T00:00:00Z',
-        heroNames: ['Aya', 'Helen', 'Annette', 'Alice'],
-        id: 'match-1',
-        kind: 'Tri kỉ',
-        meta: 'Tối · Có voice',
-        name: 'Minh Anh',
-        profileId: 'minh-anh',
-        rankName: 'Cao Thủ',
-        roleNames: ['Trợ Thủ'],
-        status: 'ready',
-        subtitle: 'Cao Thủ · Trợ Thủ · Global',
-        unreadCount: 1,
-      },
-    ],
-    preview: false,
-  })),
-  homeReadyModes: [
-    {
-      accent: '#C679FF',
-      description: 'Ưu tiên kết nối tình cảm, tìm người hợp vibe.',
-      id: 'setlove',
-      label: 'Set Love',
-    },
-    {
-      accent: '#FF7AD9',
-      description: 'Tìm đồng đội thân thiết, đồng hành lâu dài.',
-      id: 'soulmate',
-      label: 'Tri kỉ',
-    },
-    {
-      accent: '#64E6FF',
-      description: 'Chơi vui, không áp lực rank.',
-      id: 'normal',
-      label: 'Normal',
-    },
-    {
-      accent: '#5DFFB3',
-      description: 'Bật mood leo rank nghiêm túc.',
-      id: 'rank',
-      label: 'Rank',
-    },
-    {
-      accent: '#FFB86B',
-      description: 'Lập hoặc join team rank đang thiếu vai trò.',
-      id: 'team',
-      label: 'Team Rank',
+      roleNames: ['Trợ Thủ'],
+      status: 'ready',
+      subtitle: 'Cao Thủ · Trợ Thủ · Global',
+      unreadCount: 1,
     },
   ],
-}));
+  preview: false,
+};
+
+async function renderHomeDashboard(
+  getDashboard: () => Promise<HomeDashboard> = async () => syncedDashboard,
+  waitForSuccess = true,
+  assetResolver?: AssetResolver,
+) {
+  const result = await renderWithProviders(<HomeDashboardScreen />, {
+    serviceOverrides: {
+      ...(assetResolver ? { assetResolver } : undefined),
+      homeRepository: { getDashboard },
+    },
+  });
+  if (waitForSuccess) {
+    await result.findByText('Synced');
+    expect(result.queryClient.isFetching()).toBe(0);
+  }
+  return result;
+}
 
 describe('HomeDashboardScreen', () => {
   beforeEach(() => {
@@ -158,7 +128,7 @@ describe('HomeDashboardScreen', () => {
       getByTestId('home-match-kind-icon-Tri kỉ-handshake-outline'),
     ).toBeTruthy();
     const heroBackgroundImage = getByTestId('home-ready-hero-background');
-    expect(heroBackgroundImage.props.resizeMode).toBe('cover');
+    expect(getByLabelText('Nền sẵn sàng trung tính')).toBeTruthy();
     const heroBackgroundStyle = StyleSheet.flatten(
       heroBackgroundImage.props.style,
     );
@@ -230,5 +200,75 @@ describe('HomeDashboardScreen', () => {
     expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
       appRoutes.notifications,
     );
+  });
+
+  it('renders the explicit offline avatar state from the injected resolver', async () => {
+    const dashboard: HomeDashboard = {
+      ...syncedDashboard,
+      currentProfile: {
+        ...syncedDashboard.currentProfile,
+        avatarAssetKey: createAssetKey('asset:profile:test:avatar'),
+      },
+    };
+    const screen = await renderHomeDashboard(
+      async () => dashboard,
+      true,
+      unavailableAssetResolver,
+    );
+
+    expect(screen.getByLabelText('Avatar offline-unavailable')).toBeTruthy();
+  });
+
+  it('shows a retry action for a retryable repository failure', async () => {
+    const result = await renderHomeDashboard(async () => {
+      throw Object.assign(new Error('Home API unavailable'), {
+        code: 'network_error',
+        retryable: true,
+      });
+    }, false);
+
+    expect(await result.findByText('Không thể tải Trang chủ')).toBeTruthy();
+    expect(result.queryByText('Minh Anh')).toBeNull();
+    expect(result.getByLabelText('Thử tải lại Trang chủ')).toBeTruthy();
+  });
+
+  it('does not offer retry for a non-retryable repository failure', async () => {
+    const result = await renderHomeDashboard(async () => {
+      throw Object.assign(new Error('Invalid home request'), {
+        code: 'validation_failed',
+        retryable: false,
+      });
+    }, false);
+
+    expect(await result.findByText('Không thể tải Trang chủ')).toBeTruthy();
+    expect(result.queryByLabelText('Thử tải lại Trang chủ')).toBeNull();
+  });
+
+  it('keeps the latest dashboard visible when a refresh fails', async () => {
+    const getDashboard = jest
+      .fn<() => Promise<HomeDashboard>>()
+      .mockResolvedValueOnce(syncedDashboard)
+      .mockRejectedValueOnce(
+        Object.assign(new Error('Refresh unavailable'), {
+          code: 'network_error',
+          retryable: true,
+        }),
+      );
+    const result = await renderHomeDashboard(getDashboard);
+
+    await act(async () => {
+      await result.queryClient.refetchQueries({
+        queryKey: ['home-dashboard'],
+      });
+    });
+
+    await waitFor(() => {
+      expect(
+        result.getByText(
+          'Không thể làm mới. Đang hiển thị dữ liệu đã tải gần nhất.',
+        ),
+      ).toBeTruthy();
+    });
+    expect(result.getAllByText('Minh Anh').length).toBeGreaterThan(0);
   });
 });

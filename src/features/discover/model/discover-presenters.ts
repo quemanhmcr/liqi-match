@@ -1,3 +1,5 @@
+import { canonicalAssetKey, type AssetResolver } from '@/entities/media-asset';
+
 import type {
   DiscoverFilterOption,
   DiscoverMedia,
@@ -7,7 +9,6 @@ import type {
   DiscoverSet,
   DiscoverVibe,
 } from '../contracts/discover-contracts';
-import { resolveDiscoverAsset } from '../data/discover-assets';
 import type {
   DiscoverFilterChip,
   DiscoverMetricCard,
@@ -48,16 +49,19 @@ export function presentFilterChips(
   ];
 }
 
-export function presentVibe(vibe: DiscoverVibe): DiscoverVibeCard {
+export function presentVibe(
+  vibe: DiscoverVibe,
+  assetResolver: AssetResolver,
+): DiscoverVibeCard {
   const previewCount = vibe.participants.preview.length;
   const surplus = Math.max(vibe.participants.totalCount - previewCount, 0);
   return {
-    background: resolveMedia(vibe.artwork),
+    background: resolveMedia(vibe.artwork, assetResolver),
     filterIds: vibe.facetIds,
     id: vibe.id,
     interestedLabel: formatVibeEngagement(vibe),
     participantSources: vibe.participants.preview.map((item) =>
-      resolveMedia(item.media),
+      resolveMedia(item.media, assetResolver),
     ),
     surplusLabel: surplus ? `+${surplus}` : '',
     title: vibe.title,
@@ -67,6 +71,7 @@ export function presentVibe(vibe: DiscoverVibe): DiscoverVibeCard {
 export function presentSet(
   set: DiscoverSet,
   generatedAt: string,
+  assetResolver: AssetResolver,
 ): DiscoverSetCard {
   const directRequest =
     set.viewerState.canRequestJoin &&
@@ -81,12 +86,14 @@ export function presentSet(
     actionState:
       set.viewerState.joinRequestStatus === 'pending' ? 'pending' : 'idle',
     actionTone: actionKind === 'request' ? 'cyan' : 'purple',
-    avatarSources: set.members.preview.map((item) => resolveMedia(item.media)),
+    avatarSources: set.members.preview.map((item) =>
+      resolveMedia(item.media, assetResolver),
+    ),
     badgeLabel: set.mode === 'team_rank' ? 'Team Rank' : 'Rank',
     badgeTone: set.mode === 'team_rank' ? 'orange' : 'cyan',
     filterIds: set.facetIds,
     id: set.id,
-    image: resolveMedia(set.artwork),
+    image: resolveMedia(set.artwork, assetResolver),
     matchScore: set.matchScore,
     meta: missingRole ? `Thiếu ${missingRole}` : 'Đang tuyển',
     openedMinutesAgo: minutesBetween(set.openedAt, generatedAt),
@@ -106,9 +113,11 @@ export function presentSet(
 
 export function presentPlayer(
   player: DiscoverPlayerRecommendation,
+  assetResolver: AssetResolver,
 ): DiscoverProfileCard {
   const inviteState = player.capabilities.invite.state;
-  const actionKind = inviteState === 'unavailable' ? 'view' : 'invite';
+  const actionKind =
+    player.conversationId || inviteState === 'unavailable' ? 'view' : 'invite';
   return {
     actionKind,
     actionLabel: actionKind === 'invite' ? 'Mời vào' : 'Xem hồ sơ',
@@ -116,7 +125,8 @@ export function presentPlayer(
     actionTone:
       profileToneOverrides[player.profileId] ??
       (actionKind === 'invite' ? 'cyan' : 'purple'),
-    avatar: resolveMedia(player.avatar),
+    avatar: resolveMedia(player.avatar, assetResolver),
+    ...(player.conversationId ? { conversationId: player.conversationId } : {}),
     filterIds: player.facetIds,
     id: player.profileId,
     match: `Hợp vibe ${player.matchScore}%`,
@@ -147,21 +157,33 @@ export function presentMetric(metric: DiscoverMetric): DiscoverMetricCard {
 export function presentOverview(
   overview: DiscoverOverviewData,
   generatedAt: string,
+  assetResolver: AssetResolver,
 ): DiscoverOverviewViewModel {
   return {
     filterChips: presentFilterChips(overview.filterOptions),
     metrics: overview.metrics.map(presentMetric),
-    profiles: overview.sections.players.items.map(presentPlayer),
-    sets: overview.sections.sets.items.map((set) =>
-      presentSet(set, generatedAt),
+    profiles: overview.sections.players.items.map((player) =>
+      presentPlayer(player, assetResolver),
     ),
-    vibes: overview.sections.vibes.items.map(presentVibe),
+    sets: overview.sections.sets.items.map((set) =>
+      presentSet(set, generatedAt, assetResolver),
+    ),
+    vibes: overview.sections.vibes.items.map((vibe) =>
+      presentVibe(vibe, assetResolver),
+    ),
   };
 }
 
-function resolveMedia(media: DiscoverMedia) {
-  if (media.kind === 'fixture') return resolveDiscoverAsset(media.assetKey);
-  return { uri: media.url };
+function resolveMedia(
+  media: DiscoverMedia,
+  assetResolver: AssetResolver,
+): import('./discover-domain').DiscoverResolvedMedia {
+  if (media.kind === 'remote') {
+    return { kind: 'remote', source: { uri: media.url }, state: 'ready' };
+  }
+  const assetKey = canonicalAssetKey(media.assetKey);
+  if (!assetKey) return { kind: 'unresolved', state: 'missing' };
+  return { kind: 'asset', resolved: assetResolver.resolve(assetKey) };
 }
 
 function formatVibeEngagement(vibe: DiscoverVibe) {

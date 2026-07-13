@@ -3,18 +3,26 @@ import {
   QueryClientProvider,
   notifyManager,
 } from '@tanstack/react-query';
+import { jest } from '@jest/globals';
 import { render } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import type { AuthSession } from '@/shared/auth/auth-service';
+import {
+  AssetResolverProvider,
+  createGoldenWorldAssetResolver,
+} from '@/entities/media-asset';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
+import { MockDiscoverRepository } from '../services/discover-mock-repository';
+import { DiscoverRepositoryProvider } from '../runtime/DiscoverRepositoryProvider';
 
 (
   globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 notifyManager.setScheduler((callback) => callback());
+jest.setTimeout(15_000);
 
 const discoverTestSession: AuthSession = {
   accessToken: 'discover-test-access-token',
@@ -44,12 +52,19 @@ export function renderDiscoverScreen(
     },
   });
 
+  const repository = new MockDiscoverRepository();
+  const assetResolver = createGoldenWorldAssetResolver();
+
   return render(
     <AuthStateProvider initialSession={discoverTestSession}>
       <QueryClientProvider client={queryClient}>
-        <SafeAreaProvider initialMetrics={initialMetrics}>
-          {ui}
-        </SafeAreaProvider>
+        <AssetResolverProvider resolver={assetResolver}>
+          <DiscoverRepositoryProvider repository={repository}>
+            <SafeAreaProvider initialMetrics={initialMetrics}>
+              {ui}
+            </SafeAreaProvider>
+          </DiscoverRepositoryProvider>
+        </AssetResolverProvider>
       </QueryClientProvider>
     </AuthStateProvider>,
   );

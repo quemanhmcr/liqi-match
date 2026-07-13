@@ -20,6 +20,10 @@ import { LiquidCard, LiquidGlassSurface } from '@/shared/components/liquid';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
+import {
+  DiscoverQueryState,
+  DiscoverStaleBanner,
+} from '../components/DiscoverQueryState';
 import type {
   DiscoverFilterChip,
   DiscoverFilterId,
@@ -80,8 +84,8 @@ export function DiscoverSetsScreen() {
     previewLimit: 1,
     query: '',
   });
-  const setFilterChips = filterOptionsQuery.data.filterChips.filter((chip) =>
-    setFilterIds.has(chip.id),
+  const setFilterChips = (filterOptionsQuery.data?.filterChips ?? []).filter(
+    (chip) => setFilterIds.has(chip.id),
   );
   const setsQuery = useDiscoverSetsQuery({
     facetIds: activeSetFilterIds.filter(
@@ -97,7 +101,7 @@ export function DiscoverSetsScreen() {
           ? 'best_match'
           : 'newest',
   });
-  const visibleSets = setsQuery.data.items;
+  const visibleSets = setsQuery.data?.items ?? [];
   const selectedSort = sortOptions.find((option) => option.id === sortId);
   const searchUpdating = deferredQuery !== query;
   const clearQuery = () => setQuery('');
@@ -117,9 +121,24 @@ export function DiscoverSetsScreen() {
         : [...current, filterId],
     );
   };
+  if (!setsQuery.data || !filterOptionsQuery.data) {
+    return (
+      <DiscoverQueryState
+        error={setsQuery.error ?? filterOptionsQuery.error}
+        onRetry={() => {
+          void setsQuery.refetch();
+          void filterOptionsQuery.refetch();
+        }}
+      />
+    );
+  }
+
   return (
     <View style={styles.screen}>
       <StatusBar style="light" />
+      {setsQuery.isError || filterOptionsQuery.isError ? (
+        <DiscoverStaleBanner />
+      ) : null}
       <SetsBackground />
       <ScrollView
         bounces={false}
