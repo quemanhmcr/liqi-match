@@ -9,3 +9,7 @@ export {
   DiscoverRepositoryProvider,
   useDiscoverRepository,
 } from './runtime/DiscoverRepositoryProvider';
+export {
+  createSimulationDiscoverRepository,
+  SimulationDiscoverRepository,
+} from './services/simulation-discover-repository';

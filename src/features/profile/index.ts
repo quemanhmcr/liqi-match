@@ -9,7 +9,11 @@ export {
   type GetProfileInput,
   type ProfileReadRepository,
 } from './runtime/ProfileReadRepositoryProvider';
-
+export {
+  createSimulationProfileReadRepository,
+  mapProfileViewModel,
+  SimulationProfileReadRepository,
+} from './services/simulation-profile-read.repository';
 export {
   createProfileEditSimulationResetParticipant,
   type ProfileEditRecoveryPort,

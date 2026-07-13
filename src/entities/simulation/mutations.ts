@@ -21,6 +21,7 @@ export const SIMULATION_OPERATION_IDS = {
   discover: {
     overview: 'discover.overview',
     players: 'discover.players',
+    invitePlayer: 'discover.invite-player',
     requestSetJoin: 'discover.request-set-join',
     sets: 'discover.sets',
     vibes: 'discover.vibes',
@@ -418,6 +419,110 @@ function associateSimulationMedia(
   profile.updatedAt = event.at;
   asset.state = 'available';
   advanceWorldClock(world, event.at);
+}
+
+export function requestSimulationSetJoin(
+  world: SimulationWorldSnapshot,
+  input: Readonly<{
+    now: string;
+    profileId: ProfileId;
+    setId: SetId;
+  }>,
+) {
+  assertMutationClock(world, input.now);
+  const set = world.sets[input.setId];
+  if (!set || !world.profiles[input.profileId]) {
+    throw new SimulationDomainMutationError(
+      'Missing set or profile for join request.',
+      'not_found',
+    );
+  }
+  if (
+    set.ownerId === input.profileId ||
+    set.memberIds.includes(input.profileId)
+  ) {
+    throw new SimulationDomainMutationError(
+      `Profile ${input.profileId} already belongs to ${input.setId}.`,
+      'invalid_transition',
+    );
+  }
+  if (set.status !== 'open' || set.memberIds.length >= set.capacity) {
+    throw new SimulationDomainMutationError(
+      `Set ${input.setId} is not accepting join requests.`,
+      'invalid_transition',
+    );
+  }
+  const current = set.joinRequests[input.profileId];
+  if (current === 'pending') {
+    advanceWorldClock(world, input.now);
+    return { repeated: true, set } as const;
+  }
+  if (current && current !== 'cancelled' && current !== 'declined') {
+    throw new SimulationDomainMutationError(
+      `Join request for ${input.profileId} is already ${current}.`,
+      'invalid_transition',
+    );
+  }
+  set.joinRequests[input.profileId] = 'pending';
+  set.version += 1;
+  advanceWorldClock(world, input.now);
+  return { repeated: false, set } as const;
+}
+
+export function inviteSimulationPlayerToSet(
+  world: SimulationWorldSnapshot,
+  input: Readonly<{
+    actorId: ProfileId;
+    now: string;
+    profileId: ProfileId;
+    setId: SetId;
+  }>,
+) {
+  assertMutationClock(world, input.now);
+  const set = world.sets[input.setId];
+  if (
+    !set ||
+    !world.profiles[input.profileId] ||
+    !world.profiles[input.actorId]
+  ) {
+    throw new SimulationDomainMutationError(
+      'Missing set, actor, or target profile for invite.',
+      'not_found',
+    );
+  }
+  if (set.ownerId !== input.actorId) {
+    throw new SimulationDomainMutationError(
+      `Profile ${input.actorId} does not own ${input.setId}.`,
+      'recipient_mismatch',
+    );
+  }
+  if (set.memberIds.includes(input.profileId)) {
+    throw new SimulationDomainMutationError(
+      `Profile ${input.profileId} already belongs to ${input.setId}.`,
+      'invalid_transition',
+    );
+  }
+  if (set.status !== 'open' || set.memberIds.length >= set.capacity) {
+    throw new SimulationDomainMutationError(
+      `Set ${input.setId} is not accepting invites.`,
+      'invalid_transition',
+    );
+  }
+  const current = set.invites[input.profileId];
+  if (current === 'pending') {
+    advanceWorldClock(world, input.now);
+    return { repeated: true, set } as const;
+  }
+  if (current && current !== 'cancelled' && current !== 'declined') {
+    throw new SimulationDomainMutationError(
+      `Invite for ${input.profileId} is already ${current}.`,
+      'invalid_transition',
+    );
+  }
+  set.invites[input.profileId] = 'pending';
+  set.version += 1;
+  advanceWorldClock(world, input.now);
+  return { repeated: false, set } as const;
 }
 
 export function changeSimulationSetMembership(

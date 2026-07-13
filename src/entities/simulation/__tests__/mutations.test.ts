@@ -8,10 +8,12 @@ import {
   SimulationDomainMutationError,
   SimulationWorldSnapshotSchema,
   changeSimulationSetMembership,
+  inviteSimulationPlayerToSet,
   markSimulationConversationRead,
   markSimulationNotificationsSeenThrough,
   messageId,
   notificationId,
+  requestSimulationSetJoin,
   simulationIsoMinutesAfter,
   transitionSimulationMessageDelivery,
 } from '@/entities/simulation';
@@ -70,6 +72,34 @@ describe('Messages and Notifications domain mutation lenses', () => {
         seenThrough: { id: other.id, occurredAt: other.occurredAt },
       }),
     ).toThrow(/does not belong/);
+  });
+
+  it('stores discover join requests and invites in the canonical set graph', () => {
+    const world = SimulationWorldSnapshotSchema.parse(GOLDEN_WORLD);
+    const requestedAt = simulationIsoMinutesAfter(world.generatedAt, 1);
+
+    const request = requestSimulationSetJoin(world, {
+      now: requestedAt,
+      profileId: GOLDEN_PROFILE_IDS.maiSupport,
+      setId: GOLDEN_SET_IDS.macroLab,
+    });
+    expect(request.repeated).toBe(false);
+    expect(
+      world.sets[GOLDEN_SET_IDS.macroLab]?.joinRequests[
+        GOLDEN_PROFILE_IDS.maiSupport
+      ],
+    ).toBe('pending');
+
+    const invite = inviteSimulationPlayerToSet(world, {
+      actorId: GOLDEN_PROFILE_IDS.quanViewer,
+      now: simulationIsoMinutesAfter(requestedAt, 1),
+      profileId: GOLDEN_PROFILE_IDS.anMage,
+      setId: GOLDEN_SET_IDS.demViolet,
+    });
+    expect(invite.repeated).toBe(false);
+    expect(
+      world.sets[GOLDEN_SET_IDS.demViolet]?.invites[GOLDEN_PROFILE_IDS.anMage],
+    ).toBe('pending');
   });
 
   it('joins and leaves sets through explicit membership transitions', () => {

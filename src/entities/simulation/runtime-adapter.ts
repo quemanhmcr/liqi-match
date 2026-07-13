@@ -49,6 +49,8 @@ const mutationKindsByOperation: Readonly<
     'retry-message',
     'transition-message-delivery',
   ],
+  [SIMULATION_OPERATION_IDS.discover.invitePlayer]: ['invite-player'],
+  [SIMULATION_OPERATION_IDS.discover.requestSetJoin]: ['request-set-join'],
   [SIMULATION_OPERATION_IDS.notifications.append]: ['receive-notification'],
   [SIMULATION_OPERATION_IDS.notifications.markRead]: ['mark-notification-read'],
   [SIMULATION_OPERATION_IDS.notifications.markSeenThrough]: [
@@ -73,6 +75,8 @@ export const SIMULATION_FAULT_OPERATION_CATALOG: SimulationFaultOperationCatalog
     all: [],
     discover: [
       { operation: SIMULATION_OPERATION_IDS.discover.overview },
+      { operation: SIMULATION_OPERATION_IDS.discover.invitePlayer },
+      { operation: SIMULATION_OPERATION_IDS.discover.requestSetJoin },
       { operation: SIMULATION_OPERATION_IDS.discover.players },
       { operation: SIMULATION_OPERATION_IDS.discover.sets },
       { operation: SIMULATION_OPERATION_IDS.discover.vibes },

@@ -8,3 +8,8 @@ export {
   useHomeRepository,
   type HomeRepository,
 } from './runtime/HomeRepositoryProvider';
+export {
+  createSimulationHomeRepository,
+  mapHomeDashboard,
+  SimulationHomeRepository,
+} from './services/simulation-home-repository';

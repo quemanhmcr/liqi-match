@@ -3,6 +3,7 @@ import {
   uploadProfileMediaAsset,
   type LocalImageAsset,
 } from '@/shared/services/media-upload';
+import type { AssetKey } from '@/entities/media-asset';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
 import { supabaseRest } from '@/shared/services/supabase-rest';
@@ -143,9 +144,11 @@ export type ProfileHeroPickerOption = ProfileFavoriteHero & {
 };
 
 export type ProfileViewModel = {
+  avatarAssetKey?: AssetKey;
   avatarFallbackUrl?: string;
   avatarUrl?: string;
   bio: string;
+  coverAssetKey?: AssetKey;
   coverUrl?: string;
   displayName: string;
   favoriteHeroes: ProfileFavoriteHero[];
