@@ -18,16 +18,22 @@ describe('SimulationResetRegistry', () => {
     registry.register({
       key: 'query-client',
       order: -100,
-      reset: () => calls.push('query-client'),
+      reset: () => {
+        calls.push('query-client');
+      },
     });
     registry.register({
       key: 'zustand',
-      reset: () => calls.push('zustand'),
+      reset: () => {
+        calls.push('zustand');
+      },
     });
     registry.register({
       key: 'asset-cache',
       phase: 'after-world',
-      reset: () => calls.push('asset-cache'),
+      reset: () => {
+        calls.push('asset-cache');
+      },
     });
 
     await registry.resetPhase('before-world', context);
