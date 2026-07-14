@@ -11,6 +11,7 @@ const ids = {
   conversation: '60000000-0000-4000-8000-000000000001',
   event1: '80000000-0000-4000-8000-000000000001',
   event2: '80000000-0000-4000-8000-000000000002',
+  friend: '20000000-0000-4000-8000-000000000002',
   match: '50000000-0000-4000-8000-000000000001',
   notification1: '90000000-0000-4000-8000-000000000001',
   notification2: '90000000-0000-4000-8000-000000000002',
@@ -192,6 +193,39 @@ describe('ApiNotificationInboxRepository', () => {
           id: ids.notification3,
           kind: 'system',
           payload: { deepLink: { target: 'home' } },
+        },
+      ],
+    });
+  });
+
+  it('maps friendship notifications to canonical PlayerId profile actions', async () => {
+    const { repository } = repositoryWith({
+      items: [
+        notification({
+          deepLink: { playerId: ids.friend, target: 'profile' },
+          kind: 'friendship_requested',
+        }),
+        notification({
+          deepLink: { playerId: ids.friend, target: 'profile' },
+          kind: 'friendship_accepted',
+          notificationId: ids.notification2,
+          sourceEventId: ids.event2,
+        }),
+      ],
+      latestWatermark: null,
+      nextCursor: null,
+      unseenCount: 2,
+    });
+
+    await expect(repository.list({ session })).resolves.toMatchObject({
+      items: [
+        {
+          kind: 'friendship-requested',
+          payload: { requesterPlayerId: ids.friend },
+        },
+        {
+          kind: 'friendship-accepted',
+          payload: { friendPlayerId: ids.friend },
         },
       ],
     });
