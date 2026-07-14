@@ -51,6 +51,68 @@ as $$
   where config.singleton
 $$;
 
+create or replace function private.player_summary_v1(p_player_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select jsonb_build_object(
+    'playerId', players.id,
+    'profileId', canonical_profile.id,
+    'profileVersion', canonical_profile.version,
+    'displayName', legacy_profile.display_name,
+    'avatarAssetId', case
+      when avatar.status = 'ready'
+        and avatar.moderation_status = 'approved'
+      then legacy_profile.avatar_media_id
+      else null
+    end,
+    'avatarUrl', null,
+    'rank', case
+      when rank_row.id is null then null
+      else jsonb_build_object(
+        'id', rank_row.id,
+        'slug', rank_row.slug,
+        'name', rank_row.name
+      )
+    end,
+    'primaryRole', case
+      when primary_role.id is null then null
+      else jsonb_build_object(
+        'id', primary_role.id,
+        'slug', primary_role.slug,
+        'name', primary_role.name
+      )
+    end
+  )
+  from public.players players
+  join public.player_profiles_v1 canonical_profile
+    on canonical_profile.player_id = players.id
+  join public.profiles legacy_profile
+    on legacy_profile.id = canonical_profile.legacy_profile_id
+    and legacy_profile.deleted_at is null
+  left join public.game_profiles game_profile
+    on game_profile.profile_id = canonical_profile.legacy_profile_id
+  left join public.ranks rank_row on rank_row.id = game_profile.rank_id
+  left join public.media_assets avatar
+    on avatar.id = legacy_profile.avatar_media_id
+    and avatar.deleted_at is null
+  left join lateral (
+    select roles.id, roles.slug, roles.name
+    from public.profile_roles profile_roles
+    join public.roles roles on roles.id = profile_roles.role_id
+    where profile_roles.profile_id = canonical_profile.legacy_profile_id
+    order by roles.slug, roles.id
+    limit 1
+  ) primary_role on true
+  where players.id = p_player_id
+$$;
+
+comment on function private.player_summary_v1(uuid) is
+  'Single SQL authority for executable PlayerSummaryV1 presentation facts.';
+
 create or replace function private.create_discovery_snapshot_v1(
   p_viewer_player_id uuid,
   p_viewer_legacy_profile_id uuid,
@@ -186,30 +248,7 @@ begin
     ranked.recommendation_score,
     jsonb_build_object(
       'playerId', ranked.candidate_player_id,
-      'profileSummary', jsonb_build_object(
-        'playerId', ranked.candidate_player_id,
-        'profileId', ranked.candidate_profile_id,
-        'profileVersion', ranked.candidate_profile_version,
-        'displayName', ranked.display_name,
-        'avatarAssetId', ranked.avatar_asset_id,
-        'avatarUrl', null,
-        'rank', case
-          when ranked.rank_id is null then null
-          else jsonb_build_object(
-            'id', ranked.rank_id,
-            'slug', ranked.rank_slug,
-            'name', ranked.rank_name
-          )
-        end,
-        'primaryRole', case
-          when ranked.role_id is null then null
-          else jsonb_build_object(
-            'id', ranked.role_id,
-            'slug', ranked.role_slug,
-            'name', ranked.role_name
-          )
-        end
-      ),
+      'profileSummary', private.player_summary_v1(ranked.candidate_player_id),
       'relationshipState', coalesce(ranked.decision::text, 'none'),
       'capabilities', jsonb_build_object(
         'canLike', ranked.decision is distinct from 'like',
