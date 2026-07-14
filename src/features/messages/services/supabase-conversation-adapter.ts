@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import type { AuthSession } from '@/shared/auth/auth-service';
 import type { RelationshipCapabilityReader } from '@/entities/social-relationship';
+import type { ConversationModerationProvider } from '@/entities/conversation-v2';
 import { env } from '@/shared/config/env';
 import {
   uploadChatAttachment,
@@ -19,6 +20,7 @@ import {
   ReadStateV1Schema,
   type MessageV1,
 } from '../../../../contracts/core-v1';
+import { MessageReportEvidenceV2Schema } from '../../../../contracts/core-v2';
 import {
   MessageConversationResponseSchema,
   MessageInboxParamsSchema,
@@ -101,7 +103,7 @@ type ConversationMobileSurfaceV1 = z.infer<
 >;
 type InboxCursorV1 = z.infer<typeof InboxCursorV1Schema>;
 
-type RpcRequest = <T>(input: {
+export type SupabaseConversationRpcRequest = <T>(input: {
   body: Record<string, unknown>;
   functionName: string;
   session: AuthSession;
@@ -125,7 +127,9 @@ type AccessTokenSubscriber = (
 ) => () => void;
 
 export type SupabaseConversationAdapter = ChatRepository &
-  ChatMessageTransport & {
+  ChatMessageTransport &
+  ConversationModerationProvider & {
+    readonly authorityVersion: 1;
     dispose: () => Promise<void>;
     setSession: (session: AuthSession | null) => Promise<void>;
   };
@@ -135,7 +139,7 @@ export type SupabaseConversationAdapterOptions = {
   accessTokenSubscriber: AccessTokenSubscriber;
   realtimeClient: RealtimeClient;
   relationshipCapabilitiesProvider: RelationshipCapabilityReader;
-  request?: RpcRequest;
+  request?: SupabaseConversationRpcRequest;
   uploadAttachment?: UploadAttachment;
 };
 
@@ -812,6 +816,51 @@ export function createSupabaseConversationAdapter(
     },
   };
 
+  const moderation: ConversationModerationProvider = {
+    async captureReportEvidence(input) {
+      const authorizationEpoch = sessionEpoch;
+      const activeSession = requireSession();
+      if (
+        activeSession.principal?.accountId !== input.actor.accountId ||
+        activeSession.principal.playerId !== input.actor.playerId
+      ) {
+        throw new MessagesServiceError(
+          'unauthenticated',
+          'Report evidence identity does not match the active session.',
+          false,
+        );
+      }
+      const raw = await call<unknown>(
+        'capture_message_report_evidence_v2',
+        { p_report_id: input.reportId },
+        undefined,
+        authorizationEpoch,
+      );
+      const parsed = MessageReportEvidenceV2Schema.safeParse(raw);
+      if (!parsed.success) {
+        throw new MessagesServiceError(
+          'contract_violation',
+          'Report evidence API returned invalid immutable facts.',
+          false,
+          parsed.error.message,
+        );
+      }
+      const evidence = parsed.data;
+      if (
+        evidence.conversationId !== input.conversationId ||
+        evidence.message.messageId !== input.messageId ||
+        evidence.reporterPlayerId !== input.actor.playerId
+      ) {
+        throw new MessagesServiceError(
+          'contract_violation',
+          'Report evidence API returned facts for a different report target.',
+          false,
+        );
+      }
+      return evidence;
+    },
+  };
+
   async function sendMessage(
     command: SendChatTextCommand | SendChatMediaCommand,
     content: Record<string, unknown>,
@@ -856,7 +905,12 @@ export function createSupabaseConversationAdapter(
     }
   }
 
-  return Object.assign(repository, transport) as SupabaseConversationAdapter;
+  return Object.assign(
+    { authorityVersion: 1 as const },
+    repository,
+    transport,
+    moderation,
+  ) as SupabaseConversationAdapter;
 }
 
 function conversationSessionIdentity(session: AuthSession | null) {

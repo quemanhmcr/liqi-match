@@ -5,7 +5,7 @@ import {
   type ReportReceiptV2,
 } from '@/shared/contracts/core-v2';
 import type { AuthSession } from '@/shared/auth/auth-service';
-import type { SocialRelationshipRepository } from '@/entities/social-relationship';
+import type { PlayerSafetyCommandService } from '@/entities/social-relationship';
 
 import type {
   ConversationModerationProvider,
@@ -47,7 +47,7 @@ export type RetryMessageReportEvidenceInput = Readonly<{
 export class MessageReportEvidenceWorkflow {
   constructor(
     private readonly relationshipRepository: Pick<
-      SocialRelationshipRepository,
+      PlayerSafetyCommandService,
       'reportMessage'
     >,
     private readonly moderationProvider: ConversationModerationProvider,

@@ -28,6 +28,12 @@ export {
 } from './services/supabase-conversation-adapter';
 
 export {
+  createSupabaseConversationV2Adapter,
+  type SupabaseConversationV2Adapter,
+  type SupabaseConversationV2AdapterOptions,
+} from './services/supabase-conversation-v2-adapter';
+
+export {
   emitConversationTelemetry,
   setConversationTelemetrySink,
   type ConversationTelemetryAttributes,

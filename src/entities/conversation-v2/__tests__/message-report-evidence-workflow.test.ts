@@ -13,7 +13,7 @@ import {
   ReportMessageCommandV2Schema,
   ReportReceiptV2Schema,
 } from '@/shared/contracts/core-v2';
-import type { SocialRelationshipRepository } from '@/entities/social-relationship';
+import type { PlayerSafetyCommandService } from '@/entities/social-relationship';
 
 import type {
   ConversationModerationProvider,
@@ -47,6 +47,12 @@ const session = {
 } satisfies AuthSession;
 
 const command = ReportMessageCommandV2Schema.parse({
+  audit: {
+    clientCreatedAt: '2026-07-14T12:00:00.000Z',
+    clientPlatform: 'ios',
+    clientVersion: '2.0.0',
+    requestId: RequestIdSchema.parse('report-message-workflow-test'),
+  },
   category: 'harassment',
   conversationId: uuid(10),
   correlationId: CorrelationIdSchema.parse(uuid(11)),
@@ -101,7 +107,7 @@ function harness(options?: { captureFailures?: number }) {
   });
   const relationshipRepository = {
     reportMessage,
-  } as Pick<SocialRelationshipRepository, 'reportMessage'>;
+  } as Pick<PlayerSafetyCommandService, 'reportMessage'>;
   const moderationProvider = {
     captureReportEvidence,
   } satisfies ConversationModerationProvider;
@@ -174,7 +180,7 @@ describe('MessageReportEvidenceWorkflow', () => {
     });
     const captureReportEvidence = jest.fn(async () => evidence());
     const workflow = new MessageReportEvidenceWorkflow(
-      { reportMessage } as Pick<SocialRelationshipRepository, 'reportMessage'>,
+      { reportMessage } as Pick<PlayerSafetyCommandService, 'reportMessage'>,
       { captureReportEvidence },
     );
 

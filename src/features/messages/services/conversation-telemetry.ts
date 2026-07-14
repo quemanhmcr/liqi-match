@@ -5,6 +5,7 @@ export type ConversationTelemetryEvent =
   | 'conversation.relationship_access.revoked'
   | 'conversation.relationship_access.unavailable'
   | 'conversation.read.succeeded'
+  | 'conversation.realtime.access_signal'
   | 'conversation.realtime.connected'
   | 'conversation.realtime.disconnected'
   | 'conversation.realtime.message_signal'

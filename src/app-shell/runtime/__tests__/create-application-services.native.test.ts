@@ -194,10 +194,30 @@ describe('application service composition', () => {
     ).toBe(false);
   });
 
+  it('switches repository and transport together under the Conversation V2 gate', async () => {
+    const services = createApiApplicationServices({
+      conversationV2Enabled: true,
+    });
+    expect(services.messageRepository).toBe(services.messageTransport);
+    expect(
+      (services.messageRepository as { authorityVersion?: number })
+        .authorityVersion,
+    ).toBe(2);
+    await expect(
+      services.messageRepository.listConversations(),
+    ).rejects.toMatchObject({ code: 'unauthenticated', retryable: false });
+  });
+
   it('exposes production services without simulation fallbacks', async () => {
-    const services = createApiApplicationServices();
+    const services = createApiApplicationServices({
+      conversationV2Enabled: false,
+    });
 
     expect(services.mode).toBe('api');
+    expect(
+      (services.messageRepository as { authorityVersion?: number })
+        .authorityVersion,
+    ).toBe(1);
     expect(services.scenarioControl).toBeNull();
     expect(services.simulationRuntime).toBeNull();
     await expect(

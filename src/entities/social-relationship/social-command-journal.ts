@@ -376,8 +376,8 @@ function stableJson(value: unknown): string {
 
 function resolveClientPlatform(): 'ios' | 'android' | 'web' | 'service' {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { Platform } =
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       require('react-native') as typeof import('react-native');
     return Platform.OS === 'ios' ||
       Platform.OS === 'android' ||

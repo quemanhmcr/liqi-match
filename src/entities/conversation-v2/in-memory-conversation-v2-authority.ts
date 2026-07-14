@@ -14,7 +14,7 @@ import {
   ConversationSourceBoundEventV2Schema,
   ConversationSnapshotV2Schema,
   ConversationTombstonedEventV2Schema,
-  MessageReportEvidenceIdV2Schema,
+  MessageReportEvidenceV2Schema,
   MessageSentEventV2Schema,
   MessageV2Schema,
   ProvisionDirectConversationCommandV2Schema,
@@ -40,6 +40,7 @@ import {
   type ConversationSnapshotV2,
   type ConversationSourceBindingV2,
   type ConversationSourceV2,
+  type MessageReportEvidenceV2,
   type MessageV2,
   type PlaySessionMembershipProjectionV2,
   type ProvisionDirectConversationCommandV2,
@@ -102,11 +103,7 @@ type StoredRelationshipProjectionReceipt = {
 };
 
 type StoredEvidence = Readonly<{
-  evidenceId: ReturnType<typeof MessageReportEvidenceIdV2Schema.parse>;
-  conversationId: string;
-  message: MessageV2;
-  reporterPlayerId: PlayerId;
-  capturedAt: string;
+  evidence: MessageReportEvidenceV2;
   reportId: string;
 }>;
 
@@ -1116,10 +1113,10 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     const existing = this.systemMessagesByEvent.get(eventId);
     if (existing) return clone(existing);
     const stored = this.requireConversation(activity.conversationId);
-    if (sourceKey(stored.snapshot.source) !== sourceKey(activity.source)) {
+    if (!stored.sources.has(sourceKey(activity.source))) {
       throw new ConversationV2ProviderError(
         'conversation_source_conflict',
-        'System activity source does not match the conversation source.',
+        'System activity source is not bound to the conversation.',
         false,
       );
     }
@@ -1311,8 +1308,8 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     const existing = this.reportEvidence.get(key);
     if (existing) {
       if (
-        existing.message.messageId !== input.messageId ||
-        existing.reporterPlayerId !== input.actor.playerId
+        existing.evidence.message.messageId !== input.messageId ||
+        existing.evidence.reporterPlayerId !== input.actor.playerId
       ) {
         throw new ConversationV2ProviderError(
           'message_idempotency_conflict',
@@ -1320,7 +1317,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
           false,
         );
       }
-      return clone(existing);
+      return clone(existing.evidence);
     }
     const message = stored.messages.find(
       (item) => item.messageId === input.messageId,
@@ -1332,15 +1329,14 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         false,
       );
     }
-    const evidence: StoredEvidence = Object.freeze({
-      evidenceId: MessageReportEvidenceIdV2Schema.parse(this.createUuid()),
+    const evidence = MessageReportEvidenceV2Schema.parse({
+      evidenceId: this.createUuid(),
       conversationId: stored.snapshot.conversationId,
-      message: Object.freeze(clone(message)),
+      message: clone(message),
       reporterPlayerId: input.actor.playerId,
       capturedAt: this.now(),
-      reportId: key,
     });
-    this.reportEvidence.set(key, evidence);
+    this.reportEvidence.set(key, Object.freeze({ evidence, reportId: key }));
     return clone(evidence);
   }
 

@@ -8,7 +8,10 @@ import {
 } from '@/shared/contracts/core-v1';
 import type { VerifiedConversationActorV2 } from '@/entities/conversation-v2';
 
-import { createSupabaseConversationAdapter } from '../services/supabase-conversation-adapter';
+import {
+  createSupabaseConversationAdapter,
+  type SupabaseConversationRpcRequest,
+} from '../services/supabase-conversation-adapter';
 
 const uuid = (suffix: number) =>
   `00000000-0000-4000-8000-${suffix.toString().padStart(12, '0')}`;
@@ -54,10 +57,23 @@ const evidence = {
 
 describe('Supabase Conversation V2 report evidence', () => {
   it('uses the refreshed session and parses the exact immutable evidence contract', async () => {
-    const request = jest.fn(async () => evidence);
+    const requestCalls = jest.fn();
+    const request: SupabaseConversationRpcRequest = async <T>(
+      input: Parameters<SupabaseConversationRpcRequest>[0],
+    ) => {
+      requestCalls(input);
+      return evidence as T;
+    };
     const adapter = createSupabaseConversationAdapter({
       accessTokenProvider: jest.fn(async () => 'refreshed-token'),
       accessTokenSubscriber: jest.fn(() => () => undefined),
+      relationshipCapabilitiesProvider: {
+        async getRelationship() {
+          throw new Error(
+            'relationship lookup is not used by evidence capture',
+          );
+        },
+      },
       realtimeClient: {
         channel: jest.fn(),
         removeChannel: jest.fn(async () => 'ok'),
@@ -75,7 +91,7 @@ describe('Supabase Conversation V2 report evidence', () => {
         reportId: uuid(15),
       }),
     ).resolves.toEqual(evidence);
-    expect(request).toHaveBeenCalledWith(
+    expect(requestCalls).toHaveBeenCalledWith(
       expect.objectContaining({
         body: { p_report_id: uuid(15) },
         functionName: 'capture_message_report_evidence_v2',
