@@ -3,6 +3,7 @@ import type { PropsWithChildren } from 'react';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
 import { DeepLinkCoordinatorProvider } from '@/app-shell/deep-link/DeepLinkCoordinatorProvider';
+import { PushDeviceLifecycleProvider } from '@/app-shell/push/PushDeviceLifecycleProvider';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
 import { queryClient } from '@/shared/lib/query-client';
 
@@ -22,11 +23,13 @@ export function AppProviders({ children }: PropsWithChildren) {
     <KeyboardProvider>
       <AuthStateProvider>
         <DeepLinkCoordinatorProvider>
-          <ApplicationServiceProviders services={applicationServices}>
-            <QueryClientProvider client={queryClient}>
-              {children}
-            </QueryClientProvider>
-          </ApplicationServiceProviders>
+          <PushDeviceLifecycleProvider>
+            <ApplicationServiceProviders services={applicationServices}>
+              <QueryClientProvider client={queryClient}>
+                {children}
+              </QueryClientProvider>
+            </ApplicationServiceProviders>
+          </PushDeviceLifecycleProvider>
         </DeepLinkCoordinatorProvider>
       </AuthStateProvider>
     </KeyboardProvider>

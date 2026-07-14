@@ -49,7 +49,8 @@
     "react-native-worklets": "0.8.3",
     "zod": "^4.4.3",
     "zustand": "^5.0.14",
-    "expo-notifications": "~56.0.20"
+    "expo-notifications": "~56.0.20",
+    "expo-device": "~56.0.4"
   },
   "devDependencies": {
     "@emnapi/core": "^1.11.1",
@@ -132,7 +133,7 @@
     "task:start": "node scripts/worktree/worktree-cli.cjs create",
     "task:inspect": "node scripts/worktree/worktree-cli.cjs doctor",
     "task:list": "node scripts/worktree/worktree-cli.cjs list",
-    "task:check": "npm run repository:check && npm run migration-history:check && npm run contracts:check && npm run return-loop:check && npm run notification-deep-link:check && npm run match-authority:check && npm run production-match-loop:check && npm run discovery-authority:check && npm run discover-overview-authority:check && npm run discover-production-path:check && npm run conversation-authority:check && npm run match-conversation-projection:check && npm run match-intent-lifecycle-projection:check && npm run home-match-facts:check && npm run match-authority-rollout:check && npm run match-funnel-telemetry:check && npm run match-set-authority:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
+    "task:check": "npm run repository:check && npm run migration-history:check && npm run contracts:check && npm run return-loop:check && npm run notification-deep-link:check && npm run push-delivery:check && npm run match-authority:check && npm run production-match-loop:check && npm run discovery-authority:check && npm run discover-overview-authority:check && npm run discover-production-path:check && npm run conversation-authority:check && npm run match-conversation-projection:check && npm run match-intent-lifecycle-projection:check && npm run home-match-facts:check && npm run match-authority-rollout:check && npm run match-funnel-telemetry:check && npm run match-set-authority:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
     "task:review": "node scripts/worktree/worktree-cli.cjs overlay",
     "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
     "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
@@ -151,7 +152,8 @@
     "production-match-loop:check": "node scripts/contracts/check-production-match-loop-v1.cjs",
     "migration-history:check": "node scripts/contracts/check-migration-history-v1.cjs",
     "return-loop:check": "node scripts/contracts/check-return-loop-authority-v1.cjs",
-    "notification-deep-link:check": "node scripts/contracts/check-notification-deep-link-resolution-v1.cjs"
+    "notification-deep-link:check": "node scripts/contracts/check-notification-deep-link-resolution-v1.cjs",
+    "push-delivery:check": "node scripts/contracts/check-push-delivery-presence-v1.cjs"
   },
   "overrides": {
     "xcode": {
