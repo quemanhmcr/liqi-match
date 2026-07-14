@@ -20,6 +20,7 @@ const sqlPaths = [
   'supabase/migrations/202607140014_match_command_variable_conflict_v1.sql',
   'supabase/migrations/202607140015_discovery_lifecycle_payload_adapter_v1.sql',
   'supabase/migrations/202607140016_expire_match_intent_v1.sql',
+  'supabase/migrations/202607140017_discovery_relationship_state_projection_v1.sql',
   'supabase/tests/database/production_match_authority_v1.test.sql',
   'supabase/tests/database/conversation_reliability_v1.test.sql',
   'supabase/tests/database/conversation_bootstrap_dispatch_v1.test.sql',
