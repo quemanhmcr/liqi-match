@@ -100,9 +100,8 @@ select is(
 );
 select is((select response #>> '{items,0,set,setId}' from set_page_two), 'a1000000-0000-4000-8000-000000000803', 'second page contains remaining open Set');
 select is((select response from set_page_two_retry), (select response from set_page_two), 'Set cursor retry is semantically identical');
-select is((select count(*)::integer from private.set_discovery_snapshot_candidates_v1), 2, 'full and blocked Sets are excluded');
-
 reset role;
+select is((select count(*)::integer from private.set_discovery_snapshot_candidates_v1), 2, 'full and blocked Sets are excluded');
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000801', true);

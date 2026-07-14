@@ -660,6 +660,16 @@ select isnt(
 
 
 
+select set_config(
+  'test.expected_profile_id',
+  (
+    select id::text
+    from public.player_profiles_v1
+    where player_id = '20000000-0000-4000-8000-000000000101'
+  ),
+  true
+);
+
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000101', true);
@@ -677,11 +687,7 @@ select set_config(
 
 select is(
   public.get_own_player_profile_identity_v1()->>'profileId',
-  (
-    select id::text
-    from public.player_profiles_v1
-    where player_id = '20000000-0000-4000-8000-000000000101'
-  ),
+  current_setting('test.expected_profile_id'),
   'profile identity read returns the canonical ProfileId'
 );
 
@@ -753,6 +759,7 @@ select is(
   'profile identity retry returns the durable receipt'
 );
 
+reset role;
 select is(
   (
     select version::integer
@@ -772,6 +779,21 @@ select is(
   ),
   1,
   'profile identity retry emits exactly one profile-updated event'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000101', true);
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '01000000-0000-4000-8000-000000000101',
+    'role', 'authenticated',
+    'session_id', '09000000-0000-4000-8000-000000000104',
+    'iat', extract(epoch from now() - interval '1 minute')::bigint,
+    'exp', extract(epoch from now() + interval '1 hour')::bigint
+  )::text,
+  true
 );
 
 select throws_like(

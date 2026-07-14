@@ -54,11 +54,11 @@ insert into private.home_conversation_projection_v1 (
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000811', true);
-select ok((public.register_push_device_v1('push-device-a1', 'ExponentPushToken[push-a1]', 'android') ->> 'enabled')::boolean, 'first device registers');
-select ok((public.register_push_device_v1('push-device-a2', 'ExponentPushToken[push-a2]', 'ios') ->> 'enabled')::boolean, 'second device registers');
-select is(public.upsert_notification_presence_v1('push-device-a1', 'foreground', '61000000-0000-4000-8000-000000000811') ->> 'state', 'foreground', 'authorized conversation presence is recorded');
+select ok((public.register_push_device_v1('push-device-a1-0001', 'ExponentPushToken[push-a1]', 'android') ->> 'enabled')::boolean, 'first device registers');
+select ok((public.register_push_device_v1('push-device-a2-0001', 'ExponentPushToken[push-a2]', 'ios') ->> 'enabled')::boolean, 'second device registers');
+select is(public.upsert_notification_presence_v1('push-device-a1-0001', 'foreground', '61000000-0000-4000-8000-000000000811') ->> 'state', 'foreground', 'authorized conversation presence is recorded');
 select throws_ok(
-  $$select public.upsert_notification_presence_v1('push-device-a1', 'foreground', '61000000-0000-4000-8000-000000009999')$$,
+  $$select public.upsert_notification_presence_v1('push-device-a1-0001', 'foreground', '61000000-0000-4000-8000-000000009999')$$,
   '42501',
   'Conversation presence is not authorized',
   'presence cannot suppress an unrelated conversation'
@@ -86,7 +86,7 @@ select is((select count(*)::integer from public.notifications_v1 where id = '910
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000811', true);
-select is(public.upsert_notification_presence_v1('push-device-a1', 'background', null) ->> 'state', 'background', 'background transition clears active presence');
+select is(public.upsert_notification_presence_v1('push-device-a1-0001', 'background', null) ->> 'state', 'background', 'background transition clears active presence');
 reset role;
 
 insert into public.notifications_v1 (

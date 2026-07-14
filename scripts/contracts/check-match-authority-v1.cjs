@@ -13,6 +13,10 @@ const overloadRepair = fs.readFileSync(
   'supabase/migrations/202607140033_remove_match_command_overloads_v1.sql',
   'utf8',
 );
+const canonicalDecisionRepair = fs.readFileSync(
+  'supabase/migrations/202607140048_repair_canonical_match_decision_v1.sql',
+  'utf8',
+);
 
 const activationStart = migration.indexOf(
   'create or replace function public.activate_match_intent_v1',
@@ -124,6 +128,19 @@ requireInvariant(
     ) &&
     /integer,\s*integer\s*\)/i.test(overloadRepair),
   'parallel integer Match command overloads must be removed so the shared-receipt bigint signatures remain canonical',
+);
+requireInvariant(
+  /p_expected_intent_version bigint[\s\S]*p_expected_target_profile_version bigint/i.test(
+    canonicalDecisionRepair,
+  ) &&
+    /actor_player_id_value uuid/i.test(canonicalDecisionRepair) &&
+    /where decisions\.actor_player_id = actor_player_id_value/i.test(
+      canonicalDecisionRepair,
+    ) &&
+    !/where decisions\.actor_player_id = actor_player_id(?:\s|$)/i.test(
+      canonicalDecisionRepair,
+    ),
+  'The surviving bigint decision authority must use collision-free PL/pgSQL identifiers.',
 );
 requireInvariant(
   !fs

@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(46);
+select plan(47);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -161,6 +161,7 @@ select is(
 select is((select count(*)::integer from public.notifications_v1), 1, 'one source event creates one notification');
 select is((select count(distinct source_event_id)::integer from public.notifications_v1), 1, 'source event uniqueness is preserved');
 select is((select status::text from private.notification_push_jobs_v1 limit 1), 'pending', 'notification persists before pending push delivery');
+select is((select count(*)::integer from private.notification_delivery_errors_v1), 0, 'push enqueue does not hide an authority error');
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);

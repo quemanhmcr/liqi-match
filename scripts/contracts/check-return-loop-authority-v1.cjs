@@ -11,6 +11,12 @@ const variableConflictMigration = fs.readFileSync(
   'utf8',
 );
 const databaseTest = fs.readFileSync(testPath, 'utf8');
+const notificationAuthorityRepairPath =
+  'supabase/migrations/202607140047_repair_return_loop_notification_authority_v1.sql';
+const notificationAuthorityRepair = fs.readFileSync(
+  notificationAuthorityRepairPath,
+  'utf8',
+);
 const homeApiRepository = fs.readFileSync(
   'src/features/home/services/api-home-repository.ts',
   'utf8',
@@ -113,6 +119,12 @@ requireInvariant(
   'Push enqueue failure must be caught after notification persistence.',
 );
 requireInvariant(
+  /notification_delivery_errors_v1\), 0, 'push enqueue does not hide an authority error'/i.test(
+    databaseTest,
+  ),
+  'Database coverage must prove notification persistence does not mask push enqueue failures.',
+);
+requireInvariant(
   !/unread_count\s*=\s*[^,;\n]*\+/i.test(migration),
   'Mission 4 must never increment conversation unread from notification rows.',
 );
@@ -170,6 +182,18 @@ requireInvariant(
     eventConsumer,
   ) && /return_loop_processed_events_v1/i.test(eventConsumer),
   'Event consumption must serialize and persist idempotency by EventId.',
+);
+requireInvariant(
+  /notification_id_value[\s\S]*recipient_player_id_value[\s\S]*foreground_policy_value/i.test(
+    notificationAuthorityRepair,
+  ) &&
+    /grant execute on function private\.current_return_loop_player_id_v1\(\)[\s\S]*to authenticated/i.test(
+      notificationAuthorityRepair,
+    ) &&
+    !/values \(\s*notification_id,\s*recipient_player_id,\s*foreground_policy,/i.test(
+      notificationAuthorityRepair,
+    ),
+  'Forward notification repair must avoid enqueue variable collisions and preserve authenticated RLS helper execution.',
 );
 requireInvariant(
   /create or replace function private\.consume_return_loop_event_without_suspension_v1\(p_event jsonb\)/i.test(

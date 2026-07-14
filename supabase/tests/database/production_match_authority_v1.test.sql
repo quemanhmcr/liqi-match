@@ -83,6 +83,7 @@ select public.pause_match_intent_v1('intent-pause-d-0001', 1) as receipt;
 create temporary table pause_d_retry as
 select public.pause_match_intent_v1('intent-pause-d-0001', 1) as receipt;
 
+reset role;
 select is(
   (select count(*)::integer from public.match_intents_v1),
   3,
@@ -106,6 +107,8 @@ select is(
   'Match Intent activation uses the shared command receipt authority'
 );
 
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000201', true);
 create temporary table decision_a_first as
 select public.record_player_decision_v1(
@@ -135,6 +138,7 @@ select public.record_player_decision_v1(
   7
 ) as receipt;
 
+reset role;
 select is((select receipt ->> 'relationshipState' from decision_a_first), 'liked', 'first unilateral like persists liked state');
 select is((select (receipt ->> 'repeated')::boolean from decision_a_retry), true, 'same decision command retry returns its durable receipt');
 select is((select (receipt ->> 'repeated')::boolean from decision_a_semantic_duplicate), true, 'a new command key cannot duplicate the same semantic like transition');
@@ -142,6 +146,8 @@ select is((select count(*)::integer from public.relationship_decisions_v1), 1, '
 select is((select count(*)::integer from private.outbox_events where event_type = 'player.liked.v1'), 1, 'semantic duplicate like does not emit a second liked event');
 select is((select count(*)::integer from public.matches where player_low_id is not null), 0, 'unilateral like does not create a match');
 
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000202', true);
 create temporary table decision_b_first as
 select public.record_player_decision_v1(
@@ -162,6 +168,7 @@ select public.record_player_decision_v1(
   4
 ) as receipt;
 
+reset role;
 select is((select receipt ->> 'relationshipState' from decision_b_first), 'matched', 'reciprocal like creates a match');
 select is((select (receipt ->> 'repeated')::boolean from decision_b_retry), true, 'reciprocal retry returns the original match receipt');
 select is((select count(*)::integer from public.matches where player_low_id is not null), 1, 'mutual likes create exactly one canonical match');
@@ -204,7 +211,6 @@ select throws_ok(
   'legacy semantic writes are permanently disabled after v1 cutover'
 );
 
-reset role;
 update public.players
 set lifecycle_state = 'suspended',
     discoverable = false,
