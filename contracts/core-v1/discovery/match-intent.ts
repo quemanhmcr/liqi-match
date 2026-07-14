@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import {
+  EventIdSchema,
   IdempotencyKeySchema,
   MatchIntentIdSchema,
   PlayerIdSchema,
@@ -61,6 +62,51 @@ export const PauseMatchIntentReceiptV1Schema =
     repeated: z.boolean(),
   });
 
+export const MatchIntentLifecycleProjectionResultCodeV1Schema = z.enum([
+  'paused_by_suspension',
+  'paused_before_resume_eligibility',
+  'suspended_without_intent',
+  'resumed_without_intent',
+  'intent_already_inactive',
+  'intent_remains_inactive',
+  'stale_event',
+]);
+
+export const MatchIntentLifecycleProjectionReceiptV1Schema = z
+  .object({
+    eligibilityRestored: z.boolean(),
+    eventId: EventIdSchema,
+    eventType: z.enum(['player.suspended.v1', 'player.resumed.v1']),
+    lifecycleVersion: z.number().int().positive(),
+    matchIntent: MatchIntentSnapshotV1Schema.nullable(),
+    playerId: PlayerIdSchema,
+    repeated: z.boolean(),
+    resultCode: MatchIntentLifecycleProjectionResultCodeV1Schema,
+  })
+  .strict()
+  .superRefine((receipt, context) => {
+    if (
+      receipt.eligibilityRestored &&
+      receipt.eventType !== 'player.resumed.v1'
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Only a resumed lifecycle event can restore eligibility.',
+        path: ['eligibilityRestored'],
+      });
+    }
+    if (
+      receipt.matchIntent &&
+      receipt.matchIntent.playerId !== receipt.playerId
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Projected Match Intent must belong to the lifecycle player.',
+        path: ['matchIntent', 'playerId'],
+      });
+    }
+  });
+
 export type MatchIntentKindV1 = z.infer<typeof MatchIntentKindV1Schema>;
 export type MatchIntentFiltersV1 = z.infer<typeof MatchIntentFiltersV1Schema>;
 export type MatchIntentSnapshotV1 = z.infer<typeof MatchIntentSnapshotV1Schema>;
@@ -76,4 +122,10 @@ export type PauseMatchIntentCommandV1 = z.infer<
 >;
 export type PauseMatchIntentReceiptV1 = z.infer<
   typeof PauseMatchIntentReceiptV1Schema
+>;
+export type MatchIntentLifecycleProjectionResultCodeV1 = z.infer<
+  typeof MatchIntentLifecycleProjectionResultCodeV1Schema
+>;
+export type MatchIntentLifecycleProjectionReceiptV1 = z.infer<
+  typeof MatchIntentLifecycleProjectionReceiptV1Schema
 >;

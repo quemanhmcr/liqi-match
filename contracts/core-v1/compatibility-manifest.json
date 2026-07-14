@@ -41,6 +41,7 @@
     "profile-version-conflict.json",
     "onboarding-completion-replay.json",
     "onboarding-completion-command.json",
+    "match-intent-lifecycle-suspended-projection.json",
     "active-intent.json",
     "paused-intent.json",
     "expired-intent.json",

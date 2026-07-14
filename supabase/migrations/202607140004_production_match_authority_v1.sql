@@ -246,6 +246,19 @@ as $$
     and expires_at <= now()
 $$;
 
+create or replace function private.is_match_intent_lifecycle_projection_ready_v1(
+  p_player_id uuid,
+  p_lifecycle_version bigint
+)
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select true
+$$;
+
 create or replace function private.assert_discovery_eligible_v1(p_snapshot jsonb)
 returns void
 language plpgsql
@@ -255,6 +268,7 @@ as $$
 declare
   player_id_value uuid;
   lifecycle_state_value text;
+  lifecycle_version_value bigint;
 begin
   if p_snapshot is null then
     perform private.raise_core_error_v1(
@@ -266,6 +280,7 @@ begin
   begin
     player_id_value := (p_snapshot ->> 'playerId')::uuid;
     lifecycle_state_value := p_snapshot ->> 'state';
+    lifecycle_version_value := (p_snapshot ->> 'version')::bigint;
   exception when others then
     perform private.raise_core_error_v1(
       'internal_error',
@@ -274,7 +289,19 @@ begin
   end;
 
   if private.is_player_discovery_eligible_v1(player_id_value) then
-    return;
+    if private.is_match_intent_lifecycle_projection_ready_v1(
+      player_id_value,
+      lifecycle_version_value
+    ) then
+      return;
+    end if;
+
+    perform private.raise_core_error_v1(
+      'service_unavailable',
+      'Player lifecycle eligibility projection is pending.',
+      true,
+      jsonb_build_object('lifecycleVersion', lifecycle_version_value)
+    );
   end if;
 
   if lifecycle_state_value = 'suspended' then

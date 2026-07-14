@@ -255,6 +255,14 @@ begin
       on owner_profile.player_id = sets.owner_player_id
     where sets.state = 'open'
       and private.is_player_discovery_eligible_v1(sets.owner_player_id)
+      and private.is_match_intent_lifecycle_projection_ready_v1(
+        sets.owner_player_id,
+        (
+          select players.lifecycle_version
+          from public.players players
+          where players.id = sets.owner_player_id
+        )
+      )
       and not exists (
         select 1
         from public.match_set_members_v1 viewer_membership

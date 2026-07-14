@@ -208,7 +208,11 @@ begin
     left join public.relationship_decisions_v1 relationship
       on relationship.actor_player_id = p_viewer_player_id
       and relationship.target_player_id = (candidate_lifecycle ->> 'playerId')::uuid
-    where not private.are_profiles_blocked(
+    where private.is_match_intent_lifecycle_projection_ready_v1(
+        (candidate_lifecycle ->> 'playerId')::uuid,
+        (candidate_lifecycle ->> 'version')::bigint
+      )
+      and not private.are_profiles_blocked(
         p_viewer_legacy_profile_id,
         canonical_profile.legacy_profile_id
       )

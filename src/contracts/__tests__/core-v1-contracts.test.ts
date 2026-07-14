@@ -8,6 +8,7 @@ import {
   DiscoveryCandidateV1Schema,
   HomeMatchFactsV1Schema,
   MatchCreatedEventV1Schema,
+  MatchIntentLifecycleProjectionReceiptV1Schema,
   MatchIntentSnapshotV1Schema,
   NotificationRequestedEventV1Schema,
   PlayerDecisionReceiptV1Schema,
@@ -21,6 +22,14 @@ const read = (group: 'provider' | 'consumer', name: string) =>
   JSON.parse(fs.readFileSync(path.join(root, group, name), 'utf8')) as unknown;
 
 describe('core-v1 executable contracts', () => {
+  it('validates the suspended Match Intent lifecycle projection receipt', () => {
+    const receipt = MatchIntentLifecycleProjectionReceiptV1Schema.parse(
+      read('provider', 'match-intent-lifecycle-suspended-projection.json'),
+    );
+    expect(receipt.resultCode).toBe('paused_by_suspension');
+    expect(receipt.matchIntent?.state).toBe('paused');
+  });
+
   it.each(['active-intent.json', 'paused-intent.json', 'expired-intent.json'])(
     'validates MatchIntent provider fixture %s',
     (name) => {
