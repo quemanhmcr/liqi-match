@@ -21,6 +21,7 @@ import {
 } from '../identity/semantic-ids';
 import { MatchCreatedV1Schema } from '../match/match-created';
 import { MatchIntentSnapshotV1Schema } from '../discovery/match-intent';
+import { PlayerSuspensionReasonCodeV1Schema } from '../lifecycle/player-suspension';
 
 const EventEnvelopeBaseV1Schema = z.object({
   eventId: EventIdSchema,
@@ -200,7 +201,16 @@ export const PlayerSuspendedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
   aggregateType: z.literal('player'),
   aggregateId: PlayerIdSchema,
   data: PlayerLifecycleEventDataV1Schema.extend({
-    reasonCode: z.string().min(1).max(120),
+    reasonCode: PlayerSuspensionReasonCodeV1Schema,
+  }),
+});
+
+export const PlayerResumedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
+  eventType: z.literal('player.resumed.v1'),
+  aggregateType: z.literal('player'),
+  aggregateId: PlayerIdSchema,
+  data: PlayerLifecycleEventDataV1Schema.extend({
+    reasonCode: PlayerSuspensionReasonCodeV1Schema,
   }),
 });
 

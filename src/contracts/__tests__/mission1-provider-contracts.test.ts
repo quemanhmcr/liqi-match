@@ -13,6 +13,12 @@ import {
   PlayerIdentityMappingV1Schema,
   PlayerLifecycleSnapshotV1Schema,
   PlayerProfileVersionV1Schema,
+  PlayerResumedEventV1Schema,
+  PlayerSuspendedEventV1Schema,
+  ResumePlayerCommandV1Schema,
+  ResumePlayerResultV1Schema,
+  SuspendPlayerCommandV1Schema,
+  SuspendPlayerResultV1Schema,
 } from '../../../contracts/core-v1';
 
 const fixtureRoot = path.join(
@@ -109,6 +115,61 @@ describe('Mission 1 Core V1 provider contracts', () => {
         messagingAllowed: true,
       }),
     ).toThrow();
+  });
+
+  it('publishes the service-owned suspension command', () => {
+    const command = SuspendPlayerCommandV1Schema.parse(
+      read('player-suspension-command.json'),
+    );
+
+    expect(command.expectedLifecycleVersion).toBe(3);
+    expect(command.reasonCode).toBe('trust.safety_review');
+  });
+
+  it('publishes an idempotent suspended-state replay receipt', () => {
+    const result = SuspendPlayerResultV1Schema.parse(
+      read('player-suspension-replay.json'),
+    );
+
+    expect(result.repeated).toBe(true);
+    expect(result.lifecycle.state).toBe('suspended');
+    expect(result.reasonCode).toBe('trust.safety_review');
+  });
+
+  it('publishes the suspended lifecycle event', () => {
+    const event = PlayerSuspendedEventV1Schema.parse(
+      read('player-suspended-event.json'),
+    );
+
+    expect(event.aggregateId).toBe(event.data.playerId);
+    expect(event.data.lifecycleVersion).toBe(4);
+  });
+
+  it('publishes the service-owned resume command', () => {
+    const command = ResumePlayerCommandV1Schema.parse(
+      read('player-resume-command.json'),
+    );
+
+    expect(command.expectedLifecycleVersion).toBe(4);
+  });
+
+  it('publishes an idempotent active-state resume receipt', () => {
+    const result = ResumePlayerResultV1Schema.parse(
+      read('player-resume-replay.json'),
+    );
+
+    expect(result.repeated).toBe(true);
+    expect(result.lifecycle.state).toBe('active');
+  });
+
+  it('publishes the causally linked resumed lifecycle event', () => {
+    const event = PlayerResumedEventV1Schema.parse(
+      read('player-resumed-event.json'),
+    );
+
+    expect(event.aggregateId).toBe(event.data.playerId);
+    expect(event.causationId).not.toBeNull();
+    expect(event.data.lifecycleVersion).toBe(5);
   });
 
   it('publishes the authoritative completion command with a legacy transport bridge', () => {
