@@ -1,0 +1,13 @@
+{
+  "lifecycle": {
+    "playerId": "20000000-0000-4000-8000-000000000701",
+    "profileId": "30000000-0000-4000-8000-000000000701",
+    "state": "suspended",
+    "discoverable": false,
+    "messagingAllowed": false,
+    "version": 4,
+    "updatedAt": "2026-07-14T09:10:00.000Z"
+  },
+  "reasonCode": "trust.safety_review",
+  "repeated": true
+}

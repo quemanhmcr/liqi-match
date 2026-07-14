@@ -1,0 +1,62 @@
+{
+  "contractFamily": "core-v1",
+  "version": 1,
+  "status": "additive",
+  "owners": {
+    "identity": "senior-1",
+    "lifecycle": "senior-1",
+    "profile": "senior-1",
+    "discovery": "senior-2",
+    "match": "senior-2",
+    "conversation": "senior-3",
+    "notification": "senior-4",
+    "events": "shared-provider-owned",
+    "errors": "shared"
+  },
+  "compatibilityRules": [
+    "No semantic ID may be replaced with a generic userId or id at an inter-service boundary.",
+    "Existing enum values and required fields cannot be removed in v1.",
+    "Event type strings are immutable and versioned.",
+    "Exact provider interfaces reject undeclared semantic fields; additive fields require provider and affected-consumer approval."
+  ],
+  "providerFixtures": [
+    "authenticated-principal-valid.json",
+    "authenticated-principal-expired.json",
+    "player-profile-version.json",
+    "player-identity-mapping.json",
+    "player-lifecycle-onboarding.json",
+    "player-lifecycle-active.json",
+    "player-lifecycle-suspended.json",
+    "player-suspension-command.json",
+    "player-suspension-replay.json",
+    "player-suspended-event.json",
+    "player-resume-command.json",
+    "player-resume-replay.json",
+    "player-resumed-event.json",
+    "player-lifecycle-deleting.json",
+    "player-lifecycle-deleted.json",
+    "account-deletion-command.json",
+    "account-deletion-replay.json",
+    "player-deletion-requested-event.json",
+    "profile-version-conflict.json",
+    "onboarding-completion-replay.json",
+    "onboarding-completion-command.json",
+    "active-intent.json",
+    "paused-intent.json",
+    "expired-intent.json",
+    "candidate-eligible.json",
+    "candidate-already-liked.json",
+    "mutual-like-receipt.json",
+    "duplicate-like-retry-receipt.json",
+    "match-already-exists-receipt.json",
+    "profile-identity-snapshot.json",
+    "profile-identity-update-command.json",
+    "profile-identity-update-replay.json",
+    "player-profile-updated-event.json"
+  ],
+  "consumerFixtures": [
+    "conversation-bootstrap-requested.json",
+    "match-created.json",
+    "notification-requested.json"
+  ]
+}

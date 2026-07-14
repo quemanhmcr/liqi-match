@@ -1,0 +1,17 @@
+{
+  "identity": {
+    "bio": "Jungle chính, support khi team cần.",
+    "displayName": "Liqi Pro",
+    "genderId": "hidden",
+    "stats": {
+      "matches": 320,
+      "rating": 4.7,
+      "reputation": 96,
+      "winRate": 61
+    },
+    "status": "ready"
+  },
+  "playerId": "20000000-0000-4000-8000-000000000601",
+  "profileId": "30000000-0000-4000-8000-000000000601",
+  "profileVersion": 3
+}

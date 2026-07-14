@@ -9,15 +9,20 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 
-import ProfileMediaScreen from '@/features/onboarding/screens/ProfileMediaScreen';
-import { runOnboardingMediaQueue } from '@/features/onboarding/services/onboarding-media-queue-service';
-import { completeOnboardingProfile } from '@/features/onboarding/services/onboarding-profile-service';
 import {
   createOnboardingMediaQueueItem,
   type OnboardingMediaQueueItem,
 } from '@/features/onboarding/model/onboarding-media-queue';
 import { usePersistedOnboardingDraftStore } from '@/features/onboarding/model/persisted-onboarding-draft';
-import { renderWithProviders } from '@/test/render-with-providers';
+import ProfileMediaScreen from '@/features/onboarding/screens/ProfileMediaScreen';
+import { runOnboardingMediaQueue } from '@/features/onboarding/services/onboarding-media-queue-service';
+import { completeOnboardingProfile } from '@/features/onboarding/services/onboarding-profile-service';
+import { synchronizeAuthSession } from '@/shared/auth/auth-service';
+import {
+  createTestAuthSession,
+  renderWithProviders,
+  testOnboardingAuthSession,
+} from '@/test/render-with-providers';
 
 import { onboardingEnvelope, testAccountId } from './onboarding-test-fixtures';
 
@@ -31,26 +36,43 @@ jest.mock(
   },
 );
 
+jest.mock('@/shared/auth/auth-service', () => {
+  const actual = jest.requireActual<
+    typeof import('@/shared/auth/auth-service')
+  >('@/shared/auth/auth-service');
+  return { ...actual, synchronizeAuthSession: jest.fn() };
+});
+
 jest.mock('@/features/onboarding/services/onboarding-profile-service', () => ({
-  completeOnboardingProfile: jest.fn(async () => ({
-    completed: true,
-    warnings: [
-      {
-        code: 'lane_priority_not_persisted',
-        message: 'Current backend does not persist lane priority.',
-        path: 'laneSelection',
-        severity: 'warning',
-      },
-    ],
-  })),
+  completeOnboardingProfile: jest.fn(),
 }));
 
 const mockCompleteOnboardingProfile = jest.mocked(completeOnboardingProfile);
+const mockSynchronizeAuthSession = jest.mocked(synchronizeAuthSession);
 const mockRunOnboardingMediaQueue = jest.mocked(runOnboardingMediaQueue);
+const activeSession = createTestAuthSession({ lifecycleState: 'active' });
+
+function renderScreen(session = testOnboardingAuthSession) {
+  return renderWithProviders(<ProfileMediaScreen />, { session });
+}
 
 describe('ProfileMediaScreen', () => {
   beforeEach(() => {
-    mockCompleteOnboardingProfile.mockClear();
+    mockCompleteOnboardingProfile.mockReset().mockResolvedValue({
+      completed: true,
+      profileVersion: 1,
+      repeated: false,
+      session: testOnboardingAuthSession,
+      warnings: [
+        {
+          code: 'lane_priority_not_persisted',
+          message: 'Current backend does not persist lane priority.',
+          path: 'laneSelection',
+          severity: 'warning',
+        },
+      ],
+    });
+    mockSynchronizeAuthSession.mockReset().mockResolvedValue(activeSession);
     mockRunOnboardingMediaQueue.mockReset();
     usePersistedOnboardingDraftStore.setState({
       accountId: testAccountId,
@@ -68,7 +90,7 @@ describe('ProfileMediaScreen', () => {
   });
 
   it('renders the full connected profile media step', async () => {
-    const { getByText } = await renderWithProviders(<ProfileMediaScreen />);
+    const { getByText } = await renderScreen();
 
     expect(getByText('Bước 6/6')).toBeTruthy();
     expect(getByText('Hoàn tất hồ sơ')).toBeTruthy();
@@ -80,9 +102,7 @@ describe('ProfileMediaScreen', () => {
   });
 
   it('opens the avatar source picker', async () => {
-    const { getByLabelText, getByText } = await renderWithProviders(
-      <ProfileMediaScreen />,
-    );
+    const { getByLabelText, getByText } = await renderScreen();
 
     await fireEvent.press(getByLabelText('Chọn ảnh đại diện'));
 
@@ -122,7 +142,7 @@ describe('ProfileMediaScreen', () => {
       }),
     });
 
-    await renderWithProviders(<ProfileMediaScreen />);
+    await renderScreen();
 
     await waitFor(() => {
       const data = usePersistedOnboardingDraftStore.getState().envelope?.data;
@@ -138,8 +158,8 @@ describe('ProfileMediaScreen', () => {
     });
   });
 
-  it('completes core profile then publishes completed without an artificial delay', async () => {
-    const { getByText } = await renderWithProviders(<ProfileMediaScreen />);
+  it('completes the authoritative profile then publishes local completion', async () => {
+    const { getByText } = await renderScreen();
 
     await act(async () => {
       await fireEvent.press(getByText('Tạo hồ sơ'));
@@ -152,6 +172,7 @@ describe('ProfileMediaScreen', () => {
       );
     });
     expect(mockCompleteOnboardingProfile).toHaveBeenCalledTimes(1);
+    expect(mockSynchronizeAuthSession).toHaveBeenCalledTimes(1);
     expect(
       usePersistedOnboardingDraftStore.getState().envelope?.data
         .compatibilityWarnings,
@@ -160,7 +181,7 @@ describe('ProfileMediaScreen', () => {
     ]);
   });
 
-  it('keeps media_pending when an upload fails after core completion', async () => {
+  it('keeps media_pending and does not publish active navigation when upload fails', async () => {
     const failedItem = mediaItem();
     usePersistedOnboardingDraftStore.setState({
       envelope: onboardingEnvelope({
@@ -181,7 +202,7 @@ describe('ProfileMediaScreen', () => {
         return { failed: [errorItem], items: [errorItem] };
       },
     );
-    const { getByText } = await renderWithProviders(<ProfileMediaScreen />);
+    const { getByText } = await renderScreen();
 
     await act(async () => {
       await fireEvent.press(getByText('Tạo hồ sơ'));
@@ -194,9 +215,10 @@ describe('ProfileMediaScreen', () => {
       );
     });
     expect(mockCompleteOnboardingProfile).toHaveBeenCalledTimes(1);
+    expect(mockSynchronizeAuthSession).not.toHaveBeenCalled();
   });
 
-  it('does not call core completion again when resuming media_pending', async () => {
+  it('replays authoritative completion when local media_pending is stale', async () => {
     const failedItem = mediaItem({
       failure: { code: 'association_failed', message: 'R2 unavailable' },
       localId: 'avatar:0:failed',
@@ -223,7 +245,42 @@ describe('ProfileMediaScreen', () => {
         return { failed: [], items: [associated] };
       },
     );
-    const { getByText } = await renderWithProviders(<ProfileMediaScreen />);
+    const { getByText } = await renderScreen();
+
+    await act(async () => {
+      await fireEvent.press(getByText('Tạo hồ sơ'));
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+
+    await waitFor(() => {
+      expect(usePersistedOnboardingDraftStore.getState().envelope?.status).toBe(
+        'completed',
+      );
+    });
+    expect(mockCompleteOnboardingProfile).toHaveBeenCalledTimes(1);
+    expect(mockSynchronizeAuthSession).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not rerun core completion for an already active player', async () => {
+    const failedItem = mediaItem({
+      status: 'associated',
+      uploadedAssetId: 'asset-1',
+      uploadedObjectKey: 'personal_avatar/test/asset-1.jpg',
+    });
+    usePersistedOnboardingDraftStore.setState({
+      envelope: onboardingEnvelope({
+        data: {
+          ...onboardingEnvelope().data,
+          mediaQueue: [failedItem],
+        },
+        status: 'media_pending',
+      }),
+    });
+    mockRunOnboardingMediaQueue.mockResolvedValueOnce({
+      failed: [],
+      items: [failedItem],
+    });
+    const { getByText } = await renderScreen(activeSession);
 
     await act(async () => {
       await fireEvent.press(getByText('Tạo hồ sơ'));
@@ -236,6 +293,7 @@ describe('ProfileMediaScreen', () => {
       );
     });
     expect(mockCompleteOnboardingProfile).not.toHaveBeenCalled();
+    expect(mockSynchronizeAuthSession).not.toHaveBeenCalled();
   });
 });
 

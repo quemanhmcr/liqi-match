@@ -1,0 +1,5 @@
+{
+  "expectedLifecycleVersion": 4,
+  "idempotencyKey": "player.resume.000000000701.v4",
+  "playerId": "20000000-0000-4000-8000-000000000701"
+}

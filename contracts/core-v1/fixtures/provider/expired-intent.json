@@ -1,0 +1,15 @@
+{
+  "matchIntentId": "10000000-0000-4000-8000-000000000003",
+  "playerId": "20000000-0000-4000-8000-000000000001",
+  "state": "expired",
+  "filters": {
+    "mode": "ranked",
+    "partyFormat": "duo",
+    "sessionPlan": "quick",
+    "roleSlugs": ["support"],
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "version": 3,
+  "activatedAt": "2026-07-14T05:00:00.000Z",
+  "expiresAt": "2026-07-14T07:00:00.000Z"
+}

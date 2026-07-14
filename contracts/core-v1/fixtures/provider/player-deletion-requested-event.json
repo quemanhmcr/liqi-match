@@ -1,0 +1,16 @@
+{
+  "eventId": "40000000-0000-4000-8000-000000000020",
+  "eventType": "player.deletion_requested.v1",
+  "aggregateType": "player",
+  "aggregateId": "20000000-0000-4000-8000-000000000020",
+  "occurredAt": "2026-07-14T08:05:00.000Z",
+  "correlationId": "50000000-0000-4000-8000-000000000020",
+  "causationId": null,
+  "data": {
+    "accountId": "01000000-0000-4000-8000-000000000020",
+    "playerId": "20000000-0000-4000-8000-000000000020",
+    "profileId": "30000000-0000-4000-8000-000000000020",
+    "lifecycleVersion": 4,
+    "profileVersion": 2
+  }
+}

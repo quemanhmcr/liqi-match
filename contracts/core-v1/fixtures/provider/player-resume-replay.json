@@ -1,0 +1,12 @@
+{
+  "lifecycle": {
+    "playerId": "20000000-0000-4000-8000-000000000701",
+    "profileId": "30000000-0000-4000-8000-000000000701",
+    "state": "active",
+    "discoverable": true,
+    "messagingAllowed": true,
+    "version": 5,
+    "updatedAt": "2026-07-14T09:20:00.000Z"
+  },
+  "repeated": true
+}

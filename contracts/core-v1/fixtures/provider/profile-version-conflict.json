@@ -1,0 +1,10 @@
+{
+  "code": "profile_version_conflict",
+  "message": "Profile changed on another session.",
+  "requestId": "request-profile-conflict-0001",
+  "retryable": true,
+  "details": {
+    "expectedVersion": 2,
+    "actualVersion": 3
+  }
+}

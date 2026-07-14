@@ -7,7 +7,7 @@ import {
   type OnboardingStatus,
 } from '../model/persisted-onboarding-draft';
 
-export const testAccountId = '00000000-0000-0000-0000-000000000001';
+export const testAccountId = '01000000-0000-4000-8000-000000000001';
 
 export function completeProfileDraft(): OnboardingDraft {
   return {

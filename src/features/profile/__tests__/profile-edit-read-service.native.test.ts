@@ -32,6 +32,7 @@ const session: AuthSession = {
 
 function mockReads(input: {
   availability?: unknown[];
+  identitySnapshot?: unknown;
   backendHeroes?: unknown[];
   profile: Record<string, unknown>;
   ranks?: unknown[];
@@ -40,6 +41,9 @@ function mockReads(input: {
   selectedRoles?: unknown[];
 }) {
   mockSupabaseRest
+    .mockResolvedValueOnce(
+      input.identitySnapshot ?? identitySnapshotFromProfile(input.profile),
+    )
     .mockResolvedValueOnce([input.profile])
     .mockResolvedValueOnce(input.ranks ?? [])
     .mockResolvedValueOnce(input.roles ?? [])
@@ -47,6 +51,49 @@ function mockReads(input: {
     .mockResolvedValueOnce(input.selectedHeroes ?? [])
     .mockResolvedValueOnce(input.backendHeroes ?? [])
     .mockResolvedValueOnce(input.availability ?? []);
+}
+
+function identitySnapshotFromProfile(profile: Record<string, unknown>) {
+  const habits = Array.isArray(profile.profile_habits)
+    ? (profile.profile_habits[0] as Record<string, unknown> | undefined)
+    : undefined;
+  const mediaSummary =
+    habits?.media_summary && typeof habits.media_summary === 'object'
+      ? (habits.media_summary as Record<string, unknown>)
+      : {};
+  const basics =
+    mediaSummary.profile_basics &&
+    typeof mediaSummary.profile_basics === 'object'
+      ? (mediaSummary.profile_basics as Record<string, unknown>)
+      : {};
+  const gender =
+    basics.gender === 'male' ||
+    basics.gender === 'female' ||
+    basics.gender === 'hidden'
+      ? basics.gender
+      : null;
+  const status =
+    mediaSummary.profile_status === 'ready' ||
+    mediaSummary.profile_status === 'busy' ||
+    mediaSummary.profile_status === 'offline' ||
+    mediaSummary.profile_status === 'friends'
+      ? mediaSummary.profile_status
+      : null;
+  return {
+    identity: {
+      bio: typeof profile.bio === 'string' ? profile.bio : '',
+      displayName:
+        typeof profile.display_name === 'string'
+          ? profile.display_name
+          : 'Player',
+      genderId: gender,
+      stats: { matches: 0, rating: 0, reputation: 0, winRate: 0 },
+      status,
+    },
+    playerId: '20000000-0000-4000-8000-000000000003',
+    profileId: '30000000-0000-4000-8000-000000000003',
+    profileVersion: 2,
+  };
 }
 
 describe('fetchProfileEditDraft', () => {
@@ -82,6 +129,11 @@ describe('fetchProfileEditDraft', () => {
     expect(draft.form.availability).toBeNull();
     expect(draft.form.identity.genderId).toBeNull();
     expect(draft.meta.serverRegion).toBe('legacy-region');
+    expect(draft.meta.profileVersion).toBe(2);
+    expect(draft.meta.playerId).toBe('20000000-0000-4000-8000-000000000003');
+    expect(draft.meta.canonicalProfileId).toBe(
+      '30000000-0000-4000-8000-000000000003',
+    );
     expect(draft.form.media.coverMediaId).toBeNull();
   });
 
@@ -206,7 +258,7 @@ describe('fetchProfileEditDraft', () => {
     expect(draft.form.laneSelection).toBeNull();
     expect(draft.form.habits.seriousnessId).toBeNull();
     expect(draft.form.identity.genderId).toBeNull();
-    expect(draft.form.identity.status).toBe('legacy-status');
+    expect(draft.form.identity.status).toBeNull();
     expect(draft.form.media.coverMediaId).toBe('cover-explicit');
     expect(draft.meta.habitsLossless).toBe(false);
     expect(draft.meta.lanesLossless).toBe(false);
@@ -222,6 +274,6 @@ describe('fetchProfileEditDraft', () => {
         expect.objectContaining({ code: 'unknown_legacy_value' }),
       ]),
     );
-    expect(mockSupabaseRest).toHaveBeenCalledTimes(7);
+    expect(mockSupabaseRest).toHaveBeenCalledTimes(8);
   });
 });

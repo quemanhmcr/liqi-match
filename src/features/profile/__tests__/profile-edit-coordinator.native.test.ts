@@ -38,30 +38,15 @@ jest.mock(
 );
 
 jest.mock('@/features/profile/edit/services/profile-edit-commands', () => {
-  class MockProfileEditCommandError extends Error {
-    readonly associatedMediaSlots: readonly ('avatar' | 'cover')[];
-    readonly partiallySaved: boolean;
-
-    constructor(
-      message: string,
-      options?: {
-        associatedMediaSlots?: readonly ('avatar' | 'cover')[];
-        partiallySaved?: boolean;
-      },
-    ) {
-      super(message);
-      this.name = 'ProfileEditCommandError';
-      this.associatedMediaSlots = options?.associatedMediaSlots ?? [];
-      this.partiallySaved = options?.partiallySaved ?? false;
-    }
-  }
-
+  const actual = jest.requireActual<
+    typeof import('@/features/profile/edit/services/profile-edit-commands')
+  >('@/features/profile/edit/services/profile-edit-commands');
   return {
-    ProfileEditCommandError: MockProfileEditCommandError,
+    ...actual,
     saveProfileGameProfile: jest.fn(async () => undefined),
     saveProfileHabits: jest.fn(async () => undefined),
     saveProfileHeroes: jest.fn(async () => undefined),
-    saveProfileIdentity: jest.fn(async () => undefined),
+    saveProfileIdentity: jest.fn(async () => ({ profileVersion: 3 })),
     saveProfileMediaAssociation: jest.fn(async () => []),
     saveProfileRoles: jest.fn(async () => undefined),
     uploadStagedProfileMedia: jest.fn(
@@ -142,7 +127,7 @@ beforeEach(() => {
     mock.mockClear();
   }
   mockPersistMedia.mockImplementation(async (_profileId, item) => item);
-  mockSaveIdentity.mockResolvedValue(undefined);
+  mockSaveIdentity.mockResolvedValue({ profileVersion: 3 });
   mockSaveGameProfile.mockResolvedValue(undefined);
   mockSaveRoles.mockResolvedValue(undefined);
   mockSaveHeroes.mockResolvedValue(undefined);
@@ -165,7 +150,14 @@ describe('saveProfileEditChanges', () => {
 
     expect(result.outcome).toBe('saved');
     expect(result.savedSections).toEqual(['identity']);
-    expect(mockSaveIdentity).toHaveBeenCalledTimes(1);
+    expect(result.profileVersion).toBe(3);
+    expect(mockSaveIdentity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        canonicalProfileId: draftFor(baseline).meta.canonicalProfileId,
+        expectedProfileVersion: 2,
+        playerId: draftFor(baseline).meta.playerId,
+      }),
+    );
     expect(mockSaveGameProfile).not.toHaveBeenCalled();
     expect(mockSaveRoles).not.toHaveBeenCalled();
     expect(mockSaveHeroes).not.toHaveBeenCalled();
@@ -193,9 +185,41 @@ describe('saveProfileEditChanges', () => {
     expect(result.savedSections).toEqual(['identity']);
     expect(result.failedSection).toBe('lanes');
     expect(result.retrySections).toEqual(['lanes', 'habits']);
+    expect(result.profileVersion).toBe(3);
     expect(result.baseline.identity.displayName).toBe('Saved name');
     expect(result.baseline.laneSelection).toEqual(baseline.laneSelection);
     expect(mockSaveHabits).not.toHaveBeenCalled();
+  });
+
+  it('does not blindly retry an optimistic profile version conflict', async () => {
+    const baseline = baseForm();
+    const current = clone(baseline);
+    current.identity.displayName = 'Conflicting name';
+    mockSaveIdentity.mockRejectedValueOnce(
+      new ProfileEditCommandError(
+        'Hồ sơ đã ở phiên bản 3. Hãy tải lại trước khi lưu.',
+        { code: 'profile_version_conflict', retryable: false },
+      ),
+    );
+
+    const result = await saveProfileEditChanges({
+      baseline,
+      current,
+      draft: draftFor(baseline),
+      session,
+    });
+
+    expect(result.outcome).toBe('failed');
+    expect(result.profileVersion).toBe(2);
+    expect(result.retrySections).toEqual([]);
+    expect(result.steps.find((step) => step.id === 'identity')).toMatchObject({
+      code: 'profile_version_conflict',
+      retryable: false,
+      status: 'failed',
+    });
+    expect(result.baseline.identity.displayName).toBe(
+      baseline.identity.displayName,
+    );
   });
 
   it('tracks avatar as associated while preserving cover for retry', async () => {

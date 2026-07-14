@@ -15,12 +15,10 @@ import {
   type RecurringAvailability,
 } from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
+import { PlayerProfileIdentitySnapshotV1Schema } from '@/shared/contracts/core-v1';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
-import {
-  profileMediaUrl,
-  type ProfileStats,
-} from '../../services/profile-service';
+import { profileMediaUrl } from '../../services/profile-service';
 import type {
   ProfileEditDraft,
   ProfileEditHero,
@@ -125,6 +123,7 @@ export async function fetchProfileEditDraft(
 ): Promise<ProfileEditDraft> {
   const profileId = session.user.id;
   const [
+    identitySnapshotRaw,
     profileRows,
     ranks,
     roles,
@@ -133,6 +132,11 @@ export async function fetchProfileEditDraft(
     backendHeroes,
     availabilitySlots,
   ] = await Promise.all([
+    supabaseRest<unknown>('rpc/get_own_player_profile_identity_v1', {
+      body: {},
+      method: 'POST',
+      session,
+    }),
     supabaseRest<ProfileEditRow[]>(
       `profiles?id=eq.${encodeURIComponent(profileId)}&select=${profileEditSelect}&limit=1`,
       { session },
@@ -163,6 +167,15 @@ export async function fetchProfileEditDraft(
     ).catch(() => [] as AvailabilitySlotRow[]),
   ]);
 
+  const identitySnapshot =
+    PlayerProfileIdentitySnapshotV1Schema.parse(identitySnapshotRaw);
+  if (
+    session.principal?.playerId &&
+    session.principal.playerId !== identitySnapshot.playerId
+  ) {
+    throw new Error('Profile identity snapshot không khớp PlayerId hiện tại.');
+  }
+
   const row = profileRows[0];
   if (!row) throw new Error('Không tìm thấy hồ sơ để chỉnh sửa.');
 
@@ -184,6 +197,9 @@ export async function fetchProfileEditDraft(
     row.timezone,
     issues,
   );
+  // Keep legacy diagnostics visible during migration, but never use them as
+  // the canonical Identity value.
+  resolveGender(mediaSummary, issues);
 
   return {
     form: {
@@ -195,11 +211,11 @@ export async function fetchProfileEditDraft(
       habits: habits.value,
       heroes: heroResult.heroes,
       identity: {
-        bio: row.bio ?? '',
-        displayName: row.display_name ?? '',
-        genderId: resolveGender(mediaSummary, issues),
-        stats: profileStatsFromSummary(mediaSummary),
-        status: stringValue(mediaSummary.profile_status),
+        bio: identitySnapshot.identity.bio,
+        displayName: identitySnapshot.identity.displayName,
+        genderId: identitySnapshot.identity.genderId,
+        stats: identitySnapshot.identity.stats,
+        status: identitySnapshot.identity.status,
       },
       laneSelection: laneResult.selection,
       media: {
@@ -215,6 +231,7 @@ export async function fetchProfileEditDraft(
     id: row.id,
     mediaSummary,
     meta: {
+      canonicalProfileId: identitySnapshot.profileId,
       habitIssues: habits.issues,
       habitsLossless: habits.lossless,
       hasGameProfileRecord: Boolean(gameProfile),
@@ -223,6 +240,8 @@ export async function fetchProfileEditDraft(
       heroesLossless: heroResult.lossless,
       laneDbIds,
       lanesLossless: laneResult.lossless,
+      playerId: identitySnapshot.playerId,
+      profileVersion: identitySnapshot.profileVersion,
       rankDbIds,
       readIssues: issues,
       serverRegion: gameProfile?.server_region ?? undefined,
@@ -442,31 +461,11 @@ function parseClockMinute(value: string, isEnd: boolean) {
   return Number(hours) * 60 + Number(minutes);
 }
 
-function profileStatsFromSummary(
-  summary: Record<string, unknown>,
-): Partial<ProfileStats> | undefined {
-  const source = mediaSummaryRecord(summary.profile_stats);
-  const stats = stripUndefined({
-    matches: optionalNumber(source.matches, 99999),
-    rating: optionalRating(source.rating),
-    reputation: optionalNumber(source.reputation, 100),
-    winRate: optionalNumber(source.win_rate ?? source.winRate, 100),
-  });
-  return Object.keys(stats).length ? stats : undefined;
-}
-
 function optionalNumber(value: unknown, max: number) {
   if (value === null || value === undefined || value === '') return undefined;
   const number = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(number)) return undefined;
   return Math.max(0, Math.min(max, Math.round(number)));
-}
-
-function optionalRating(value: unknown) {
-  if (value === null || value === undefined || value === '') return undefined;
-  const number = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(number)) return undefined;
-  return Math.max(0, Math.min(5, Math.round(number * 10) / 10));
 }
 
 function avatarUrlFromSession(session: AuthSession) {

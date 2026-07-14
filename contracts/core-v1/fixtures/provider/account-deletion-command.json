@@ -1,0 +1,5 @@
+{
+  "confirmation": "DELETE",
+  "expectedLifecycleVersion": 3,
+  "idempotencyKey": "account.delete.000000000020"
+}
