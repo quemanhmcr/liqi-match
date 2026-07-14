@@ -23,7 +23,7 @@ const files = {
   ),
   consumerBridgeMigration: path.join(
     root,
-    'supabase/migrations/202607140057_social_block_consumer_bridge_v2.sql',
+    'supabase/migrations/202607140061_social_block_consumer_bridge_v2.sql',
   ),
   consumerBridgeTest: path.join(
     root,

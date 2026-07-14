@@ -7,7 +7,7 @@ const root = process.cwd();
 const migration = fs.readFileSync(
   path.join(
     root,
-    'supabase/migrations/202607140054_friendship_command_authority_v2.sql',
+    'supabase/migrations/202607140055_friendship_command_authority_v2.sql',
   ),
   'utf8',
 );
