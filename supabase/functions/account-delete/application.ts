@@ -27,12 +27,14 @@ export type AccountDeletionCleanupResult = Readonly<{
 
 export type AccountDeletionResources = Readonly<{
   media: readonly AccountDeletionMediaAsset[];
+  playerId: string;
   profileFound: boolean;
 }>;
 
 export type AccountDeletionPorts = Readonly<{
   cleanupProfileData(
     accountId: string,
+    playerId: string,
     deletedAt: string,
   ): Promise<readonly AccountDeletionCleanupResult[]>;
   deleteAuthUser(accountId: string): Promise<void>;
@@ -87,6 +89,22 @@ export async function executeAccountDeletion(
   assertDeletingReceipt(receipt);
 
   const resources = await ports.lookupResources(accountId);
+  if (
+    !resources.playerId ||
+    resources.playerId !== receipt.lifecycle.playerId
+  ) {
+    throw new AccountDeletionApplicationError(
+      'Canonical AccountId → PlayerId mapping does not match the deleting receipt.',
+      'account_deletion_identity_mismatch',
+      409,
+      false,
+      {
+        receiptPlayerId: receipt.lifecycle.playerId,
+        resourcePlayerId: resources.playerId || null,
+      },
+    );
+  }
+
   const mediaFailures: Array<Readonly<{ assetId: string; status: number }>> =
     [];
   let mediaDeleted = 0;
@@ -108,9 +126,11 @@ export async function executeAccountDeletion(
   }
 
   const deletedAt = ports.now();
-  const cleanupResults = resources.profileFound
-    ? await ports.cleanupProfileData(accountId, deletedAt)
-    : [];
+  const cleanupResults = await ports.cleanupProfileData(
+    accountId,
+    resources.playerId,
+    deletedAt,
+  );
   const failedCleanup = cleanupResults.filter((result) => !result.ok);
 
   if (failedCleanup.length > 0) {

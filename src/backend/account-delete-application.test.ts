@@ -5,6 +5,10 @@ import {
   executeAccountDeletion,
   type AccountDeletionPorts,
 } from '../../supabase/functions/account-delete/application';
+import {
+  buildMessageRemovalTombstoneV1,
+  buildMessageSenderIdentityFilterV1,
+} from '../../supabase/functions/account-delete/message-tombstone';
 
 const accountId = '01000000-0000-4000-8000-000000000401';
 const command = {
@@ -38,6 +42,7 @@ function ports(
           { id: 'media-a', objectKey: 'account/media-a' },
           { id: 'media-b', objectKey: 'account/media-b' },
         ],
+        playerId: '20000000-0000-4000-8000-000000000401',
         profileFound: true,
       };
     },
@@ -45,8 +50,10 @@ function ports(
       calls.push(`deleteMedia:${asset.id}`);
       return { ok: true, status: 204 };
     },
-    async cleanupProfileData() {
-      calls.push('cleanupProfileData');
+    async cleanupProfileData(receivedAccountId, receivedPlayerId, deletedAt) {
+      calls.push(
+        `cleanupProfileData:${receivedAccountId}:${receivedPlayerId}:${deletedAt}`,
+      );
       return [
         { name: 'profile', ok: true },
         { name: 'messages', ok: true },
@@ -86,7 +93,7 @@ describe('executeAccountDeletion', () => {
       'deleteMedia:media-a',
       'deleteMedia:media-b',
       'now',
-      'cleanupProfileData',
+      'cleanupProfileData:01000000-0000-4000-8000-000000000401:20000000-0000-4000-8000-000000000401:2026-07-14T08:10:00.000Z',
       'deleteAuthUser',
     ]);
   });
@@ -111,15 +118,19 @@ describe('executeAccountDeletion', () => {
       status: 502,
     } satisfies Partial<AccountDeletionApplicationError>);
     expect(deleteAuthUser).not.toHaveBeenCalled();
-    expect(testPorts.calls).not.toContain('cleanupProfileData');
+    expect(
+      testPorts.calls.some((call) => call.startsWith('cleanupProfileData:')),
+    ).toBe(false);
   });
 
   it('never deletes Auth after partial database cleanup', async () => {
     const deleteAuthUser = jest.fn<() => Promise<void>>();
     const testPorts = ports({
       deleteAuthUser,
-      async cleanupProfileData() {
-        testPorts.calls.push('cleanupProfileData');
+      async cleanupProfileData(receivedAccountId, receivedPlayerId, deletedAt) {
+        testPorts.calls.push(
+          `cleanupProfileData:${receivedAccountId}:${receivedPlayerId}:${deletedAt}`,
+        );
         return [
           { name: 'profile', ok: true },
           { error: 'timeout', name: 'messages', ok: false },
@@ -160,6 +171,71 @@ describe('executeAccountDeletion', () => {
       executeAccountDeletion(accountId, command, testPorts),
     ).resolves.toMatchObject({ repeated: true, status: 'deleted' });
     expect(testPorts.calls).toContain('deleteAuthUser');
+  });
+
+  it('fails closed before media cleanup when canonical PlayerId lookup disagrees with the deleting receipt', async () => {
+    const deleteAuthUser = jest.fn<() => Promise<void>>();
+    const testPorts = ports({
+      deleteAuthUser,
+      async lookupResources() {
+        testPorts.calls.push('lookupResources');
+        return {
+          media: [{ id: 'media-a', objectKey: 'account/media-a' }],
+          playerId: '20000000-0000-4000-8000-000000000999',
+          profileFound: true,
+        };
+      },
+    });
+
+    await expect(
+      executeAccountDeletion(accountId, command, testPorts),
+    ).rejects.toMatchObject({
+      code: 'account_deletion_identity_mismatch',
+      retryable: false,
+      status: 409,
+    } satisfies Partial<AccountDeletionApplicationError>);
+    expect(testPorts.calls).toEqual(['requestDeletion', 'lookupResources']);
+    expect(deleteAuthUser).not.toHaveBeenCalled();
+  });
+
+  it('still cleans canonical conversation data when the legacy profile row is absent', async () => {
+    const testPorts = ports({
+      async lookupResources() {
+        testPorts.calls.push('lookupResources');
+        return {
+          media: [],
+          playerId: '20000000-0000-4000-8000-000000000401',
+          profileFound: false,
+        };
+      },
+    });
+
+    await expect(
+      executeAccountDeletion(accountId, command, testPorts),
+    ).resolves.toMatchObject({ profileFound: false, status: 'deleted' });
+    expect(
+      testPorts.calls.some((call) => call.startsWith('cleanupProfileData:')),
+    ).toBe(true);
+  });
+
+  it('builds the Conversation v1 tombstone without changing message identity or sequence fields', () => {
+    const deletedAt = '2026-07-14T08:10:00.000Z';
+
+    expect(buildMessageRemovalTombstoneV1(deletedAt)).toEqual({
+      body: 'Tin nhắn đã bị xoá',
+      content_kind_v1: 'system',
+      content_v1: { eventType: 'message_removed', kind: 'system' },
+      deleted_at: deletedAt,
+      media_asset_id_v1: null,
+    });
+    expect(
+      buildMessageSenderIdentityFilterV1(
+        accountId,
+        '20000000-0000-4000-8000-000000000401',
+      ),
+    ).toBe(
+      'sender_id.eq.01000000-0000-4000-8000-000000000401,sender_player_id_v1.eq.20000000-0000-4000-8000-000000000401',
+    );
   });
 
   it('rejects a provider response that is not deleting before cleanup', async () => {

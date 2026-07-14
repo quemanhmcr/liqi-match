@@ -6,6 +6,10 @@ import {
   type AccountDeletionReceipt,
 } from './application.ts';
 import {
+  buildMessageRemovalTombstoneV1,
+  buildMessageSenderIdentityFilterV1,
+} from './message-tombstone.ts';
+import {
   corsHeaders,
   jsonResponse,
   readJson,
@@ -20,6 +24,10 @@ import {
 type MediaAssetRow = {
   id: string;
   object_key: string;
+};
+
+type PlayerRow = {
+  id: string;
 };
 
 export async function handleDeleteAccount(request: Request) {
@@ -55,11 +63,16 @@ export async function handleDeleteAccount(request: Request) {
         return response.data as AccountDeletionReceipt;
       },
       async lookupResources(accountId) {
-        const [profile, mediaRows] = await Promise.all([
+        const [profile, player, mediaRows] = await Promise.all([
           supabase
             .from('profiles')
             .select('id')
             .eq('id', accountId)
+            .maybeSingle(),
+          supabase
+            .from('players')
+            .select('id')
+            .eq('account_id', accountId)
             .maybeSingle(),
           supabase
             .from('media_assets')
@@ -73,6 +86,16 @@ export async function handleDeleteAccount(request: Request) {
             'profile_lookup_failed',
             503,
             true,
+            {},
+            requestId,
+          );
+        }
+        if (player.error || !player.data) {
+          throw new AccountDeletionApplicationError(
+            player.error?.message ?? 'Canonical PlayerId was not found.',
+            player.error ? 'player_lookup_failed' : 'player_not_found',
+            player.error ? 503 : 404,
+            Boolean(player.error),
             {},
             requestId,
           );
@@ -92,12 +115,13 @@ export async function handleDeleteAccount(request: Request) {
             id: asset.id,
             objectKey: asset.object_key,
           })),
+          playerId: (player.data as PlayerRow).id,
           profileFound: Boolean(profile.data),
         };
       },
       deleteMedia: (asset) => deleteR2Object(asset.objectKey),
-      cleanupProfileData: (accountId, deletedAt) =>
-        cleanupProfileData(supabase, accountId, deletedAt),
+      cleanupProfileData: (accountId, playerId, deletedAt) =>
+        cleanupProfileData(supabase, accountId, playerId, deletedAt),
       async deleteAuthUser(accountId) {
         const deleted = await supabase.auth.admin.deleteUser(accountId);
         if (deleted.error) {
@@ -135,6 +159,7 @@ export async function handleDeleteAccount(request: Request) {
 async function cleanupProfileData(
   supabase: Awaited<ReturnType<typeof authenticateUser>>['supabase'],
   profileId: string,
+  playerId: string,
   deletedAt: string,
 ): Promise<readonly AccountDeletionCleanupResult[]> {
   const operations: ReadonlyArray<
@@ -207,8 +232,8 @@ async function cleanupProfileData(
       () =>
         supabase
           .from('messages')
-          .update({ body: 'Tin nhắn đã bị xoá', deleted_at: deletedAt })
-          .eq('sender_id', profileId),
+          .update(buildMessageRemovalTombstoneV1(deletedAt))
+          .or(buildMessageSenderIdentityFilterV1(profileId, playerId)),
     ],
     [
       'matches',
