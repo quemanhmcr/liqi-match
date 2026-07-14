@@ -218,6 +218,28 @@ For a successful message report:
 - update/delete of immutable evidence is rejected;
 - no `reputationDelta` is present in `report.submitted.v2`.
 
+## Client telemetry contract
+
+The mobile orchestration layer emits only privacy-safe operational facts:
+
+- `social.command.started`
+- `social.command.succeeded`
+- `social.command.failed`
+- `social.report_evidence.completed`
+- `social.report_evidence.pending`
+- `social.report_evidence.persistence_failed`
+
+Allowed attributes are operation, stable error code, retryability, replay status,
+aggregate version, retry state and correlation ID. Do not attach account/player,
+profile, conversation, message, evidence or report identifiers, report category,
+report details, message content or display text. A telemetry sink failure must
+never change command success/failure, receipt cleanup or evidence authority.
+
+Use `social.command.succeeded` for command completion/replay rates and pair it
+with consumer-owned revocation observations by correlation ID. Use evidence
+pending/completed events to measure local retry effectiveness without exposing
+safety evidence.
+
 ## Health checks
 
 Alert or stop rollout when any condition is true:

@@ -19,3 +19,13 @@ export {
   SupabaseSocialRelationshipRepository,
   type SocialRelationshipRpcTransport,
 } from './supabase-social-relationship-repository';
+
+export {
+  emitSocialTelemetry,
+  setSocialTelemetrySink,
+  socialTelemetryErrorAttributes,
+  type SocialCommandOperation,
+  type SocialTelemetryAttributes,
+  type SocialTelemetryEvent,
+  type SocialTelemetrySink,
+} from './social-telemetry';

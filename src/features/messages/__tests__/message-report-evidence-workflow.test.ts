@@ -1,6 +1,11 @@
 import { describe, expect, it, jest } from '@jest/globals';
 
 import {
+  setSocialTelemetrySink,
+  type SocialTelemetryAttributes,
+  type SocialTelemetryEvent,
+} from '@/entities/social-relationship';
+import {
   MessageReportEvidenceJournal,
   MessageReportEvidenceV2Schema,
   MessageReportEvidenceWorkflow,
@@ -225,6 +230,113 @@ describe('MessageReportEvidenceWorkflow', () => {
       status: 'evidence_pending',
     });
     expect(harness.reportMessage).toHaveBeenCalledTimes(1);
+  });
+
+  it('emits pending then retry-completed evidence telemetry without sensitive identifiers', async () => {
+    const harness = workflowHarness();
+    const events: {
+      attributes?: SocialTelemetryAttributes;
+      event: SocialTelemetryEvent;
+    }[] = [];
+    const restore = setSocialTelemetrySink((event, attributes) => {
+      events.push({ attributes, event });
+    });
+    harness.captureReportEvidence
+      .mockRejectedValueOnce(
+        Object.assign(new TypeError('network timeout'), {
+          code: 'service_unavailable',
+          retryable: true,
+        }),
+      )
+      .mockResolvedValueOnce(evidence());
+
+    try {
+      await harness.workflow.submit(submitInput);
+      await harness.workflow.resumePendingForConversation({
+        conversationId,
+        session: submitInput.session,
+      });
+    } finally {
+      restore();
+    }
+
+    const evidenceEvents = events.filter((item) =>
+      item.event.startsWith('social.report_evidence.'),
+    );
+    expect(evidenceEvents).toEqual([
+      {
+        attributes: {
+          code: 'service_unavailable',
+          correlationId: '43000000-0000-4000-8000-000000001600',
+          operation: 'report_message',
+          repeated: false,
+          retry: false,
+          retryStored: true,
+          retryable: true,
+        },
+        event: 'social.report_evidence.pending',
+      },
+      {
+        attributes: {
+          correlationId: '43000000-0000-4000-8000-000000001600',
+          operation: 'report_message',
+          repeated: false,
+          retry: true,
+          retryStored: true,
+        },
+        event: 'social.report_evidence.completed',
+      },
+    ]);
+    for (const item of evidenceEvents) {
+      expect(Object.keys(item.attributes ?? {})).not.toEqual(
+        expect.arrayContaining([
+          'accountId',
+          'conversationId',
+          'evidenceId',
+          'messageId',
+          'playerId',
+          'reportId',
+          'targetPlayerId',
+        ]),
+      );
+    }
+  });
+
+  it('emits a persistence failure without turning the report receipt into failure', async () => {
+    const harness = workflowHarness();
+    const events: {
+      attributes?: SocialTelemetryAttributes;
+      event: SocialTelemetryEvent;
+    }[] = [];
+    const restore = setSocialTelemetrySink((event, attributes) => {
+      events.push({ attributes, event });
+    });
+    harness.persistence.setItem.mockRejectedValueOnce(
+      Object.assign(new Error('storage unavailable'), {
+        code: 'storage_unavailable',
+        retryable: true,
+      }),
+    );
+
+    try {
+      await expect(harness.workflow.submit(submitInput)).resolves.toMatchObject(
+        {
+          status: 'completed',
+        },
+      );
+    } finally {
+      restore();
+    }
+
+    expect(events).toContainEqual({
+      attributes: {
+        code: 'storage_unavailable',
+        correlationId: '43000000-0000-4000-8000-000000001600',
+        operation: 'report_message',
+        retryable: true,
+      },
+      event: 'social.report_evidence.persistence_failed',
+    });
   });
 
   it('rejects suspended lifecycle before submitting a report transport command', async () => {

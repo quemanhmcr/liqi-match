@@ -1,7 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { z } from 'zod';
 
-import type { SocialCommandCoordinator } from '@/entities/social-relationship';
+import {
+  emitSocialTelemetry,
+  socialTelemetryErrorAttributes,
+  type SocialCommandCoordinator,
+} from '@/entities/social-relationship';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import {
   AccountIdSchema,
@@ -257,10 +261,16 @@ export class MessageReportEvidenceWorkflow {
       const pending = await this.journal.remember(pendingInput);
       return this.capture({
         pending,
+        retry: false,
         retryStored: true,
         session: input.session,
       });
-    } catch {
+    } catch (error) {
+      emitSocialTelemetry('social.report_evidence.persistence_failed', {
+        correlationId: receipt.correlationId,
+        operation: 'report_message',
+        ...socialTelemetryErrorAttributes(error),
+      });
       // The authoritative report receipt must never be presented as a failed
       // report merely because local retry persistence is unavailable. The
       // database trigger already captured the immutable snapshot transactionally.
@@ -271,6 +281,7 @@ export class MessageReportEvidenceWorkflow {
       });
       return this.capture({
         pending,
+        retry: false,
         retryStored: false,
         session: input.session,
       });
@@ -293,6 +304,7 @@ export class MessageReportEvidenceWorkflow {
       results.push(
         await this.capture({
           pending,
+          retry: true,
           retryStored: true,
           session: input.session,
         }),
@@ -304,6 +316,7 @@ export class MessageReportEvidenceWorkflow {
   private async capture(
     input: Readonly<{
       pending: PendingMessageReportEvidenceV2;
+      retry: boolean;
       retryStored: boolean;
       session: AuthSession;
     }>,
@@ -327,12 +340,27 @@ export class MessageReportEvidenceWorkflow {
           // retry entry may be cleaned by a later successful replay.
         }
       }
+      emitSocialTelemetry('social.report_evidence.completed', {
+        correlationId: input.pending.receipt.correlationId,
+        operation: 'report_message',
+        repeated: input.pending.receipt.repeated,
+        retry: input.retry,
+        retryStored: input.retryStored,
+      });
       return {
         evidence,
         receipt: input.pending.receipt,
         status: 'completed',
       };
     } catch (captureError) {
+      emitSocialTelemetry('social.report_evidence.pending', {
+        correlationId: input.pending.receipt.correlationId,
+        operation: 'report_message',
+        repeated: input.pending.receipt.repeated,
+        retry: input.retry,
+        retryStored: input.retryStored,
+        ...socialTelemetryErrorAttributes(captureError),
+      });
       return {
         captureError,
         evidence: null,

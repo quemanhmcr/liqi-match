@@ -8,7 +8,22 @@ const runbookPath = path.join(
   'docs/runbooks/core-v2-social-relationship-safety.md',
 );
 const packagePath = path.join(root, 'package.json');
+const telemetryPath = path.join(
+  root,
+  'src/entities/social-relationship/social-telemetry.ts',
+);
+const coordinatorTestPath = path.join(
+  root,
+  'src/entities/social-relationship/__tests__/social-command-coordinator.test.ts',
+);
+const evidenceTestPath = path.join(
+  root,
+  'src/features/messages/__tests__/message-report-evidence-workflow.test.ts',
+);
 const runbook = fs.readFileSync(runbookPath, 'utf8');
+const telemetry = fs.readFileSync(telemetryPath, 'utf8');
+const coordinatorTest = fs.readFileSync(coordinatorTestPath, 'utf8');
+const evidenceTest = fs.readFileSync(evidenceTestPath, 'utf8');
 const packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf8'));
 const normalizedRunbook = runbook.replace(/\s+/g, ' ').toLowerCase();
 
@@ -23,6 +38,7 @@ const requiredHeadings = [
   '## Two-account staging journey',
   '## Block revocation latency',
   '## Message report evidence checks',
+  '## Client telemetry contract',
   '## Health checks',
   '## Rollback drill',
   '## Release evidence record',
@@ -53,6 +69,12 @@ const requiredMarkers = [
   'supabase db lint',
   'supabase test db',
   'Never repair rollback by deleting canonical history',
+  'social.command.started',
+  'social.command.succeeded',
+  'social.command.failed',
+  'social.report_evidence.completed',
+  'social.report_evidence.pending',
+  'social.report_evidence.persistence_failed',
 ];
 for (const marker of requiredMarkers) {
   if (!normalizedRunbook.includes(marker.toLowerCase())) {
@@ -104,6 +126,37 @@ if (
   throw new Error(
     'Runbook must contain a directional canonical/legacy parity query.',
   );
+}
+
+for (const event of [
+  'social.command.started',
+  'social.command.succeeded',
+  'social.command.failed',
+  'social.report_evidence.completed',
+  'social.report_evidence.pending',
+  'social.report_evidence.persistence_failed',
+]) {
+  if (!telemetry.includes(`'${event}'`)) {
+    throw new Error(`Social telemetry contract is missing ${event}.`);
+  }
+}
+for (const coverage of [
+  'emits privacy-safe command lifecycle telemetry across timeout and replay',
+  'does not let a telemetry sink failure change command authority',
+]) {
+  if (!coordinatorTest.includes(coverage)) {
+    throw new Error(
+      `Social command telemetry coverage is missing: ${coverage}`,
+    );
+  }
+}
+for (const coverage of [
+  'emits pending then retry-completed evidence telemetry without sensitive identifiers',
+  'emits a persistence failure without turning the report receipt into failure',
+]) {
+  if (!evidenceTest.includes(coverage)) {
+    throw new Error(`Evidence telemetry coverage is missing: ${coverage}`);
+  }
 }
 
 const script = packageJson.scripts?.['social-release:check'];
