@@ -162,22 +162,27 @@ select is((select count(*)::integer from public.notifications_v1), 1, 'one sourc
 select is((select count(distinct source_event_id)::integer from public.notifications_v1), 1, 'source event uniqueness is preserved');
 select is((select status::text from private.notification_push_jobs_v1 limit 1), 'pending', 'notification persists before pending push delivery');
 select is((select count(*)::integer from private.notification_delivery_errors_v1), 0, 'push enqueue does not hide an authority error');
+select set_config(
+  'test.match_notification_id',
+  (select id::text from public.notifications_v1 where source_event_id = '80000000-0000-4000-8000-000000000401'),
+  true
+);
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000402', true);
 
 select is((public.list_notifications_v1(null, 30) ->> 'unseenCount')::integer, 1, 'inbox starts unseen');
-select is((public.mark_notifications_seen_through_v1((select id from public.notifications_v1 where source_event_id = '80000000-0000-4000-8000-000000000401')) ->> 'unseenCount')::integer, 0, 'seen watermark clears unseen count');
+select is((public.mark_notifications_seen_through_v1(current_setting('test.match_notification_id')::uuid) ->> 'unseenCount')::integer, 0, 'seen watermark clears unseen count');
 select ok((public.list_notifications_v1(null, 30) #>> '{items,0,seenAt}') is not null, 'seen transition is persisted');
-select ok((public.mark_notification_read_v1((select id from public.notifications_v1 where source_event_id = '80000000-0000-4000-8000-000000000401')) #>> '{notification,readAt}') is not null, 'read transition is persisted');
+select ok((public.mark_notification_read_v1(current_setting('test.match_notification_id')::uuid) #>> '{notification,readAt}') is not null, 'read transition is persisted');
 select ok(
   (public.list_notifications_v1(null, 30) #>> '{items,0,readAt}')::timestamptz >=
   (public.list_notifications_v1(null, 30) #>> '{items,0,seenAt}')::timestamptz,
   'read transition implies seen monotonically'
 );
 select is(
-  public.mark_notification_read_v1((select id from public.notifications_v1 where source_event_id = '80000000-0000-4000-8000-000000000401')) #>> '{notification,readAt}',
+  public.mark_notification_read_v1(current_setting('test.match_notification_id')::uuid) #>> '{notification,readAt}',
   public.list_notifications_v1(null, 30) #>> '{items,0,readAt}',
   'repeated mark-read preserves the first timestamp'
 );

@@ -131,6 +131,7 @@ select public.create_set_invite_v1(
   1
 ) as receipt;
 
+reset role;
 select is((select receipt ->> 'state' from invite_first), 'pending', 'invite command creates pending invite');
 select is((select receipt ->> 'setId' from invite_first), 'a1000000-0000-4000-8000-000000000801', 'invite receipt carries canonical SetId');
 select is((select receipt ->> 'targetPlayerId' from invite_first), '20000000-0000-4000-8000-000000000804', 'invite receipt carries target PlayerId');
@@ -141,7 +142,6 @@ select is((select count(*)::integer from public.match_set_invites_v1), 1, 'dupli
 select is((select count(*)::integer from private.outbox_events where event_type = 'set.invite_created.v1'), 1, 'invite emits one transactional event');
 select is((select count(*)::integer from private.outbox_events where event_type = 'notification.requested.v1' and payload ->> 'reasonCode' = 'set_invite_created'), 1, 'invite emits one notification request');
 
-reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000802', true);
@@ -161,6 +161,7 @@ select public.request_set_join_v1(
   1
 ) as receipt;
 
+reset role;
 select is((select receipt ->> 'state' from join_first), 'pending', 'join command creates pending request');
 select is((select receipt ->> 'setId' from join_first), 'a1000000-0000-4000-8000-000000000801', 'join receipt carries canonical SetId');
 select ok((select receipt ? 'createdAt' from join_first), 'join receipt carries creation time');
@@ -170,6 +171,9 @@ select is((select count(*)::integer from public.match_set_join_requests_v1), 1, 
 select is((select count(*)::integer from private.outbox_events where event_type = 'set.join_requested.v1'), 1, 'join emits one transactional event');
 select is((select count(*)::integer from private.outbox_events where event_type = 'notification.requested.v1' and payload ->> 'reasonCode' = 'set_join_requested'), 1, 'join emits one owner notification request');
 
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000802', true);
 select throws_like(
   $$select public.request_set_join_v1(
     'a1000000-0000-4000-8000-000000000804',
@@ -210,9 +214,9 @@ select throws_like(
   'join command rechecks lifecycle after candidate read'
 );
 
+reset role;
 select is((select count(*)::integer from public.match_set_members_v1 where player_id = '20000000-0000-4000-8000-000000000802'), 0, 'invite/join commands never mutate membership');
 select is((select count(*)::integer from public.matches where source_v1 in ('set_join', 'invite_accept')), 0, 'pending Set commands never create Match semantics');
 
-reset role;
 select * from finish();
 rollback;

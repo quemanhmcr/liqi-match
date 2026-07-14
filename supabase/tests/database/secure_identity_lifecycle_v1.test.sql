@@ -661,11 +661,16 @@ select isnt(
 
 
 select set_config(
+  'test.expected_player_id',
+  (select id::text from public.players where account_id = '01000000-0000-4000-8000-000000000101'),
+  true
+);
+select set_config(
   'test.expected_profile_id',
   (
     select id::text
     from public.player_profiles_v1
-    where player_id = '20000000-0000-4000-8000-000000000101'
+    where player_id = current_setting('test.expected_player_id')::uuid
   ),
   true
 );
@@ -764,7 +769,7 @@ select is(
   (
     select version::integer
     from public.player_profiles_v1
-    where player_id = '20000000-0000-4000-8000-000000000101'
+    where player_id = current_setting('test.expected_player_id')::uuid
   ),
   2,
   'profile identity retry does not increment the version twice'
@@ -775,7 +780,7 @@ select is(
     select count(*)::integer
     from private.outbox_events
     where event_type = 'player.profile_updated.v1'
-      and aggregate_id = '20000000-0000-4000-8000-000000000101'
+      and aggregate_id = current_setting('test.expected_player_id')::uuid
   ),
   1,
   'profile identity retry emits exactly one profile-updated event'
@@ -1062,14 +1067,17 @@ select is(
 );
 
 select is(
-  jsonb_object_length(
-    public.get_player_lifecycle_snapshot_v1(
-      (
-        select id
-        from public.players
-        where account_id = '01000000-0000-4000-8000-000000000102'
-      ),
-      true
+  (
+    select count(*)::integer
+    from jsonb_object_keys(
+      public.get_player_lifecycle_snapshot_v1(
+        (
+          select id
+          from public.players
+          where account_id = '01000000-0000-4000-8000-000000000102'
+        ),
+        true
+      )
     )
   ),
   7,

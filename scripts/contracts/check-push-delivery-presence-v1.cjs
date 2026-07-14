@@ -3,6 +3,10 @@ const migration = fs.readFileSync(
   'supabase/migrations/202607140038_push_delivery_presence_v1.sql',
   'utf8',
 );
+const registrationRepair = fs.readFileSync(
+  'supabase/migrations/202607140049_repair_push_device_registration_v1.sql',
+  'utf8',
+);
 const worker = fs.readFileSync(
   'supabase/functions/notification-push-worker/handler.ts',
   'utf8',
@@ -32,6 +36,14 @@ const requireInvariant = (value, message) => {
   if (!value) failures.push(message);
 };
 
+requireInvariant(
+  /actor_account_id_value uuid := auth\.uid\(\)/i.test(registrationRepair) &&
+    /registered\.account_id <> actor_account_id_value/i.test(
+      registrationRepair,
+    ) &&
+    !/registered\.account_id <> account_id(?:\s|;)/i.test(registrationRepair),
+  'Canonical push registration must not collide AccountId variables with table columns.',
+);
 requireInvariant(
   /notification\.kind = 'message_received'[\s\S]*notification_presence_v1[\s\S]*active_conversation_id/i.test(
     migration,
