@@ -141,7 +141,51 @@ jobs:
         run: supabase db lint
 
       - name: Test database
-        run: supabase test db
+        shell: bash
+        run: |
+          set -o pipefail
+          log_file="$RUNNER_TEMP/supabase-test.log"
+          if supabase test db 2>&1 | tee "$log_file"; then
+            exit 0
+          fi
+
+          {
+            echo "### Supabase pgTAP failure"
+            echo '```text'
+            tail -n 220 "$log_file"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          python - "$log_file" <<'PYTHON'
+          import pathlib
+          import re
+          import sys
+
+          text = pathlib.Path(sys.argv[1]).read_text(
+              encoding="utf-8",
+              errors="replace",
+          )
+          text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
+          markers = [
+              text.rfind("not ok"),
+              text.rfind("Bail out!"),
+              text.rfind("Failed test"),
+              text.rfind("ERROR:"),
+          ]
+          error_index = max(markers)
+          excerpt = (
+              text[max(0, error_index - 2000) : error_index + 12000]
+              if error_index >= 0
+              else text[-14000:]
+          )
+          escaped = (
+              excerpt.replace("%", "%25")
+              .replace("\r", "%0D")
+              .replace("\n", "%0A")
+          )
+          print(f"::error title=Supabase pgTAP failure::{escaped}")
+          PYTHON
+          exit 1
 
       - name: Preload postgres-meta image
         run: |
