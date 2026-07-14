@@ -13,6 +13,9 @@ import {
   PlayerIdentityMappingV1Schema,
   PlayerLifecycleSnapshotV1Schema,
   PlayerProfileVersionV1Schema,
+  PlayerDeletionRequestedEventV1Schema,
+  RequestPlayerDeletionCommandV1Schema,
+  RequestPlayerDeletionResultV1Schema,
 } from '../../../contracts/core-v1';
 
 const fixtureRoot = path.join(
@@ -118,6 +121,34 @@ describe('Mission 1 Core V1 provider contracts', () => {
 
     expect(command.profile.favoriteHeroSlugs).toHaveLength(3);
     expect(command.legacyProfilePayload).toBeDefined();
+  });
+
+  it('publishes an explicit, versioned account-deletion command', () => {
+    const command = RequestPlayerDeletionCommandV1Schema.parse(
+      read('account-deletion-command.json'),
+    );
+
+    expect(command.confirmation).toBe('DELETE');
+    expect(command.expectedLifecycleVersion).toBe(3);
+  });
+
+  it('publishes an idempotent deleting-state replay receipt', () => {
+    const result = RequestPlayerDeletionResultV1Schema.parse(
+      read('account-deletion-replay.json'),
+    );
+
+    expect(result.repeated).toBe(true);
+    expect(result.lifecycle.state).toBe('deleting');
+    expect(result.principal.playerId).toBe(result.lifecycle.playerId);
+  });
+
+  it('publishes the deletion-requested lifecycle event', () => {
+    const event = PlayerDeletionRequestedEventV1Schema.parse(
+      read('player-deletion-requested-event.json'),
+    );
+
+    expect(event.data.lifecycleVersion).toBe(4);
+    expect(event.aggregateId).toBe(event.data.playerId);
   });
 
   it('publishes the optimistic profile version conflict', () => {
