@@ -11,6 +11,13 @@ const migration = fs.readFileSync(
   ),
   'utf8',
 );
+const evidenceMigration = fs.readFileSync(
+  path.join(
+    root,
+    'supabase/migrations/202607142100_message_report_evidence_snapshot_v2.sql',
+  ),
+  'utf8',
+);
 const test = fs.readFileSync(
   path.join(
     root,
@@ -38,6 +45,31 @@ for (const marker of [
     );
   }
 }
+for (const marker of [
+  'private.capture_message_report_snapshot_v2',
+  'reports_capture_message_snapshot_v2',
+  'private.message_report_evidence_v1',
+  'public.capture_message_report_evidence_v2',
+  'report_evidence_immutable',
+  'content_snapshot',
+  'message_report_evidence_v1_immutable',
+  "to_regclass('public.message_report_evidence_v2')",
+  "to_jsonb(report_row) ->> 'conversation_v2_id'",
+  'from public.conversation_members_v2',
+]) {
+  if (!evidenceMigration.includes(marker)) {
+    throw new Error(`Missing immutable message evidence marker: ${marker}`);
+  }
+}
+if (
+  evidenceMigration.includes("'reportId', evidence_row") ||
+  evidenceMigration.includes("'reportId', evidence.report_id")
+) {
+  throw new Error(
+    'Conversation evidence DTO must not duplicate the Social report receipt ID.',
+  );
+}
+
 for (const assertion of [
   'privacy update rejects stale aggregate version',
   'privacy replay does not duplicate event',
@@ -45,6 +77,10 @@ for (const assertion of [
   'historical member can report message after block',
   'social report evidence does not copy message content',
   'nonmember cannot capture conversation report evidence',
+  'message report transaction captures one immutable snapshot',
+  'evidence capture replay does not duplicate snapshot rows',
+  'immutable message snapshot cannot be updated',
+  'another account cannot read guessed report evidence',
 ]) {
   if (!test.includes(assertion)) {
     throw new Error(`Missing privacy/report pgTAP coverage: ${assertion}`);
@@ -69,6 +105,7 @@ if (plan !== assertions) {
   const parser = await new PgQueryModule();
   for (const [label, sql] of [
     ['migration', migration],
+    ['evidence migration', evidenceMigration],
     ['pgTAP', test],
   ]) {
     const parsed = parser.parse(sql);

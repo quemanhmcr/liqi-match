@@ -41,6 +41,10 @@ import type {
   SendChatTextCommand,
 } from './chat-message-transport';
 import type { ChatRepository, MessagesRequestContext } from './chat-repository';
+import {
+  MessageReportEvidenceV2Schema,
+  type MessageReportEvidenceProvider,
+} from './message-report-evidence';
 import { emitConversationTelemetry } from './conversation-telemetry';
 
 const ConversationParticipantSurfaceV1Schema = z.object({
@@ -124,7 +128,8 @@ type AccessTokenSubscriber = (
 ) => () => void;
 
 export type SupabaseConversationAdapter = ChatRepository &
-  ChatMessageTransport & {
+  ChatMessageTransport &
+  MessageReportEvidenceProvider & {
     dispose: () => Promise<void>;
     setSession: (session: AuthSession | null) => Promise<void>;
   };
@@ -169,8 +174,7 @@ export function createSupabaseConversationAdapter(
     return session;
   };
 
-  const requireValidSession = async () => {
-    const current = requireSession();
+  const refreshSession = async (current: AuthSession) => {
     const accessToken = await accessTokenProvider(60);
     if (!accessToken) {
       throw new MessagesServiceError(
@@ -183,6 +187,8 @@ export function createSupabaseConversationAdapter(
       ? current
       : { ...current, accessToken };
   };
+
+  const requireValidSession = () => refreshSession(requireSession());
 
   const removeAllChannels = async () => {
     await Promise.all(
@@ -530,6 +536,47 @@ export function createSupabaseConversationAdapter(
     },
   };
 
+  const moderation: MessageReportEvidenceProvider = {
+    async captureReportEvidence(input) {
+      try {
+        const activeSession = await requireValidSession();
+        if (
+          !activeSession.principal?.playerId ||
+          !input.session.principal?.playerId ||
+          activeSession.user.id !== input.session.user.id ||
+          activeSession.principal.accountId !==
+            input.session.principal.accountId ||
+          activeSession.principal.playerId !== input.session.principal.playerId
+        ) {
+          throw new MessagesServiceError(
+            'forbidden',
+            'Conversation report actor does not match the active session.',
+            false,
+          );
+        }
+        const raw = await request<unknown>({
+          body: { p_report_id: input.reportId },
+          functionName: 'capture_message_report_evidence_v2',
+          session: activeSession,
+        });
+        setNetworkState('online');
+        try {
+          return MessageReportEvidenceV2Schema.parse(raw);
+        } catch (error) {
+          throw new MessagesServiceError(
+            'contract_violation',
+            'Bằng chứng báo cáo không đúng contract authoritative.',
+            false,
+            error instanceof Error ? error.message : undefined,
+          );
+        }
+      } catch (error) {
+        if (isNetworkFailure(error)) setNetworkState('offline');
+        throw mapServiceError(error);
+      }
+    },
+  };
+
   async function sendMessage(
     command: SendChatTextCommand | SendChatMediaCommand,
     content: Record<string, unknown>,
@@ -565,7 +612,11 @@ export function createSupabaseConversationAdapter(
     }
   }
 
-  return Object.assign(repository, transport) as SupabaseConversationAdapter;
+  return Object.assign(
+    repository,
+    transport,
+    moderation,
+  ) as SupabaseConversationAdapter;
 }
 
 async function requestRpc<T>(input: {

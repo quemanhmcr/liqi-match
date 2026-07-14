@@ -49,6 +49,8 @@ describe('application service composition', () => {
     );
     expect(first.discoverRepository).not.toBe(second.discoverRepository);
     expect(first.messageRepository).not.toBe(second.messageRepository);
+    expect(first.messageReportEvidenceProvider).toBeNull();
+    expect(second.messageReportEvidenceProvider).toBeNull();
     expect(first.notificationRepository).not.toBe(
       second.notificationRepository,
     );
@@ -200,6 +202,9 @@ describe('application service composition', () => {
     expect(services.mode).toBe('api');
     expect(services.scenarioControl).toBeNull();
     expect(services.simulationRuntime).toBeNull();
+    expect(services.messageReportEvidenceProvider).toBe(
+      services.messageRepository,
+    );
     await expect(
       services.messageRepository.listConversations(),
     ).rejects.toMatchObject({

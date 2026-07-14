@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useMutation } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -13,6 +14,7 @@ import {
 } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   AppState,
   FlatList,
   Image,
@@ -33,6 +35,7 @@ import { KeyboardController } from 'react-native-keyboard-controller';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { useSocialCommandCoordinator } from '@/entities/social-relationship/RelationshipCapabilitiesProvider';
 import {
   useAssetResolver,
   usePreloadAssetSurface,
@@ -43,11 +46,20 @@ import {
   type ChatKeyboardScrollViewRef,
 } from '../components/ChatKeyboardScrollView';
 import { ChatMediaViewer } from '../components/ChatMediaViewer';
+import { ChatMessageReportModal } from '../components/ChatMessageReportModal';
 import { MessageResolvedImage } from '../components/MessageResolvedImage';
 import {
   LiquidGlassSurface,
   LiquidOrbButton,
 } from '@/shared/components/liquid';
+import { useAuth } from '@/shared/auth/auth-context';
+import type { AuthSession } from '@/shared/auth/auth-service';
+import {
+  ConversationIdSchema,
+  MessageIdSchema,
+  PlayerIdSchema,
+} from '@/shared/contracts/core-v1';
+import type { ReportCategoryV2 } from '@/shared/contracts/core-v2';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
@@ -122,9 +134,11 @@ import {
   DEFAULT_CHAT_MESSAGE_PAGE_SIZE,
   type ChatRepository,
 } from '../services/chat-repository';
+import { MessageReportEvidenceWorkflow } from '../services/message-report-evidence';
 
 export type ChatConversationScreenProps = {
   conversationId?: string;
+  messageReportEvidenceWorkflow?: MessageReportEvidenceWorkflow;
   messageTransport?: ChatMessageTransport;
   repository?: ChatRepository;
 };
@@ -146,6 +160,79 @@ type ConversationData = {
   surface?: MessageConversationDetail;
   thread?: ChatThread;
 };
+
+type ReportableMessageTarget = Readonly<{
+  conversationId: string;
+  messageId: string;
+  senderPlayerId: string;
+}>;
+
+function reportableMessageTarget(
+  message: ChatMessage,
+  conversationId: string,
+  viewerPlayerId: string | null,
+): ReportableMessageTarget | null {
+  if (
+    message.kind === 'typing' ||
+    message.direction !== 'incoming' ||
+    !message.senderId ||
+    message.senderId === viewerPlayerId
+  ) {
+    return null;
+  }
+
+  const parsedConversationId = ConversationIdSchema.safeParse(conversationId);
+  const parsedMessageId = MessageIdSchema.safeParse(message.id);
+  const parsedSenderPlayerId = PlayerIdSchema.safeParse(message.senderId);
+  if (
+    !parsedConversationId.success ||
+    !parsedMessageId.success ||
+    !parsedSenderPlayerId.success
+  ) {
+    return null;
+  }
+
+  return {
+    conversationId: parsedConversationId.data,
+    messageId: parsedMessageId.data,
+    senderPlayerId: parsedSenderPlayerId.data,
+  };
+}
+
+function activeReporterPlayerId(session: AuthSession | null) {
+  const principal = session?.principal;
+  const lifecycle = session?.lifecycle;
+  if (
+    !principal?.playerId ||
+    !lifecycle ||
+    session.user.id !== principal.accountId ||
+    lifecycle.playerId !== principal.playerId ||
+    lifecycle.state !== 'active'
+  ) {
+    return null;
+  }
+  const parsed = PlayerIdSchema.safeParse(principal.playerId);
+  return parsed.success ? parsed.data : null;
+}
+
+function reportMessageErrorMessage(error: unknown) {
+  const code =
+    error && typeof error === 'object' && 'code' in error
+      ? String(error.code)
+      : null;
+  if (code === 'report_evidence_invalid') {
+    return 'Tin nhắn không còn khớp evidence authoritative của cuộc trò chuyện.';
+  }
+  if (code === 'report_target_not_found') {
+    return 'Tin nhắn không còn tồn tại trong dữ liệu authoritative.';
+  }
+  if (code === 'report_self_forbidden') {
+    return 'Bạn không thể báo cáo tin nhắn của chính mình.';
+  }
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Vui lòng kiểm tra kết nối và thử lại.';
+}
 
 function waitForMilliseconds(delayMs: number) {
   return delayMs > 0
@@ -284,6 +371,24 @@ export function ChatConversationScreen(props: ChatConversationScreenProps) {
 function ChatConversationSession(props: ChatConversationScreenProps) {
   const services = useMessagesServices();
   const assetResolver = useAssetResolver();
+  const { session } = useAuth();
+  const reporterPlayerId = activeReporterPlayerId(session);
+  const socialCoordinator = useSocialCommandCoordinator();
+  const reportEvidenceWorkflow = useMemo(
+    () =>
+      props.messageReportEvidenceWorkflow ??
+      (socialCoordinator && services.evidenceProvider
+        ? new MessageReportEvidenceWorkflow(
+            socialCoordinator,
+            services.evidenceProvider,
+          )
+        : null),
+    [
+      props.messageReportEvidenceWorkflow,
+      services.evidenceProvider,
+      socialCoordinator,
+    ],
+  );
   usePreloadAssetSurface('messages');
   const conversationId = props.conversationId;
   const messageTransport = props.messageTransport ?? services.messageTransport;
@@ -322,10 +427,74 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
     conversationId: '',
     count: 0,
   });
+  const [messageReportTarget, setMessageReportTarget] =
+    useState<ReportableMessageTarget | null>(null);
+  const reportSubmissionLockedRef = useRef(false);
+  const reportMessageMutation = useMutation({
+    mutationFn: (category: ReportCategoryV2) => {
+      if (
+        !session ||
+        !reporterPlayerId ||
+        !reportEvidenceWorkflow ||
+        !messageReportTarget
+      ) {
+        throw Object.assign(
+          new Error('Message report authority is not available.'),
+          { code: 'service_unavailable', retryable: true },
+        );
+      }
+      return reportEvidenceWorkflow.submit({
+        category,
+        conversationId: messageReportTarget.conversationId,
+        details: null,
+        messageId: messageReportTarget.messageId,
+        session,
+        targetPlayerId: messageReportTarget.senderPlayerId,
+      });
+    },
+    onError: (error) => {
+      Alert.alert('Chưa gửi được báo cáo', reportMessageErrorMessage(error));
+    },
+    onSettled: () => {
+      reportSubmissionLockedRef.current = false;
+    },
+    onSuccess: (result) => {
+      setMessageReportTarget(null);
+      if (result.status === 'evidence_pending') {
+        Alert.alert(
+          'Đã gửi báo cáo',
+          result.retryStored
+            ? 'Báo cáo đã được ghi nhận. Bằng chứng đang chờ đồng bộ và sẽ tự thử lại khi kết nối ổn định.'
+            : 'Báo cáo và bằng chứng máy chủ đã được ghi nhận. Thiết bị chưa lưu được trạng thái xác minh cục bộ.',
+        );
+        return;
+      }
+      Alert.alert(
+        'Đã gửi báo cáo',
+        'Tin nhắn và bằng chứng bất biến đã được ghi nhận để đội an toàn xem xét.',
+      );
+    },
+  });
   const [networkSnapshot, setNetworkSnapshot] = useState(() => ({
     state: messageTransport.getNetworkState?.() ?? ('online' as const),
     transport: messageTransport,
   }));
+  useEffect(() => {
+    if (
+      networkSnapshot.state !== 'online' ||
+      !session ||
+      !reportEvidenceWorkflow ||
+      !ConversationIdSchema.safeParse(conversationKey).success
+    ) {
+      return;
+    }
+    void reportEvidenceWorkflow
+      .resumePendingForConversation({
+        conversationId: conversationKey,
+        session,
+      })
+      .catch(() => undefined);
+  }, [conversationKey, networkSnapshot.state, reportEvidenceWorkflow, session]);
   const localMessages = useChatRuntimeStore(
     (state) =>
       state.messagesByConversation[conversationKey] ?? EMPTY_RUNTIME_MESSAGES,
@@ -1180,6 +1349,14 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
             }
 
             const { message, messageIndex } = item;
+            const reportTarget =
+              reportEvidenceWorkflow && reporterPlayerId
+                ? reportableMessageTarget(
+                    message,
+                    conversationKey,
+                    reporterPlayerId,
+                  )
+                : null;
             return (
               <View
                 onLayout={() => handleMessageLayout(message.id)}
@@ -1202,6 +1379,28 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
                   )}
                   thread={thread}
                 />
+                {reportTarget ? (
+                  <Pressable
+                    accessibilityLabel="Báo cáo tin nhắn"
+                    accessibilityRole="button"
+                    onPress={() => {
+                      selectionImpact();
+                      setMessageReportTarget(reportTarget);
+                    }}
+                    style={({ pressed }) => [
+                      styles.messageReportAction,
+                      pressed && styles.pressed,
+                    ]}
+                    testID={`report-message-${message.id}`}
+                  >
+                    <Ionicons
+                      color="rgba(255,179,198,0.68)"
+                      name="flag-outline"
+                      size={12}
+                    />
+                    <Text style={styles.messageReportActionText}>Báo cáo</Text>
+                  </Pressable>
+                ) : null}
               </View>
             );
           }}
@@ -1258,6 +1457,18 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
           />
         )}
       </ChatComposerDock>
+      <ChatMessageReportModal
+        onClose={() => {
+          if (!reportSubmissionLockedRef.current) setMessageReportTarget(null);
+        }}
+        onSubmit={(category) => {
+          if (reportSubmissionLockedRef.current) return;
+          reportSubmissionLockedRef.current = true;
+          reportMessageMutation.mutate(category);
+        }}
+        pending={reportMessageMutation.isPending}
+        visible={Boolean(messageReportTarget)}
+      />
     </LiquidScreen>
   );
 }
@@ -3361,6 +3572,21 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-start',
     marginTop: 5,
     width: 30,
+  },
+  messageReportAction: {
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    gap: 4,
+    marginLeft: 50,
+    marginTop: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  messageReportActionText: {
+    color: 'rgba(255,179,198,0.68)',
+    fontSize: 10.5,
+    fontWeight: '700',
   },
   messageSpacingLoose: { marginTop: 15 },
   messageSpacingTight: { marginTop: 7 },

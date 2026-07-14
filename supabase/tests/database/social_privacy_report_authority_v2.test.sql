@@ -1,7 +1,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(39);
+select plan(53);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at
@@ -331,9 +331,111 @@ select is(
   'message report event references authoritative message'
 );
 
+select is(
+  (select count(*)::integer from private.message_report_evidence_v1 where report_id = (select (receipt ->> 'reportId')::uuid from report_message)),
+  1,
+  'message report transaction captures one immutable snapshot'
+);
+select is(
+  (select content_snapshot ->> 'text' from private.message_report_evidence_v1 where report_id = (select (receipt ->> 'reportId')::uuid from report_message)),
+  'Immutable report evidence body',
+  'immutable snapshot preserves exact authoritative text'
+);
+select is(
+  (select client_message_id from private.message_report_evidence_v1 where report_id = (select (receipt ->> 'reportId')::uuid from report_message)),
+  'report-message-client-0001',
+  'immutable snapshot preserves canonical client message identity'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000002501', true);
+create temporary table captured_message_evidence as
+select public.capture_message_report_evidence_v2(
+  (select (receipt ->> 'reportId')::uuid from report_message)
+) as evidence;
+select ok(
+  not (select evidence ? 'reportId' from captured_message_evidence),
+  'evidence DTO does not duplicate the Social report receipt identity'
+);
+select is(
+  (select evidence #>> '{message,content,text}' from captured_message_evidence),
+  'Immutable report evidence body',
+  'reporter receives the exact immutable content snapshot'
+);
+select ok(
+  (select evidence #>> '{message,tombstonedAt}' from captured_message_evidence) is null,
+  'evidence preserves a null tombstone timestamp'
+);
+create temporary table captured_message_evidence_replay as
+select public.capture_message_report_evidence_v2(
+  (select (receipt ->> 'reportId')::uuid from report_message)
+) as evidence;
+select is(
+  (select evidence ->> 'evidenceId' from captured_message_evidence_replay),
+  (select evidence ->> 'evidenceId' from captured_message_evidence),
+  'evidence capture replay preserves evidence identity'
+);
+
+reset role;
+select is(
+  (select count(*)::integer from private.message_report_evidence_v1 where report_id = (select (receipt ->> 'reportId')::uuid from report_message)),
+  1,
+  'evidence capture replay does not duplicate snapshot rows'
+);
+select throws_like(
+  $$update private.message_report_evidence_v1
+    set content_snapshot = jsonb_build_object('tampered', true)
+    where report_id = (select (receipt ->> 'reportId')::uuid from report_message)$$,
+  '%report_evidence_immutable%',
+  'immutable message snapshot cannot be updated'
+);
+select throws_like(
+  $$delete from private.message_report_evidence_v1
+    where report_id = (select (receipt ->> 'reportId')::uuid from report_message)$$,
+  '%report_evidence_immutable%',
+  'immutable message snapshot cannot be deleted'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000002501', true);
+create temporary table report_message_replay as
+select public.report_message_v2(jsonb_build_object(
+  'audit', jsonb_build_object(
+    'clientCreatedAt', '2026-07-14T14:06:00.000Z',
+    'clientPlatform', 'ios',
+    'clientVersion', '2.0.0',
+    'requestId', 'report-message-ab'
+  ),
+  'category', 'threat',
+  'conversationId', '51000000-0000-4000-8000-000000002501',
+  'correlationId', '43000000-0000-4000-8000-000000002507',
+  'details', 'Message retained for privileged moderation evidence.',
+  'expectedReportVersion', 0,
+  'idempotencyKey', 'report.message.ab.0001',
+  'messageId', '52000000-0000-4000-8000-000000002501',
+  'targetPlayerId', '21000000-0000-4000-8000-000000002502'
+)) as receipt;
+select is((select (receipt ->> 'repeated')::boolean from report_message_replay), true, 'message report retry returns durable receipt');
+select is((select receipt ->> 'reportId' from report_message_replay), (select receipt ->> 'reportId' from report_message), 'message report retry preserves report identity');
+reset role;
+select is(
+  (select count(*)::integer from private.message_report_evidence_v1 where report_id = (select (receipt ->> 'reportId')::uuid from report_message)),
+  1,
+  'message report retry preserves one transactional snapshot'
+);
+
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000002503', true);
+select throws_like(
+  $$select public.capture_message_report_evidence_v2(
+    (select (receipt ->> 'reportId')::uuid from report_message)
+  )$$,
+  '%report_evidence_invalid%',
+  'another account cannot read guessed report evidence'
+);
 select throws_like(
   $$select public.report_message_v2(jsonb_build_object(
     'audit', jsonb_build_object(
