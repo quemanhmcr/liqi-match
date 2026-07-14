@@ -92,7 +92,37 @@ jobs:
           version: 2.109.0
 
       - name: Start Supabase
-        run: supabase start
+        shell: bash
+        run: |
+          set -o pipefail
+          log_file="$RUNNER_TEMP/supabase-start.log"
+          if supabase start 2>&1 | tee "$log_file"; then
+            exit 0
+          fi
+
+          {
+            echo "### Supabase start failure"
+            echo '```text'
+            tail -n 120 "$log_file"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          python - "$log_file" <<'PYTHON'
+          import pathlib
+          import sys
+
+          text = pathlib.Path(sys.argv[1]).read_text(
+              encoding="utf-8",
+              errors="replace",
+          )[-3500:]
+          escaped = (
+              text.replace("%", "%25")
+              .replace("\r", "%0D")
+              .replace("\n", "%0A")
+          )
+          print(f"::error title=Supabase start failure::{escaped}")
+          PYTHON
+          exit 1
 
       - name: Reset database
         run: supabase db reset
