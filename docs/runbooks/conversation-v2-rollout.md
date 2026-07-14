@@ -11,12 +11,25 @@ Apply the authority chain in order:
 3. `202607140056_social_safety_command_authority_v2.sql`
 4. `202607140057_social_privacy_report_authority_v2.sql`
 5. `202607140058_core_v2_conversation_authority.sql`
+6. `202607141200_core_v2_play_session_walking_skeleton.sql`
+7. `202607141210_core_v2_match_set_commands.sql`
+8. `202607141220_core_v2_match_set_membership.sql`
+9. `202607141230_core_v2_play_session_commands.sql`
+10. `202607141300_core_v2_party_session_transport_alignment.sql`
+11. `202607141320_conversation_report_evidence_contract_v2.sql`
+12. `202607141330_conversation_mobile_surface_v2.sql`
+13. `202607141331_conversation_access_realtime_v2.sql`
 
 Migration 058 is additive. It maps V1 direct conversations by the same UUID and
 projects V1 timeline rows at read time. It does not copy or rewrite legacy
 messages or cursors.
 
 ## Rollout controls
+
+The Expo client gate `EXPO_PUBLIC_CONVERSATION_V2_ENABLED` defaults to `false`.
+Only `true`, `1`, or `yes` enable V2; invalid values fail startup configuration
+instead of silently selecting an authority. Repository and transport switch
+atomically, so the UI cannot read from V2 while sending to V1 or vice versa.
 
 `private.conversation_authority_config_v2` owns independent capability flags:
 
@@ -35,10 +48,15 @@ Recommended rollout:
 
 1. Compare V1 and V2 direct inbox facts with `shadow_inbox_enabled = true`.
 2. Enable session/group provisioning for internal accounts.
-3. Validate send, delivery, read cursor, membership add/remove, and reconnect on
-   two physical devices.
-4. Enable broad V2 writes while retaining V1 direct timeline projection.
-5. Enable notification production only after the Senior 4 checkpoint.
+3. Enable the Expo V2 gate only for internal accounts after migrations 1200–1331
+   are applied and the Session projection acknowledgement reports `ready`.
+4. Validate send, delivery, read cursor, membership add/remove, account switch,
+   offline retry, and reconnect on two physical devices.
+5. Confirm both private topics are authorized: `conversation-v2:<ConversationId>`
+   for messages and `conversation-v2-access:<ConversationId>:<PlayerId>` for
+   targeted membership/lifecycle revocation.
+6. Enable broad V2 writes while retaining V1 direct timeline projection.
+7. Enable notification production only after the Senior 4 checkpoint.
 
 ## Operational evidence
 
@@ -59,6 +77,12 @@ A release gate must verify:
 - sender `clientMessageId` retries do not create another message;
 - read cursors never regress;
 - token refresh is used by RPC and realtime;
+- account switching removes both private channels and clears aggregate/cursor
+  caches before the next send;
+- an open screen receives targeted access revocation even after message-channel
+  authorization is removed;
+- Session-created/member events acknowledge the exact aggregate and membership
+  versions through `record_session_conversation_projection_v2`;
 - V1 direct history remains readable;
 - evidence capture remains retryable after access revocation.
 
@@ -78,9 +102,10 @@ set provisioning_enabled = false,
 where singleton;
 ```
 
-This stops new V2 conversations and writes, disables realtime and notification
-production, and leaves existing V2/V1-compatible conversations readable through
-controlled polling. Event consumers and membership reconciliation remain
+Also set `EXPO_PUBLIC_CONVERSATION_V2_ENABLED=false` for the next client
+configuration rollout. This stops new V2 conversations and writes, disables
+realtime and notification production, and leaves existing V2/V1-compatible
+conversations readable through controlled polling. Event consumers and membership reconciliation remain
 replayable after re-enable.
 
 After mitigation, re-enable one capability at a time. Never delete or rewrite
