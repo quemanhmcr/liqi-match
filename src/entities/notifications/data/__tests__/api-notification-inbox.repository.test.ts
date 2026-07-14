@@ -14,9 +14,11 @@ const ids = {
   match: '50000000-0000-4000-8000-000000000001',
   notification1: '90000000-0000-4000-8000-000000000001',
   notification2: '90000000-0000-4000-8000-000000000002',
+  notification3: '90000000-0000-4000-8000-000000000003',
   player: '20000000-0000-4000-8000-000000000001',
   friend: '20000000-0000-4000-8000-000000000002',
   profile: '30000000-0000-4000-8000-000000000001',
+  session: '42000000-0000-4000-8000-000000000001',
   set: 'a0000000-0000-4000-8000-000000000001',
 } as const;
 
@@ -34,7 +36,9 @@ function notification(
       | { matchId: string; target: 'match' }
       | { conversationId: string; target: 'conversation' }
       | { setId: string; target: 'set' }
-      | { playerId: string; target: 'profile' };
+      | { playerId: string; target: 'profile' }
+      | { sessionId: string; target: 'session_feedback' }
+      | { target: 'home' };
     kind:
       | 'match_created'
       | 'message_received'
@@ -149,6 +153,45 @@ describe('ApiNotificationInboxRepository', () => {
         {
           kind: 'friendship-accepted',
           payload: { friendPlayerId: ids.friend },
+        },
+      ],
+    });
+  });
+
+  it('maps production system notifications with feedback and Home destinations', async () => {
+    const { repository } = repositoryWith({
+      items: [
+        notification({
+          deepLink: { sessionId: ids.session, target: 'session_feedback' },
+          kind: 'system',
+          notificationId: ids.notification2,
+          sourceEventId: ids.event2,
+        }),
+        notification({
+          deepLink: { target: 'home' },
+          kind: 'system',
+          notificationId: ids.notification3,
+          sourceEventId: '80000000-0000-4000-8000-000000000003',
+        }),
+      ],
+      latestWatermark: null,
+      nextCursor: null,
+      unseenCount: 2,
+    });
+
+    await expect(repository.list({ session })).resolves.toMatchObject({
+      items: [
+        {
+          id: ids.notification2,
+          kind: 'system',
+          payload: {
+            deepLink: { sessionId: ids.session, target: 'session_feedback' },
+          },
+        },
+        {
+          id: ids.notification3,
+          kind: 'system',
+          payload: { deepLink: { target: 'home' } },
         },
       ],
     });

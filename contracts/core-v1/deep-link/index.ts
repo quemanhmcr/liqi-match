@@ -5,6 +5,7 @@ import {
   MatchIdSchema,
   MatchSetIdSchema,
   PlayerIdSchema,
+  SessionIdSchema,
 } from '../identity/semantic-ids';
 
 export const DeepLinkV1Schema = z.discriminatedUnion('target', [
@@ -17,6 +18,13 @@ export const DeepLinkV1Schema = z.discriminatedUnion('target', [
     .strict(),
   z.object({ setId: MatchSetIdSchema, target: z.literal('set') }).strict(),
   z.object({ playerId: PlayerIdSchema, target: z.literal('profile') }).strict(),
+  z
+    .object({
+      sessionId: SessionIdSchema,
+      target: z.literal('session_feedback'),
+    })
+    .strict(),
+  z.object({ target: z.literal('home') }).strict(),
 ]);
 
 export const deepLinkV1Schema = DeepLinkV1Schema;

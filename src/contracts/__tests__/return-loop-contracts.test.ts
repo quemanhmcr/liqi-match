@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import {
   CoreEventV1Schema,
+  DeepLinkV1Schema,
   NotificationDeepLinkResolutionV1Schema,
   NotificationPresenceV1Schema,
   NotificationV1Schema,
@@ -54,6 +55,27 @@ describe('Return Loop Core V1 contracts', () => {
         read('push-navigation-data.json'),
       ),
     ).toBeTruthy();
+  });
+
+  it('validates additive activity destinations without weakening strictness', () => {
+    expect(
+      DeepLinkV1Schema.parse({
+        sessionId: '42000000-0000-4000-8000-000000000001',
+        target: 'session_feedback',
+      }),
+    ).toMatchObject({ target: 'session_feedback' });
+    expect(DeepLinkV1Schema.parse({ target: 'home' })).toEqual({
+      target: 'home',
+    });
+    expect(() =>
+      DeepLinkV1Schema.parse({
+        sessionId: 'not-a-uuid',
+        target: 'session_feedback',
+      }),
+    ).toThrow();
+    expect(() =>
+      DeepLinkV1Schema.parse({ target: 'home', unexpected: true }),
+    ).toThrow();
   });
 
   it('validates machine-readable release evidence and readiness', () => {

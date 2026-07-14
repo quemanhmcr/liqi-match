@@ -13,7 +13,9 @@ export type NotificationDestination =
   | { conversationId: string; kind: 'conversation' }
   | { kind: 'match'; matchId: string }
   | { kind: 'profile'; playerId: string }
-  | { kind: 'set'; setId: string };
+  | { kind: 'set'; setId: string }
+  | { kind: 'session_feedback'; sessionId: string }
+  | { kind: 'home' };
 
 export type NotificationAction = {
   destination?: NotificationDestination;
@@ -357,6 +359,10 @@ function destinationFromDeepLink(
       return { kind: 'profile', playerId: deepLink.playerId };
     case 'set':
       return { kind: 'set', setId: deepLink.setId };
+    case 'session_feedback':
+      return { kind: 'session_feedback', sessionId: deepLink.sessionId };
+    case 'home':
+      return { kind: 'home' };
   }
 }
 

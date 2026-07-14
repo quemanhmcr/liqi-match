@@ -26,6 +26,26 @@ describe('Core V2 activity notification contracts', () => {
     });
   });
 
+  it('preserves the nullable outcomeId key in a strict feedback target', () => {
+    expect(
+      ActivityNotificationTargetV2Schema.parse({
+        outcomeId: null,
+        sessionId: '45000000-0000-4000-8000-000000000001',
+        target: 'session_feedback',
+      }),
+    ).toEqual({
+      outcomeId: null,
+      sessionId: '45000000-0000-4000-8000-000000000001',
+      target: 'session_feedback',
+    });
+    expect(() =>
+      ActivityNotificationTargetV2Schema.parse({
+        sessionId: '45000000-0000-4000-8000-000000000001',
+        target: 'session_feedback',
+      }),
+    ).toThrow();
+  });
+
   it('preserves activity-event causation and the original correlation in the supplier event', () => {
     const request = ActivityNotificationRequestV2Schema.parse(
       read('activity-feedback-notification-request.json'),

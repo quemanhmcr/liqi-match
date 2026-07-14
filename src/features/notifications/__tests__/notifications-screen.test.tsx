@@ -9,7 +9,11 @@ import {
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
-import type { NotificationInboxRepository } from '@/entities/notifications';
+import { DeepLinkV1Schema } from '@/shared/contracts/core-v1';
+import type {
+  NotificationInboxRepository,
+  NotificationRecord,
+} from '@/entities/notifications';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 
@@ -287,6 +291,90 @@ describe('NotificationsScreen', () => {
     );
     await screen.unmount();
   });
+
+  it.each([
+    {
+      deepLink: {
+        sessionId: '42000000-0000-4000-8000-000000000001',
+        target: 'session_feedback' as const,
+      },
+      expectedRoute: appRoutes.trust.feedback(
+        '42000000-0000-4000-8000-000000000001',
+      ),
+      id: '90000000-0000-4000-8000-000000000101',
+      label: 'feedback',
+    },
+    {
+      deepLink: { target: 'home' as const },
+      expectedRoute: appRoutes.main.home,
+      id: '90000000-0000-4000-8000-000000000102',
+      label: 'repeat-play Home',
+    },
+  ])(
+    'opens the canonical $label system destination from the inbox',
+    async (fixture) => {
+      const notification: NotificationRecord = {
+        id: fixture.id,
+        kind: 'system',
+        occurredAt: '2026-07-14T14:00:00.000Z',
+        payload: { deepLink: DeepLinkV1Schema.parse(fixture.deepLink) },
+        readAt: null,
+        recipientId: testAuthSession.user.id,
+        seenAt: null,
+      };
+      const repository: NotificationInboxRepository = {
+        async getSummary() {
+          return {
+            latestWatermark: {
+              id: notification.id,
+              occurredAt: notification.occurredAt,
+            },
+            unseenCount: 1,
+            updatedAt: notification.occurredAt,
+          };
+        },
+        async list() {
+          return {
+            items: [notification],
+            latestWatermark: {
+              id: notification.id,
+              occurredAt: notification.occurredAt,
+            },
+            nextCursor: null,
+            unseenCount: 1,
+          };
+        },
+        async markRead() {
+          return {
+            notification: {
+              ...notification,
+              readAt: notification.occurredAt,
+              seenAt: notification.occurredAt,
+            },
+            unseenCount: 0,
+          };
+        },
+        async markSeenThrough(input) {
+          return {
+            seenAt: notification.occurredAt,
+            seenThrough: input.seenThrough,
+            unseenCount: 0,
+          };
+        },
+      };
+      const screen = await renderNotificationWithProviders(
+        <NotificationsScreen />,
+        repository,
+      );
+
+      await fireEvent.press(await screen.findByLabelText('Mở Hệ thống:'));
+
+      expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
+        fixture.expectedRoute,
+      );
+      await screen.unmount();
+    },
+  );
 
   it('opens the canonical conversation and preserves it after marking the notification read', async () => {
     const screen = await renderWithProviders(<NotificationsScreen />);

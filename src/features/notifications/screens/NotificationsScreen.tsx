@@ -812,6 +812,12 @@ function navigateNotificationDestination(destination: NotificationDestination) {
     case 'set':
       router.push(appRoutes.discover.setDetail(destination.setId));
       return;
+    case 'session_feedback':
+      router.push(appRoutes.trust.feedback(destination.sessionId));
+      return;
+    case 'home':
+      router.push(appRoutes.main.home);
+      return;
   }
 }
 
