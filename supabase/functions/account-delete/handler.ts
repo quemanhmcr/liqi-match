@@ -1,6 +1,12 @@
 import {
+  AccountDeletionApplicationError,
+  executeAccountDeletion,
+  type AccountDeletionCleanupResult,
+  type AccountDeletionCommand,
+  type AccountDeletionReceipt,
+} from './application.ts';
+import {
   corsHeaders,
-  errorResponse,
   jsonResponse,
   readJson,
   requireBearerToken,
@@ -8,145 +14,121 @@ import {
 import { deleteR2Object } from '../_shared/infrastructure/r2.ts';
 import {
   authenticateUser,
-  enqueueOutboxEvent,
+  createUserClient,
 } from '../_shared/infrastructure/supabase.ts';
-
-type DeleteAccountRequest = {
-  confirmation: string;
-};
 
 type MediaAssetRow = {
   id: string;
   object_key: string;
 };
 
-type CleanupResult = {
-  error?: string;
-  name: string;
-  ok: boolean;
-};
-
 export async function handleDeleteAccount(request: Request) {
   if (request.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }
-
   if (request.method !== 'POST') {
-    return errorResponse(405, 'method_not_allowed', 'Use POST.');
+    return deletionErrorResponse(
+      new AccountDeletionApplicationError(
+        'Use POST.',
+        'method_not_allowed',
+        405,
+        false,
+      ),
+      crypto.randomUUID(),
+    );
   }
 
+  const requestId = request.headers.get('x-request-id') ?? crypto.randomUUID();
   try {
-    const body = await readJson<DeleteAccountRequest>(request);
-    if (body.confirmation !== 'DELETE') {
-      return errorResponse(
-        400,
-        'confirmation_required',
-        'Account deletion requires explicit confirmation.',
-      );
-    }
-
+    const command = await readJson<AccountDeletionCommand>(request);
     const accessToken = requireBearerToken(request);
     const { supabase, user } = await authenticateUser(accessToken);
-    const profile = await supabase
-      .from('profiles')
-      .select('id, deleted_at')
-      .eq('id', user.id)
-      .maybeSingle();
+    const userClient = createUserClient(accessToken);
 
-    if (profile.error) {
-      return errorResponse(500, 'profile_lookup_failed', profile.error.message);
-    }
-
-    const mediaRows = await supabase
-      .from('media_assets')
-      .select('id, object_key')
-      .eq('owner_id', user.id)
-      .is('deleted_at', null);
-
-    if (mediaRows.error) {
-      return errorResponse(500, 'media_lookup_failed', mediaRows.error.message);
-    }
-
-    const media = (mediaRows.data ?? []) as MediaAssetRow[];
-    const deletedAt = new Date().toISOString();
-    const audit = await enqueueOutboxEvent(supabase, {
-      aggregateId: user.id,
-      aggregateType: 'profile',
-      eventType: 'account_deletion_requested',
-      payload: {
-        mediaFound: media.length,
-        profileFound: Boolean(profile.data),
-        requestedAt: deletedAt,
+    const result = await executeAccountDeletion(user.id, command, {
+      now: () => new Date().toISOString(),
+      async requestDeletion(input) {
+        const response = await userClient.rpc('request_player_deletion_v1', {
+          command: input,
+        });
+        if (response.error) throw mapRpcError(response.error, requestId);
+        return response.data as AccountDeletionReceipt;
+      },
+      async lookupResources(accountId) {
+        const [profile, mediaRows] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('id')
+            .eq('id', accountId)
+            .maybeSingle(),
+          supabase
+            .from('media_assets')
+            .select('id, object_key')
+            .eq('owner_id', accountId)
+            .is('deleted_at', null),
+        ]);
+        if (profile.error) {
+          throw new AccountDeletionApplicationError(
+            profile.error.message,
+            'profile_lookup_failed',
+            503,
+            true,
+            {},
+            requestId,
+          );
+        }
+        if (mediaRows.error) {
+          throw new AccountDeletionApplicationError(
+            mediaRows.error.message,
+            'media_lookup_failed',
+            503,
+            true,
+            {},
+            requestId,
+          );
+        }
+        return {
+          media: ((mediaRows.data ?? []) as MediaAssetRow[]).map((asset) => ({
+            id: asset.id,
+            objectKey: asset.object_key,
+          })),
+          profileFound: Boolean(profile.data),
+        };
+      },
+      deleteMedia: (asset) => deleteR2Object(asset.objectKey),
+      cleanupProfileData: (accountId, deletedAt) =>
+        cleanupProfileData(supabase, accountId, deletedAt),
+      async deleteAuthUser(accountId) {
+        const deleted = await supabase.auth.admin.deleteUser(accountId);
+        if (deleted.error) {
+          throw new AccountDeletionApplicationError(
+            deleted.error.message,
+            'auth_delete_failed',
+            503,
+            true,
+            {},
+            requestId,
+          );
+        }
       },
     });
 
-    if (audit.error) {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          message: 'account_delete_audit_insert_failed',
-          profileId: user.id,
-          reason: audit.error.message,
-        }),
-      );
-      return errorResponse(500, 'audit_insert_failed', audit.error.message);
-    }
-
-    for (const asset of media) {
-      const deleted = await deleteR2Object(asset.object_key);
-      if (!deleted.ok) {
-        return errorResponse(
-          502,
-          'r2_delete_failed',
-          'Could not delete account media from R2.',
-          {
-            assetId: asset.id,
-            status: deleted.status,
-          },
-        );
-      }
-    }
-
-    const cleanupResults = profile.data
-      ? await cleanupProfileData(supabase, user.id, deletedAt)
-      : [];
-    const failedCleanup = cleanupResults.filter((result) => !result.ok);
-
-    if (failedCleanup.length > 0) {
-      console.error(
-        JSON.stringify({
-          failedCleanup,
-          level: 'error',
-          message: 'account_delete_cleanup_partial_failure',
-          profileId: user.id,
-        }),
-      );
-    }
-
-    const authDelete = await supabase.auth.admin.deleteUser(user.id);
-    if (authDelete.error) {
-      return errorResponse(500, 'auth_delete_failed', authDelete.error.message);
-    }
-
-    return jsonResponse({
-      auditLogged: true,
-      cleanup: {
-        attempted: cleanupResults.length,
-        failed: failedCleanup.map((result) => result.name),
-        succeeded: cleanupResults.filter((result) => result.ok).length,
-      },
-      deletedAt,
-      mediaDeleted: media.length,
-      profileFound: Boolean(profile.data),
-      profileId: user.id,
-      status: 'deleted',
+    return jsonResponse(result, {
+      headers: { 'x-request-id': requestId },
     });
   } catch (error) {
-    return errorResponse(
-      400,
-      'bad_request',
-      error instanceof Error ? error.message : 'Bad request.',
+    const applicationError = normalizeDeletionError(error, requestId);
+    console.error(
+      JSON.stringify({
+        code: applicationError.code,
+        level: 'error',
+        message: 'account_deletion_failed',
+        requestId: applicationError.requestId,
+        retryable: applicationError.retryable,
+        status: applicationError.status,
+      }),
     );
+    return deletionErrorResponse(applicationError, requestId);
   }
 }
 
@@ -154,86 +136,114 @@ async function cleanupProfileData(
   supabase: Awaited<ReturnType<typeof authenticateUser>>['supabase'],
   profileId: string,
   deletedAt: string,
-) {
-  const operations = [
-    cleanupOperation('profile_soft_delete', () =>
-      supabase
-        .from('profiles')
-        .update({
-          avatar_media_id: null,
-          bio: null,
-          deleted_at: deletedAt,
-          display_name: 'Deleted user',
-          is_discoverable: false,
-        })
-        .eq('id', profileId),
-    ),
-    cleanupOperation('profile_habits', () =>
-      supabase.from('profile_habits').delete().eq('profile_id', profileId),
-    ),
-    cleanupOperation('profile_roles', () =>
-      supabase.from('profile_roles').delete().eq('profile_id', profileId),
-    ),
-    cleanupOperation('profile_heroes', () =>
-      supabase.from('profile_heroes').delete().eq('profile_id', profileId),
-    ),
-    cleanupOperation('availability_slots', () =>
-      supabase.from('availability_slots').delete().eq('profile_id', profileId),
-    ),
-    cleanupOperation('match_preferences', () =>
-      supabase.from('match_preferences').delete().eq('profile_id', profileId),
-    ),
-    cleanupOperation('blocks', () =>
-      supabase
-        .from('blocks')
-        .delete()
-        .or(`blocker_id.eq.${profileId},blocked_id.eq.${profileId}`),
-    ),
-    cleanupOperation('swipes', () =>
-      supabase
-        .from('swipes')
-        .delete()
-        .or(`actor_id.eq.${profileId},target_id.eq.${profileId}`),
-    ),
-    cleanupOperation('team_members', () =>
-      supabase.from('team_members').delete().eq('profile_id', profileId),
-    ),
-    cleanupOperation('teams', () =>
-      supabase.from('teams').delete().eq('owner_id', profileId),
-    ),
-    cleanupOperation('messages', () =>
-      supabase
-        .from('messages')
-        .update({ body: 'Tin nhắn đã bị xoá', deleted_at: deletedAt })
-        .eq('sender_id', profileId),
-    ),
-    cleanupOperation('matches', () =>
-      supabase
-        .from('matches')
-        .update({ unmatched_at: deletedAt })
-        .or(`profile_low_id.eq.${profileId},profile_high_id.eq.${profileId}`),
-    ),
-    cleanupOperation('media_assets', () =>
-      supabase
-        .from('media_assets')
-        .update({ deleted_at: deletedAt, status: 'deleted' })
-        .eq('owner_id', profileId),
-    ),
+): Promise<readonly AccountDeletionCleanupResult[]> {
+  const operations: ReadonlyArray<
+    readonly [string, () => PromiseLike<{ error: { message: string } | null }>]
+  > = [
+    [
+      'profile_soft_delete',
+      () =>
+        supabase
+          .from('profiles')
+          .update({
+            avatar_media_id: null,
+            bio: null,
+            deleted_at: deletedAt,
+            display_name: 'Deleted user',
+            is_discoverable: false,
+          })
+          .eq('id', profileId),
+    ],
+    [
+      'profile_habits',
+      () =>
+        supabase.from('profile_habits').delete().eq('profile_id', profileId),
+    ],
+    [
+      'profile_roles',
+      () => supabase.from('profile_roles').delete().eq('profile_id', profileId),
+    ],
+    [
+      'profile_heroes',
+      () =>
+        supabase.from('profile_heroes').delete().eq('profile_id', profileId),
+    ],
+    [
+      'availability_slots',
+      () =>
+        supabase
+          .from('availability_slots')
+          .delete()
+          .eq('profile_id', profileId),
+    ],
+    [
+      'match_preferences',
+      () =>
+        supabase.from('match_preferences').delete().eq('profile_id', profileId),
+    ],
+    [
+      'blocks',
+      () =>
+        supabase
+          .from('blocks')
+          .delete()
+          .or(`blocker_id.eq.${profileId},blocked_id.eq.${profileId}`),
+    ],
+    [
+      'swipes',
+      () =>
+        supabase
+          .from('swipes')
+          .delete()
+          .or(`actor_id.eq.${profileId},target_id.eq.${profileId}`),
+    ],
+    [
+      'team_members',
+      () => supabase.from('team_members').delete().eq('profile_id', profileId),
+    ],
+    ['teams', () => supabase.from('teams').delete().eq('owner_id', profileId)],
+    [
+      'messages',
+      () =>
+        supabase
+          .from('messages')
+          .update({ body: 'Tin nhắn đã bị xoá', deleted_at: deletedAt })
+          .eq('sender_id', profileId),
+    ],
+    [
+      'matches',
+      () =>
+        supabase
+          .from('matches')
+          .update({ unmatched_at: deletedAt })
+          .or(`profile_low_id.eq.${profileId},profile_high_id.eq.${profileId}`),
+    ],
+    [
+      'media_assets',
+      () =>
+        supabase
+          .from('media_assets')
+          .update({ deleted_at: deletedAt, status: 'deleted' })
+          .eq('owner_id', profileId),
+    ],
   ];
 
-  return Promise.all(operations);
+  const results: AccountDeletionCleanupResult[] = [];
+  for (const [name, operation] of operations) {
+    results.push(await cleanupOperation(name, operation));
+  }
+  return results;
 }
 
 async function cleanupOperation(
   name: string,
   operation: () => PromiseLike<{ error: { message: string } | null }>,
-): Promise<CleanupResult> {
+): Promise<AccountDeletionCleanupResult> {
   try {
     const result = await operation();
-    if (result.error) {
-      return { error: result.error.message, name, ok: false };
-    }
-    return { name, ok: true };
+    return result.error
+      ? { error: result.error.message, name, ok: false }
+      : { name, ok: true };
   } catch (error) {
     return {
       error: error instanceof Error ? error.message : 'Unknown cleanup error',
@@ -241,4 +251,109 @@ async function cleanupOperation(
       ok: false,
     };
   }
+}
+
+function mapRpcError(
+  error: { code?: string; details?: string; message: string },
+  fallbackRequestId: string,
+) {
+  try {
+    const parsed = JSON.parse(error.message) as {
+      code?: string;
+      details?: Record<string, unknown>;
+      message?: string;
+      requestId?: string;
+      retryable?: boolean;
+    };
+    return new AccountDeletionApplicationError(
+      parsed.message ?? error.message,
+      parsed.code ?? error.code ?? 'deletion_request_failed',
+      statusForCoreError(parsed.code),
+      parsed.retryable ?? false,
+      parsed.details ?? {},
+      parsed.requestId ?? fallbackRequestId,
+    );
+  } catch {
+    return new AccountDeletionApplicationError(
+      error.message,
+      error.code ?? 'deletion_request_failed',
+      503,
+      true,
+      error.details ? { details: error.details } : {},
+      fallbackRequestId,
+    );
+  }
+}
+
+function statusForCoreError(code: string | undefined) {
+  if (code === 'unauthenticated' || code === 'session_expired') return 401;
+  if (
+    code === 'lifecycle_version_conflict' ||
+    code === 'idempotency_key_reused'
+  ) {
+    return 409;
+  }
+  if (code === 'validation_failed') return 400;
+  if (code === 'forbidden') return 403;
+  if (code === 'player_not_found') return 404;
+  return 503;
+}
+
+function normalizeDeletionError(error: unknown, requestId: string) {
+  if (error instanceof AccountDeletionApplicationError) return error;
+  const message =
+    error instanceof Error ? error.message : 'Account deletion failed.';
+  if (
+    message === 'Missing bearer token' ||
+    message === 'Invalid access token'
+  ) {
+    return new AccountDeletionApplicationError(
+      'Authentication is required.',
+      'unauthenticated',
+      401,
+      false,
+      {},
+      requestId,
+    );
+  }
+  if (message === 'Invalid JSON request body') {
+    return new AccountDeletionApplicationError(
+      message,
+      'validation_failed',
+      400,
+      false,
+      {},
+      requestId,
+    );
+  }
+  return new AccountDeletionApplicationError(
+    message,
+    'account_deletion_failed',
+    500,
+    true,
+    {},
+    requestId,
+  );
+}
+
+function deletionErrorResponse(
+  error: AccountDeletionApplicationError,
+  fallbackRequestId: string,
+) {
+  const requestId = error.requestId ?? fallbackRequestId;
+  return jsonResponse(
+    {
+      error: {
+        code: error.code,
+        details: error.details,
+        message: error.message,
+        requestId,
+        retryable: error.retryable,
+      },
+    },
+    {
+      headers: { 'x-request-id': requestId },
+      status: error.status,
+    },
+  );
 }

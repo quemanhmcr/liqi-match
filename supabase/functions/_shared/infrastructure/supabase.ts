@@ -18,6 +18,25 @@ export function createServiceClient() {
   });
 }
 
+export function createUserClient(accessToken: string) {
+  const supabaseUrl = Deno.env.get('SUPABASE_URL');
+  const anonymousKey = Deno.env.get('SUPABASE_ANON_KEY');
+
+  if (!supabaseUrl || !anonymousKey) {
+    throw new Error('SUPABASE_URL and SUPABASE_ANON_KEY are required');
+  }
+
+  return createClient(supabaseUrl, anonymousKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+    global: {
+      headers: { authorization: `Bearer ${accessToken}` },
+    },
+  });
+}
+
 export async function authenticateUser(accessToken: string) {
   const supabase = createServiceClient();
   const { data, error } = await supabase.auth.getUser(accessToken);

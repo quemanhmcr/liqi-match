@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(48);
+select plan(49);
 
 select has_table('public', 'players', 'canonical players table exists');
 select has_table('public', 'player_profiles_v1', 'canonical player profile mapping exists');
@@ -478,6 +478,19 @@ select throws_like(
   )$$,
   '%lifecycle_version_conflict%',
   'stale deletion lifecycle version returns a structured conflict'
+);
+
+
+select is(
+  public.request_player_deletion_v1(
+    jsonb_build_object(
+      'confirmation', 'DELETE',
+      'expectedLifecycleVersion', 4,
+      'idempotencyKey', 'account.delete.resume.v4.000000000101'
+    )
+  )->'lifecycle'->>'state',
+  'deleting',
+  'a resumed cleanup request accepts the current deleting lifecycle version'
 );
 
 select throws_like(

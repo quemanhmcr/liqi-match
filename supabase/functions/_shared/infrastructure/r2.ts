@@ -38,10 +38,15 @@ function encodePathSegment(value: string): string {
     .join('/');
 }
 
+function cryptoArrayBuffer(value: ArrayBuffer | Uint8Array): ArrayBuffer {
+  if (value instanceof ArrayBuffer) return value;
+  return Uint8Array.from(value).buffer;
+}
+
 async function hmac(key: ArrayBuffer | Uint8Array, value: string) {
   const cryptoKey = await crypto.subtle.importKey(
     'raw',
-    key,
+    cryptoArrayBuffer(key),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],
