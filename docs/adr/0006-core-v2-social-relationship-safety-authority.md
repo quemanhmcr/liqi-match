@@ -55,3 +55,9 @@ Rollback disables Core V2 reads and mutations through feature flags while preser
 - Before play starts, `player.blocked.v2` invalidates pending invites, join eligibility, member visibility and ready-check participation.
 - During `in_progress` or `completion_pending`, block does not erase membership or historical session evidence. The session consumer transitions to `disputed` and retains authoritative history for outcome/safety review.
 - Event replay must be idempotent and must not repeat the state transition.
+
+## Trust and repeat-play consumer agreement (S1/S4)
+
+Trust projection visibility is a separate privacy decision, not an alias for profile visibility. The Social provider returns `TrustVisibilityDecisionV2`; block always forces `canViewTrust = false`. Trust consumers may display cross-player projection only when this decision grants access.
+
+Repeat-play recommendation remains a Senior 4 semantic, but candidates must be removed whenever the Social provider reports either directional block. A private block or an unverified report never changes public reputation facts.

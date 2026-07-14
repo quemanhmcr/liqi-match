@@ -1,0 +1,10 @@
+{
+  "contractVersion": 2,
+  "viewerPlayerId": "20000000-0000-4000-8000-000000000001",
+  "targetPlayerId": "20000000-0000-4000-8000-000000000002",
+  "relationshipVersion": 4,
+  "privacyVersion": 2,
+  "trustVisibility": "friends",
+  "blocked": false,
+  "canViewTrust": true
+}
