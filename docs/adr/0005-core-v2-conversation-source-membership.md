@@ -45,6 +45,28 @@ remove messages from inbox/timeline and cannot be overridden by the separate
 conversation-level mute command. Delivery recipients and push recipients are
 therefore distinct facts.
 
+### Production relationship authorization seam
+
+The API conversation adapter receives the canonical Senior 1
+`RelationshipCapabilityReader` from application composition. It caches only the
+immutable direct-peer `PlayerId`; every inbox/detail/timeline/read/send/media and
+realtime operation reads fresh relationship capabilities. A denied capability
+returns `relationship_access_revoked`. Provider failure, identity mismatch or an
+unsupported contract version returns retryable
+`relationship_access_unavailable`; neither path falls back to cached permission.
+
+Inbox authorization is bounded-concurrent and removes revoked threads without
+leaking their total or unread counts. A provider outage fails the fetch rather
+than returning a partially trusted inbox. Media authorization runs before upload
+and again before the send command. Realtime joins only after authorization and
+rechecks on each signal.
+
+Authorization receipts are scoped to a session epoch. Account switch, sign-out
+or access-token loss closes channels and clears viewer/peer caches. The epoch is
+checked again at the RPC/upload boundary so a command authorized for one account
+cannot execute with a later account session. Token refresh for the same canonical
+account/player does not clear the channel or cache.
+
 System activity is stored as a message with the supplier event ID. A unique
 `source_event_id` makes replay idempotent and prevents duplicate system messages.
 The payload is presentation data, not a second copy of relationship/session

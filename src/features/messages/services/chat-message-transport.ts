@@ -56,6 +56,11 @@ export type AdvanceChatReadReceipt = {
 };
 
 export type ChatConversationRealtimeEvent =
+  | {
+      code: 'relationship_access_revoked' | 'relationship_access_unavailable';
+      kind: 'access-revoked';
+      retryable: boolean;
+    }
   | { kind: 'connected' }
   | { kind: 'changed' }
   | { kind: 'disconnected'; retryable: boolean };

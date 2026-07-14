@@ -2,6 +2,8 @@ export type ConversationTelemetryEvent =
   | 'conversation.gap_recovery.failed'
   | 'conversation.gap_recovery.succeeded'
   | 'conversation.read.failed'
+  | 'conversation.relationship_access.revoked'
+  | 'conversation.relationship_access.unavailable'
   | 'conversation.read.succeeded'
   | 'conversation.realtime.connected'
   | 'conversation.realtime.disconnected'

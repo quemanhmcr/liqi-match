@@ -3,6 +3,7 @@ import * as Crypto from 'expo-crypto';
 import { z } from 'zod';
 
 import type { AuthSession } from '@/shared/auth/auth-service';
+import type { RelationshipCapabilityReader } from '@/entities/social-relationship';
 import { env } from '@/shared/config/env';
 import {
   uploadChatAttachment,
@@ -40,7 +41,7 @@ import type {
   SendChatMessageReceipt,
   SendChatTextCommand,
 } from './chat-message-transport';
-import type { ChatRepository, MessagesRequestContext } from './chat-repository';
+import type { ChatRepository } from './chat-repository';
 import { emitConversationTelemetry } from './conversation-telemetry';
 
 const ConversationParticipantSurfaceV1Schema = z.object({
@@ -133,6 +134,7 @@ export type SupabaseConversationAdapterOptions = {
   accessTokenProvider: AccessTokenProvider;
   accessTokenSubscriber: AccessTokenSubscriber;
   realtimeClient: RealtimeClient;
+  relationshipCapabilitiesProvider: RelationshipCapabilityReader;
   request?: RpcRequest;
   uploadAttachment?: UploadAttachment;
 };
@@ -144,11 +146,15 @@ export function createSupabaseConversationAdapter(
   const accessTokenProvider = options.accessTokenProvider;
   const accessTokenSubscriber = options.accessTokenSubscriber;
   const realtimeClient = options.realtimeClient;
+  const relationshipCapabilitiesProvider =
+    options.relationshipCapabilitiesProvider;
   const uploadAttachment = options.uploadAttachment ?? uploadChatAttachment;
   const networkListeners = new Set<(state: ChatNetworkState) => void>();
   const channels = new Map<string, RealtimeChannel>();
   const viewerByConversation = new Map<string, string>();
+  const peerByConversation = new Map<string, string>();
   let session: AuthSession | null = null;
+  let sessionEpoch = 0;
   let networkState: ChatNetworkState = 'online';
   let requestSequence = 0;
 
@@ -169,7 +175,18 @@ export function createSupabaseConversationAdapter(
     return session;
   };
 
-  const requireValidSession = async () => {
+  const requireValidSession = async (expectedSessionEpoch?: number) => {
+    const observedSessionEpoch = sessionEpoch;
+    if (
+      expectedSessionEpoch !== undefined &&
+      observedSessionEpoch !== expectedSessionEpoch
+    ) {
+      throw new MessagesServiceError(
+        'relationship_access_unavailable',
+        'Conversation authorization belongs to a stale account session.',
+        true,
+      );
+    }
     const current = requireSession();
     const accessToken = await accessTokenProvider(60);
     if (!accessToken) {
@@ -177,6 +194,17 @@ export function createSupabaseConversationAdapter(
         'unauthenticated',
         'Phiên đăng nhập không còn hợp lệ.',
         false,
+      );
+    }
+    if (
+      sessionEpoch !== observedSessionEpoch ||
+      (expectedSessionEpoch !== undefined &&
+        sessionEpoch !== expectedSessionEpoch)
+    ) {
+      throw new MessagesServiceError(
+        'relationship_access_unavailable',
+        'Conversation authorization changed while resolving the session.',
+        true,
       );
     }
     return accessToken === current.accessToken
@@ -195,6 +223,9 @@ export function createSupabaseConversationAdapter(
 
   const unsubscribeAccessToken = accessTokenSubscriber((accessToken) => {
     if (!accessToken) {
+      sessionEpoch += 1;
+      viewerByConversation.clear();
+      peerByConversation.clear();
       void removeAllChannels();
       return;
     }
@@ -207,12 +238,13 @@ export function createSupabaseConversationAdapter(
     functionName: string,
     body: Record<string, unknown>,
     signal?: AbortSignal,
+    expectedSessionEpoch?: number,
   ) => {
     try {
       const result = await request<T>({
         body,
         functionName,
-        session: await requireValidSession(),
+        session: await requireValidSession(expectedSessionEpoch),
         signal,
       });
       setNetworkState('online');
@@ -235,6 +267,161 @@ export function createSupabaseConversationAdapter(
     };
   };
 
+  const rememberSurfaceIdentity = (surface: ConversationMobileSurfaceV1) => {
+    const conversationId = surface.conversation.conversationId;
+    const peer = surface.participants.find(
+      (participant) => !participant.isSelf,
+    );
+    if (!peer) {
+      throw new MessagesServiceError(
+        'contract_violation',
+        'Conversation trực tiếp thiếu canonical peer PlayerId.',
+        false,
+      );
+    }
+    viewerByConversation.set(conversationId, surface.viewer.playerId);
+    peerByConversation.set(conversationId, peer.playerId);
+    return peer.playerId;
+  };
+
+  const authorizePeer = async (
+    peerPlayerId: string,
+    requirement: 'message' | 'view',
+  ) => {
+    const authorizationEpoch = sessionEpoch;
+    const activeSession = await requireValidSession(authorizationEpoch);
+    const viewerPlayerId = activeSession.principal?.playerId;
+    if (
+      !viewerPlayerId ||
+      !activeSession.lifecycle ||
+      activeSession.lifecycle.playerId !== viewerPlayerId ||
+      activeSession.lifecycle.state !== 'active' ||
+      !activeSession.lifecycle.messagingAllowed
+    ) {
+      throw new MessagesServiceError(
+        'unauthenticated',
+        'Canonical player session is required for conversation access.',
+        false,
+      );
+    }
+
+    let relationship;
+    try {
+      relationship = await relationshipCapabilitiesProvider.getRelationship(
+        activeSession,
+        peerPlayerId,
+      );
+    } catch {
+      emitConversationTelemetry(
+        'conversation.relationship_access.unavailable',
+        {
+          requirement,
+        },
+      );
+      throw new MessagesServiceError(
+        'relationship_access_unavailable',
+        'Relationship authority is temporarily unavailable.',
+        true,
+      );
+    }
+
+    if (
+      relationship.contractVersion !== 2 ||
+      relationship.viewerPlayerId !== viewerPlayerId ||
+      relationship.targetPlayerId !== peerPlayerId
+    ) {
+      emitConversationTelemetry(
+        'conversation.relationship_access.unavailable',
+        {
+          requirement,
+        },
+      );
+      throw new MessagesServiceError(
+        'relationship_access_unavailable',
+        'Relationship authority returned incompatible identity or contract data.',
+        true,
+      );
+    }
+
+    if (authorizationEpoch !== sessionEpoch) {
+      throw new MessagesServiceError(
+        'relationship_access_unavailable',
+        'Relationship authorization belongs to a stale account session.',
+        true,
+      );
+    }
+
+    const allowed =
+      relationship.capabilities.canViewConversation &&
+      (requirement === 'view' || relationship.capabilities.canMessage);
+    if (!allowed) {
+      emitConversationTelemetry('conversation.relationship_access.revoked', {
+        blocked: relationship.capabilities.blocked,
+        requirement,
+      });
+      throw new MessagesServiceError(
+        'relationship_access_revoked',
+        'Relationship authority revoked conversation access.',
+        false,
+      );
+    }
+    return { relationship, sessionEpoch: authorizationEpoch };
+  };
+
+  const loadSurface = async (conversationId: string, signal?: AbortSignal) => {
+    const raw = await call<unknown>(
+      'get_conversation_surface_v1',
+      { p_conversation_id: conversationId },
+      signal,
+    );
+    const surface = parseSurface(raw);
+    rememberSurfaceIdentity(surface);
+    return surface;
+  };
+
+  const authorizeSurface = async (
+    surface: ConversationMobileSurfaceV1,
+    requirement: 'message' | 'view',
+  ) => {
+    const activeSession = requireSession();
+    if (
+      activeSession.principal?.playerId &&
+      surface.viewer.playerId !== activeSession.principal.playerId
+    ) {
+      throw new MessagesServiceError(
+        'relationship_access_unavailable',
+        'Conversation viewer identity does not match the active player.',
+        true,
+      );
+    }
+    const peerPlayerId = rememberSurfaceIdentity(surface);
+    const { relationship } = await authorizePeer(peerPlayerId, requirement);
+    return {
+      ...surface,
+      viewer: {
+        ...surface.viewer,
+        canMessage:
+          surface.viewer.canMessage && relationship.capabilities.canMessage,
+      },
+    };
+  };
+
+  const authorizeConversation = async (
+    conversationId: string,
+    requirement: 'message' | 'view',
+    signal?: AbortSignal,
+  ) => {
+    let peerPlayerId = peerByConversation.get(conversationId);
+    let viewerPlayerId = viewerByConversation.get(conversationId);
+    if (!peerPlayerId || !viewerPlayerId) {
+      const surface = await loadSurface(conversationId, signal);
+      peerPlayerId = rememberSurfaceIdentity(surface);
+      viewerPlayerId = surface.viewer.playerId;
+    }
+    const authorization = await authorizePeer(peerPlayerId, requirement);
+    return { ...authorization, viewerPlayerId };
+  };
+
   const repository: ChatRepository = {
     async getConversation(conversationId, context) {
       const raw = await call<unknown>(
@@ -251,11 +438,7 @@ export function createSupabaseConversationAdapter(
         throw error;
       });
       if (raw === null) return null;
-      const surface = parseSurface(raw);
-      viewerByConversation.set(
-        surface.conversation.conversationId,
-        surface.viewer.playerId,
-      );
+      const surface = await authorizeSurface(parseSurface(raw), 'view');
       return MessageConversationResponseSchema.parse(
         response(toConversationDetail(surface)),
       );
@@ -263,12 +446,8 @@ export function createSupabaseConversationAdapter(
 
     async getMessagePage(conversationId, input = {}, context) {
       const canonical = MessageTimelineParamsSchema.parse(input);
-      const viewerPlayerId = await ensureViewerPlayerId(
-        conversationId,
-        context,
-        call,
-        viewerByConversation,
-      );
+      const { sessionEpoch: authorizedEpoch, viewerPlayerId } =
+        await authorizeConversation(conversationId, 'view', context?.signal);
       const beforeSequence = decodeTimelineCursor(
         canonical.cursor,
         conversationId,
@@ -282,6 +461,7 @@ export function createSupabaseConversationAdapter(
           p_limit: Math.min(canonical.limit + 1, 100),
         },
         context?.signal,
+        authorizedEpoch,
       );
       const messages = z.array(MessageV1Schema).parse(raw);
       const hasNextPage = messages.length > canonical.limit;
@@ -305,12 +485,8 @@ export function createSupabaseConversationAdapter(
 
     async getMessagesAfter(conversationId, afterSequence, context) {
       try {
-        const viewerPlayerId = await ensureViewerPlayerId(
-          conversationId,
-          context,
-          call,
-          viewerByConversation,
-        );
+        const { sessionEpoch: authorizedEpoch, viewerPlayerId } =
+          await authorizeConversation(conversationId, 'view', context?.signal);
         const collected: MessageV1[] = [];
         let cursor = afterSequence;
         let pageCount = 0;
@@ -326,6 +502,7 @@ export function createSupabaseConversationAdapter(
               p_limit: 100,
             },
             context?.signal,
+            authorizedEpoch,
           );
           const messages = z.array(MessageV1Schema).parse(raw);
           for (const [index, message] of messages.entries()) {
@@ -377,15 +554,24 @@ export function createSupabaseConversationAdapter(
         context?.signal,
       );
       const page = ConversationInboxPageV1Schema.parse(raw);
+      const authorizedSurfaces = (
+        await mapWithConcurrency(page.items, 5, async (surface) => {
+          try {
+            return await authorizeSurface(surface, 'view');
+          } catch (error) {
+            if (
+              error instanceof MessagesServiceError &&
+              error.code === 'relationship_access_revoked'
+            ) {
+              return null;
+            }
+            throw error;
+          }
+        })
+      ).filter((surface): surface is ConversationMobileSurfaceV1 => !!surface);
       const normalizedQuery = canonical.query.trim().toLocaleLowerCase('vi');
-      const summaries = page.items.map((surface) => {
-        viewerByConversation.set(
-          surface.conversation.conversationId,
-          surface.viewer.playerId,
-        );
-        return toConversationSummary(surface);
-      });
-      const filtered = summaries
+      const authorizedSummaries = authorizedSurfaces.map(toConversationSummary);
+      const filtered = authorizedSummaries
         .filter((item) =>
           canonical.filter === 'unread'
             ? item.viewerState.unreadCount > 0
@@ -413,8 +599,10 @@ export function createSupabaseConversationAdapter(
               ? encodeInboxCursor(page.pageInfo.nextCursor)
               : null,
           },
-          totalCount: page.totalCount,
-          unreadConversationCount: page.unreadConversationCount,
+          totalCount: authorizedSummaries.length,
+          unreadConversationCount: authorizedSummaries.filter(
+            (item) => item.viewerState.unreadCount > 0,
+          ).length,
         }),
       );
     },
@@ -423,11 +611,20 @@ export function createSupabaseConversationAdapter(
   const transport: ChatMessageTransport = {
     async advanceRead(command: AdvanceChatReadCommand) {
       try {
-        const raw = await call<unknown>('advance_conversation_read_v1', {
-          p_conversation_id: command.conversationId,
-          p_correlation_id: cryptoCorrelationId(),
-          p_last_read_sequence: command.lastReadSequence,
-        });
+        const { sessionEpoch: authorizedEpoch } = await authorizeConversation(
+          command.conversationId,
+          'view',
+        );
+        const raw = await call<unknown>(
+          'advance_conversation_read_v1',
+          {
+            p_conversation_id: command.conversationId,
+            p_correlation_id: cryptoCorrelationId(),
+            p_last_read_sequence: command.lastReadSequence,
+          },
+          undefined,
+          authorizedEpoch,
+        );
         const result = AdvanceReadResultV1Schema.parse(raw);
         emitConversationTelemetry('conversation.read.succeeded', {
           repeated: result.repeated,
@@ -450,13 +647,19 @@ export function createSupabaseConversationAdapter(
       await removeAllChannels();
       networkListeners.clear();
       viewerByConversation.clear();
+      peerByConversation.clear();
+      sessionEpoch += 1;
       session = null;
     },
 
     getNetworkState: () => networkState,
 
     async sendMedia(command: SendChatMediaCommand) {
-      const activeSession = await requireValidSession();
+      const { sessionEpoch: authorizedEpoch } = await authorizeConversation(
+        command.conversationId,
+        'message',
+      );
+      const activeSession = await requireValidSession(authorizedEpoch);
       const uploaded = await uploadAttachment(activeSession, {
         fileName: command.media.fileName,
         fileSize: command.media.fileSize,
@@ -477,49 +680,128 @@ export function createSupabaseConversationAdapter(
     },
 
     async setSession(nextSession) {
+      const previousIdentity = conversationSessionIdentity(session);
+      const nextIdentity = conversationSessionIdentity(nextSession);
+      const identityChanged = previousIdentity !== nextIdentity;
       session = nextSession;
-      if (!nextSession) await removeAllChannels();
+      if (!nextSession || identityChanged) {
+        sessionEpoch += 1;
+        await removeAllChannels();
+        viewerByConversation.clear();
+        peerByConversation.clear();
+      }
     },
 
     subscribeConversation(conversationId, listener) {
+      let removed = false;
+      let channel: RealtimeChannel | null = null;
+      const subscriptionEpoch = sessionEpoch;
       const existing = channels.get(conversationId);
-      if (existing) void realtimeClient.removeChannel(existing);
+      if (existing) {
+        channels.delete(conversationId);
+        void realtimeClient.removeChannel(existing);
+      }
 
-      const channel = realtimeClient
-        .channel(`conversation:${conversationId}`, {
-          config: { private: true },
-        })
-        .on('broadcast', { event: 'message.changed' }, () => {
-          emitConversationTelemetry('conversation.realtime.message_signal');
-          listener({ kind: 'changed' });
-        })
-        .subscribe((status) => {
-          if (status === 'SUBSCRIBED') {
-            setNetworkState('online');
-            emitConversationTelemetry('conversation.realtime.connected');
-            listener({ kind: 'connected' });
-          } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-            setNetworkState('offline');
-            emitConversationTelemetry('conversation.realtime.disconnected', {
-              retryable: true,
-              status,
-            });
-            listener({ kind: 'disconnected', retryable: true });
-          } else if (status === 'CLOSED') {
-            emitConversationTelemetry('conversation.realtime.disconnected', {
-              retryable: true,
-              status,
-            });
-            listener({ kind: 'disconnected', retryable: true });
-          }
-        });
-      channels.set(conversationId, channel);
-      return {
-        remove() {
+      const rejectAccess = async (error: unknown) => {
+        if (removed) return;
+        const accessError = relationshipRealtimeAccessError(error);
+        removed = true;
+        if (channel) {
           if (channels.get(conversationId) === channel) {
             channels.delete(conversationId);
           }
-          void realtimeClient.removeChannel(channel);
+          await realtimeClient.removeChannel(channel);
+        }
+        listener({
+          code: accessError.code,
+          kind: 'access-revoked',
+          retryable: accessError.retryable,
+        });
+      };
+
+      void (async () => {
+        try {
+          await authorizeConversation(conversationId, 'view');
+          if (removed || subscriptionEpoch !== sessionEpoch) return;
+          channel = realtimeClient
+            .channel(`conversation:${conversationId}`, {
+              config: { private: true },
+            })
+            .on('broadcast', { event: 'message.changed' }, () => {
+              void (async () => {
+                try {
+                  if (
+                    subscriptionEpoch !== sessionEpoch ||
+                    channels.get(conversationId) !== channel
+                  ) {
+                    return;
+                  }
+                  await authorizeConversation(conversationId, 'view');
+                  if (
+                    removed ||
+                    subscriptionEpoch !== sessionEpoch ||
+                    channels.get(conversationId) !== channel
+                  ) {
+                    return;
+                  }
+                  emitConversationTelemetry(
+                    'conversation.realtime.message_signal',
+                  );
+                  listener({ kind: 'changed' });
+                } catch (error) {
+                  await rejectAccess(error);
+                }
+              })();
+            })
+            .subscribe((status) => {
+              if (
+                removed ||
+                subscriptionEpoch !== sessionEpoch ||
+                channels.get(conversationId) !== channel
+              ) {
+                return;
+              }
+              if (status === 'SUBSCRIBED') {
+                setNetworkState('online');
+                emitConversationTelemetry('conversation.realtime.connected');
+                listener({ kind: 'connected' });
+              } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+                setNetworkState('offline');
+                emitConversationTelemetry(
+                  'conversation.realtime.disconnected',
+                  {
+                    retryable: true,
+                    status,
+                  },
+                );
+                listener({ kind: 'disconnected', retryable: true });
+              } else if (status === 'CLOSED') {
+                emitConversationTelemetry(
+                  'conversation.realtime.disconnected',
+                  {
+                    retryable: true,
+                    status,
+                  },
+                );
+                listener({ kind: 'disconnected', retryable: true });
+              }
+            });
+          channels.set(conversationId, channel);
+        } catch (error) {
+          await rejectAccess(error);
+        }
+      })();
+
+      return {
+        remove() {
+          if (removed) return;
+          removed = true;
+          if (channel) {
+            if (channels.get(conversationId) === channel) {
+              channels.delete(conversationId);
+            }
+            void realtimeClient.removeChannel(channel);
+          }
         },
       };
     },
@@ -537,13 +819,22 @@ export function createSupabaseConversationAdapter(
     const kind = String(content.kind ?? 'unknown');
     emitConversationTelemetry('conversation.send.started', { kind });
     try {
-      const raw = await call<unknown>('send_message_v1', {
-        p_client_created_at: command.clientCreatedAt,
-        p_client_message_id: command.clientMessageId,
-        p_content: content,
-        p_conversation_id: command.conversationId,
-        p_correlation_id: cryptoCorrelationId(),
-      });
+      const { sessionEpoch: authorizedEpoch } = await authorizeConversation(
+        command.conversationId,
+        'message',
+      );
+      const raw = await call<unknown>(
+        'send_message_v1',
+        {
+          p_client_created_at: command.clientCreatedAt,
+          p_client_message_id: command.clientMessageId,
+          p_content: content,
+          p_conversation_id: command.conversationId,
+          p_correlation_id: cryptoCorrelationId(),
+        },
+        undefined,
+        authorizedEpoch,
+      );
       const result = SendMessageResultV1Schema.parse(raw);
       emitConversationTelemetry('conversation.send.succeeded', {
         kind,
@@ -566,6 +857,57 @@ export function createSupabaseConversationAdapter(
   }
 
   return Object.assign(repository, transport) as SupabaseConversationAdapter;
+}
+
+function conversationSessionIdentity(session: AuthSession | null) {
+  if (!session) return null;
+  const accountId = session.principal?.accountId ?? session.user.id;
+  const playerId = session.principal?.playerId ?? 'unresolved-player';
+  return `${accountId}:${playerId}`;
+}
+
+function relationshipRealtimeAccessError(error: unknown): Readonly<{
+  code: 'relationship_access_revoked' | 'relationship_access_unavailable';
+  retryable: boolean;
+}> {
+  if (error instanceof MessagesServiceError) {
+    if (error.code === 'relationship_access_revoked') {
+      return { code: error.code, retryable: error.retryable };
+    }
+    if (error.code === 'relationship_access_unavailable') {
+      return { code: error.code, retryable: error.retryable };
+    }
+  }
+  return {
+    code: 'relationship_access_unavailable',
+    retryable: true,
+  };
+}
+
+async function mapWithConcurrency<T, R>(
+  items: readonly T[],
+  concurrency: number,
+  mapper: (item: T, index: number) => Promise<R>,
+): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let nextIndex = 0;
+  const worker = async () => {
+    for (;;) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= items.length) return;
+      const item = items[index];
+      if (item === undefined) continue;
+      results[index] = await mapper(item, index);
+    }
+  };
+  await Promise.all(
+    Array.from(
+      { length: Math.min(Math.max(concurrency, 1), items.length) },
+      () => worker(),
+    ),
+  );
+  return results;
 }
 
 async function requestRpc<T>(input: {
@@ -593,28 +935,6 @@ function parseSurface(raw: unknown) {
       error instanceof Error ? error.message : undefined,
     );
   }
-}
-
-async function ensureViewerPlayerId(
-  conversationId: string,
-  context: MessagesRequestContext | undefined,
-  call: <T>(
-    functionName: string,
-    body: Record<string, unknown>,
-    signal?: AbortSignal,
-  ) => Promise<T>,
-  cache: Map<string, string>,
-) {
-  const cached = cache.get(conversationId);
-  if (cached) return cached;
-  const raw = await call<unknown>(
-    'get_conversation_surface_v1',
-    { p_conversation_id: conversationId },
-    context?.signal,
-  );
-  const surface = parseSurface(raw);
-  cache.set(conversationId, surface.viewer.playerId);
-  return surface.viewer.playerId;
 }
 
 function toConversationSummary(

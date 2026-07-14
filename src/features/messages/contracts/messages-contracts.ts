@@ -288,6 +288,8 @@ export type MessagesErrorCode =
   | 'network_error'
   | 'not_found'
   | 'rate_limited'
+  | 'relationship_access_revoked'
+  | 'relationship_access_unavailable'
   | 'stale_cursor'
   | 'unauthenticated'
   | 'unknown'

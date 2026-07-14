@@ -127,10 +127,12 @@ export function createSimulationApplicationServices(
 }
 
 export function createApiApplicationServices(): ApiApplicationServices {
+  const relationshipRepository = new SupabaseSocialRelationshipRepository();
   const messages = createSupabaseConversationAdapter({
     accessTokenProvider: getValidAccessToken,
     accessTokenSubscriber: subscribeAccessToken,
     realtimeClient: supabaseAuthClient,
+    relationshipCapabilitiesProvider: relationshipRepository,
   });
   return {
     assetResolver: createGoldenWorldAssetResolver({
@@ -147,7 +149,7 @@ export function createApiApplicationServices(): ApiApplicationServices {
     mode: 'api',
     notificationRepository: createApiNotificationInboxRepository(),
     profileRepository: createApiProfileRepository(),
-    relationshipRepository: new SupabaseSocialRelationshipRepository(),
+    relationshipRepository,
     scenarioControl: null,
     simulationRuntime: null,
   };

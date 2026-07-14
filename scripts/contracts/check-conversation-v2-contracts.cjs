@@ -23,6 +23,27 @@ const adr = fs.readFileSync(
   ),
   'utf8',
 );
+const productionAdapter = fs.readFileSync(
+  path.join(
+    process.cwd(),
+    'src/features/messages/services/supabase-conversation-adapter.ts',
+  ),
+  'utf8',
+);
+const applicationServices = fs.readFileSync(
+  path.join(
+    process.cwd(),
+    'src/app-shell/runtime/create-application-services.ts',
+  ),
+  'utf8',
+);
+const messageContracts = fs.readFileSync(
+  path.join(
+    process.cwd(),
+    'src/features/messages/contracts/messages-contracts.ts',
+  ),
+  'utf8',
+);
 const failures = [];
 
 function requireInvariant(condition, message) {
@@ -108,6 +129,53 @@ requireInvariant(
     /privileged moderation seam/.test(adr) &&
     /Delivery recipients and push recipients/.test(adr),
   'ADR must preserve supplier-owned membership and Core V1 identity authority',
+);
+
+requireInvariant(
+  applicationServices.includes(
+    'relationshipCapabilitiesProvider: relationshipRepository',
+  ),
+  'API composition must inject the canonical relationship capability provider',
+);
+for (const semantic of [
+  'relationshipCapabilitiesProvider.getRelationship',
+  'peerByConversation',
+  'sessionEpoch',
+  'mapWithConcurrency(page.items, 5',
+]) {
+  requireInvariant(
+    productionAdapter.includes(semantic),
+    `production conversation authorization missing ${semantic}`,
+  );
+}
+requireInvariant(
+  /authorizeConversation\([\s\S]*command\.conversationId,[\s\S]*'message'/.test(
+    productionAdapter,
+  ),
+  'production message commands must re-authorize relationship access',
+);
+requireInvariant(
+  /authorizeConversation\([\s\S]*command\.conversationId,[\s\S]*'view'/.test(
+    productionAdapter,
+  ),
+  'production read commands must re-authorize relationship access',
+);
+for (const code of [
+  'relationship_access_revoked',
+  'relationship_access_unavailable',
+]) {
+  requireInvariant(
+    messageContracts.includes(`'${code}'`) && productionAdapter.includes(code),
+    `missing stable relationship access code ${code}`,
+  );
+}
+requireInvariant(
+  /caches only the[\s\S]*PlayerId/.test(adr) &&
+    /every inbox\/detail\/timeline\/read\/send\/media and[\s\S]*reads fresh/.test(
+      adr,
+    ) &&
+    /session epoch/.test(adr),
+  'ADR must document fresh capabilities and account-scoped authorization',
 );
 
 if (failures.length) {
