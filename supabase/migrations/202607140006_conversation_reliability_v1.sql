@@ -623,6 +623,56 @@ begin
 end;
 $$;
 
+create or replace function private.apply_conversation_created_projection_v1(
+  p_event_id uuid
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  created_event jsonb;
+  projection_receipt jsonb;
+begin
+  select event.payload into created_event
+  from private.outbox_events as event
+  where event.id = p_event_id
+    and event.event_type = 'conversation.created.v1'
+    and event.contract_version = 1;
+
+  if created_event is null then
+    raise exception 'Canonical conversation.created.v1 event not found'
+      using errcode = 'P0002', detail = 'conversation_created_event_not_found';
+  end if;
+
+  begin
+    execute 'select public.apply_conversation_created_to_match_v1($1)'
+      into projection_receipt
+      using created_event;
+  exception
+    when undefined_function then
+      raise exception 'Match conversation projection provider is unavailable'
+        using errcode = '55000', detail = 'match_projection_provider_unavailable';
+  end;
+
+  if projection_receipt is null
+    or projection_receipt ->> 'conversationId'
+      is distinct from created_event #>> '{data,conversation,conversationId}'
+    or projection_receipt ->> 'matchId'
+      is distinct from created_event #>> '{data,conversation,matchId}'
+    or projection_receipt ->> 'correlationId'
+      is distinct from created_event ->> 'correlationId'
+    or projection_receipt ->> 'homeStatus' is distinct from 'conversation_ready'
+  then
+    raise exception 'Match conversation projection returned an invalid receipt'
+      using errcode = '22023', detail = 'match_projection_contract_violation';
+  end if;
+
+  return projection_receipt;
+end;
+$$;
+
 create or replace function private.consume_conversation_bootstrap_event_v1(
   p_event_id uuid
 )
@@ -718,6 +768,10 @@ begin
       raise exception 'Bootstrap retry conflicts with existing conversation'
         using errcode = '23505', detail = 'conversation_bootstrap_conflict';
     end if;
+
+    perform private.apply_conversation_created_projection_v1(
+      existing_receipt.conversation_created_event_id
+    );
 
     update private.outbox_events
     set status = 'processed',
@@ -847,6 +901,8 @@ begin
     format('conversation.created.v1:%s', conversation.id)
   );
 
+  perform private.apply_conversation_created_projection_v1(created_event_id);
+
   insert into private.conversation_bootstrap_receipts_v1 (
     match_id,
     bootstrap_event_id,
@@ -865,11 +921,6 @@ begin
     conversation.id,
     created_event_id
   );
-
-  update public.matches
-  set home_status_v1 = 'conversation_ready'
-  where id = match_row.id
-    and home_status_v1 = 'conversation_pending';
 
   update private.outbox_events
   set status = 'processed',

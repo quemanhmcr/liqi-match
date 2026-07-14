@@ -90,8 +90,14 @@ requireInvariant(
 );
 requireInvariant(
   /'conversation\.created\.v1'/i.test(bootstrap) &&
-    /home_status_v1 = 'conversation_ready'/i.test(bootstrap),
-  'successful bootstrap must emit conversation.created.v1 and project ready status',
+    /apply_conversation_created_projection_v1/i.test(bootstrap),
+  'successful bootstrap must emit conversation.created.v1 and invoke the Match projection seam',
+);
+requireInvariant(
+  !/update public\.matches[\s\S]*home_status_v1 = 'conversation_ready'/i.test(
+    bootstrap,
+  ),
+  'Conversation bootstrap must not mutate Mission 2 Home status directly',
 );
 requireInvariant(
   /messages_client_id_v1_key/i.test(migration) &&
