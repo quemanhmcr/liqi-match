@@ -145,14 +145,21 @@ export type SessionConversationProvisioningReceipt = Readonly<{
   sourceAggregateVersion: number;
 }>;
 
-/** Consumer seam for Senior 3. Provisioning occurs after the Session commit. */
+export type SessionConversationSyncInput = Readonly<{
+  correlationId: string;
+  membership: PlaySessionMembershipProjectionV2;
+  sourceAggregateVersion: number;
+  title: string;
+}>;
+
+/** Consumer seam for Senior 3. All calls occur after the Session commit. */
 export interface SessionConversationProvisioner {
-  provision(input: {
-    correlationId: string;
-    membership: PlaySessionMembershipProjectionV2;
-    sourceAggregateVersion: number;
-    title: string;
-  }): Promise<SessionConversationProvisioningReceipt>;
+  provision(
+    input: SessionConversationSyncInput,
+  ): Promise<SessionConversationProvisioningReceipt>;
+  reconcile(
+    input: SessionConversationSyncInput & { conversationId: ConversationId },
+  ): Promise<SessionConversationProvisioningReceipt>;
 }
 
 export interface PlaySessionMaintenanceService {
