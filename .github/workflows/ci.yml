@@ -42,6 +42,14 @@ jobs:
       - name: Expo Doctor
         run: npx expo-doctor
 
+      - name: Check generated Core V1 contracts
+        run: npm run contracts:check
+
+      - name: Check production authority invariants
+        run: |
+          npm run match-authority:check
+          npm run conversation-authority:check
+
       - name: Check formatting
         run: npm run format:check
 
@@ -84,7 +92,47 @@ jobs:
           version: 2.109.0
 
       - name: Start Supabase
-        run: supabase start
+        shell: bash
+        run: |
+          set -o pipefail
+          log_file="$RUNNER_TEMP/supabase-start.log"
+          if supabase start 2>&1 | tee "$log_file"; then
+            exit 0
+          fi
+
+          {
+            echo "### Supabase start failure"
+            echo '```text'
+            tail -n 120 "$log_file"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          python - "$log_file" <<'PYTHON'
+          import pathlib
+          import re
+          import sys
+
+          text = pathlib.Path(sys.argv[1]).read_text(
+              encoding="utf-8",
+              errors="replace",
+          )
+          text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
+          error_index = text.rfind("\nERROR:")
+          if error_index < 0:
+              error_index = text.rfind("ERROR:")
+          excerpt = (
+              text[error_index : error_index + 10000]
+              if error_index >= 0
+              else text[-10000:]
+          )
+          escaped = (
+              excerpt.replace("%", "%25")
+              .replace("\r", "%0D")
+              .replace("\n", "%0A")
+          )
+          print(f"::error title=Supabase start failure::{escaped}")
+          PYTHON
+          exit 1
 
       - name: Reset database
         run: supabase db reset
@@ -93,7 +141,76 @@ jobs:
         run: supabase db lint
 
       - name: Test database
-        run: supabase test db
+        shell: bash
+        run: |
+          set -o pipefail
+          log_file="$RUNNER_TEMP/supabase-test.log"
+          if supabase test db 2>&1 | tee "$log_file"; then
+            exit 0
+          fi
+
+          {
+            echo "### Supabase pgTAP failure"
+            echo '```text'
+            tail -n 220 "$log_file"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          python - "$log_file" <<'PYTHON'
+          import pathlib
+          import re
+          import sys
+
+          text = pathlib.Path(sys.argv[1]).read_text(
+              encoding="utf-8",
+              errors="replace",
+          )
+          text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
+          lines = text.splitlines()
+          patterns = (
+              "psql:",
+              "ERROR:",
+              "not ok",
+              "Bail out!",
+              "Failed test",
+              "Failed tests:",
+              "Parse errors:",
+              "You planned",
+          )
+          blocks = []
+          for index, line in enumerate(lines):
+              if "psql:" in line and "ERROR:" in line:
+                  blocks.append(
+                      "\n".join(
+                          lines[max(0, index - 2) : min(len(lines), index + 14)]
+                      )
+                  )
+              elif line.lstrip().startswith("not ok"):
+                  blocks.append(
+                      "\n".join(
+                          lines[max(0, index - 2) : min(len(lines), index + 12)]
+                      )
+                  )
+          selected = [
+              line for line in lines if any(pattern in line for pattern in patterns)
+          ]
+          if selected:
+              blocks.append("\n".join(selected[-120:]))
+          if not blocks:
+              blocks.append(text[-18000:])
+
+          for index, block in enumerate(blocks[:40], start=1):
+              escaped = (
+                  block[-14000:]
+                  .replace("%", "%25")
+                  .replace("\r", "%0D")
+                  .replace("\n", "%0A")
+              )
+              print(
+                  f"::error title=Supabase pgTAP failure {index}::{escaped}"
+              )
+          PYTHON
+          exit 1
 
       - name: Preload postgres-meta image
         run: |

@@ -1,0 +1,15 @@
+{
+  "playerId": "20000000-0000-4000-8000-000000000002",
+  "profileSummary": {
+    "playerId": "20000000-0000-4000-8000-000000000002",
+    "profileId": "30000000-0000-4000-8000-000000000002",
+    "profileVersion": 4,
+    "displayName": "Minh Anh",
+    "avatarUrl": null,
+    "rank": null,
+    "primaryRole": null
+  },
+  "relationshipState": "liked",
+  "capabilities": { "canLike": false, "canPass": true, "canInvite": false },
+  "recommendationContext": { "reasonCodes": ["previous_like"] }
+}

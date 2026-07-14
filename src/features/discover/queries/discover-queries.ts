@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  MatchDecisionCommandJournal,
+  useMatchDecisionRepository,
+} from '@/entities/match-decision';
+import {
   useAssetResolver,
   usePreloadAssetSurface,
 } from '@/entities/media-asset';
@@ -27,6 +31,8 @@ import {
 import type { DiscoverRequestContext } from '../services/discover-repository';
 import { useDiscoverRepository } from '../runtime/DiscoverRepositoryProvider';
 import { discoverQueryKeys } from './discover-query-keys';
+
+const matchDecisionJournal = new MatchDecisionCommandJournal();
 
 export function useDiscoverOverviewQuery(params: DiscoverOverviewParams) {
   const repository = useDiscoverRepository();
@@ -73,6 +79,40 @@ export function useDiscoverPlayersQuery(params: DiscoverPlayerListParams) {
     queryFn: () =>
       fetchDiscoverPlayers(repository, assetResolver, context, canonical),
     queryKey: discoverQueryKeys.players(context.viewerId, canonical),
+  });
+}
+
+export function usePlayerDecisionMutation() {
+  const repository = useMatchDecisionRepository();
+  const { session } = useAuth();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      decision,
+      intentVersion,
+      playerId,
+      profileVersion,
+    }: {
+      decision: 'like' | 'pass';
+      intentVersion: number;
+      playerId: string;
+      profileVersion: number;
+    }) => {
+      if (!session) throw new Error('Authentication is required.');
+      const command = await matchDecisionJournal.command({
+        accountId: session.user.id,
+        decision,
+        expectedIntentVersion: intentVersion,
+        expectedTargetProfileVersion: profileVersion,
+        targetPlayerId: playerId,
+      });
+      const receipt = await repository.decide(session, command);
+      await matchDecisionJournal.complete(session.user.id, command);
+      return { decision, playerId, receipt };
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: discoverQueryKeys.root });
+    },
   });
 }
 

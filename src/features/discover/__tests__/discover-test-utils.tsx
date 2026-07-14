@@ -8,6 +8,10 @@ import { render } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import {
+  InMemoryMatchDecisionRepository,
+  MatchDecisionRepositoryProvider,
+} from '@/entities/match-decision';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import {
   AssetResolverProvider,
@@ -53,17 +57,20 @@ export function renderDiscoverScreen(
   });
 
   const repository = new MockDiscoverRepository();
+  const matchDecisionRepository = new InMemoryMatchDecisionRepository();
   const assetResolver = createGoldenWorldAssetResolver();
 
   return render(
     <AuthStateProvider initialSession={discoverTestSession}>
       <QueryClientProvider client={queryClient}>
         <AssetResolverProvider resolver={assetResolver}>
-          <DiscoverRepositoryProvider repository={repository}>
-            <SafeAreaProvider initialMetrics={initialMetrics}>
-              {ui}
-            </SafeAreaProvider>
-          </DiscoverRepositoryProvider>
+          <MatchDecisionRepositoryProvider repository={matchDecisionRepository}>
+            <DiscoverRepositoryProvider repository={repository}>
+              <SafeAreaProvider initialMetrics={initialMetrics}>
+                {ui}
+              </SafeAreaProvider>
+            </DiscoverRepositoryProvider>
+          </MatchDecisionRepositoryProvider>
         </AssetResolverProvider>
       </QueryClientProvider>
     </AuthStateProvider>,

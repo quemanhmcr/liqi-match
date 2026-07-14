@@ -1,0 +1,9 @@
+{
+  "contractVersion": 1,
+  "notificationId": "90000000-0000-4000-8000-000000000001",
+  "sourceEventId": "80000000-0000-4000-8000-000000000001",
+  "deepLink": {
+    "target": "conversation",
+    "conversationId": "60000000-0000-4000-8000-000000000001"
+  }
+}

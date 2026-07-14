@@ -6,7 +6,7 @@ import {
   GOLDEN_PROFILE_IDS,
 } from '@/entities/simulation';
 
-import { ApplicationServiceUnavailableError } from '../application-service-error';
+import { ApiNotificationInboxRepository } from '@/entities/notifications';
 import {
   createApiApplicationServices,
   createSimulationApplicationServices,
@@ -184,7 +184,7 @@ describe('application service composition', () => {
     ).toBe(false);
   });
 
-  it('does not expose simulation lifecycle or silently replace API services', async () => {
+  it('exposes production services without simulation fallbacks', async () => {
     const services = createApiApplicationServices();
 
     expect(services.mode).toBe('api');
@@ -192,12 +192,14 @@ describe('application service composition', () => {
     expect(services.simulationRuntime).toBeNull();
     await expect(
       services.messageRepository.listConversations(),
-    ).rejects.toBeInstanceOf(ApplicationServiceUnavailableError);
-    await expect(
-      services.notificationRepository.list({
-        session: simulationSession(),
-      }),
-    ).rejects.toBeInstanceOf(ApplicationServiceUnavailableError);
+    ).rejects.toMatchObject({
+      code: 'unauthenticated',
+      name: 'MessagesServiceError',
+      retryable: false,
+    });
+    expect(services.notificationRepository).toBeInstanceOf(
+      ApiNotificationInboxRepository,
+    );
   });
 });
 

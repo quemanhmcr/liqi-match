@@ -1,0 +1,51 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "MessageV1",
+      "data": {
+        "messageId": "91000000-0000-4000-8000-000000000001",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "senderPlayerId": "20000000-0000-4000-8000-000000000001",
+        "clientMessageId": "client-message-a-0001",
+        "sequence": 1,
+        "content": {
+          "kind": "text",
+          "text": "Chào bạn, mình duo rank nhé?"
+        },
+        "createdAt": "2026-07-14T08:01:00.000Z"
+      }
+    },
+    {
+      "schema": "MessageSentEventV1",
+      "data": {
+        "eventId": "80000000-0000-4000-8000-000000000041",
+        "eventType": "message.sent.v1",
+        "aggregateType": "conversation",
+        "aggregateId": "90000000-0000-4000-8000-000000000001",
+        "occurredAt": "2026-07-14T08:10:00.000Z",
+        "correlationId": "70000000-0000-4000-8000-000000000001",
+        "causationId": "80000000-0000-4000-8000-000000000040",
+        "data": {
+          "message": {
+            "messageId": "91000000-0000-4000-8000-000000000001",
+            "conversationId": "90000000-0000-4000-8000-000000000001",
+            "senderPlayerId": "20000000-0000-4000-8000-000000000001",
+            "clientMessageId": "client-message-a-0001",
+            "sequence": 1,
+            "content": {
+              "kind": "text",
+              "text": "Chào bạn, mình duo rank nhé?"
+            },
+            "createdAt": "2026-07-14T08:01:00.000Z"
+          },
+          "recipientPlayerIds": ["20000000-0000-4000-8000-000000000002"]
+        }
+      }
+    }
+  ],
+  "expectation": {
+    "messageCreateCount": 1,
+    "sequence": 1
+  }
+}

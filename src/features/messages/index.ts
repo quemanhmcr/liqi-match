@@ -20,3 +20,17 @@ export {
   createMessagesSimulationResetParticipant,
   resetMessagesSimulationState,
 } from './runtime/messages-simulation-reset';
+
+export {
+  createSupabaseConversationAdapter,
+  type SupabaseConversationAdapter,
+  type SupabaseConversationAdapterOptions,
+} from './services/supabase-conversation-adapter';
+
+export {
+  emitConversationTelemetry,
+  setConversationTelemetrySink,
+  type ConversationTelemetryAttributes,
+  type ConversationTelemetryEvent,
+  type ConversationTelemetrySink,
+} from './services/conversation-telemetry';

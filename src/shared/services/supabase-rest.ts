@@ -1,11 +1,19 @@
 import type { AuthSession } from '@/shared/auth/auth-service';
+import {
+  CoreErrorV1Schema,
+  type CoreErrorCodeV1,
+} from '@/shared/contracts/core-v1';
 import { env } from '@/shared/config/env';
 
 export class SupabaseRestError extends Error {
   constructor(
     message: string,
     readonly status: number,
-    readonly code?: string,
+    readonly code?: CoreErrorCodeV1 | string,
+    readonly requestId?: string,
+    readonly retryable = false,
+    readonly details?: Record<string, unknown>,
+    readonly databaseCode?: string,
   ) {
     super(message);
     this.name = 'SupabaseRestError';
@@ -14,6 +22,7 @@ export class SupabaseRestError extends Error {
 
 type RestOptions = {
   body?: unknown;
+  signal?: AbortSignal;
   headers?: Record<string, string>;
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   prefer?: string;
@@ -33,6 +42,7 @@ export async function supabaseRest<T>(path: string, options: RestOptions) {
       ...options.headers,
     },
     method: options.method ?? 'GET',
+    signal: options.signal,
   });
 
   if (!response.ok) {
@@ -57,21 +67,67 @@ export function restUrl(path: string) {
 
 async function toRestError(response: Response) {
   const fallback = `Supabase request failed with status ${response.status}`;
+  const headerRequestId =
+    response.headers.get('x-request-id') ??
+    response.headers.get('sb-request-id') ??
+    undefined;
 
   try {
     const body = (await response.json()) as {
       code?: string;
-      details?: string;
+      details?: unknown;
       hint?: string;
       message?: string;
     };
+    const coreError = parseCoreError(body.message);
+    if (coreError) {
+      return new SupabaseRestError(
+        coreError.message,
+        response.status,
+        coreError.code,
+        coreError.requestId,
+        coreError.retryable,
+        coreError.details,
+        body.code,
+      );
+    }
 
     return new SupabaseRestError(
       body.message ?? fallback,
       response.status,
       body.code,
+      headerRequestId,
+      isRetryableStatus(response.status),
+      recordOrUndefined(body.details),
+      body.code,
     );
   } catch {
-    return new SupabaseRestError(fallback, response.status);
+    return new SupabaseRestError(
+      fallback,
+      response.status,
+      undefined,
+      headerRequestId,
+      isRetryableStatus(response.status),
+    );
   }
+}
+
+function parseCoreError(message: string | undefined) {
+  if (!message) return null;
+  try {
+    const parsed = CoreErrorV1Schema.safeParse(JSON.parse(message));
+    return parsed.success ? parsed.data : null;
+  } catch {
+    return null;
+  }
+}
+
+function recordOrUndefined(value: unknown) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function isRetryableStatus(status: number) {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
 }

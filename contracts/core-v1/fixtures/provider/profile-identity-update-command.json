@@ -1,0 +1,16 @@
+{
+  "expectedProfileVersion": 2,
+  "idempotencyKey": "profile.identity.000000000601.v2",
+  "identity": {
+    "bio": "Jungle chính, support khi team cần.",
+    "displayName": "Liqi Pro",
+    "genderId": "hidden",
+    "stats": {
+      "matches": 320,
+      "rating": 4.7,
+      "reputation": 96,
+      "winRate": 61
+    },
+    "status": "ready"
+  }
+}

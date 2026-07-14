@@ -52,6 +52,7 @@ const threadKindByRelationship: Record<
   MessageRelationship,
   ChatThread['kind']
 > = {
+  match: 'Ghép đôi',
   friend: 'Bạn bè',
   soulmate: 'Tri kỉ',
   system: 'Hệ thống',
@@ -59,6 +60,7 @@ const threadKindByRelationship: Record<
 };
 
 const relationshipLabelByKind: Record<MessageRelationship, string> = {
+  match: 'Đã ghép đôi',
   friend: 'Bạn bè',
   soulmate: 'Tri kỉ',
   system: 'Thông báo',
@@ -67,6 +69,7 @@ const relationshipLabelByKind: Record<MessageRelationship, string> = {
 
 const toneByRelationship: Record<MessageRelationship, MessageConversationTone> =
   {
+    match: 'cyan',
     friend: 'cyan',
     soulmate: 'purple',
     system: 'purple',
@@ -84,15 +87,18 @@ export function presentTimelineMessage(
   assetResolver: AssetResolver,
 ): ChatMessage {
   const base = {
+    clientMessageId: message.clientMessageId,
     createdAt: message.createdAt,
     id: message.id,
     senderId: message.senderId,
+    sequence: message.sequence,
   };
 
   if (message.kind === 'text') {
     return message.direction === 'outgoing'
       ? {
           ...base,
+          canonicalId: message.id,
           deliveryStatus: fallbackDeliveryStatus(message),
           direction: 'outgoing',
           kind: 'text',
@@ -127,6 +133,7 @@ export function presentTimelineMessage(
           ...base,
           attachment,
           caption: message.caption,
+          canonicalId: message.id,
           deliveryStatus: fallbackDeliveryStatus(message),
           direction: 'outgoing',
           kind: 'media',

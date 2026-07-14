@@ -116,22 +116,47 @@ export function presentPlayer(
   assetResolver: AssetResolver,
 ): DiscoverProfileCard {
   const inviteState = player.capabilities.invite.state;
-  const actionKind =
-    player.conversationId || inviteState === 'unavailable' ? 'view' : 'invite';
+  const authoritative = Boolean(
+    player.playerId &&
+    player.profileVersion !== undefined &&
+    player.intentVersion !== undefined,
+  );
+  const actionKind = authoritative
+    ? player.relationshipState === 'liked'
+      ? 'liked'
+      : 'like'
+    : player.conversationId || inviteState === 'unavailable'
+      ? 'view'
+      : 'invite';
   return {
     actionKind,
-    actionLabel: actionKind === 'invite' ? 'Mời vào' : 'Xem hồ sơ',
+    actionLabel:
+      actionKind === 'invite'
+        ? 'Mời vào'
+        : actionKind === 'like'
+          ? 'Thích'
+          : actionKind === 'liked'
+            ? 'Đã thích'
+            : 'Xem hồ sơ',
     actionState: inviteState === 'pending' ? 'pending' : 'idle',
     actionTone:
       profileToneOverrides[player.profileId] ??
       (actionKind === 'invite' ? 'cyan' : 'purple'),
     avatar: resolveMedia(player.avatar, assetResolver),
+    ...(authoritative ? { canPass: player.capabilities.canPass ?? false } : {}),
     ...(player.conversationId ? { conversationId: player.conversationId } : {}),
     filterIds: player.facetIds,
     id: player.profileId,
     match: `Hợp vibe ${player.matchScore}%`,
     name: player.displayName,
     online: player.onlineStatus === 'online',
+    ...(player.playerId ? { playerId: player.playerId } : {}),
+    ...(player.profileVersion !== undefined
+      ? { profileVersion: player.profileVersion }
+      : {}),
+    ...(player.intentVersion !== undefined
+      ? { intentVersion: player.intentVersion }
+      : {}),
     subtitle: [player.rank?.name, player.primaryRole?.name]
       .filter(Boolean)
       .join(' · '),

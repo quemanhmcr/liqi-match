@@ -17,6 +17,10 @@ import {
 
 import { useAssetResolver } from '@/entities/media-asset';
 import { useAuth } from '@/shared/auth/auth-context';
+import {
+  AccountDeletionClientError,
+  deleteOwnAccount,
+} from '@/shared/auth/account-deletion-service';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import {
   LiquidButton,
@@ -35,7 +39,6 @@ import { ProfileText } from '../components/ProfileShared';
 import { resolveProfileMedia } from '../model/profile-media';
 import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
 import {
-  deleteOwnAccount,
   fetchProfileSettings,
   type ProfileSettingsState,
   updateDiscoverability,
@@ -53,7 +56,7 @@ type SettingsMutationKey =
   'allowProfileShare' | 'deleteAccount' | 'isDiscoverable' | 'showWinRate';
 
 export function ProfileSettingsScreen() {
-  const { session, signOut } = useAuth();
+  const { session, setSession, signOut } = useAuth();
   const profileRepository = useProfileReadRepository();
   const assetResolver = useAssetResolver();
   const queryClient = useQueryClient();
@@ -214,6 +217,14 @@ export function ProfileSettingsScreen() {
           ? error.message
           : 'Vui lòng kiểm tra kết nối và thử lại.',
       );
+      if (error instanceof AccountDeletionClientError) {
+        if (error.synchronizedSession) {
+          setSession(error.synchronizedSession);
+        } else if (error.sessionEnded) {
+          await signOut().catch(() => undefined);
+          router.replace(appRoutes.auth.login);
+        }
+      }
     } finally {
       setPendingKey(null);
     }

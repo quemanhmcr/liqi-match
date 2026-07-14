@@ -1,6 +1,5 @@
 export {
   buildPreviewHomeDashboard,
-  fetchHomeDashboard,
   type HomeDashboard,
 } from './home-dashboard-service';
 export {
@@ -13,3 +12,11 @@ export {
   mapHomeDashboard,
   SimulationHomeRepository,
 } from './services/simulation-home-repository';
+export {
+  ApiHomeRepository,
+  createApiHomeRepository,
+  createHomeSupabaseTransport,
+  mapApiHomeDashboard,
+  type HomeApiRequest,
+  type HomeApiTransport,
+} from './services/api-home-repository';

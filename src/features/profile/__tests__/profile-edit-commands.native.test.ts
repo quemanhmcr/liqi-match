@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createEmptyHabitAnswers } from '@/entities/player-profile';
 import {
   ProfileEditCommandError,
+  saveProfileAvailability,
   saveProfileGameProfile,
   saveProfileHabits,
   saveProfileHeroes,
@@ -11,11 +12,18 @@ import {
   saveProfileRoles,
 } from '@/features/profile/edit/services/profile-edit-commands';
 import type { AuthSession } from '@/shared/auth/auth-service';
-import { supabaseRest } from '@/shared/services/supabase-rest';
+import { PlayerIdSchema, ProfileIdSchema } from '@/shared/contracts/core-v1';
+import {
+  SupabaseRestError,
+  supabaseRest,
+} from '@/shared/services/supabase-rest';
 
-jest.mock('@/shared/services/supabase-rest', () => ({
-  supabaseRest: jest.fn(),
-}));
+jest.mock('@/shared/services/supabase-rest', () => {
+  const actual = jest.requireActual<
+    typeof import('@/shared/services/supabase-rest')
+  >('@/shared/services/supabase-rest');
+  return { ...actual, supabaseRest: jest.fn() };
+});
 
 jest.mock('@/shared/services/media-upload', () => ({
   uploadProfileMediaAsset: jest.fn(),
@@ -34,40 +42,193 @@ const session: AuthSession = {
   },
 };
 const profileId = session.user.id;
+const canonicalProfileId = ProfileIdSchema.parse(
+  '30000000-0000-4000-8000-000000000001',
+);
+const playerId = PlayerIdSchema.parse('20000000-0000-4000-8000-000000000001');
 
 beforeEach(() => {
   mockSupabaseRest.mockReset();
 });
 
 describe('Profile Edit commands', () => {
-  it('saves display name without changing handle, habits, or unrelated identity fields', async () => {
-    mockSupabaseRest.mockResolvedValueOnce([]);
-
-    await saveProfileIdentity({
-      baseline: {
-        bio: 'Bio',
-        displayName: 'Old name',
-        genderId: null,
-      },
-      current: {
+  it('updates the full identity section through one versioned RPC', async () => {
+    mockSupabaseRest.mockResolvedValueOnce({
+      identity: {
         bio: 'Bio',
         displayName: 'New name',
         genderId: null,
+        stats: { matches: 0, rating: 0, reputation: 0, winRate: 0 },
+        status: null,
       },
-      profileId,
-      session,
+      playerId,
+      profileId: canonicalProfileId,
+      profileVersion: 3,
+      repeated: false,
     });
+
+    await expect(
+      saveProfileIdentity({
+        baseline: {
+          bio: 'Bio',
+          displayName: 'Old name',
+          genderId: null,
+          stats: { matches: 0, rating: 0, reputation: 0, winRate: 0 },
+          status: null,
+        },
+        canonicalProfileId,
+        current: {
+          bio: 'Bio',
+          displayName: 'New name',
+          genderId: null,
+          stats: { matches: 0, rating: 0, reputation: 0, winRate: 0 },
+          status: null,
+        },
+        expectedProfileVersion: 2,
+        playerId,
+        session,
+      }),
+    ).resolves.toEqual({ profileVersion: 3 });
 
     expect(mockSupabaseRest).toHaveBeenCalledTimes(1);
     expect(mockSupabaseRest).toHaveBeenCalledWith(
-      `profiles?id=eq.${profileId}`,
-      expect.objectContaining({
-        body: { display_name: 'New name' },
-        method: 'PATCH',
-      }),
+      'rpc/update_player_profile_identity_v1',
+      {
+        body: {
+          command: {
+            expectedProfileVersion: 2,
+            idempotencyKey: `profile.identity.${session.user.id}.v2`,
+            identity: {
+              bio: 'Bio',
+              displayName: 'New name',
+              genderId: null,
+              stats: {
+                matches: 0,
+                rating: 0,
+                reputation: 0,
+                winRate: 0,
+              },
+              status: null,
+            },
+          },
+        },
+        method: 'POST',
+        session,
+      },
     );
-    expect(mockSupabaseRest.mock.calls[0]?.[0]).not.toContain('game_profiles');
-    expect(mockSupabaseRest.mock.calls[0]?.[0]).not.toContain('profile_habits');
+  });
+
+  it('classifies profile version conflicts as non-retryable', async () => {
+    mockSupabaseRest.mockRejectedValueOnce(
+      new SupabaseRestError(
+        'Player profile changed on another request.',
+        409,
+        'profile_version_conflict',
+        'request-profile-conflict-0001',
+        false,
+        { actualVersion: 3, expectedVersion: 2 },
+        'P0001',
+      ),
+    );
+
+    await expect(
+      saveProfileIdentity({
+        baseline: {
+          bio: 'Bio',
+          displayName: 'Old name',
+          genderId: null,
+        },
+        canonicalProfileId,
+        current: {
+          bio: 'Bio',
+          displayName: 'New name',
+          genderId: null,
+        },
+        expectedProfileVersion: 2,
+        playerId,
+        session,
+      }),
+    ).rejects.toMatchObject({
+      code: 'profile_version_conflict',
+      retryable: false,
+    } satisfies Partial<ProfileEditCommandError>);
+  });
+
+  it('normalizes and updates Availability through one versioned RPC', async () => {
+    mockSupabaseRest.mockResolvedValueOnce({
+      availability: {
+        slots: [
+          { dayOfWeek: 1, startMinute: 1320, endMinute: 1440 },
+          { dayOfWeek: 2, startMinute: 0, endMinute: 180 },
+        ],
+        timezone: 'Asia/Bangkok',
+      },
+      playerId,
+      profileId: canonicalProfileId,
+      profileVersion: 3,
+      repeated: false,
+    });
+
+    await expect(
+      saveProfileAvailability({
+        canonicalProfileId,
+        current: {
+          slots: [{ dayOfWeek: 1, startMinute: 1320, endMinute: 180 }],
+          timezone: 'Asia/Bangkok',
+        },
+        expectedProfileVersion: 2,
+        playerId,
+        session,
+      }),
+    ).resolves.toEqual({ profileVersion: 3 });
+
+    expect(mockSupabaseRest).toHaveBeenCalledWith(
+      'rpc/update_player_profile_availability_v1',
+      {
+        body: {
+          command: {
+            availability: {
+              slots: [
+                { dayOfWeek: 1, startMinute: 1320, endMinute: 1440 },
+                { dayOfWeek: 2, startMinute: 0, endMinute: 180 },
+              ],
+              timezone: 'Asia/Bangkok',
+            },
+            expectedProfileVersion: 2,
+            idempotencyKey: `profile.availability.${session.user.id}.v2`,
+          },
+        },
+        method: 'POST',
+        session,
+      },
+    );
+  });
+
+  it('classifies Availability profile version conflicts as non-retryable', async () => {
+    mockSupabaseRest.mockRejectedValueOnce(
+      new SupabaseRestError(
+        'Player profile changed on another request.',
+        409,
+        'profile_version_conflict',
+        'request-availability-conflict-0001',
+        false,
+        { actualVersion: 4, expectedVersion: 2 },
+        'P0001',
+      ),
+    );
+
+    await expect(
+      saveProfileAvailability({
+        canonicalProfileId,
+        current: null,
+        expectedProfileVersion: 2,
+        playerId,
+        session,
+      }),
+    ).rejects.toMatchObject({
+      code: 'profile_version_conflict',
+      retryable: false,
+    } satisfies Partial<ProfileEditCommandError>);
   });
 
   it('maps canonical rank to DB UUID instead of writing the canonical ID', async () => {

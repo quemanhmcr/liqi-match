@@ -7,7 +7,10 @@ import { LiquidCard, LiquidChip } from '@/shared/components/liquid';
 import { ProfileText } from '../../components/ProfileShared';
 import { profileEditStyles as styles } from './profile-edit-styles';
 
-type CatalogOption<Id extends string> = Readonly<{ id: Id; label: string }>;
+type CatalogOption<Id extends string | number> = Readonly<{
+  id: Id;
+  label: string;
+}>;
 
 export function ProfileEditSection({
   children,
@@ -57,7 +60,7 @@ export function ProfileEditFieldLabel({
   );
 }
 
-export function ProfileEditOptionGroup<Id extends string>({
+export function ProfileEditOptionGroup<Id extends string | number>({
   label,
   onSelect,
   options,
@@ -91,7 +94,7 @@ export function ProfileEditOptionGroup<Id extends string>({
   );
 }
 
-export function ProfileEditCatalogSingleGroup<Id extends string>({
+export function ProfileEditCatalogSingleGroup<Id extends string | number>({
   label,
   onSelect,
   options,
@@ -125,7 +128,7 @@ export function ProfileEditCatalogSingleGroup<Id extends string>({
   );
 }
 
-export function ProfileEditCatalogMultiGroup<Id extends string>({
+export function ProfileEditCatalogMultiGroup<Id extends string | number>({
   label,
   limit,
   onToggle,

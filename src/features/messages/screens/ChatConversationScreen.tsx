@@ -172,14 +172,19 @@ function mergeThreadMessages(
   const knownIdentities = new Set<string>();
   for (const message of threadMessages) {
     knownIdentities.add(message.id);
+    if (message.kind !== 'typing' && message.clientMessageId) {
+      knownIdentities.add(message.clientMessageId);
+    }
     if (message.direction === 'outgoing' && message.canonicalId) {
       knownIdentities.add(message.canonicalId);
     }
   }
   const uniqueLocalMessages = localMessages.filter((message) => {
-    const identities = [message.id, message.canonicalId].filter(
-      (value): value is string => Boolean(value),
-    );
+    const identities = [
+      message.id,
+      message.clientMessageId,
+      message.canonicalId,
+    ].filter((value): value is string => Boolean(value));
     if (identities.some((identity) => knownIdentities.has(identity)))
       return false;
     for (const identity of identities) knownIdentities.add(identity);
@@ -204,6 +209,45 @@ function latestTimestampedMessage(messages: readonly ChatMessage[]) {
     if (message && message.kind !== 'typing') return message;
   }
   return undefined;
+}
+
+function authoritativeSequence(message: ChatMessage) {
+  return message.kind === 'typing' ? 0 : (message.sequence ?? 0);
+}
+
+function latestAuthoritativeSequence(messages: readonly ChatMessage[]) {
+  return messages.reduce(
+    (latest, message) => Math.max(latest, authoritativeSequence(message)),
+    0,
+  );
+}
+
+function mergeAuthoritativeMessages(
+  current: readonly ChatMessage[],
+  incoming: readonly ChatMessage[],
+) {
+  const byIdentity = new Map<string, ChatMessage>();
+  for (const message of [...current, ...incoming]) {
+    const identity =
+      message.kind === 'typing'
+        ? message.id
+        : (message.clientMessageId ?? message.id);
+    const previous = byIdentity.get(identity);
+    if (
+      !previous ||
+      authoritativeSequence(message) >= authoritativeSequence(previous)
+    ) {
+      byIdentity.set(identity, message);
+    }
+  }
+  return [...byIdentity.values()].sort((left, right) => {
+    const sequenceDelta =
+      authoritativeSequence(left) - authoritativeSequence(right);
+    if (sequenceDelta !== 0) return sequenceDelta;
+    return (left.kind === 'typing' ? '' : left.createdAt).localeCompare(
+      right.kind === 'typing' ? '' : right.createdAt,
+    );
+  });
 }
 
 function isGroupedWithPrevious(
@@ -261,6 +305,11 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
   const followCorrectionFrameRef = useRef<number | undefined>(undefined);
   const followFlushScheduledRef = useRef(false);
   const queuedFlushInFlightRef = useRef(false);
+  const gapRecoveryInFlightRef = useRef(false);
+  const gapRecoveryPendingRef = useRef(false);
+  const historyMessagesRef =
+    useRef<readonly ChatMessage[]>(EMPTY_CHAT_MESSAGES);
+  const lastReadSequenceRequestedRef = useRef(0);
   const mediaAttemptByMessageRef = useRef(new Map<string, number>());
   const mediaProgressTimersRef = useRef(
     new Map<string, ReturnType<typeof setInterval>>(),
@@ -371,6 +420,14 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
     return () => subscription?.remove();
   }, [messageTransport]);
 
+  useEffect(() => {
+    historyMessagesRef.current =
+      conversationData?.conversationId === conversationKey &&
+      conversationData.status === 'ready'
+        ? conversationData.historyMessages
+        : EMPTY_CHAT_MESSAGES;
+  }, [conversationData, conversationKey]);
+
   const activeConversationData =
     conversationData?.conversationId === conversationKey
       ? conversationData
@@ -392,6 +449,67 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
     networkSnapshot.transport === messageTransport
       ? networkSnapshot.state
       : (messageTransport.getNetworkState?.() ?? 'online');
+
+  const recoverMessageGap = useCallback(async () => {
+    if (!conversationId || !repository.getMessagesAfter) return;
+    if (gapRecoveryInFlightRef.current) {
+      gapRecoveryPendingRef.current = true;
+      return;
+    }
+
+    gapRecoveryInFlightRef.current = true;
+    try {
+      do {
+        gapRecoveryPendingRef.current = false;
+        const afterSequence = latestAuthoritativeSequence(
+          historyMessagesRef.current,
+        );
+        const page = await repository.getMessagesAfter(
+          conversationId,
+          afterSequence,
+        );
+        if (!isMountedRef.current || page.data.items.length === 0) continue;
+        const incoming = page.data.items.map((message) =>
+          presentTimelineMessage(message, assetResolver),
+        );
+        const merged = mergeAuthoritativeMessages(
+          historyMessagesRef.current,
+          incoming,
+        );
+        historyMessagesRef.current = merged;
+        setConversationData((current) =>
+          current?.conversationId === conversationId &&
+          current.status === 'ready'
+            ? { ...current, historyMessages: merged }
+            : current,
+        );
+      } while (gapRecoveryPendingRef.current);
+    } finally {
+      gapRecoveryInFlightRef.current = false;
+    }
+  }, [assetResolver, conversationId, repository]);
+
+  useEffect(() => {
+    if (loadState !== 'ready' || !conversationId) return;
+    const realtimeSubscription = messageTransport.subscribeConversation?.(
+      conversationId,
+      (event) => {
+        if (event.kind === 'connected' || event.kind === 'changed') {
+          void recoverMessageGap();
+        }
+      },
+    );
+    const appStateSubscription = AppState.addEventListener(
+      'change',
+      (state) => {
+        if (state === 'active') void recoverMessageGap();
+      },
+    );
+    return () => {
+      realtimeSubscription?.remove();
+      appStateSubscription.remove();
+    };
+  }, [conversationId, loadState, messageTransport, recoverMessageGap]);
 
   const displayedMessages = useMemo(
     () => mergeThreadMessages(historyMessages, localMessages),
@@ -639,6 +757,7 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
         acceptedAt?: string;
         canonicalMessageId?: string;
         clientMessageId: string;
+        sequence?: number;
       },
     ) => {
       if (receipt.clientMessageId !== message.id) {
@@ -646,8 +765,10 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
       }
       const commonPatch = {
         canonicalId: receipt.canonicalMessageId,
+        clientMessageId: receipt.clientMessageId,
         createdAt: receipt.acceptedAt ?? message.createdAt,
         deliveryStatus: 'sent' as const,
+        sequence: receipt.sequence,
       };
       patchOutgoingMessage(
         threadId,
@@ -903,29 +1024,56 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
     : -1;
   const unreadMessageIndexRef = useRef(-1);
   const markConversationReadRef = useRef(markConversationRead);
+  const advanceReadRef = useRef(messageTransport.advanceRead);
 
   useEffect(() => {
     unreadMessageIndexRef.current = unreadMessageIndex;
     markConversationReadRef.current = markConversationRead;
-  }, [markConversationRead, unreadMessageIndex]);
+    advanceReadRef.current = messageTransport.advanceRead;
+  }, [markConversationRead, messageTransport.advanceRead, unreadMessageIndex]);
 
   const handleViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: ViewToken<ChatTimelineItem>[] }) => {
       const firstUnreadIndex = unreadMessageIndexRef.current;
       const activeConversation = currentConversationRef.current;
-      if (!activeConversation) return;
-
-      if (firstUnreadIndex >= 0 && AppState.currentState === 'active') {
-        const unreadVisible = viewableItems.some(
-          ({ isViewable, item }) =>
-            isViewable &&
-            item.kind === 'message' &&
-            item.messageIndex >= firstUnreadIndex,
-        );
-        if (unreadVisible) {
-          markConversationReadRef.current(activeConversation);
-        }
+      if (
+        !activeConversation ||
+        firstUnreadIndex < 0 ||
+        AppState.currentState !== 'active'
+      ) {
+        return;
       }
+
+      const visibleReadSequence = viewableItems.reduce((latest, token) => {
+        if (
+          !token.isViewable ||
+          token.item.kind !== 'message' ||
+          token.item.messageIndex < firstUnreadIndex
+        ) {
+          return latest;
+        }
+        return Math.max(latest, authoritativeSequence(token.item.message));
+      }, 0);
+      if (visibleReadSequence <= lastReadSequenceRequestedRef.current) return;
+
+      const previousRequested = lastReadSequenceRequestedRef.current;
+      lastReadSequenceRequestedRef.current = visibleReadSequence;
+      const advanceRead = advanceReadRef.current;
+      if (!advanceRead) {
+        markConversationReadRef.current(activeConversation);
+        return;
+      }
+
+      void advanceRead({
+        conversationId: activeConversation,
+        lastReadSequence: visibleReadSequence,
+      })
+        .then(() => {
+          markConversationReadRef.current(activeConversation);
+        })
+        .catch(() => {
+          lastReadSequenceRequestedRef.current = previousRequested;
+        });
     },
     [],
   );

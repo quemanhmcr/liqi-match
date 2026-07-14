@@ -40,6 +40,7 @@ import {
   useDiscoverCollectionQuery,
   useDiscoverOverviewQuery,
   useInvitePlayerMutation,
+  usePlayerDecisionMutation,
   useRequestSetJoinMutation,
   type DiscoverCollectionKind,
   type DiscoverCollectionSortId,
@@ -822,14 +823,41 @@ function CollectionProfileCard({
   );
   const openProfile = useDiscoverStore((state) => state.openProfile);
   const inviteMutation = useInvitePlayerMutation();
+  const decisionMutation = usePlayerDecisionMutation();
   const inviting =
     inviteMutation.isPending && inviteMutation.variables?.profileId === card.id;
   const invited = card.actionState === 'pending' || inviting;
+  const deciding =
+    decisionMutation.isPending &&
+    decisionMutation.variables?.playerId === card.playerId;
   const actionText =
-    card.actionKind === 'invite' && invited ? 'Đã mời' : card.actionLabel;
+    card.actionKind === 'invite' && invited
+      ? 'Đã mời'
+      : card.actionKind === 'like' && deciding
+        ? 'Đang thích'
+        : card.actionLabel;
+  const decide = (decision: 'like' | 'pass') => {
+    if (
+      !card.playerId ||
+      card.profileVersion === undefined ||
+      card.intentVersion === undefined
+    ) {
+      return;
+    }
+    decisionMutation.mutate({
+      decision,
+      intentVersion: card.intentVersion,
+      playerId: card.playerId,
+      profileVersion: card.profileVersion,
+    });
+  };
   const onAction = () => {
     if (card.actionKind === 'invite' && card.targetSetId) {
       inviteMutation.mutate({ profileId: card.id, setId: card.targetSetId });
+      return;
+    }
+    if (card.actionKind === 'like') {
+      decide('like');
       return;
     }
     openProfile(card.id);
@@ -899,15 +927,22 @@ function CollectionProfileCard({
       </View>
       <View style={styles.profileFooter}>
         <Pressable
-          accessibilityLabel={`Nhắn ${card.name}`}
+          accessibilityLabel={
+            card.playerId ? `Bỏ qua ${card.name}` : `Nhắn ${card.name}`
+          }
           accessibilityRole="button"
-          onPress={() =>
+          disabled={card.playerId ? !card.canPass || deciding : false}
+          onPress={() => {
+            if (card.playerId) {
+              decide('pass');
+              return;
+            }
             router.push(
               card.conversationId
                 ? appRoutes.messages.detail(card.conversationId)
                 : appRoutes.main.messages,
-            )
-          }
+            );
+          }}
           style={({ pressed }) => [
             styles.messageButton,
             pressed && styles.pressed,
@@ -915,7 +950,7 @@ function CollectionProfileCard({
         >
           <Ionicons
             color="rgba(230,235,255,0.80)"
-            name="chatbubble-ellipses-outline"
+            name={card.playerId ? 'close' : 'chatbubble-ellipses-outline'}
             size={17}
           />
         </Pressable>
@@ -929,13 +964,21 @@ function CollectionProfileCard({
           <LiquidButton
             accessibilityLabel={`${card.actionLabel} ${card.name}`}
             contentStyle={styles.profileActionContent}
-            disabled={card.actionKind === 'invite' && invited}
-            glowIntensity={card.actionKind === 'view' ? 'none' : 'low'}
+            disabled={
+              (card.actionKind === 'invite' && invited) ||
+              card.actionKind === 'liked' ||
+              deciding
+            }
+            glowIntensity={
+              card.actionKind === 'view' || card.actionKind === 'liked'
+                ? 'none'
+                : 'low'
+            }
             onPress={onAction}
             radius={17}
             style={styles.profileActionButton}
             variant={
-              card.actionKind === 'view'
+              card.actionKind === 'view' || card.actionKind === 'liked'
                 ? 'secondary'
                 : card.actionTone === 'cyan'
                   ? 'rank'

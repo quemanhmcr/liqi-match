@@ -1,0 +1,12 @@
+{
+  "availability": {
+    "slots": [
+      { "dayOfWeek": 1, "startMinute": 1080, "endMinute": 1440 },
+      { "dayOfWeek": 2, "startMinute": 0, "endMinute": 180 }
+    ],
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "playerId": "20000000-0000-4000-8000-000000000801",
+  "profileId": "30000000-0000-4000-8000-000000000801",
+  "profileVersion": 4
+}

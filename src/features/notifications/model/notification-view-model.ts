@@ -11,6 +11,8 @@ export type NotificationTone = 'blue' | 'cyan' | 'pink' | 'purple';
 
 export type NotificationDestination =
   | { conversationId: string; kind: 'conversation' }
+  | { kind: 'match'; matchId: string }
+  | { kind: 'profile'; playerId: string }
   | { kind: 'set'; setId: string };
 
 export type NotificationAction = {
@@ -113,6 +115,18 @@ export function mapNotificationToViewModel(
           : { icon: 'people-outline', kind: 'symbol', tone: 'purple' },
       };
     }
+    case 'set-invite-received':
+      return {
+        ...shared,
+        action: {
+          destination: { kind: 'set', setId: notification.payload.setId },
+          label: 'Xem set',
+          tone: 'pink',
+        },
+        messageParts: ['Bạn có lời mời vào set mới'],
+        title: 'Lời mời vào set',
+        visual: { icon: 'people-outline', kind: 'symbol', tone: 'purple' },
+      };
     case 'direct-message': {
       const media = resolveNotificationActorMedia(
         notification.payload.actor,
@@ -138,6 +152,61 @@ export function mapNotificationToViewModel(
               tone: 'blue',
             }
           : { icon: 'chatbubble-outline', kind: 'symbol', tone: 'blue' },
+      };
+    }
+    case 'message-received':
+      return {
+        ...shared,
+        action: {
+          destination: {
+            conversationId: notification.payload.conversationId,
+            kind: 'conversation',
+          },
+          label: 'Trả lời',
+          tone: 'blue',
+        },
+        messageParts: ['Bạn có tin nhắn mới'],
+        title: 'Tin nhắn mới',
+        visual: { icon: 'chatbubble-outline', kind: 'symbol', tone: 'blue' },
+      };
+    case 'match-created':
+      return {
+        ...shared,
+        action: {
+          destination: { kind: 'match', matchId: notification.payload.matchId },
+          label: 'Xem match',
+          tone: 'pink',
+        },
+        messageParts: ['Bạn vừa có một match mới'],
+        title: 'Match mới',
+        visual: { icon: 'heart-outline', kind: 'symbol', tone: 'pink' },
+      };
+    case 'join-request':
+      return {
+        ...shared,
+        action: {
+          destination: { kind: 'set', setId: notification.payload.setId },
+          label: 'Xem yêu cầu',
+          tone: 'purple',
+        },
+        messageParts: ['Có người muốn tham gia set của bạn'],
+        title: 'Yêu cầu tham gia',
+        visual: { icon: 'person-add-outline', kind: 'symbol', tone: 'purple' },
+      };
+    case 'system': {
+      const destination = destinationFromDeepLink(
+        notification.payload.deepLink,
+      );
+      return {
+        ...shared,
+        action: { destination, label: 'Mở', tone: 'blue' },
+        messageParts: ['Có cập nhật mới dành cho bạn'],
+        title: 'Hệ thống:',
+        visual: {
+          icon: 'notifications-outline',
+          kind: 'symbol',
+          tone: 'blue',
+        },
       };
     }
     case 'praise-received': {
@@ -238,6 +307,27 @@ export function formatNotificationTime(occurredAt: string, now = new Date()) {
     day: '2-digit',
     month: '2-digit',
   }).format(occurred);
+}
+
+function destinationFromDeepLink(
+  deepLink: Extract<
+    NotificationRecord,
+    { kind: 'system' }
+  >['payload']['deepLink'],
+): NotificationDestination {
+  switch (deepLink.target) {
+    case 'conversation':
+      return {
+        conversationId: deepLink.conversationId,
+        kind: 'conversation',
+      };
+    case 'match':
+      return { kind: 'match', matchId: deepLink.matchId };
+    case 'profile':
+      return { kind: 'profile', playerId: deepLink.playerId };
+    case 'set':
+      return { kind: 'set', setId: deepLink.setId };
+  }
 }
 
 function resolveNotificationActorMedia(

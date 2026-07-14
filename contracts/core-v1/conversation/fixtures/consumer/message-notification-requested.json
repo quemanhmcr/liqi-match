@@ -1,0 +1,33 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "core:NotificationRequestedEventV1",
+      "data": {
+        "eventId": "80000000-0000-4000-8000-000000000021",
+        "eventType": "notification.requested.v1",
+        "aggregateType": "player",
+        "aggregateId": "20000000-0000-4000-8000-000000000002",
+        "occurredAt": "2026-07-14T08:09:00.000Z",
+        "correlationId": "70000000-0000-4000-8000-000000000001",
+        "causationId": "80000000-0000-4000-8000-000000000020",
+        "data": {
+          "recipientPlayerId": "20000000-0000-4000-8000-000000000002",
+          "reasonCode": "message_received",
+          "target": {
+            "kind": "conversation",
+            "conversationId": "90000000-0000-4000-8000-000000000001",
+            "messageId": "91000000-0000-4000-8000-000000000001",
+            "senderPlayerId": "20000000-0000-4000-8000-000000000001",
+            "authoritativeUnreadCount": 1
+          }
+        }
+      }
+    }
+  ],
+  "expectation": {
+    "authoritativeUnreadOwner": "conversation",
+    "consumer": "mission-4",
+    "foregroundSuppressionOwner": "mission-4"
+  }
+}

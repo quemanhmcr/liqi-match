@@ -1,3 +1,5 @@
+import type { AuthSession } from '@/shared/auth/auth-service';
+
 import type { ChatMediaAttachment } from '../model/chat-message';
 
 export const MAX_CHAT_TEXT_LENGTH = 4000;
@@ -21,6 +23,7 @@ export type SendChatMessageReceipt = {
   acceptedAt?: string;
   canonicalMessageId?: string;
   clientMessageId: string;
+  sequence?: number;
 };
 
 export type SendChatTextReceipt = SendChatMessageReceipt;
@@ -42,10 +45,34 @@ export class ChatTransportError extends Error {
   }
 }
 
+export type AdvanceChatReadCommand = {
+  conversationId: string;
+  lastReadSequence: number;
+};
+
+export type AdvanceChatReadReceipt = {
+  lastReadSequence: number;
+  unreadCount: number;
+};
+
+export type ChatConversationRealtimeEvent =
+  | { kind: 'connected' }
+  | { kind: 'changed' }
+  | { kind: 'disconnected'; retryable: boolean };
+
 export type ChatMessageTransport = {
+  advanceRead?: (
+    command: AdvanceChatReadCommand,
+  ) => Promise<AdvanceChatReadReceipt>;
+  dispose?: () => Promise<void> | void;
   getNetworkState?: () => ChatNetworkState;
   sendMedia?: (command: SendChatMediaCommand) => Promise<SendChatMediaReceipt>;
   sendText: (command: SendChatTextCommand) => Promise<SendChatTextReceipt>;
+  setSession?: (session: AuthSession | null) => Promise<void> | void;
+  subscribeConversation?: (
+    conversationId: string,
+    listener: (event: ChatConversationRealtimeEvent) => void,
+  ) => { remove: () => void };
   subscribeNetworkState?: (listener: (state: ChatNetworkState) => void) => {
     remove: () => void;
   };

@@ -12,7 +12,11 @@ import type {
   RecurringAvailability,
 } from '@/entities/player-profile';
 
-import type { ProfileStats } from '../../services/profile-service';
+import type {
+  ProfileStats,
+  ProfileStatusValue,
+} from '../../services/profile-service';
+import type { PlayerProfileIdentitySnapshotV1 } from '@/shared/contracts/core-v1';
 
 export const profileEditSections = [
   'identity',
@@ -38,7 +42,7 @@ export type ProfileEditIdentity = {
   displayName: string;
   genderId: GenderId | null;
   stats?: Partial<ProfileStats>;
-  status?: string;
+  status?: ProfileStatusValue | null;
 };
 
 export type ProfileEditGameProfile = {
@@ -89,6 +93,7 @@ export type ProfileEditDraft = {
   id: string;
   mediaSummary: Record<string, unknown>;
   meta: {
+    canonicalProfileId: PlayerProfileIdentitySnapshotV1['profileId'];
     habitIssues: LegacyHabitAdapterIssue[];
     habitsLossless: boolean;
     hasGameProfileRecord: boolean;
@@ -96,6 +101,8 @@ export type ProfileEditDraft = {
     heroesLossless: boolean;
     laneDbIds: Partial<Record<LaneSlug, string>>;
     lanesLossless: boolean;
+    playerId: PlayerProfileIdentitySnapshotV1['playerId'];
+    profileVersion: number;
     heroDbIds: Partial<Record<HeroId, string>>;
     rankDbIds: Partial<Record<RankId, string>>;
     readIssues: ProfileEditReadIssue[];

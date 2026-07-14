@@ -31,7 +31,8 @@ const session: AuthSession = {
 };
 
 function mockReads(input: {
-  availability?: unknown[];
+  availabilitySnapshot?: unknown;
+  identitySnapshot?: unknown;
   backendHeroes?: unknown[];
   profile: Record<string, unknown>;
   ranks?: unknown[];
@@ -40,13 +41,71 @@ function mockReads(input: {
   selectedRoles?: unknown[];
 }) {
   mockSupabaseRest
+    .mockResolvedValueOnce(
+      input.identitySnapshot ?? identitySnapshotFromProfile(input.profile),
+    )
     .mockResolvedValueOnce([input.profile])
     .mockResolvedValueOnce(input.ranks ?? [])
     .mockResolvedValueOnce(input.roles ?? [])
     .mockResolvedValueOnce(input.selectedRoles ?? [])
     .mockResolvedValueOnce(input.selectedHeroes ?? [])
     .mockResolvedValueOnce(input.backendHeroes ?? [])
-    .mockResolvedValueOnce(input.availability ?? []);
+    .mockResolvedValueOnce(
+      input.availabilitySnapshot ??
+        availabilitySnapshotFromProfile(input.profile),
+    );
+}
+
+function availabilitySnapshotFromProfile(_profile: Record<string, unknown>) {
+  return {
+    availability: null,
+    playerId: '20000000-0000-4000-8000-000000000003',
+    profileId: '30000000-0000-4000-8000-000000000003',
+    profileVersion: 2,
+  };
+}
+
+function identitySnapshotFromProfile(profile: Record<string, unknown>) {
+  const habits = Array.isArray(profile.profile_habits)
+    ? (profile.profile_habits[0] as Record<string, unknown> | undefined)
+    : undefined;
+  const mediaSummary =
+    habits?.media_summary && typeof habits.media_summary === 'object'
+      ? (habits.media_summary as Record<string, unknown>)
+      : {};
+  const basics =
+    mediaSummary.profile_basics &&
+    typeof mediaSummary.profile_basics === 'object'
+      ? (mediaSummary.profile_basics as Record<string, unknown>)
+      : {};
+  const gender =
+    basics.gender === 'male' ||
+    basics.gender === 'female' ||
+    basics.gender === 'hidden'
+      ? basics.gender
+      : null;
+  const status =
+    mediaSummary.profile_status === 'ready' ||
+    mediaSummary.profile_status === 'busy' ||
+    mediaSummary.profile_status === 'offline' ||
+    mediaSummary.profile_status === 'friends'
+      ? mediaSummary.profile_status
+      : null;
+  return {
+    identity: {
+      bio: typeof profile.bio === 'string' ? profile.bio : '',
+      displayName:
+        typeof profile.display_name === 'string'
+          ? profile.display_name
+          : 'Player',
+      genderId: gender,
+      stats: { matches: 0, rating: 0, reputation: 0, winRate: 0 },
+      status,
+    },
+    playerId: '20000000-0000-4000-8000-000000000003',
+    profileId: '30000000-0000-4000-8000-000000000003',
+    profileVersion: 2,
+  };
 }
 
 describe('fetchProfileEditDraft', () => {
@@ -82,15 +141,25 @@ describe('fetchProfileEditDraft', () => {
     expect(draft.form.availability).toBeNull();
     expect(draft.form.identity.genderId).toBeNull();
     expect(draft.meta.serverRegion).toBe('legacy-region');
+    expect(draft.meta.profileVersion).toBe(2);
+    expect(draft.meta.playerId).toBe('20000000-0000-4000-8000-000000000003');
+    expect(draft.meta.canonicalProfileId).toBe(
+      '30000000-0000-4000-8000-000000000003',
+    );
     expect(draft.form.media.coverMediaId).toBeNull();
   });
 
   it('resolves exact backend values to canonical IDs and keeps DB UUIDs in metadata', async () => {
     mockReads({
-      availability: [
-        { day_of_week: 1, starts_at: '18:00:00', ends_at: '21:00:00' },
-        { day_of_week: 1, starts_at: '21:00:00', ends_at: '23:59:59' },
-      ],
+      availabilitySnapshot: {
+        availability: {
+          slots: [{ dayOfWeek: 1, startMinute: 1080, endMinute: 1440 }],
+          timezone: 'Asia/Bangkok',
+        },
+        playerId: '20000000-0000-4000-8000-000000000003',
+        profileId: '30000000-0000-4000-8000-000000000003',
+        profileVersion: 2,
+      },
       backendHeroes: [{ id: 'hero-db-edras', slug: 'edras' }],
       profile: {
         avatar_media_id: null,
@@ -159,6 +228,28 @@ describe('fetchProfileEditDraft', () => {
     expect(draft.meta.habitsLossless).toBe(true);
   });
 
+  it('rejects identity and availability snapshots from different profile versions', async () => {
+    mockReads({
+      availabilitySnapshot: {
+        availability: null,
+        playerId: '20000000-0000-4000-8000-000000000003',
+        profileId: '30000000-0000-4000-8000-000000000003',
+        profileVersion: 3,
+      },
+      profile: {
+        avatar_media_id: null,
+        bio: '',
+        display_name: 'Version mismatch',
+        id: session.user.id,
+        timezone: 'Asia/Bangkok',
+      },
+    });
+
+    await expect(fetchProfileEditDraft(session)).rejects.toThrow(
+      'availability snapshot không khớp canonical identity/version',
+    );
+  });
+
   it('keeps unsupported legacy values outside canonical form and marks loss', async () => {
     mockReads({
       profile: {
@@ -206,7 +297,7 @@ describe('fetchProfileEditDraft', () => {
     expect(draft.form.laneSelection).toBeNull();
     expect(draft.form.habits.seriousnessId).toBeNull();
     expect(draft.form.identity.genderId).toBeNull();
-    expect(draft.form.identity.status).toBe('legacy-status');
+    expect(draft.form.identity.status).toBeNull();
     expect(draft.form.media.coverMediaId).toBe('cover-explicit');
     expect(draft.meta.habitsLossless).toBe(false);
     expect(draft.meta.lanesLossless).toBe(false);
@@ -222,6 +313,6 @@ describe('fetchProfileEditDraft', () => {
         expect.objectContaining({ code: 'unknown_legacy_value' }),
       ]),
     );
-    expect(mockSupabaseRest).toHaveBeenCalledTimes(7);
+    expect(mockSupabaseRest).toHaveBeenCalledTimes(8);
   });
 });

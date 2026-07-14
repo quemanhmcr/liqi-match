@@ -1,0 +1,25 @@
+{
+  "eligibilityRestored": false,
+  "eventId": "80000000-0000-4000-8000-000000000071",
+  "eventType": "player.suspended.v1",
+  "lifecycleVersion": 4,
+  "matchIntent": {
+    "matchIntentId": "10000000-0000-4000-8000-000000000001",
+    "playerId": "20000000-0000-4000-8000-000000000001",
+    "state": "paused",
+    "filters": {
+      "intentKind": "rank",
+      "mode": "ranked",
+      "partyFormat": "duo",
+      "sessionPlan": "quick",
+      "roleSlugs": ["jungle"],
+      "timezone": "Asia/Bangkok"
+    },
+    "version": 2,
+    "activatedAt": null,
+    "expiresAt": null
+  },
+  "playerId": "20000000-0000-4000-8000-000000000001",
+  "repeated": false,
+  "resultCode": "paused_by_suspension"
+}

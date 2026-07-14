@@ -1,9 +1,8 @@
 import {
-  DayOfWeekSchema,
   GENDER_CATALOG,
   LANE_CATALOG,
   RANK_CATALOG,
-  normalizeRecurringAvailability,
+  RecurringAvailabilitySchema,
   adaptLegacyHabitAnswers,
   resolveCatalogId,
   resolveHeroId,
@@ -12,15 +11,15 @@ import {
   type LaneSelection,
   type LaneSlug,
   type RankId,
-  type RecurringAvailability,
 } from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
+import {
+  PlayerProfileAvailabilitySnapshotV1Schema,
+  PlayerProfileIdentitySnapshotV1Schema,
+} from '@/shared/contracts/core-v1';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
-import {
-  profileMediaUrl,
-  type ProfileStats,
-} from '../../services/profile-service';
+import { profileMediaUrl } from '../../services/profile-service';
 import type {
   ProfileEditDraft,
   ProfileEditHero,
@@ -90,12 +89,6 @@ type ProfileHeroRow = {
   heroes?: MaybeArray<HeroEmbed>;
 };
 
-type AvailabilitySlotRow = {
-  day_of_week: number;
-  ends_at: string;
-  starts_at: string;
-};
-
 type HeroStatSummary = {
   heroId?: string;
   matches?: number;
@@ -125,14 +118,20 @@ export async function fetchProfileEditDraft(
 ): Promise<ProfileEditDraft> {
   const profileId = session.user.id;
   const [
+    identitySnapshotRaw,
     profileRows,
     ranks,
     roles,
     selectedRoles,
     selectedHeroes,
     backendHeroes,
-    availabilitySlots,
+    availabilitySnapshotRaw,
   ] = await Promise.all([
+    supabaseRest<unknown>('rpc/get_own_player_profile_identity_v1', {
+      body: {},
+      method: 'POST',
+      session,
+    }),
     supabaseRest<ProfileEditRow[]>(
       `profiles?id=eq.${encodeURIComponent(profileId)}&select=${profileEditSelect}&limit=1`,
       { session },
@@ -153,15 +152,29 @@ export async function fetchProfileEditDraft(
     supabaseRest<HeroRow[]>('heroes?select=id,slug&order=name.asc', {
       session,
     }),
-    supabaseRest<AvailabilitySlotRow[]>(
-      [
-        'availability_slots?select=day_of_week,starts_at,ends_at',
-        `profile_id=eq.${encodeURIComponent(profileId)}`,
-        'order=day_of_week.asc,starts_at.asc',
-      ].join('&'),
-      { session },
-    ).catch(() => [] as AvailabilitySlotRow[]),
+    supabaseRest<unknown>('rpc/get_own_player_profile_availability_v1', {
+      body: {},
+      method: 'POST',
+      session,
+    }),
   ]);
+
+  const identitySnapshot =
+    PlayerProfileIdentitySnapshotV1Schema.parse(identitySnapshotRaw);
+  const availabilitySnapshot = PlayerProfileAvailabilitySnapshotV1Schema.parse(
+    availabilitySnapshotRaw,
+  );
+  if (
+    (session.principal?.playerId &&
+      session.principal.playerId !== identitySnapshot.playerId) ||
+    availabilitySnapshot.playerId !== identitySnapshot.playerId ||
+    availabilitySnapshot.profileId !== identitySnapshot.profileId ||
+    availabilitySnapshot.profileVersion !== identitySnapshot.profileVersion
+  ) {
+    throw new Error(
+      'Profile identity và availability snapshot không khớp canonical identity/version.',
+    );
+  }
 
   const row = profileRows[0];
   if (!row) throw new Error('Không tìm thấy hồ sơ để chỉnh sửa.');
@@ -179,11 +192,13 @@ export async function fetchProfileEditDraft(
   const rankId = resolveSelectedRank(gameProfile?.rank_id, ranks, issues);
   const laneResult = buildLaneSelection(selectedRoles, roles, issues);
   const heroResult = buildFavoriteHeroes(selectedHeroes, mediaSummary, issues);
-  const availability = buildAvailability(
-    availabilitySlots,
-    row.timezone,
-    issues,
-  );
+  const availability =
+    availabilitySnapshot.availability === null
+      ? null
+      : RecurringAvailabilitySchema.parse(availabilitySnapshot.availability);
+  // Keep legacy diagnostics visible during migration, but never use them as
+  // the canonical Identity value.
+  resolveGender(mediaSummary, issues);
 
   return {
     form: {
@@ -195,11 +210,11 @@ export async function fetchProfileEditDraft(
       habits: habits.value,
       heroes: heroResult.heroes,
       identity: {
-        bio: row.bio ?? '',
-        displayName: row.display_name ?? '',
-        genderId: resolveGender(mediaSummary, issues),
-        stats: profileStatsFromSummary(mediaSummary),
-        status: stringValue(mediaSummary.profile_status),
+        bio: identitySnapshot.identity.bio,
+        displayName: identitySnapshot.identity.displayName,
+        genderId: identitySnapshot.identity.genderId,
+        stats: identitySnapshot.identity.stats,
+        status: identitySnapshot.identity.status,
       },
       laneSelection: laneResult.selection,
       media: {
@@ -215,6 +230,7 @@ export async function fetchProfileEditDraft(
     id: row.id,
     mediaSummary,
     meta: {
+      canonicalProfileId: identitySnapshot.profileId,
       habitIssues: habits.issues,
       habitsLossless: habits.lossless,
       hasGameProfileRecord: Boolean(gameProfile),
@@ -223,6 +239,8 @@ export async function fetchProfileEditDraft(
       heroesLossless: heroResult.lossless,
       laneDbIds,
       lanesLossless: laneResult.lossless,
+      playerId: identitySnapshot.playerId,
+      profileVersion: identitySnapshot.profileVersion,
       rankDbIds,
       readIssues: issues,
       serverRegion: gameProfile?.server_region ?? undefined,
@@ -410,63 +428,11 @@ function resolveGender(
   return null;
 }
 
-function buildAvailability(
-  rows: AvailabilitySlotRow[],
-  timezone: string | null,
-  issues: ProfileEditReadIssue[],
-): RecurringAvailability | null {
-  if (!rows.length) return null;
-  const candidate = {
-    slots: rows.map((row) => ({
-      dayOfWeek: DayOfWeekSchema.parse(row.day_of_week),
-      endMinute: parseClockMinute(row.ends_at, true),
-      startMinute: parseClockMinute(row.starts_at, false),
-    })),
-    timezone: timezone ?? '',
-  };
-  try {
-    return normalizeRecurringAvailability(candidate);
-  } catch {
-    issues.push({
-      code: 'invalid_availability',
-      path: 'availability',
-      value: candidate,
-    });
-    return null;
-  }
-}
-
-function parseClockMinute(value: string, isEnd: boolean) {
-  if (isEnd && value === '23:59:59') return 24 * 60;
-  const [hours = '0', minutes = '0'] = value.split(':');
-  return Number(hours) * 60 + Number(minutes);
-}
-
-function profileStatsFromSummary(
-  summary: Record<string, unknown>,
-): Partial<ProfileStats> | undefined {
-  const source = mediaSummaryRecord(summary.profile_stats);
-  const stats = stripUndefined({
-    matches: optionalNumber(source.matches, 99999),
-    rating: optionalRating(source.rating),
-    reputation: optionalNumber(source.reputation, 100),
-    winRate: optionalNumber(source.win_rate ?? source.winRate, 100),
-  });
-  return Object.keys(stats).length ? stats : undefined;
-}
-
 function optionalNumber(value: unknown, max: number) {
   if (value === null || value === undefined || value === '') return undefined;
   const number = typeof value === 'number' ? value : Number(value);
   if (!Number.isFinite(number)) return undefined;
   return Math.max(0, Math.min(max, Math.round(number)));
-}
-
-function optionalRating(value: unknown) {
-  if (value === null || value === undefined || value === '') return undefined;
-  const number = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(number)) return undefined;
-  return Math.max(0, Math.min(5, Math.round(number * 10) / 10));
 }
 
 function avatarUrlFromSession(session: AuthSession) {

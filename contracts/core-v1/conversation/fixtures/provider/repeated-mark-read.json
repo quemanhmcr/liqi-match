@@ -1,0 +1,36 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "AdvanceReadCommandV1",
+      "data": {
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "lastReadSequence": 9,
+        "correlationId": "70000000-0000-4000-8000-000000000020"
+      }
+    },
+    {
+      "schema": "AdvanceReadCommandV1",
+      "data": {
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "lastReadSequence": 9,
+        "correlationId": "70000000-0000-4000-8000-000000000020"
+      }
+    },
+    {
+      "schema": "ReadStateV1",
+      "data": {
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "playerId": "20000000-0000-4000-8000-000000000001",
+        "lastReadSequence": 9,
+        "unreadCount": 0,
+        "updatedAt": "2026-07-14T08:10:00.000Z"
+      }
+    }
+  ],
+  "expectation": {
+    "eventCreateCount": 1,
+    "lastReadSequence": 9,
+    "unreadCount": 0
+  }
+}

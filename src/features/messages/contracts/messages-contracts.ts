@@ -42,6 +42,7 @@ export type MessageConversationKind = z.infer<
 >;
 
 export const MessageRelationshipSchema = z.enum([
+  'match',
   'friend',
   'soulmate',
   'team',
@@ -81,6 +82,7 @@ export type MessageConversationCapabilities = z.infer<
 >;
 
 export const MessageLatestActivitySchema = z.object({
+  clientMessageId: z.string().min(1).optional(),
   createdAt: z.string().datetime({ offset: true }),
   deliveryStatus: MessageDeliveryStatusSchema.optional(),
   direction: z.enum(['incoming', 'outgoing']),
@@ -88,6 +90,7 @@ export const MessageLatestActivitySchema = z.object({
   kind: z.enum(['build_share', 'image', 'team_invite', 'text', 'video']),
   preview: z.string(),
   senderDisplayName: z.string().min(1).optional(),
+  sequence: z.number().int().positive().optional(),
 });
 export type MessageLatestActivity = z.infer<typeof MessageLatestActivitySchema>;
 
@@ -139,11 +142,13 @@ export type MessageConversationDetail = z.infer<
 >;
 
 const MessageTimelineBaseSchema = z.object({
+  clientMessageId: z.string().min(1).optional(),
   createdAt: z.string().datetime({ offset: true }),
   deliveryStatus: MessageDeliveryStatusSchema.optional(),
   direction: z.enum(['incoming', 'outgoing']),
   id: z.string().min(1),
   senderId: z.string().min(1).optional(),
+  sequence: z.number().int().positive().optional(),
 });
 
 export const MessageTimelineTextSchema = MessageTimelineBaseSchema.extend({

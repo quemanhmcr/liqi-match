@@ -64,6 +64,46 @@ describe('notification view model', () => {
     });
   });
 
+  it('renders production message and match notifications without invented actor data', () => {
+    const message = mapNotificationToViewModel(
+      {
+        id: 'notification-message',
+        kind: 'message-received',
+        occurredAt: now.toISOString(),
+        payload: { conversationId: 'conversation-1' },
+        readAt: null,
+        recipientId: 'player-1',
+        seenAt: null,
+      },
+      { assetResolver, now },
+    );
+    const match = mapNotificationToViewModel(
+      {
+        id: 'notification-match',
+        kind: 'match-created',
+        occurredAt: now.toISOString(),
+        payload: { matchId: 'match-1' },
+        readAt: null,
+        recipientId: 'player-1',
+        seenAt: null,
+      },
+      { assetResolver, now },
+    );
+
+    expect(message).toMatchObject({
+      action: {
+        destination: { conversationId: 'conversation-1', kind: 'conversation' },
+      },
+      messageParts: ['Bạn có tin nhắn mới'],
+      title: 'Tin nhắn mới',
+      visual: { kind: 'symbol' },
+    });
+    expect(match.action?.destination).toEqual({
+      kind: 'match',
+      matchId: 'match-1',
+    });
+  });
+
   it('formats yesterday separately from an empty or current inbox state', () => {
     expect(formatNotificationTime('2026-07-10T09:00:00.000Z', now)).toBe(
       'Hôm qua',

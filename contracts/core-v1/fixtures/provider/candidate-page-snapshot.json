@@ -1,0 +1,42 @@
+{
+  "items": [
+    {
+      "playerId": "20000000-0000-4000-8000-000000000002",
+      "profileSummary": {
+        "playerId": "20000000-0000-4000-8000-000000000002",
+        "profileId": "30000000-0000-4000-8000-000000000002",
+        "profileVersion": 4,
+        "displayName": "Minh Anh",
+        "avatarAssetId": "90000000-0000-4000-8000-000000000002",
+        "avatarUrl": null,
+        "rank": {
+          "id": "40000000-0000-4000-8000-000000000001",
+          "slug": "cao_thu",
+          "name": "Cao Thủ"
+        },
+        "primaryRole": {
+          "id": "50000000-0000-4000-8000-000000000001",
+          "slug": "support",
+          "name": "Trợ Thủ"
+        }
+      },
+      "relationshipState": "none",
+      "capabilities": {
+        "canLike": true,
+        "canPass": true,
+        "canInvite": false
+      },
+      "recommendationContext": {
+        "reasonCodes": ["active_now", "mode_overlap", "party_format_overlap"],
+        "score": 90
+      }
+    }
+  ],
+  "nextCursor": "a0000000-0000-4000-8000-000000000001",
+  "snapshot": {
+    "snapshotId": "b0000000-0000-4000-8000-000000000001",
+    "createdAt": "2026-07-14T08:00:00.000Z",
+    "expiresAt": "2026-07-14T08:10:00.000Z",
+    "intentVersion": 3
+  }
+}

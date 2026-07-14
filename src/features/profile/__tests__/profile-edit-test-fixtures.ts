@@ -2,6 +2,7 @@ import {
   MediaStagingItemSchema,
   createEmptyHabitAnswers,
 } from '@/entities/player-profile';
+import { PlayerIdSchema, ProfileIdSchema } from '@/shared/contracts/core-v1';
 import type {
   ProfileEditDraft,
   ProfileEditForm,
@@ -45,6 +46,9 @@ export function makeProfileEditDraft(
     id: profileId,
     mediaSummary: {},
     meta: {
+      canonicalProfileId: ProfileIdSchema.parse(
+        '30000000-0000-4000-8000-000000000701',
+      ),
       habitIssues: [],
       habitsLossless: true,
       hasGameProfileRecord: true,
@@ -61,6 +65,8 @@ export function makeProfileEditDraft(
         support: 'role-db-support',
       },
       lanesLossless: true,
+      playerId: PlayerIdSchema.parse('20000000-0000-4000-8000-000000000701'),
+      profileVersion: 2,
       rankDbIds: { master: 'rank-db-master' },
       readIssues: [],
       serverRegion: 'sea',

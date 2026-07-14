@@ -94,10 +94,18 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       favicon: './assets/images/favicon.png',
     },
     plugins: [
+      'expo-notifications',
       'expo-router',
       'expo-dev-client',
       'expo-font',
       'expo-sharing',
+      [
+        'expo-secure-store',
+        {
+          configureAndroidBackup: true,
+          faceIDPermission: false,
+        },
+      ],
       [
         'expo-media-library',
         {

@@ -103,6 +103,9 @@ function ProfileEditEditor({
   const [form, setForm] = useState<ProfileEditForm>(() =>
     cloneProfileEditForm(draft.form),
   );
+  const [profileVersion, setProfileVersion] = useState(
+    draft.meta.profileVersion,
+  );
   const [pickingMedia, setPickingMedia] = useState<ProfileEditMediaSlot>();
   const [lastSaveResult, setLastSaveResult] = useState<ProfileEditSaveResult>();
 
@@ -176,6 +179,7 @@ function ProfileEditEditor({
         current: form,
         draft,
         onlySections: request.onlySections,
+        profileVersion,
         session,
       }),
     onError: (error) => {
@@ -188,6 +192,7 @@ function ProfileEditEditor({
       setBaseline(result.baseline);
       setForm(result.form);
       setLastSaveResult(result.outcome === 'saved' ? undefined : result);
+      setProfileVersion(result.profileVersion);
       await queryClient.invalidateQueries({ queryKey: ['profile-view'] });
 
       if (result.outcome !== 'saved') return;
@@ -340,7 +345,10 @@ function ProfileEditEditor({
         onChange={(habits) => setForm({ ...form, habits })}
         onLimitReached={showSelectionLimit}
       />
-      <AvailabilitySection availability={form.availability} />
+      <AvailabilitySection
+        availability={form.availability}
+        onChange={(availability) => setForm({ ...form, availability })}
+      />
       <MediaSection
         disabled={Boolean(pickingMedia || saveMutation.isPending)}
         displayName={form.identity.displayName}

@@ -10,6 +10,7 @@ import {
   createSimulationApplicationServices,
 } from '@/app-shell/runtime/create-application-services';
 import { useHomeRepository, type HomeRepository } from '@/features/home';
+import { AuthStateProvider } from '@/shared/auth/auth-context';
 import { testAuthSession } from '@/test/render-with-providers';
 
 import { ApplicationServiceProviders } from '../ApplicationServiceProviders';
@@ -54,9 +55,11 @@ function ConsumerScreen() {
 
 async function renderConsumer(services: ApplicationServices) {
   return render(
-    <ApplicationServiceProviders services={services}>
-      <ConsumerScreen />
-    </ApplicationServiceProviders>,
+    <AuthStateProvider initialSession={testAuthSession}>
+      <ApplicationServiceProviders services={services}>
+        <ConsumerScreen />
+      </ApplicationServiceProviders>
+    </AuthStateProvider>,
   );
 }
 
