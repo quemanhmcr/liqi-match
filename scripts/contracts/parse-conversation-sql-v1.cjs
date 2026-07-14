@@ -4,6 +4,9 @@ const PgQueryModule = require('pg-query-emscripten').default;
 
 const repositoryRoot = path.resolve(__dirname, '..', '..');
 const sqlPaths = [
+  'supabase/migrations/202607140000_secure_identity_lifecycle_v1.sql',
+  'supabase/migrations/202607140001_production_match_authority_v1.sql',
+  'supabase/migrations/202607140002_player_lifecycle_snapshot_provider_v1.sql',
   'supabase/migrations/202607140003_split_identity_lifecycle_profile_provider_v1.sql',
   'supabase/migrations/202607140004_request_player_deletion_v1.sql',
   'supabase/migrations/202607140005_discovery_candidate_snapshot_v1.sql',
