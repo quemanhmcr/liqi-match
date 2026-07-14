@@ -191,6 +191,7 @@ export const SocialRelationshipErrorCodeV2Schema = z.enum([
   'friendship_request_not_pending',
   'friendship_request_forbidden',
   'friendship_already_exists',
+  'friendship_not_found',
   'relationship_blocked',
   'privacy_forbidden',
   'report_target_not_found',
@@ -198,8 +199,18 @@ export const SocialRelationshipErrorCodeV2Schema = z.enum([
   'relationship_unsupported_version',
 ]);
 
+export const SocialCommandAuditMetadataV2Schema = z
+  .object({
+    clientCreatedAt: z.string().datetime({ offset: true }),
+    clientPlatform: z.enum(['ios', 'android', 'web', 'service']),
+    clientVersion: z.string().trim().min(1).max(64),
+    requestId: z.string().trim().min(1).max(128),
+  })
+  .strict();
+
 const RelationshipCommandBaseV2Schema = z
   .object({
+    audit: SocialCommandAuditMetadataV2Schema,
     correlationId: CorrelationIdSchema,
     expectedRelationshipVersion: AggregateVersionV2Schema,
     idempotencyKey: IdempotencyKeySchema,
@@ -227,6 +238,7 @@ export const UnmutePlayerCommandV2Schema =
 
 const FriendshipRequestCommandBaseV2Schema = z
   .object({
+    audit: SocialCommandAuditMetadataV2Schema,
     correlationId: CorrelationIdSchema,
     expectedRelationshipVersion: AggregateVersionV2Schema,
     expectedRequestVersion: AggregateVersionV2Schema,
@@ -244,6 +256,7 @@ export const CancelFriendshipCommandV2Schema =
 
 export const UpdatePlayerPrivacyCommandV2Schema = z
   .object({
+    audit: SocialCommandAuditMetadataV2Schema,
     correlationId: CorrelationIdSchema,
     expectedPrivacyVersion: AggregateVersionV2Schema,
     friendshipRequests: FriendshipRequestPolicyV2Schema,
@@ -266,6 +279,7 @@ export const ReportCategoryV2Schema = z.enum([
 
 const ReportCommandBaseV2Schema = z
   .object({
+    audit: SocialCommandAuditMetadataV2Schema,
     category: ReportCategoryV2Schema,
     correlationId: CorrelationIdSchema,
     details: z.string().trim().max(2000).nullable(),
@@ -318,6 +332,9 @@ export const ReportReceiptV2Schema = z
   })
   .strict();
 
+export type SocialCommandAuditMetadataV2 = z.infer<
+  typeof SocialCommandAuditMetadataV2Schema
+>;
 export type RelationshipCapabilitiesV2 = z.infer<
   typeof RelationshipCapabilitiesV2Schema
 >;
