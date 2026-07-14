@@ -133,7 +133,7 @@
     "task:start": "node scripts/worktree/worktree-cli.cjs create",
     "task:inspect": "node scripts/worktree/worktree-cli.cjs doctor",
     "task:list": "node scripts/worktree/worktree-cli.cjs list",
-    "task:check": "npm run repository:check && npm run migration-history:check && npm run contracts:check && npm run profile-availability:check && npm run social-authority:check && npm run friendship-authority:check && npm run social-safety-authority:check && npm run return-loop:check && npm run notification-deep-link:check && npm run push-delivery:check && npm run release-readiness:check && npm run e2e:return-loop:api:test && npm run match-authority:check && npm run production-match-loop:check && npm run discovery-authority:check && npm run discover-overview-authority:check && npm run discover-production-path:check && npm run conversation-authority:check && npm run conversation-v2:check && npm run activity-notification-v2:check && npm run match-conversation-projection:check && npm run match-intent-lifecycle-projection:check && npm run home-match-facts:check && npm run match-authority-rollout:check && npm run match-funnel-telemetry:check && npm run match-set-authority:check && npm run party-session-authority:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
+    "task:check": "npm run repository:check && npm run migration-history:check && npm run contracts:check && npm run profile-availability:check && npm run social-authority:check && npm run friendship-authority:check && npm run social-safety-authority:check && npm run privacy-report-authority:check && npm run return-loop:check && npm run notification-deep-link:check && npm run push-delivery:check && npm run release-readiness:check && npm run e2e:return-loop:api:test && npm run match-authority:check && npm run production-match-loop:check && npm run discovery-authority:check && npm run discover-overview-authority:check && npm run discover-production-path:check && npm run conversation-authority:check && npm run conversation-v2:check && npm run activity-notification-v2:check && npm run match-conversation-projection:check && npm run match-intent-lifecycle-projection:check && npm run home-match-facts:check && npm run match-authority-rollout:check && npm run match-funnel-telemetry:check && npm run match-set-authority:check && npm run party-session-authority:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
     "task:review": "node scripts/worktree/worktree-cli.cjs overlay",
     "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
     "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
@@ -163,7 +163,8 @@
     "social-authority:check": "node scripts/contracts/check-social-relationship-authority-v2.cjs",
     "party-session-authority:check": "node scripts/contracts/parse-party-session-sql-v2.cjs && node scripts/contracts/check-party-session-authority-v2.cjs",
     "friendship-authority:check": "node scripts/contracts/check-friendship-authority-v2.cjs",
-    "social-safety-authority:check": "node scripts/contracts/check-social-safety-authority-v2.cjs"
+    "social-safety-authority:check": "node scripts/contracts/check-social-safety-authority-v2.cjs",
+    "privacy-report-authority:check": "node scripts/contracts/check-social-privacy-report-authority-v2.cjs"
   },
   "overrides": {
     "xcode": {

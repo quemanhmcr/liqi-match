@@ -1,0 +1,20 @@
+{
+  "eventId": "43000000-0000-4000-8000-000000000102",
+  "eventType": "report.submitted.v2",
+  "eventVersion": 2,
+  "aggregateType": "report",
+  "aggregateId": "45000000-0000-4000-8000-000000000101",
+  "aggregateVersion": 1,
+  "actorPlayerId": "20000000-0000-4000-8000-000000000001",
+  "correlationId": "44000000-0000-4000-8000-000000000102",
+  "causationId": null,
+  "occurredAt": "2026-07-14T14:03:00.000Z",
+  "payload": {
+    "category": "harassment",
+    "conversationId": null,
+    "messageId": null,
+    "reportId": "45000000-0000-4000-8000-000000000101",
+    "reporterPlayerId": "20000000-0000-4000-8000-000000000001",
+    "targetPlayerId": "20000000-0000-4000-8000-000000000002"
+  }
+}
