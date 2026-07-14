@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import {
   ConversationBootstrapRequestedEventV1Schema,
+  DiscoveryCandidatePageV1Schema,
   DiscoveryCandidateV1Schema,
   MatchCreatedEventV1Schema,
   MatchIntentSnapshotV1Schema,
@@ -33,6 +34,14 @@ describe('core-v1 executable contracts', () => {
       ).toBeTruthy();
     },
   );
+
+  it('validates the immutable candidate page provider fixture', () => {
+    const page = DiscoveryCandidatePageV1Schema.parse(
+      read('provider', 'candidate-page-snapshot.json'),
+    );
+    expect(page.items).toHaveLength(1);
+    expect(page.nextCursor).not.toBeNull();
+  });
 
   it.each([
     'mutual-like-receipt.json',
