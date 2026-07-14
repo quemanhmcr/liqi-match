@@ -1,0 +1,6 @@
+{
+  "expectedLifecycleVersion": 3,
+  "idempotencyKey": "player.suspend.000000000701.v3",
+  "playerId": "20000000-0000-4000-8000-000000000701",
+  "reasonCode": "trust.safety_review"
+}

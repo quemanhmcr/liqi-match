@@ -2,6 +2,7 @@ export * from './identity/semantic-ids';
 export * from './identity/authenticated-principal';
 export * from './identity/player-identity-mapping';
 export * from './lifecycle/player-lifecycle';
+export * from './lifecycle/player-suspension';
 export * from './lifecycle/player-deletion';
 export * from './profile/player-summary';
 export * from './profile/player-profile-version';

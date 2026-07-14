@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(57);
+select plan(72);
 
 select has_table('public', 'players', 'canonical players table exists');
 select has_table('public', 'player_profiles_v1', 'canonical player profile mapping exists');
@@ -31,6 +31,237 @@ insert into auth.users (id, aud, role, email, encrypted_password, email_confirme
 values
   ('01000000-0000-4000-8000-000000000101', 'authenticated', 'authenticated', 'identity-a@example.test', 'x', now(), now(), now()),
   ('01000000-0000-4000-8000-000000000102', 'authenticated', 'authenticated', 'identity-b@example.test', 'x', now(), now(), now());
+
+
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.suspend_player_v1(jsonb)',
+    'EXECUTE'
+  )
+  and has_function_privilege(
+    'service_role',
+    'public.resume_player_v1(jsonb)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated',
+    'public.suspend_player_v1(jsonb)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated',
+    'public.resume_player_v1(jsonb)',
+    'EXECUTE'
+  ),
+  'suspension lifecycle commands are service-only'
+);
+
+set local role service_role;
+
+select is(
+  public.suspend_player_v1(
+    jsonb_build_object(
+      'expectedLifecycleVersion', 3,
+      'idempotencyKey', 'player.suspend.000000000104.v3',
+      'playerId', '20000000-0000-4000-8000-000000000104',
+      'reasonCode', 'trust.safety_review'
+    )
+  )->'lifecycle'->>'state',
+  'suspended',
+  'service suspension transitions an active player to suspended'
+);
+
+reset role;
+
+select is(
+  (
+    select jsonb_build_object(
+      'discoverable', discoverable,
+      'messagingAllowed', messaging_allowed,
+      'version', lifecycle_version
+    )
+    from public.players
+    where id = '20000000-0000-4000-8000-000000000104'
+  ),
+  '{"discoverable":false,"messagingAllowed":false,"version":4}'::jsonb,
+  'suspension immediately disables discovery and messaging'
+);
+
+set local role service_role;
+
+select is(
+  (
+    public.suspend_player_v1(
+      jsonb_build_object(
+        'expectedLifecycleVersion', 3,
+        'idempotencyKey', 'player.suspend.000000000104.v3',
+        'playerId', '20000000-0000-4000-8000-000000000104',
+        'reasonCode', 'trust.safety_review'
+      )
+    )->>'repeated'
+  )::boolean,
+  true,
+  'suspension retry returns the durable receipt'
+);
+
+reset role;
+
+select is(
+  (
+    select count(*)::integer
+    from private.outbox_events
+    where event_type = 'player.suspended.v1'
+      and aggregate_id = '20000000-0000-4000-8000-000000000104'
+  ),
+  1,
+  'suspension retry emits exactly one suspended event'
+);
+
+select is(
+  (
+    select jsonb_build_object(
+      'reasonCode', reason_code,
+      'previousDiscoverable', previous_discoverable,
+      'previousMessagingAllowed', previous_messaging_allowed,
+      'version', suspended_lifecycle_version
+    )
+    from private.player_suspensions_v1
+    where player_id = '20000000-0000-4000-8000-000000000104'
+      and resumed_at is null
+  ),
+  '{"reasonCode":"trust.safety_review","previousDiscoverable":true,"previousMessagingAllowed":true,"version":4}'::jsonb,
+  'suspension history preserves capability preferences and reason'
+);
+
+set local role service_role;
+
+select throws_like(
+  $$select public.suspend_player_v1(
+    jsonb_build_object(
+      'expectedLifecycleVersion', 3,
+      'idempotencyKey', 'player.suspend.stale.000000000104',
+      'playerId', '20000000-0000-4000-8000-000000000104',
+      'reasonCode', 'trust.safety_review'
+    )
+  )$$,
+  '%lifecycle_version_conflict%',
+  'stale suspension lifecycle version returns a structured conflict'
+);
+
+select throws_like(
+  $$select public.suspend_player_v1(
+    jsonb_build_object(
+      'expectedLifecycleVersion', 4,
+      'idempotencyKey', 'player.suspend.invalid.000000000104',
+      'playerId', '20000000-0000-4000-8000-000000000104',
+      'reasonCode', 'Invalid Reason'
+    )
+  )$$,
+  '%validation_failed%',
+  'suspension rejects unstable reason codes'
+);
+
+select is(
+  public.resume_player_v1(
+    jsonb_build_object(
+      'expectedLifecycleVersion', 4,
+      'idempotencyKey', 'player.resume.000000000104.v4',
+      'playerId', '20000000-0000-4000-8000-000000000104'
+    )
+  )->'lifecycle'->>'state',
+  'active',
+  'service resume transitions a suspended player to active'
+);
+
+reset role;
+
+select is(
+  (
+    select jsonb_build_object(
+      'discoverable', discoverable,
+      'messagingAllowed', messaging_allowed,
+      'version', lifecycle_version
+    )
+    from public.players
+    where id = '20000000-0000-4000-8000-000000000104'
+  ),
+  '{"discoverable":true,"messagingAllowed":true,"version":5}'::jsonb,
+  'resume restores the pre-suspension capability preferences'
+);
+
+set local role service_role;
+
+select is(
+  (
+    public.resume_player_v1(
+      jsonb_build_object(
+        'expectedLifecycleVersion', 4,
+        'idempotencyKey', 'player.resume.000000000104.v4',
+        'playerId', '20000000-0000-4000-8000-000000000104'
+      )
+    )->>'repeated'
+  )::boolean,
+  true,
+  'resume retry returns the durable receipt'
+);
+
+reset role;
+
+select is(
+  (
+    select count(*)::integer
+    from private.outbox_events
+    where event_type = 'player.resumed.v1'
+      and aggregate_id = '20000000-0000-4000-8000-000000000104'
+  ),
+  1,
+  'resume retry emits exactly one resumed event'
+);
+
+select is(
+  (
+    select resumed_lifecycle_version::integer
+    from private.player_suspensions_v1
+    where player_id = '20000000-0000-4000-8000-000000000104'
+    order by suspended_lifecycle_version desc
+    limit 1
+  ),
+  5,
+  'suspension history records the authoritative resume version'
+);
+
+select is(
+  (
+    select resumed.payload->>'causationId'
+    from private.outbox_events resumed
+    where resumed.event_type = 'player.resumed.v1'
+      and resumed.aggregate_id = '20000000-0000-4000-8000-000000000104'
+  ),
+  (
+    select suspended.id::text
+    from private.outbox_events suspended
+    where suspended.event_type = 'player.suspended.v1'
+      and suspended.aggregate_id = '20000000-0000-4000-8000-000000000104'
+  ),
+  'resumed event is causally linked to the suspension event'
+);
+
+set local role service_role;
+
+select throws_like(
+  $$select public.resume_player_v1(
+    jsonb_build_object(
+      'expectedLifecycleVersion', 4,
+      'idempotencyKey', 'player.resume.stale.000000000104',
+      'playerId', '20000000-0000-4000-8000-000000000104'
+    )
+  )$$,
+  '%lifecycle_version_conflict%',
+  'stale resume lifecycle version returns a structured conflict'
+);
+
+reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
