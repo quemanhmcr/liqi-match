@@ -4,6 +4,8 @@ import { StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { createAssetKey, type AssetResolver } from '@/entities/media-asset';
+import type { ActivityFeedRepository } from '@/entities/trust-outcomes';
+import { TrustActivityItemV2Schema } from '@/shared/contracts/core-v2';
 import type { HomeDashboard } from '@/features/home/home-dashboard-service';
 import HomeDashboardScreen from '@/features/home/screens/HomeDashboardScreen';
 import { renderWithProviders } from '@/test/render-with-providers';
@@ -163,6 +165,49 @@ describe('HomeDashboardScreen', () => {
     expect(queryByText('Idle')).toBeNull();
     expect(queryByText('Normal')).toBeNull();
     expect(queryByText('Đã match thành công')).toBeNull();
+  });
+
+  it('renders authoritative post-session activity on the real Home screen', async () => {
+    const feedbackActivity = TrustActivityItemV2Schema.parse({
+      activityItemId: '47000000-0000-4000-8000-000000000030',
+      createdAt: '2026-07-14T14:00:00.000Z',
+      deduplicationKey: 'feedback:home:integrated',
+      dismissedAt: null,
+      kind: 'feedback_prompt',
+      payload: {
+        confirmationDeadlineAt: '2026-07-17T14:00:00.000Z',
+        outcomeId: '44000000-0000-4000-8000-000000000030',
+        sessionId: '42000000-0000-4000-8000-000000000030',
+      },
+      playerId: '20000000-0000-4000-8000-000000000001',
+      priority: 1000,
+      version: 1,
+    });
+    if (feedbackActivity.kind !== 'feedback_prompt') {
+      throw new Error('Expected an authoritative feedback activity.');
+    }
+    const activityFeedRepository: ActivityFeedRepository = {
+      async dismiss() {
+        throw new Error('not used');
+      },
+      async list() {
+        return [feedbackActivity];
+      },
+    };
+    const screen = await renderWithProviders(<HomeDashboardScreen />, {
+      serviceOverrides: {
+        activityFeedRepository,
+        homeRepository: { getDashboard: async () => syncedDashboard },
+      },
+    });
+
+    expect(await screen.findByText('Hoạt động của bạn')).toBeTruthy();
+    await waitFor(() => expect(screen.queryClient.isFetching()).toBe(0));
+    expect(await screen.findByText('Hoàn tất phản hồi buổi chơi')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Phản hồi'));
+    expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.trust.feedback(feedbackActivity.payload.sessionId),
+    );
   });
 
   it('opens matched profiles through the canonical PlayerId route', async () => {

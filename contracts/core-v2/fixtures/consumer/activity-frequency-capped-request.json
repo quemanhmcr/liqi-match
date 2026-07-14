@@ -5,7 +5,10 @@
     "kind": "repeat_play_recommendation",
     "payload": {
       "completedSessionCount": 2,
-      "teammatePlayerIds": ["20000000-0000-4000-8000-000000000002"]
+      "teammatePlayerIds": ["20000000-0000-4000-8000-000000000002"],
+      "relationshipId": "47000000-0000-4000-8000-000000000099",
+      "relationshipVersion": 1,
+      "sourceSessionId": "42000000-0000-4000-8000-000000000001"
     },
     "priority": 800,
     "deduplicationKey": "repeat:20000000-0000-4000-8000-000000000001:20000000-0000-4000-8000-000000000002:2",
@@ -18,7 +21,7 @@
   "correlationId": "43000000-0000-4000-8000-000000000002",
   "target": {
     "target": "repeat_play",
-    "sourceSessionId": null,
+    "sourceSessionId": "42000000-0000-4000-8000-000000000001",
     "teammatePlayerIds": ["20000000-0000-4000-8000-000000000002"]
   },
   "deliveryDecision": {

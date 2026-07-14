@@ -149,7 +149,7 @@ describe('SessionFeedbackScreen', () => {
       },
     );
 
-    fireEvent.press(await screen.findByText('Đã tham gia'));
+    await fireEvent.press(await screen.findByText('Đã tham gia'));
     await waitFor(() => expect(confirmParticipation).toHaveBeenCalledTimes(1));
     expect(confirmParticipation.mock.calls[0]?.[1]).toMatchObject({
       expectedVersion: 1,
@@ -185,7 +185,7 @@ describe('SessionFeedbackScreen', () => {
       },
     );
 
-    fireEvent.press(await screen.findByText('Gửi lời khen'));
+    await fireEvent.press(await screen.findByText('Gửi lời khen'));
     await waitFor(() => expect(submit).toHaveBeenCalledTimes(1));
     expect(submit.mock.calls[0]?.[1]).toMatchObject({
       expectedOutcomeVersion: 3,

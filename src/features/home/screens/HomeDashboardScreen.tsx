@@ -62,6 +62,7 @@ import {
   type MatchedSetStatus,
 } from '../home-dashboard-service';
 import { useHomeRepository } from '../runtime/HomeRepositoryProvider';
+import { HomeTrustActivitySection } from '../components/HomeTrustActivitySection';
 import {
   buildMatchedSetTags,
   chatActionAccessibilityLabel,
@@ -636,6 +637,8 @@ export default function HomeDashboardScreen() {
           </View>
         </View>
       </LiquidGlassSurface>
+
+      <HomeTrustActivitySection session={session} />
 
       <LiquidSectionHeader
         action={

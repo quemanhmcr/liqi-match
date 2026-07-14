@@ -49,6 +49,8 @@ export {
 
 export {
   createTrustCreateMetadata,
+  createTrustCreateMetadataForSource,
   createTrustMutationMetadata,
+  createTrustMutationMetadataForSource,
 } from './trust-command-metadata';
 export type { TrustCommandMetadataDependencies } from './trust-command-metadata';

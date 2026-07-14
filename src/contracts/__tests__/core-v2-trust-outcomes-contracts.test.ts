@@ -5,7 +5,7 @@ import path from 'node:path';
 import {
   EngagementPreferencesUpdatedEventV2Schema,
   ActivityItemDismissedEventV2Schema,
-  ActivityItemV2Schema,
+  TrustActivityItemV2Schema,
   ConfirmSessionParticipationCommandV2Schema,
   RequestRepeatSessionCommandV2Schema,
   SubmitPlayerEndorsementCommandV2Schema,
@@ -184,10 +184,14 @@ describe('Core V2 trust outcome provider contracts', () => {
   });
 
   it('publishes a deduplicated activity item', () => {
-    const item = ActivityItemV2Schema.parse(read('activity-item.json'));
+    const item = TrustActivityItemV2Schema.parse(read('activity-item.json'));
 
     expect(item.kind).toBe('repeat_play_recommendation');
     expect(item.deduplicationKey).toContain('repeat:');
+    expect(item.payload).toMatchObject({
+      relationshipVersion: 1,
+      teammatePlayerIds: ['20000000-0000-4000-8000-000000000002'],
+    });
   });
 
   it('fails closed for unknown event versions and event types', () => {

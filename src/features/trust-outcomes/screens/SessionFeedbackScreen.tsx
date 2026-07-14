@@ -11,8 +11,8 @@ import {
 } from 'react-native';
 
 import {
-  createTrustCreateMetadata,
-  createTrustMutationMetadata,
+  createTrustCreateMetadataForSource,
+  createTrustMutationMetadataForSource,
   useConfirmSessionParticipation,
   useDisputeSessionParticipation,
   useSessionFeedbackSurface,
@@ -105,9 +105,10 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
     impact();
     try {
       await confirmMutation.mutateAsync({
-        ...createTrustMutationMetadata(
+        ...createTrustMutationMetadataForSource(
           surface.outcome.version,
           'confirm-participation',
+          parsedSessionId.data,
         ),
         sessionId: parsedSessionId.data,
       });
@@ -121,9 +122,10 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
     impact();
     try {
       await disputeMutation.mutateAsync({
-        ...createTrustMutationMetadata(
+        ...createTrustMutationMetadataForSource(
           surface.outcome.version,
           'dispute-participation',
+          parsedSessionId.data,
         ),
         ...(disputeNote.trim() ? { note: disputeNote.trim() } : {}),
         reasonCode: disputeReason,
@@ -148,7 +150,11 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
     impact();
     try {
       await endorsementMutation.mutateAsync({
-        ...createTrustCreateMetadata('submit-endorsement'),
+        ...createTrustCreateMetadataForSource(
+          'submit-endorsement',
+          parsedSessionId.data,
+          [resolvedSelectedTarget],
+        ),
         expectedOutcomeVersion: surface.outcome.version,
         kinds: selectedKinds,
         sessionId: parsedSessionId.data,
