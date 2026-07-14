@@ -212,6 +212,8 @@ select public.send_message_v1(
   '70000000-0000-4000-8000-000000000499'
 ) as receipt;
 
+reset role;
+
 select is((select (receipt ->> 'repeated')::boolean from text_send_retry), true, 'same clientMessageId replays original message');
 select is((select count(*)::integer from public.messages where schema_version_v1 = 1), 1, 'retry creates no message duplicate');
 select is((select count(*)::integer from private.outbox_events where event_type = 'message.sent.v1'), 1, 'message.sent.v1 is emitted once');
@@ -219,6 +221,12 @@ select is(
   (select count(*)::integer from private.outbox_events where event_type = 'notification.requested.v1' and payload #>> '{data,reasonCode}' = 'message_received'),
   1,
   'one message attention event is emitted'
+);
+
+set local role authenticated;
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000401',
+  '09000000-0000-4000-8000-000000000401'
 );
 select throws_ok(
   $$select public.send_message_v1(
@@ -362,7 +370,14 @@ select public.advance_conversation_read_v1(
 ) as receipt;
 
 select is((select (receipt ->> 'repeated')::boolean from read_retry), true, 'repeated read is idempotent');
+
+reset role;
 select is((select count(*)::integer from private.outbox_events where event_type = 'conversation.read_advanced.v1'), 1, 'read retry emits no duplicate event');
+set local role authenticated;
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000402',
+  '09000000-0000-4000-8000-000000000402'
+);
 select is(
   (select count(*)::integer from public.get_conversation_inbox_v1(30, null, null) as inbox(snapshot)),
   1,
