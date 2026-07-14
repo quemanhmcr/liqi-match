@@ -16,7 +16,7 @@ function createNativeBackend(): SecureAuthStorageBackend {
   const availability = SecureStore.isAvailableAsync();
   const options: SecureStore.SecureStoreOptions = {
     keychainService: 'liqi-match-auth-v1',
-    keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK_THIS_DEVICE_ONLY,
+    keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
     requireAuthentication: false,
   };
   const ensureAvailable = async () => {
