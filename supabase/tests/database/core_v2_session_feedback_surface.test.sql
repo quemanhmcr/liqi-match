@@ -1,0 +1,15 @@
+create extension if not exists pgtap with schema extensions;
+begin;
+select plan(10);
+select has_function('private', 'participation_confirmation_snapshot_v2', array['uuid'], 'confirmation snapshot exists');
+select has_function('public', 'get_session_feedback_surface_v2', array['uuid'], 'feedback surface RPC exists');
+select ok(not has_function_privilege('anon', 'public.get_session_feedback_surface_v2(uuid)', 'EXECUTE'), 'anon cannot read feedback');
+select ok(has_function_privilege('authenticated', 'public.get_session_feedback_surface_v2(uuid)', 'EXECUTE'), 'authenticated may call feedback RPC');
+select ok(not has_function_privilege('authenticated', 'private.participation_confirmation_snapshot_v2(uuid)', 'EXECUTE'), 'private snapshot is not client callable');
+select ok((select proconfig @> array['search_path=""'] from pg_proc join pg_namespace on pg_namespace.oid=pronamespace where nspname='public' and proname='get_session_feedback_surface_v2'), 'feedback RPC locks search_path');
+select ok(pg_get_functiondef('public.get_session_feedback_surface_v2(uuid)'::regprocedure) like '%actor_player_id_value = any(outcome_row.participant_player_ids)%', 'feedback is member-only');
+select ok(pg_get_functiondef('public.get_session_feedback_surface_v2(uuid)'::regprocedure) like '%all_confirmed_value%', 'feedback exposes authoritative full confirmation');
+select ok(pg_get_functiondef('public.get_session_feedback_surface_v2(uuid)'::regprocedure) like '%not exists (%player_endorsements_v2%', 'feedback excludes duplicate endorsement targets');
+select ok(pg_get_functiondef('public.get_session_feedback_surface_v2(uuid)'::regprocedure) like '%outcome_row.state = ''recorded''%', 'disputed outcomes expose no positive endorsement targets');
+select * from finish();
+rollback;

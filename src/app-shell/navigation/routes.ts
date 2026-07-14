@@ -50,6 +50,11 @@ export const appRoutes = {
         pathname: '/sessions/[sessionId]',
         params: { sessionId },
       }) as const,
+    feedback: (sessionId: string) =>
+      ({
+        pathname: '/sessions/[sessionId]/feedback',
+        params: { sessionId },
+      }) as const,
     list: '/sessions',
   },
   profile: {
