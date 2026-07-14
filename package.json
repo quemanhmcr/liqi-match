@@ -137,7 +137,7 @@
     "task:review": "node scripts/worktree/worktree-cli.cjs overlay",
     "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
     "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
-    "contracts:check": "node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts src/contracts/__tests__/mission1-provider-contracts.test.ts src/contracts/__tests__/conversation-v1-contracts.test.ts src/contracts/__tests__/return-loop-contracts.test.ts src/contracts/__tests__/core-v2-social-contracts.test.ts",
+    "contracts:check": "node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts src/contracts/__tests__/mission1-provider-contracts.test.ts src/contracts/__tests__/conversation-v1-contracts.test.ts src/contracts/__tests__/return-loop-contracts.test.ts src/contracts/__tests__/core-v2-social-contracts.test.ts src/contracts/__tests__/social-conversation-consumer-contract.test.ts",
     "match-authority:check": "node scripts/contracts/check-match-authority-v1.cjs",
     "discovery-authority:check": "node scripts/contracts/check-discovery-authority-v1.cjs",
     "match-conversation-projection:check": "node scripts/contracts/check-match-conversation-projection-v1.cjs",

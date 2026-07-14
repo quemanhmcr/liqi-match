@@ -33,9 +33,12 @@ export const CoreV2EventEnvelopeSchema = z
   })
   .strict();
 
-const relationshipEvent = <T extends z.ZodTypeAny>(
-  eventType: string,
-  payload: T,
+const relationshipEvent = <
+  TEventType extends string,
+  TPayload extends z.ZodTypeAny,
+>(
+  eventType: TEventType,
+  payload: TPayload,
 ) =>
   CoreV2EventEnvelopeSchema.extend({
     aggregateId: SocialRelationshipIdV2Schema,
