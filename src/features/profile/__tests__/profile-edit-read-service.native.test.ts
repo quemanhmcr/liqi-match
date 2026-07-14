@@ -31,7 +31,7 @@ const session: AuthSession = {
 };
 
 function mockReads(input: {
-  availability?: unknown[];
+  availabilitySnapshot?: unknown;
   identitySnapshot?: unknown;
   backendHeroes?: unknown[];
   profile: Record<string, unknown>;
@@ -50,7 +50,19 @@ function mockReads(input: {
     .mockResolvedValueOnce(input.selectedRoles ?? [])
     .mockResolvedValueOnce(input.selectedHeroes ?? [])
     .mockResolvedValueOnce(input.backendHeroes ?? [])
-    .mockResolvedValueOnce(input.availability ?? []);
+    .mockResolvedValueOnce(
+      input.availabilitySnapshot ??
+        availabilitySnapshotFromProfile(input.profile),
+    );
+}
+
+function availabilitySnapshotFromProfile(_profile: Record<string, unknown>) {
+  return {
+    availability: null,
+    playerId: '20000000-0000-4000-8000-000000000003',
+    profileId: '30000000-0000-4000-8000-000000000003',
+    profileVersion: 2,
+  };
 }
 
 function identitySnapshotFromProfile(profile: Record<string, unknown>) {
@@ -139,10 +151,15 @@ describe('fetchProfileEditDraft', () => {
 
   it('resolves exact backend values to canonical IDs and keeps DB UUIDs in metadata', async () => {
     mockReads({
-      availability: [
-        { day_of_week: 1, starts_at: '18:00:00', ends_at: '21:00:00' },
-        { day_of_week: 1, starts_at: '21:00:00', ends_at: '23:59:59' },
-      ],
+      availabilitySnapshot: {
+        availability: {
+          slots: [{ dayOfWeek: 1, startMinute: 1080, endMinute: 1440 }],
+          timezone: 'Asia/Bangkok',
+        },
+        playerId: '20000000-0000-4000-8000-000000000003',
+        profileId: '30000000-0000-4000-8000-000000000003',
+        profileVersion: 2,
+      },
       backendHeroes: [{ id: 'hero-db-edras', slug: 'edras' }],
       profile: {
         avatar_media_id: null,
@@ -209,6 +226,28 @@ describe('fetchProfileEditDraft', () => {
     expect(draft.meta.laneDbIds.jungle).toBe('role-db-jungle');
     expect(draft.meta.heroDbIds.edras).toBe('hero-db-edras');
     expect(draft.meta.habitsLossless).toBe(true);
+  });
+
+  it('rejects identity and availability snapshots from different profile versions', async () => {
+    mockReads({
+      availabilitySnapshot: {
+        availability: null,
+        playerId: '20000000-0000-4000-8000-000000000003',
+        profileId: '30000000-0000-4000-8000-000000000003',
+        profileVersion: 3,
+      },
+      profile: {
+        avatar_media_id: null,
+        bio: '',
+        display_name: 'Version mismatch',
+        id: session.user.id,
+        timezone: 'Asia/Bangkok',
+      },
+    });
+
+    await expect(fetchProfileEditDraft(session)).rejects.toThrow(
+      'availability snapshot không khớp canonical identity/version',
+    );
   });
 
   it('keeps unsupported legacy values outside canonical form and marks loss', async () => {

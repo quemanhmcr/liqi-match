@@ -33,6 +33,7 @@ const sqlPaths = [
   'supabase/migrations/202607140039_return_loop_release_readiness_v1.sql',
   'supabase/migrations/202607140040_return_loop_match_funnel_guard_v1.sql',
   'supabase/migrations/202607140041_suspend_resume_return_loop_v1.sql',
+  'supabase/migrations/202607140042_update_player_profile_availability_v1.sql',
   'supabase/tests/database/production_match_authority_v1.test.sql',
   'supabase/tests/database/production_match_loop_v1.test.sql',
   'supabase/tests/database/home_match_facts_v1.test.sql',
@@ -47,6 +48,7 @@ const sqlPaths = [
   'supabase/tests/database/push_delivery_presence_v1.test.sql',
   'supabase/tests/database/notification_deep_link_resolution_v1.test.sql',
   'supabase/tests/database/return_loop_authority_v1.test.sql',
+  'supabase/tests/database/player_profile_availability_v1.test.sql',
 ];
 
 function fail(message) {

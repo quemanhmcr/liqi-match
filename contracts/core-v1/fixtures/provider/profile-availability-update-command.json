@@ -1,0 +1,11 @@
+{
+  "availability": {
+    "slots": [
+      { "dayOfWeek": 1, "startMinute": 1080, "endMinute": 1440 },
+      { "dayOfWeek": 2, "startMinute": 0, "endMinute": 180 }
+    ],
+    "timezone": "Asia/Ho_Chi_Minh"
+  },
+  "expectedProfileVersion": 3,
+  "idempotencyKey": "profile.availability.000000000801.v3"
+}

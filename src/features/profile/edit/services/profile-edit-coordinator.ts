@@ -17,6 +17,7 @@ import {
 } from '../model/profile-media-picker-recovery';
 import {
   ProfileEditCommandError,
+  saveProfileAvailability,
   saveProfileGameProfile,
   saveProfileHabits,
   saveProfileHeroes,
@@ -348,9 +349,13 @@ async function saveNonMediaSection(input: {
     });
     return {};
   }
-  throw new ProfileEditCommandError(
-    'Availability đang chờ primitive dùng chung. Không có dữ liệu nào được ghi bằng adapter tạm.',
-  );
+  return saveProfileAvailability({
+    canonicalProfileId: input.draft.meta.canonicalProfileId,
+    current: input.current.availability,
+    expectedProfileVersion: input.profileVersion,
+    playerId: input.draft.meta.playerId,
+    session: input.session,
+  });
 }
 
 function buildFailureResult(input: {

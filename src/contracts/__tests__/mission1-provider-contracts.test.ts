@@ -13,6 +13,9 @@ import {
   PlayerIdentityMappingV1Schema,
   PlayerLifecycleSnapshotV1Schema,
   PlayerProfileIdentitySnapshotV1Schema,
+  UpdatePlayerProfileAvailabilityResultV1Schema,
+  UpdatePlayerProfileAvailabilityCommandV1Schema,
+  PlayerProfileAvailabilitySnapshotV1Schema,
   PlayerProfileUpdatedEventV1Schema,
   PlayerProfileVersionV1Schema,
   UpdatePlayerProfileIdentityCommandV1Schema,
@@ -214,6 +217,57 @@ describe('Mission 1 Core V1 provider contracts', () => {
 
     expect(event.data.lifecycleVersion).toBe(4);
     expect(event.aggregateId).toBe(event.data.playerId);
+  });
+
+  it('publishes the authoritative profile availability snapshot', () => {
+    const snapshot = PlayerProfileAvailabilitySnapshotV1Schema.parse(
+      read('profile-availability-snapshot.json'),
+    );
+
+    expect(snapshot.profileVersion).toBe(4);
+    expect(snapshot.availability?.slots.at(-1)?.endMinute).toBe(180);
+  });
+
+  it('publishes an optimistic canonical availability command', () => {
+    const command = UpdatePlayerProfileAvailabilityCommandV1Schema.parse(
+      read('profile-availability-update-command.json'),
+    );
+
+    expect(command.expectedProfileVersion).toBe(3);
+    expect(command.availability?.timezone).toBe('Asia/Ho_Chi_Minh');
+  });
+
+  it('publishes an idempotent availability replay receipt', () => {
+    const result = UpdatePlayerProfileAvailabilityResultV1Schema.parse(
+      read('profile-availability-update-replay.json'),
+    );
+
+    expect(result.repeated).toBe(true);
+    expect(result.profileVersion).toBe(4);
+  });
+
+  it('rejects overlapping or overnight raw availability slots', () => {
+    expect(() =>
+      UpdatePlayerProfileAvailabilityCommandV1Schema.parse({
+        ...(read('profile-availability-update-command.json') as object),
+        availability: {
+          slots: [
+            { dayOfWeek: 1, endMinute: 900, startMinute: 600 },
+            { dayOfWeek: 1, endMinute: 960, startMinute: 800 },
+          ],
+          timezone: 'Asia/Ho_Chi_Minh',
+        },
+      }),
+    ).toThrow();
+    expect(() =>
+      UpdatePlayerProfileAvailabilityCommandV1Schema.parse({
+        ...(read('profile-availability-update-command.json') as object),
+        availability: {
+          slots: [{ dayOfWeek: 1, endMinute: 180, startMinute: 1320 }],
+          timezone: 'Asia/Ho_Chi_Minh',
+        },
+      }),
+    ).toThrow();
   });
 
   it('publishes the authoritative profile identity read snapshot', () => {

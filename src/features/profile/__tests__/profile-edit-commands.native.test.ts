@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { createEmptyHabitAnswers } from '@/entities/player-profile';
 import {
   ProfileEditCommandError,
+  saveProfileAvailability,
   saveProfileGameProfile,
   saveProfileHabits,
   saveProfileHeroes,
@@ -143,6 +144,83 @@ describe('Profile Edit commands', () => {
           displayName: 'New name',
           genderId: null,
         },
+        expectedProfileVersion: 2,
+        playerId,
+        session,
+      }),
+    ).rejects.toMatchObject({
+      code: 'profile_version_conflict',
+      retryable: false,
+    } satisfies Partial<ProfileEditCommandError>);
+  });
+
+  it('normalizes and updates Availability through one versioned RPC', async () => {
+    mockSupabaseRest.mockResolvedValueOnce({
+      availability: {
+        slots: [
+          { dayOfWeek: 1, startMinute: 1320, endMinute: 1440 },
+          { dayOfWeek: 2, startMinute: 0, endMinute: 180 },
+        ],
+        timezone: 'Asia/Bangkok',
+      },
+      playerId,
+      profileId: canonicalProfileId,
+      profileVersion: 3,
+      repeated: false,
+    });
+
+    await expect(
+      saveProfileAvailability({
+        canonicalProfileId,
+        current: {
+          slots: [{ dayOfWeek: 1, startMinute: 1320, endMinute: 180 }],
+          timezone: 'Asia/Bangkok',
+        },
+        expectedProfileVersion: 2,
+        playerId,
+        session,
+      }),
+    ).resolves.toEqual({ profileVersion: 3 });
+
+    expect(mockSupabaseRest).toHaveBeenCalledWith(
+      'rpc/update_player_profile_availability_v1',
+      {
+        body: {
+          command: {
+            availability: {
+              slots: [
+                { dayOfWeek: 1, startMinute: 1320, endMinute: 1440 },
+                { dayOfWeek: 2, startMinute: 0, endMinute: 180 },
+              ],
+              timezone: 'Asia/Bangkok',
+            },
+            expectedProfileVersion: 2,
+            idempotencyKey: `profile.availability.${session.user.id}.v2`,
+          },
+        },
+        method: 'POST',
+        session,
+      },
+    );
+  });
+
+  it('classifies Availability profile version conflicts as non-retryable', async () => {
+    mockSupabaseRest.mockRejectedValueOnce(
+      new SupabaseRestError(
+        'Player profile changed on another request.',
+        409,
+        'profile_version_conflict',
+        'request-availability-conflict-0001',
+        false,
+        { actualVersion: 4, expectedVersion: 2 },
+        'P0001',
+      ),
+    );
+
+    await expect(
+      saveProfileAvailability({
+        canonicalProfileId,
+        current: null,
         expectedProfileVersion: 2,
         playerId,
         session,

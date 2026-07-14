@@ -12,6 +12,7 @@ import {
 } from '@/features/profile/edit/model/profile-media-picker-recovery';
 import {
   ProfileEditCommandError,
+  saveProfileAvailability,
   saveProfileGameProfile,
   saveProfileHabits,
   saveProfileHeroes,
@@ -43,6 +44,7 @@ jest.mock('@/features/profile/edit/services/profile-edit-commands', () => {
   >('@/features/profile/edit/services/profile-edit-commands');
   return {
     ...actual,
+    saveProfileAvailability: jest.fn(async () => ({ profileVersion: 3 })),
     saveProfileGameProfile: jest.fn(async () => undefined),
     saveProfileHabits: jest.fn(async () => undefined),
     saveProfileHeroes: jest.fn(async () => undefined),
@@ -90,6 +92,7 @@ jest.mock('@/features/profile/edit/services/profile-edit-commands', () => {
 
 const mockClearMedia = jest.mocked(clearProfileMediaDraftItem);
 const mockPersistMedia = jest.mocked(persistProfileMediaDraftItem);
+const mockSaveAvailability = jest.mocked(saveProfileAvailability);
 const mockSaveGameProfile = jest.mocked(saveProfileGameProfile);
 const mockSaveHabits = jest.mocked(saveProfileHabits);
 const mockSaveHeroes = jest.mocked(saveProfileHeroes);
@@ -115,6 +118,7 @@ beforeEach(() => {
   for (const mock of [
     mockClearMedia,
     mockPersistMedia,
+    mockSaveAvailability,
     mockSaveGameProfile,
     mockSaveHabits,
     mockSaveHeroes,
@@ -127,6 +131,7 @@ beforeEach(() => {
     mock.mockClear();
   }
   mockPersistMedia.mockImplementation(async (_profileId, item) => item);
+  mockSaveAvailability.mockResolvedValue({ profileVersion: 3 });
   mockSaveIdentity.mockResolvedValue({ profileVersion: 3 });
   mockSaveGameProfile.mockResolvedValue(undefined);
   mockSaveRoles.mockResolvedValue(undefined);
@@ -282,7 +287,7 @@ describe('saveProfileEditChanges', () => {
     expect(mockClearMedia).toHaveBeenCalledWith(session.user.id, 'cover');
   });
 
-  it('does not write availability before the shared primitive exists', async () => {
+  it('saves Availability through the versioned command', async () => {
     const baseline = baseForm();
     const current = clone(baseline);
     current.availability = {
@@ -297,15 +302,41 @@ describe('saveProfileEditChanges', () => {
       session,
     });
 
-    expect(result.outcome).toBe('failed');
-    expect(result.failedSection).toBe('availability');
-    expect(result.steps.find((step) => step.id === 'availability')).toEqual(
+    expect(result.outcome).toBe('saved');
+    expect(result.savedSections).toEqual(['availability']);
+    expect(result.profileVersion).toBe(3);
+    expect(mockSaveAvailability).toHaveBeenCalledWith(
       expect.objectContaining({
-        error: expect.stringContaining('primitive dùng chung'),
-        status: 'failed',
+        current: current.availability,
+        expectedProfileVersion: 2,
       }),
     );
-    expect(mockSaveHabits).not.toHaveBeenCalled();
+  });
+
+  it('passes the advanced profile version from Identity to Availability', async () => {
+    const baseline = baseForm();
+    const current = clone(baseline);
+    current.identity.displayName = 'Versioned name';
+    current.availability = {
+      slots: [{ dayOfWeek: 1, startMinute: 1080, endMinute: 1440 }],
+      timezone: 'Asia/Bangkok',
+    };
+    mockSaveIdentity.mockResolvedValueOnce({ profileVersion: 3 });
+    mockSaveAvailability.mockResolvedValueOnce({ profileVersion: 4 });
+
+    const result = await saveProfileEditChanges({
+      baseline,
+      current,
+      draft: draftFor(baseline),
+      session,
+    });
+
+    expect(result.outcome).toBe('saved');
+    expect(result.savedSections).toEqual(['identity', 'availability']);
+    expect(result.profileVersion).toBe(4);
+    expect(mockSaveAvailability).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedProfileVersion: 3 }),
+    );
   });
 });
 

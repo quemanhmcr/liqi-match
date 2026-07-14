@@ -345,7 +345,10 @@ function ProfileEditEditor({
         onChange={(habits) => setForm({ ...form, habits })}
         onLimitReached={showSelectionLimit}
       />
-      <AvailabilitySection availability={form.availability} />
+      <AvailabilitySection
+        availability={form.availability}
+        onChange={(availability) => setForm({ ...form, availability })}
+      />
       <MediaSection
         disabled={Boolean(pickingMedia || saveMutation.isPending)}
         displayName={form.identity.displayName}

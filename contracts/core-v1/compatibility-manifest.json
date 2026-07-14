@@ -69,7 +69,10 @@
     "return-loop-release-ready.json",
     "notification-unseen.json",
     "notification-seen-unread.json",
-    "notification-read.json"
+    "notification-read.json",
+    "profile-availability-snapshot.json",
+    "profile-availability-update-command.json",
+    "profile-availability-update-replay.json"
   ],
   "consumerFixtures": [
     "conversation-bootstrap-requested.json",

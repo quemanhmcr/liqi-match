@@ -1,9 +1,8 @@
 import {
-  DayOfWeekSchema,
   GENDER_CATALOG,
   LANE_CATALOG,
   RANK_CATALOG,
-  normalizeRecurringAvailability,
+  RecurringAvailabilitySchema,
   adaptLegacyHabitAnswers,
   resolveCatalogId,
   resolveHeroId,
@@ -12,10 +11,12 @@ import {
   type LaneSelection,
   type LaneSlug,
   type RankId,
-  type RecurringAvailability,
 } from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
-import { PlayerProfileIdentitySnapshotV1Schema } from '@/shared/contracts/core-v1';
+import {
+  PlayerProfileAvailabilitySnapshotV1Schema,
+  PlayerProfileIdentitySnapshotV1Schema,
+} from '@/shared/contracts/core-v1';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
 import { profileMediaUrl } from '../../services/profile-service';
@@ -88,12 +89,6 @@ type ProfileHeroRow = {
   heroes?: MaybeArray<HeroEmbed>;
 };
 
-type AvailabilitySlotRow = {
-  day_of_week: number;
-  ends_at: string;
-  starts_at: string;
-};
-
 type HeroStatSummary = {
   heroId?: string;
   matches?: number;
@@ -130,7 +125,7 @@ export async function fetchProfileEditDraft(
     selectedRoles,
     selectedHeroes,
     backendHeroes,
-    availabilitySlots,
+    availabilitySnapshotRaw,
   ] = await Promise.all([
     supabaseRest<unknown>('rpc/get_own_player_profile_identity_v1', {
       body: {},
@@ -157,23 +152,28 @@ export async function fetchProfileEditDraft(
     supabaseRest<HeroRow[]>('heroes?select=id,slug&order=name.asc', {
       session,
     }),
-    supabaseRest<AvailabilitySlotRow[]>(
-      [
-        'availability_slots?select=day_of_week,starts_at,ends_at',
-        `profile_id=eq.${encodeURIComponent(profileId)}`,
-        'order=day_of_week.asc,starts_at.asc',
-      ].join('&'),
-      { session },
-    ).catch(() => [] as AvailabilitySlotRow[]),
+    supabaseRest<unknown>('rpc/get_own_player_profile_availability_v1', {
+      body: {},
+      method: 'POST',
+      session,
+    }),
   ]);
 
   const identitySnapshot =
     PlayerProfileIdentitySnapshotV1Schema.parse(identitySnapshotRaw);
+  const availabilitySnapshot = PlayerProfileAvailabilitySnapshotV1Schema.parse(
+    availabilitySnapshotRaw,
+  );
   if (
-    session.principal?.playerId &&
-    session.principal.playerId !== identitySnapshot.playerId
+    (session.principal?.playerId &&
+      session.principal.playerId !== identitySnapshot.playerId) ||
+    availabilitySnapshot.playerId !== identitySnapshot.playerId ||
+    availabilitySnapshot.profileId !== identitySnapshot.profileId ||
+    availabilitySnapshot.profileVersion !== identitySnapshot.profileVersion
   ) {
-    throw new Error('Profile identity snapshot không khớp PlayerId hiện tại.');
+    throw new Error(
+      'Profile identity và availability snapshot không khớp canonical identity/version.',
+    );
   }
 
   const row = profileRows[0];
@@ -192,11 +192,10 @@ export async function fetchProfileEditDraft(
   const rankId = resolveSelectedRank(gameProfile?.rank_id, ranks, issues);
   const laneResult = buildLaneSelection(selectedRoles, roles, issues);
   const heroResult = buildFavoriteHeroes(selectedHeroes, mediaSummary, issues);
-  const availability = buildAvailability(
-    availabilitySlots,
-    row.timezone,
-    issues,
-  );
+  const availability =
+    availabilitySnapshot.availability === null
+      ? null
+      : RecurringAvailabilitySchema.parse(availabilitySnapshot.availability);
   // Keep legacy diagnostics visible during migration, but never use them as
   // the canonical Identity value.
   resolveGender(mediaSummary, issues);
@@ -427,38 +426,6 @@ function resolveGender(
     value: raw,
   });
   return null;
-}
-
-function buildAvailability(
-  rows: AvailabilitySlotRow[],
-  timezone: string | null,
-  issues: ProfileEditReadIssue[],
-): RecurringAvailability | null {
-  if (!rows.length) return null;
-  const candidate = {
-    slots: rows.map((row) => ({
-      dayOfWeek: DayOfWeekSchema.parse(row.day_of_week),
-      endMinute: parseClockMinute(row.ends_at, true),
-      startMinute: parseClockMinute(row.starts_at, false),
-    })),
-    timezone: timezone ?? '',
-  };
-  try {
-    return normalizeRecurringAvailability(candidate);
-  } catch {
-    issues.push({
-      code: 'invalid_availability',
-      path: 'availability',
-      value: candidate,
-    });
-    return null;
-  }
-}
-
-function parseClockMinute(value: string, isEnd: boolean) {
-  if (isEnd && value === '23:59:59') return 24 * 60;
-  const [hours = '0', minutes = '0'] = value.split(':');
-  return Number(hours) * 60 + Number(minutes);
 }
 
 function optionalNumber(value: unknown, max: number) {

@@ -7,6 +7,7 @@ export * from './lifecycle/player-deletion';
 export * from './profile/player-summary';
 export * from './profile/player-profile-version';
 export * from './profile/player-profile-commands';
+export * from './profile/player-profile-availability';
 export * from './discovery/match-intent';
 export * from './discovery/candidate';
 export * from './match/match-created';
