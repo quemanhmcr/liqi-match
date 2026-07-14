@@ -6,6 +6,7 @@ export const PlayerSummaryV1Schema = z.object({
   profileId: ProfileIdSchema,
   profileVersion: z.number().int().nonnegative(),
   displayName: z.string().min(2).max(40),
+  avatarAssetId: z.string().uuid().nullable().optional(),
   avatarUrl: z.string().url().nullable(),
   rank: z
     .object({

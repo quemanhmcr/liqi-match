@@ -37,6 +37,7 @@
     "expired-intent.json",
     "candidate-eligible.json",
     "candidate-already-liked.json",
+    "candidate-page-snapshot.json",
     "mutual-like-receipt.json",
     "duplicate-like-retry-receipt.json",
     "match-already-exists-receipt.json"
