@@ -28,9 +28,8 @@ import {
   createSimulationDiscoverRepository,
 } from '@/features/discover';
 import {
+  createApiHomeRepository,
   createSimulationHomeRepository,
-  fetchHomeDashboard,
-  type HomeRepository,
 } from '@/features/home';
 import {
   createCanonicalSimulationMessagesAdapter,
@@ -147,10 +146,6 @@ export function createApiApplicationServices(): ApiApplicationServices {
     scenarioControl: null,
     simulationRuntime: null,
   };
-}
-
-function createApiHomeRepository(): HomeRepository {
-  return { getDashboard: fetchHomeDashboard };
 }
 
 function createApiProfileRepository(): ProfileReadRepository {

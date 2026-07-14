@@ -18,3 +18,4 @@ export * from './discovery/match-set';
 export * from './deep-link';
 export * from './notification';
 export * from './operations';
+export * from './home';

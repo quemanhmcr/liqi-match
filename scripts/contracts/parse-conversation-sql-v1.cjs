@@ -27,6 +27,12 @@ const sqlPaths = [
   'supabase/migrations/202607140033_remove_match_command_overloads_v1.sql',
   'supabase/migrations/202607140034_shared_player_summary_home_facts_v1.sql',
   'supabase/migrations/202607140035_match_intent_lifecycle_dispatch_v1.sql',
+  'supabase/migrations/202607140036_return_loop_authority_v1.sql',
+  'supabase/migrations/202607140037_notification_deep_link_resolution_v1.sql',
+  'supabase/migrations/202607140038_push_delivery_presence_v1.sql',
+  'supabase/migrations/202607140039_return_loop_release_readiness_v1.sql',
+  'supabase/migrations/202607140040_return_loop_match_funnel_guard_v1.sql',
+  'supabase/migrations/202607140041_suspend_resume_return_loop_v1.sql',
   'supabase/tests/database/production_match_authority_v1.test.sql',
   'supabase/tests/database/production_match_loop_v1.test.sql',
   'supabase/tests/database/home_match_facts_v1.test.sql',
@@ -37,6 +43,10 @@ const sqlPaths = [
   'supabase/tests/database/match_conversation_projection_v1.test.sql',
   'supabase/tests/database/match_intent_lifecycle_projection_v1.test.sql',
   'supabase/tests/database/match_funnel_telemetry_v1.test.sql',
+  'supabase/tests/database/return_loop_release_readiness_v1.test.sql',
+  'supabase/tests/database/push_delivery_presence_v1.test.sql',
+  'supabase/tests/database/notification_deep_link_resolution_v1.test.sql',
+  'supabase/tests/database/return_loop_authority_v1.test.sql',
 ];
 
 function fail(message) {
