@@ -4,6 +4,7 @@ import type { MatchIntentRepository } from '@/entities/match-intent';
 import type { MatchSetRepository } from '@/entities/match-set';
 import type { AssetResolver } from '@/entities/media-asset';
 import type { NotificationInboxRepository } from '@/entities/notifications';
+import type { SocialRelationshipRepository } from '@/entities/social-relationship';
 import type {
   ProductionSimulationRuntime,
   SimulationWorldSnapshot,
@@ -28,6 +29,7 @@ type ApplicationFeatureServices = {
   messageTransport: ChatMessageTransport;
   notificationRepository: NotificationInboxRepository;
   profileRepository: ProfileReadRepository;
+  relationshipRepository: SocialRelationshipRepository;
 };
 
 export type SimulationApplicationServices = ApplicationFeatureServices & {
