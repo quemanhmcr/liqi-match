@@ -1,5 +1,6 @@
 export {
   RelationshipCapabilitiesProvider,
+  useSocialCommandCoordinator,
   useSocialRelationshipRepository,
 } from './RelationshipCapabilitiesProvider';
 export { InMemorySocialRelationshipRepository } from './in-memory-social-relationship-repository';

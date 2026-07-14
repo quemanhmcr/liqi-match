@@ -4,6 +4,7 @@ import {
   CorrelationIdSchema,
   IdempotencyKeySchema,
   PlayerIdSchema,
+  ProfileIdSchema,
 } from '../../core-v1';
 import {
   FriendshipRequestIdV2Schema,
@@ -60,6 +61,15 @@ export const TrustVisibilityV2Schema = z.enum([
   'friends',
   'private',
 ]);
+
+export const VisibleProfileIdentityV2Schema = z
+  .object({
+    contractVersion: CoreV2ContractVersionSchema,
+    legacyProfileId: z.string().uuid(),
+    playerId: PlayerIdSchema,
+    profileId: ProfileIdSchema,
+  })
+  .strict();
 
 export const RelationshipCapabilitiesV2Schema = z
   .object({
@@ -348,6 +358,9 @@ export const ReportReceiptV2Schema = z
 
 export type SocialCommandAuditMetadataV2 = z.infer<
   typeof SocialCommandAuditMetadataV2Schema
+>;
+export type VisibleProfileIdentityV2 = z.infer<
+  typeof VisibleProfileIdentityV2Schema
 >;
 export type RelationshipCapabilitiesV2 = z.infer<
   typeof RelationshipCapabilitiesV2Schema

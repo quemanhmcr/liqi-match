@@ -10,6 +10,7 @@ import {
   ReportReceiptV2Schema,
   ReportSubmittedEventV2Schema,
   SocialRelationshipSnapshotV2Schema,
+  VisibleProfileIdentityV2Schema,
   TrustVisibilityDecisionV2Schema,
 } from '../../../contracts/core-v2';
 
@@ -126,6 +127,14 @@ describe('Core V2 social relationship provider contracts', () => {
     expect(event.payload.reasonCode).toBe('user_safety');
     expect(event.payload).not.toHaveProperty('reputationDelta');
   });
+});
+
+it('publishes the privacy-gated canonical profile identity bridge', () => {
+  const identity = VisibleProfileIdentityV2Schema.parse(
+    read('provider', 'visible-profile-identity.json'),
+  );
+  expect(identity.playerId).not.toBe(identity.profileId);
+  expect(identity.profileId).not.toBe(identity.legacyProfileId);
 });
 
 describe('Core V2 social relationship consumer fixtures', () => {

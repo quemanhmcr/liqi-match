@@ -1,9 +1,25 @@
-import { createContext, useContext, type PropsWithChildren } from 'react';
+import {
+  createContext,
+  useContext,
+  useMemo,
+  type PropsWithChildren,
+} from 'react';
 
-import type { SocialRelationshipRepository } from './social-relationship-repository';
+import { SocialCommandCoordinator } from './social-command-coordinator';
+import type {
+  PlayerPrivacyProvider,
+  PlayerSafetyCommandService,
+  SocialRelationshipCommandService,
+  SocialRelationshipRepository,
+} from './social-relationship-repository';
 
-const SocialRelationshipRepositoryContext =
-  createContext<SocialRelationshipRepository | null>(null);
+type SocialRelationshipContextValue = Readonly<{
+  coordinator: SocialCommandCoordinator | null;
+  repository: SocialRelationshipRepository;
+}>;
+
+const SocialRelationshipContext =
+  createContext<SocialRelationshipContextValue | null>(null);
 
 export type RelationshipCapabilitiesProviderProps = PropsWithChildren<{
   repository: SocialRelationshipRepository;
@@ -13,19 +29,68 @@ export function RelationshipCapabilitiesProvider({
   children,
   repository,
 }: RelationshipCapabilitiesProviderProps) {
+  const value = useMemo<SocialRelationshipContextValue>(
+    () => ({
+      coordinator: isSocialCommandRuntime(repository)
+        ? new SocialCommandCoordinator({
+            friendship: repository,
+            privacy: repository,
+            safety: repository,
+          })
+        : null,
+      repository,
+    }),
+    [repository],
+  );
+
   return (
-    <SocialRelationshipRepositoryContext.Provider value={repository}>
+    <SocialRelationshipContext.Provider value={value}>
       {children}
-    </SocialRelationshipRepositoryContext.Provider>
+    </SocialRelationshipContext.Provider>
   );
 }
 
 export function useSocialRelationshipRepository() {
-  const repository = useContext(SocialRelationshipRepositoryContext);
-  if (!repository) {
+  return useSocialRelationshipContext().repository;
+}
+
+export function useSocialCommandCoordinator() {
+  return useSocialRelationshipContext().coordinator;
+}
+
+function useSocialRelationshipContext() {
+  const value = useContext(SocialRelationshipContext);
+  if (!value) {
     throw new Error(
       'RelationshipCapabilitiesProvider is missing from application composition.',
     );
   }
-  return repository;
+  return value;
+}
+
+type SocialCommandRuntime = SocialRelationshipRepository &
+  SocialRelationshipCommandService &
+  PlayerSafetyCommandService &
+  PlayerPrivacyProvider;
+
+function isSocialCommandRuntime(
+  repository: SocialRelationshipRepository,
+): repository is SocialCommandRuntime {
+  const candidate = repository as Partial<SocialCommandRuntime>;
+  return [
+    candidate.requestFriendship,
+    candidate.acceptFriendship,
+    candidate.declineFriendship,
+    candidate.cancelFriendship,
+    candidate.removeFriendship,
+    candidate.blockPlayer,
+    candidate.unblockPlayer,
+    candidate.mutePlayer,
+    candidate.unmutePlayer,
+    candidate.getPrivacy,
+    candidate.updatePrivacy,
+    candidate.getTrustVisibility,
+    candidate.reportPlayer,
+    candidate.reportMessage,
+  ].every((method) => typeof method === 'function');
 }

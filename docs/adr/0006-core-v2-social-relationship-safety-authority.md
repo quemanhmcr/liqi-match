@@ -1,6 +1,6 @@
 # ADR 0006: Core V2 social relationship and safety authority
 
-- Status: Proposed for checkpoint S1.1 review
+- Status: Accepted through checkpoints S1.1-S1.3
 - DRI: Senior 1
 - Date: 2026-07-14
 
@@ -61,6 +61,14 @@ Rollback disables Core V2 reads and mutations through feature flags while preser
 Trust projection visibility is a separate privacy decision, not an alias for profile visibility. The Social provider returns `TrustVisibilityDecisionV2`; block always forces `canViewTrust = false`. Trust consumers may display cross-player projection only when this decision grants access.
 
 Repeat-play recommendation remains a Senior 4 semantic, but candidates must be removed whenever the Social provider reports either directional block. A private block or an unverified report never changes public reputation facts.
+
+## Profile and discovery integration agreement (S1.2)
+
+Public mobile routes identify another person by canonical Core V1 `PlayerId`; the dynamic route is `/profile/[playerId]`. `ProfileId` and the legacy `profiles.id` UUID are storage/provider details and must not be used as social identity in navigation, commands or consumer capability checks.
+
+The temporary `PlayerId -> ProfileId -> legacy_profile_id` bridge is exposed only through `resolve_visible_profile_identity_v2`. It validates Core V1 lifecycle plus the latest Core V2 `canViewProfile` capability. The legacy `profiles` RLS policy calls the same fail-closed social visibility authority, so a guessed legacy UUID cannot bypass privacy or block.
+
+Profile relationship actions consume the exact `SocialRelationshipSnapshotV2` returned by the provider, send the server versions back with each command and update UI state only from an authoritative receipt. Discover and Home prefer `PlayerId` routes; simulation-only identity fallback remains a compatibility adapter, not a second semantic authority.
 
 ## Conversation consumer agreement (S1/S3)
 

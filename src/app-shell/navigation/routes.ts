@@ -40,12 +40,15 @@ export const appRoutes = {
   notifications: '/notifications',
   profile: {
     blocked: '/profile/settings/blocked',
-    detail: (userId: string) =>
-      ({ pathname: '/profile/[userId]', params: { userId } }) as const,
+    detail: (identityId: string) =>
+      ({
+        pathname: '/profile/[playerId]',
+        params: { playerId: identityId },
+      }) as const,
     playerDetail: (playerId: string) =>
       ({
-        pathname: '/profile/[userId]',
-        params: { userId: playerId },
+        pathname: '/profile/[playerId]',
+        params: { playerId },
       }) as const,
     edit: '/profile/edit',
     self: '/profile',
