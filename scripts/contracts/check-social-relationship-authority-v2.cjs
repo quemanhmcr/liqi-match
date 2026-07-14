@@ -21,6 +21,14 @@ const files = {
     root,
     'supabase/tests/database/social_trust_visibility_v2.test.sql',
   ),
+  consumerBridgeMigration: path.join(
+    root,
+    'supabase/migrations/202607140057_social_block_consumer_bridge_v2.sql',
+  ),
+  consumerBridgeTest: path.join(
+    root,
+    'supabase/tests/database/social_block_consumer_bridge_v2.test.sql',
+  ),
 };
 const source = Object.fromEntries(
   Object.entries(files).map(([name, filename]) => [
@@ -64,6 +72,26 @@ for (const marker of [
   }
 }
 
+for (const marker of [
+  'create or replace function private.are_profiles_blocked',
+  'public.player_blocks_v2',
+  'legacy_block_shadow_reads_enabled',
+  "'Compatibility seam: V2 PlayerId block authority first",
+]) {
+  if (!source.consumerBridgeMigration.includes(marker)) {
+    throw new Error(`Missing Core V2 consumer bridge marker: ${marker}`);
+  }
+}
+if (
+  !source.consumerBridgeTest.includes(
+    'legacy-profile consumers observe a V2-only block',
+  )
+) {
+  throw new Error(
+    'Consumer bridge pgTAP must prove V2 block enforcement for legacy consumers.',
+  );
+}
+
 if (/auth\.uid\(\).*player/i.test(source.foundationMigration)) {
   throw new Error('Core V2 must not treat auth.uid() as canonical PlayerId.');
 }
@@ -102,13 +130,15 @@ function countAssertions(sql, label) {
 
 const assertionCount =
   countAssertions(source.foundationTest, 'Foundation') +
-  countAssertions(source.trustTest, 'Trust visibility');
+  countAssertions(source.trustTest, 'Trust visibility') +
+  countAssertions(source.consumerBridgeTest, 'Consumer bridge');
 
 (async () => {
   const parser = await new PgQueryModule();
   for (const [label, sql] of [
     ['foundation', source.foundationMigration],
     ['trust visibility', source.trustMigration],
+    ['consumer bridge', source.consumerBridgeMigration],
   ]) {
     const parsed = parser.parse(sql);
     if (parsed.error) {
