@@ -803,6 +803,12 @@ function navigateNotificationDestination(destination: NotificationDestination) {
     case 'conversation':
       router.push(appRoutes.messages.detail(destination.conversationId));
       return;
+    case 'match':
+      router.push(appRoutes.discover.matchDetail(destination.matchId));
+      return;
+    case 'profile':
+      router.push(appRoutes.profile.playerDetail(destination.playerId));
+      return;
     case 'set':
       router.push(appRoutes.discover.setDetail(destination.setId));
       return;

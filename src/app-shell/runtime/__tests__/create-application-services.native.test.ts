@@ -6,7 +6,7 @@ import {
   GOLDEN_PROFILE_IDS,
 } from '@/entities/simulation';
 
-import { ApplicationServiceUnavailableError } from '../application-service-error';
+import { ApiNotificationInboxRepository } from '@/entities/notifications';
 import {
   createApiApplicationServices,
   createSimulationApplicationServices,
@@ -197,11 +197,9 @@ describe('application service composition', () => {
       name: 'MessagesServiceError',
       retryable: false,
     });
-    await expect(
-      services.notificationRepository.list({
-        session: simulationSession(),
-      }),
-    ).rejects.toBeInstanceOf(ApplicationServiceUnavailableError);
+    expect(services.notificationRepository).toBeInstanceOf(
+      ApiNotificationInboxRepository,
+    );
   });
 });
 

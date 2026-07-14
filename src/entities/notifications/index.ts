@@ -1,4 +1,11 @@
 export {
+  ApiNotificationInboxRepository,
+  createApiNotificationInboxRepository,
+  createNotificationSupabaseTransport,
+  type NotificationApiRequest,
+  type NotificationApiTransport,
+} from './data/api-notification-inbox.repository';
+export {
   notificationCategory,
   type NotificationActor,
   type NotificationCategory,

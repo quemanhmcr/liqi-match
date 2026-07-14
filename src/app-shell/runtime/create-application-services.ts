@@ -19,8 +19,8 @@ import {
   createGoldenWorldSimulationAssetResolver,
 } from '@/entities/media-asset';
 import {
+  createApiNotificationInboxRepository,
   createCanonicalSimulationNotificationInboxRepository,
-  type NotificationInboxRepository,
 } from '@/entities/notifications';
 import { createProductionSimulationRuntime } from '@/entities/simulation';
 import {
@@ -50,7 +50,6 @@ import {
 } from '@/shared/auth/auth-service';
 import { supabaseAuthClient } from '@/shared/auth/supabase-auth-client';
 
-import { ApplicationServiceUnavailableError } from './application-service-error';
 import type {
   ApiApplicationServices,
   ApplicationServices,
@@ -141,7 +140,7 @@ export function createApiApplicationServices(): ApiApplicationServices {
     messageRepository: messages,
     messageTransport: messages,
     mode: 'api',
-    notificationRepository: createUnavailableNotificationRepository(),
+    notificationRepository: createApiNotificationInboxRepository(),
     profileRepository: createApiProfileRepository(),
     scenarioControl: null,
     simulationRuntime: null,
@@ -152,28 +151,7 @@ function createApiProfileRepository(): ProfileReadRepository {
   return { getProfile: fetchProfileView };
 }
 
-function createUnavailableNotificationRepository(): NotificationInboxRepository {
-  return {
-    async getSummary() {
-      throw unavailable('Notifications repository');
-    },
-    async list() {
-      throw unavailable('Notifications repository');
-    },
-    async markRead() {
-      throw unavailable('Notifications repository');
-    },
-    async markSeenThrough() {
-      throw unavailable('Notifications repository');
-    },
-  };
-}
-
 function nextSimulationApplicationNamespace() {
   simulationApplicationSequence += 1;
   return `application-simulation-${simulationApplicationSequence}`;
-}
-
-function unavailable(service: string) {
-  return new ApplicationServiceUnavailableError(service);
 }

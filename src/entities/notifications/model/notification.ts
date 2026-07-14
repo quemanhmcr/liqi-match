@@ -1,5 +1,6 @@
 import type { AssetKey } from '@/entities/media-asset';
 import type { AuthSession } from '@/shared/auth/auth-service';
+import type { DeepLinkV1 } from '@/shared/contracts/core-v1';
 
 export type NotificationCategory =
   'interaction' | 'message' | 'set-invite' | 'system';
@@ -27,6 +28,31 @@ export type DirectMessageNotification = NotificationBase<
     conversationId: string;
     excerpt: string;
   }
+>;
+
+export type SetInviteReceivedNotification = NotificationBase<
+  'set-invite-received',
+  { setId: string }
+>;
+
+export type MessageReceivedNotification = NotificationBase<
+  'message-received',
+  { conversationId: string }
+>;
+
+export type MatchCreatedNotification = NotificationBase<
+  'match-created',
+  { matchId: string }
+>;
+
+export type JoinRequestNotification = NotificationBase<
+  'join-request',
+  { setId: string }
+>;
+
+export type SystemNotification = NotificationBase<
+  'system',
+  { deepLink: DeepLinkV1 }
 >;
 
 export type PraiseReceivedNotification = NotificationBase<
@@ -64,14 +90,17 @@ export type WeeklyRewardNotification = NotificationBase<
 
 export type ReputationChangedNotification = NotificationBase<
   'reputation-changed',
-  {
-    score: number;
-  }
+  { score: number }
 >;
 
 export type NotificationRecord =
   | SetInviteNotification
   | DirectMessageNotification
+  | SetInviteReceivedNotification
+  | MessageReceivedNotification
+  | MatchCreatedNotification
+  | JoinRequestNotification
+  | SystemNotification
   | PraiseReceivedNotification
   | TeamEventNotification
   | ProfileLikedNotification
@@ -161,10 +190,15 @@ type NotificationBase<
 
 const categoryByKind: Record<NotificationKind, NotificationCategory> = {
   'direct-message': 'message',
+  'message-received': 'message',
+  'join-request': 'set-invite',
+  'match-created': 'interaction',
   'praise-received': 'interaction',
   'profile-liked': 'interaction',
   'reputation-changed': 'system',
   'set-invite': 'set-invite',
+  'set-invite-received': 'set-invite',
+  system: 'system',
   'team-event': 'set-invite',
   'weekly-reward': 'system',
 };

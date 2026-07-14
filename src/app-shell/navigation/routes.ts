@@ -8,6 +8,8 @@ export const appRoutes = {
     preview: '/preview',
   },
   discover: {
+    matchDetail: (matchId: string) =>
+      ({ pathname: '/discover/matches', params: { matchId } }) as const,
     matches: '/discover/matches',
     setDetail: (setId: string) =>
       ({ pathname: '/discover/sets', params: { setId } }) as const,
@@ -40,6 +42,11 @@ export const appRoutes = {
     blocked: '/profile/settings/blocked',
     detail: (userId: string) =>
       ({ pathname: '/profile/[userId]', params: { userId } }) as const,
+    playerDetail: (playerId: string) =>
+      ({
+        pathname: '/profile/[userId]',
+        params: { userId: playerId },
+      }) as const,
     edit: '/profile/edit',
     self: '/profile',
     settings: '/profile/settings',

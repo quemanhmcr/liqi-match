@@ -9,6 +9,10 @@ const homeApiRepository = fs.readFileSync(
   'src/features/home/services/api-home-repository.ts',
   'utf8',
 );
+const notificationApiRepository = fs.readFileSync(
+  'src/entities/notifications/data/api-notification-inbox.repository.ts',
+  'utf8',
+);
 const applicationComposition = fs.readFileSync(
   'src/app-shell/runtime/create-application-services.ts',
   'utf8',
@@ -255,6 +259,25 @@ requireInvariant(
   /createApiHomeRepository/.test(applicationComposition) &&
     !/getDashboard:\s*fetchHomeDashboard/.test(applicationComposition),
   'Application composition must provide the authoritative Home repository.',
+);
+
+requireInvariant(
+  /rpc\/get_notification_summary_v1/.test(notificationApiRepository) &&
+    /rpc\/list_notifications_v1/.test(notificationApiRepository) &&
+    /rpc\/mark_notifications_seen_through_v1/.test(notificationApiRepository) &&
+    /rpc\/mark_notification_read_v1/.test(notificationApiRepository) &&
+    /NotificationInboxPageV1Schema\.parse/.test(notificationApiRepository) &&
+    /NotificationSummaryV1Schema\.parse/.test(notificationApiRepository) &&
+    /MarkNotificationsSeenResultV1Schema\.parse/.test(
+      notificationApiRepository,
+    ) &&
+    /MarkNotificationReadResultV1Schema\.parse/.test(notificationApiRepository),
+  'Production Notifications must use contract-validated authority RPCs.',
+);
+requireInvariant(
+  /createApiNotificationInboxRepository/.test(applicationComposition) &&
+    !/createUnavailableNotificationRepository/.test(applicationComposition),
+  'API composition must bind the authoritative Notification repository.',
 );
 
 const assertionCount = (
