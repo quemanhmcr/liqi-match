@@ -15,6 +15,7 @@ export const CoreV2ErrorCodeSchema = z.enum([
   'read_cursor_regression',
   'read_cursor_ahead',
   'unsupported_event_version',
+  'event_replay_conflict',
   'validation_failed',
 ]);
 export type CoreV2ErrorCode = z.infer<typeof CoreV2ErrorCodeSchema>;

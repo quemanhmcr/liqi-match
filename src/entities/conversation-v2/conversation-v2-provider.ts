@@ -6,12 +6,15 @@ import type {
   ConversationMemberV2,
   ConversationReadCursorV2,
   ConversationSnapshotV2,
+  ConversationSourceBindingV2,
   ConversationSourceV2,
   ConversationSystemActivityInputV2,
   MessageReportEvidenceIdV2,
   MessageV2,
   ProvisionDirectConversationCommandV2,
   ProvisionSessionConversationCommandV2,
+  RelationshipConversationProjectionInputV2,
+  RelationshipConversationProjectionReceiptV2,
   ReconcileConversationMembershipCommandV2,
   SendMediaMessageCommandV2,
   SendMessageCommandV2,
@@ -47,6 +50,10 @@ export interface ConversationRepository {
   listInbox(
     actor: VerifiedConversationActorV2,
   ): Promise<readonly ConversationInboxItemV2[]>;
+  getSources(
+    actor: VerifiedConversationActorV2,
+    conversationId: string,
+  ): Promise<readonly ConversationSourceBindingV2[]>;
 }
 
 export interface ConversationProvisioningService {
@@ -61,6 +68,12 @@ export interface ConversationProvisioningService {
 }
 
 export type ConversationSystemActivityV2 = ConversationSystemActivityInputV2;
+
+export interface ConversationRelationshipProjection {
+  applyRelationship(
+    input: RelationshipConversationProjectionInputV2,
+  ): Promise<RelationshipConversationProjectionReceiptV2>;
+}
 
 export interface ConversationMembershipProjection {
   reconcile(

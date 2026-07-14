@@ -7,16 +7,18 @@
 ## Decision
 
 `conversations_v2` owns communication state only. It does not own friendship,
-block, match, or play-session semantics. Every conversation has exactly one
-versioned source reference:
+block, match, or play-session semantics. Every conversation has one creation
+source and one or more unique, versioned source bindings:
 
 - `direct_match`
 - `friendship`
 - `play_session`
 - `system`
 
-`conversation_sources_v2` maps that authoritative source to one conversation.
-The source mapping is unique. Retried provisioning returns the original receipt.
+`conversation_sources_v2` maps each authoritative source to one conversation.
+The source mapping is unique. A direct thread created by a match may later bind a
+friendship source without creating a second thread. Retried provisioning and
+source-event replay return the original receipt.
 
 `conversation_members_v2` is a replayable projection. Supplier events provide
 `sourceId`, `sourceVersion`, and the complete authoritative member set. The
@@ -31,9 +33,17 @@ A member may read/send/subscribe only when all of these are true:
 4. The conversation is not tombstoned for writes.
 
 A removed or blocked player is revoked by an authoritative source event. The
-conversation provider closes API and realtime access immediately and emits
-`conversation.access_revoked.v2`; notification fan-out must read the same active
-membership projection.
+conversation provider closes public history fetch, send, realtime subscription,
+and push eligibility immediately and emits `conversation.access_revoked.v2`.
+Message rows, delivery receipts, and read cursors are retained rather than
+deleted. A privileged moderation seam may capture immutable report evidence for
+a current or historical member after revocation; it does not restore chat
+access.
+
+Relationship-level mute is projected into notification policy only. It does not
+remove messages from inbox/timeline and cannot be overridden by the separate
+conversation-level mute command. Delivery recipients and push recipients are
+therefore distinct facts.
 
 System activity is stored as a message with the supplier event ID. A unique
 `source_event_id` makes replay idempotent and prevents duplicate system messages.

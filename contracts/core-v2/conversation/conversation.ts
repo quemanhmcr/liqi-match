@@ -11,6 +11,7 @@ import {
   SessionIdSchema,
 } from '../../core-v1/identity/semantic-ids';
 import { coreV2EventSchema } from '../events/event-envelope';
+import { SocialRelationshipSnapshotV2Schema } from '../social/relationship';
 
 export const ConversationSourceTypeV2Schema = z.enum([
   'direct_match',
@@ -56,6 +57,17 @@ export const ConversationSourceV2Schema = z.discriminatedUnion('sourceType', [
 ]);
 export type ConversationSourceV2 = z.infer<typeof ConversationSourceV2Schema>;
 
+export const ConversationSourceBindingV2Schema = z
+  .object({
+    conversationId: ConversationIdSchema,
+    source: ConversationSourceV2Schema,
+    boundAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+export type ConversationSourceBindingV2 = z.infer<
+  typeof ConversationSourceBindingV2Schema
+>;
+
 export const ConversationKindV2Schema = z.enum(['direct', 'group', 'system']);
 export const ConversationStateV2Schema = z.enum(['open', 'tombstoned']);
 export const ConversationMemberRoleV2Schema = z.enum([
@@ -78,6 +90,8 @@ export type ConversationAccessReasonV2 = z.infer<
 
 export const ConversationMemberV2Schema = z
   .object({
+    canMessage: z.boolean(),
+    canViewConversation: z.boolean(),
     playerId: PlayerIdSchema,
     role: ConversationMemberRoleV2Schema,
     state: ConversationMemberStateV2Schema,
@@ -87,7 +101,26 @@ export const ConversationMemberV2Schema = z
     revokedAt: z.string().datetime({ offset: true }).nullable(),
     revocationReason: ConversationAccessReasonV2Schema.nullable(),
   })
-  .strict();
+  .strict()
+  .superRefine((member, context) => {
+    if (member.canMessage && !member.canViewConversation) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Sending requires conversation visibility.',
+        path: ['canMessage'],
+      });
+    }
+    if (
+      member.state === 'revoked' &&
+      (member.canMessage || member.canViewConversation)
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Revoked membership cannot retain communication capabilities.',
+        path: ['state'],
+      });
+    }
+  });
 export type ConversationMemberV2 = z.infer<typeof ConversationMemberV2Schema>;
 
 export const ConversationAccessV2Schema = z
@@ -359,6 +392,42 @@ export type ConversationSystemActivityInputV2 = z.infer<
   typeof ConversationSystemActivityInputV2Schema
 >;
 
+export const RelationshipConversationProjectionInputV2Schema = z
+  .object({
+    relationship: SocialRelationshipSnapshotV2Schema,
+    sourceEventId: EventIdSchema,
+    sourceEventVersion: z.literal(2),
+    correlationId: CorrelationIdSchema,
+    causationId: EventIdSchema.nullable(),
+    occurredAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+export type RelationshipConversationProjectionInputV2 = z.infer<
+  typeof RelationshipConversationProjectionInputV2Schema
+>;
+
+export const RelationshipConversationProjectionReceiptV2Schema = z
+  .object({
+    action: z.enum([
+      'none',
+      'provisioned',
+      'bound_existing',
+      'access_reconciled',
+      'access_revoked',
+      'notification_policy_reconciled',
+    ]),
+    conversationId: ConversationIdSchema.nullable(),
+    relationshipId: z.string().uuid(),
+    relationshipVersion: z.number().int().nonnegative(),
+    sourceEventId: EventIdSchema,
+    eventIds: z.array(EventIdSchema),
+    repeated: z.boolean(),
+  })
+  .strict();
+export type RelationshipConversationProjectionReceiptV2 = z.infer<
+  typeof RelationshipConversationProjectionReceiptV2Schema
+>;
+
 export const TombstoneConversationCommandV2Schema = z
   .object({
     conversationId: ConversationIdSchema,
@@ -410,6 +479,15 @@ const ConversationMemberEventPayloadV2Schema = z
   })
   .strict();
 
+export const ConversationSourceBoundEventV2Schema = coreV2EventSchema({
+  aggregateType: 'conversation',
+  eventType: 'conversation.source_bound.v2',
+  payload: z
+    .object({
+      binding: ConversationSourceBindingV2Schema,
+    })
+    .strict(),
+});
 export const ConversationProvisionedEventV2Schema = coreV2EventSchema({
   aggregateType: 'conversation',
   eventType: 'conversation.provisioned.v2',
@@ -498,6 +576,7 @@ export const ConversationAccessRevokedEventV2Schema = coreV2EventSchema({
 });
 
 export const ConversationEventV2Schema = z.discriminatedUnion('eventType', [
+  ConversationSourceBoundEventV2Schema,
   ConversationProvisionedEventV2Schema,
   ConversationMemberAddedEventV2Schema,
   ConversationMemberRemovedEventV2Schema,

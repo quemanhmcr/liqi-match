@@ -65,6 +65,7 @@ for (const command of [
   );
 }
 for (const event of [
+  'conversation.source_bound.v2',
   'conversation.provisioned.v2',
   'conversation.member_added.v2',
   'conversation.member_removed.v2',
@@ -79,6 +80,7 @@ for (const event of [
 for (const provider of [
   'ConversationRepository',
   'ConversationProvisioningService',
+  'ConversationRelationshipProjection',
   'ConversationMembershipProjection',
   'MessageTransport',
   'ConversationNotificationProvider',
@@ -101,7 +103,10 @@ requireInvariant(
 );
 requireInvariant(
   /Mobile clients cannot add members/.test(adr) &&
-    /Core V1 resolves the authenticated account/.test(adr),
+    /Core V1 resolves the authenticated account/.test(adr) &&
+    /public history fetch, send, realtime subscription/.test(adr) &&
+    /privileged moderation seam/.test(adr) &&
+    /Delivery recipients and push recipients/.test(adr),
   'ADR must preserve supplier-owned membership and Core V1 identity authority',
 );
 

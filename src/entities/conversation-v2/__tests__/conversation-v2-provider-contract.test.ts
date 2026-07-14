@@ -1,4 +1,6 @@
 import { describe, expect, it, jest } from '@jest/globals';
+import fs from 'node:fs';
+import path from 'node:path';
 
 import type { AuthSession } from '@/shared/auth/auth-service';
 import {
@@ -6,11 +8,13 @@ import {
   CorrelationIdSchema,
   EventIdSchema,
   IdempotencyKeySchema,
+  MatchIdSchema,
   PlayerIdSchema,
   ProfileIdSchema,
   RequestIdSchema,
   SessionIdSchema,
 } from '@/shared/contracts/core-v1';
+import { SocialRelationshipSnapshotV2Schema } from '@/shared/contracts/core-v2';
 import type {
   CoreV2CommandMetadata,
   ProvisionDirectConversationCommandV2,
@@ -481,7 +485,223 @@ describe('Core V2 conversation provider contract', () => {
       expect((error as ConversationV2ProviderError).retryable).toBe(true);
     }
   });
+  it('integrates Senior 1 friendship and block fixtures without duplicating the direct thread', async () => {
+    const { authority, notificationFacts } = createHarness();
+    const friend = SocialRelationshipSnapshotV2Schema.parse(
+      readCoreV2Fixture('consumer', 'relationship-friend.json'),
+    );
+    const blocked = SocialRelationshipSnapshotV2Schema.parse(
+      readCoreV2Fixture('consumer', 'relationship-blocked.json'),
+    );
+    const viewer = actor(friend.viewerPlayerId, 701);
+    const target = actor(friend.targetPlayerId, 702);
+
+    const direct = await authority.provisionDirect(viewer, {
+      source: {
+        sourceType: 'direct_match',
+        sourceId: MatchIdSchema.parse(uuid(703)),
+        sourceVersion: 1,
+      },
+      participantPlayerIds: [friend.viewerPlayerId, friend.targetPlayerId],
+      metadata: metadata(0, 704, 'provision-direct'),
+    });
+    const sent = await authority.sendText(viewer, {
+      conversationId: direct.conversationId,
+      clientMessageId: IdempotencyKeySchema.parse(
+        `client-message:${uuid(705)}`,
+      ),
+      text: 'Message retained for safety evidence.',
+      metadata: metadata(1, 706, 'send-message'),
+    });
+    expect(notificationFacts).toHaveLength(1);
+
+    const friendshipInput = {
+      relationship: friend,
+      sourceEventId: EventIdSchema.parse(uuid(707)),
+      sourceEventVersion: 2 as const,
+      correlationId: CorrelationIdSchema.parse(uuid(708)),
+      causationId: null,
+      occurredAt: '2026-07-14T12:10:00.000Z',
+    };
+    const friendshipReceipt =
+      await authority.applyRelationship(friendshipInput);
+    const friendshipReplay = await authority.applyRelationship(friendshipInput);
+    expect(friendshipReceipt.conversationId).toBe(direct.conversationId);
+    expect(friendshipReceipt.action).toBe('access_reconciled');
+    expect(friendshipReplay).toMatchObject({
+      conversationId: direct.conversationId,
+      repeated: true,
+    });
+    expect(await authority.listInbox(viewer)).toHaveLength(1);
+    expect(
+      (await authority.getSources(viewer, direct.conversationId)).map(
+        (binding) => binding.source.sourceType,
+      ),
+    ).toEqual(['direct_match', 'friendship']);
+
+    const accessUpdates: unknown[] = [];
+    authority.subscribeAccess(target, direct.conversationId, (access) => {
+      accessUpdates.push(access);
+    });
+    const blockReceipt = await authority.applyRelationship({
+      relationship: blocked,
+      sourceEventId: EventIdSchema.parse(uuid(709)),
+      sourceEventVersion: 2,
+      correlationId: CorrelationIdSchema.parse(uuid(710)),
+      causationId: EventIdSchema.parse(uuid(707)),
+      occurredAt: '2026-07-14T12:11:00.000Z',
+    });
+    expect(blockReceipt.action).toBe('access_revoked');
+    expect(accessUpdates).toContainEqual(
+      expect.objectContaining({
+        canRead: false,
+        canSend: false,
+        canSubscribe: false,
+        reason: 'blocked',
+      }),
+    );
+
+    await expect(
+      authority.getTimeline(viewer, direct.conversationId),
+    ).rejects.toMatchObject({ code: 'conversation_access_revoked' });
+    expect(() =>
+      authority.subscribeAccess(target, direct.conversationId, jest.fn()),
+    ).toThrow(expect.objectContaining({ code: 'conversation_access_revoked' }));
+    await expect(
+      authority.sendText(viewer, {
+        conversationId: direct.conversationId,
+        clientMessageId: IdempotencyKeySchema.parse(
+          `client-message:${uuid(711)}`,
+        ),
+        text: 'Blocked send must fail.',
+        metadata: metadata(4, 712, 'send-message'),
+      }),
+    ).rejects.toMatchObject({ code: 'conversation_access_revoked' });
+    expect(notificationFacts).toHaveLength(1);
+
+    const evidence = await authority.captureReportEvidence({
+      actor: viewer,
+      conversationId: direct.conversationId,
+      messageId: sent.message!.messageId,
+      reportId: 'relationship-block-report-1',
+    });
+    expect(evidence.message.content).toEqual({
+      kind: 'text',
+      text: 'Message retained for safety evidence.',
+    });
+    expect(
+      authority
+        .events()
+        .filter(
+          (event) => event.eventType === 'conversation.access_revoked.v2',
+        ),
+    ).toHaveLength(2);
+  });
+
+  it('keeps relationship mute authoritative over conversation-level unmute', async () => {
+    const { authority, notificationFacts } = createHarness();
+    const friend = SocialRelationshipSnapshotV2Schema.parse(
+      readCoreV2Fixture('consumer', 'relationship-friend.json'),
+    );
+    const viewer = actor(friend.viewerPlayerId, 720);
+    const target = actor(friend.targetPlayerId, 721);
+    const provisioned = await authority.applyRelationship({
+      relationship: friend,
+      sourceEventId: EventIdSchema.parse(uuid(722)),
+      sourceEventVersion: 2,
+      correlationId: CorrelationIdSchema.parse(uuid(723)),
+      causationId: null,
+      occurredAt: '2026-07-14T12:20:00.000Z',
+    });
+    const muted = SocialRelationshipSnapshotV2Schema.parse({
+      ...friend,
+      version: friend.version + 1,
+      mute: { viewerMutedTarget: true },
+      capabilities: {
+        ...friend.capabilities,
+        muted: true,
+        canMute: false,
+        canUnmute: true,
+      },
+      updatedAt: '2026-07-14T12:21:00.000Z',
+    });
+    await authority.applyRelationship({
+      relationship: muted,
+      sourceEventId: EventIdSchema.parse(uuid(724)),
+      sourceEventVersion: 2,
+      correlationId: CorrelationIdSchema.parse(uuid(725)),
+      causationId: EventIdSchema.parse(uuid(722)),
+      occurredAt: '2026-07-14T12:21:00.000Z',
+    });
+
+    const viewerInbox = await authority.listInbox(viewer);
+    expect(viewerInbox[0]).toMatchObject({ muted: true });
+    expect(
+      await authority.getAccess(viewer, provisioned.conversationId!),
+    ).toMatchObject({ canRead: true, canSend: true, canSubscribe: true });
+    const snapshot = await authority.getConversation(
+      target,
+      provisioned.conversationId!,
+    );
+    await authority.sendText(target, {
+      conversationId: provisioned.conversationId!,
+      clientMessageId: IdempotencyKeySchema.parse(
+        `client-message:${uuid(726)}`,
+      ),
+      text: 'Muted relationship notification.',
+      metadata: metadata(snapshot!.version, 727, 'send-message'),
+    });
+    expect(notificationFacts).toHaveLength(0);
+
+    const latest = await authority.getConversation(
+      viewer,
+      provisioned.conversationId!,
+    );
+    const unmute = await authority.unmute(viewer, {
+      conversationId: provisioned.conversationId!,
+      metadata: metadata(latest!.version, 728, 'unmute-conversation'),
+    });
+    expect(unmute.repeated).toBe(true);
+    expect((await authority.listInbox(viewer))[0]).toMatchObject({
+      muted: true,
+    });
+  });
+
+  it('rejects a relationship event ID replayed with different facts', async () => {
+    const { authority } = createHarness();
+    const friend = SocialRelationshipSnapshotV2Schema.parse(
+      readCoreV2Fixture('consumer', 'relationship-friend.json'),
+    );
+    const input = {
+      relationship: friend,
+      sourceEventId: EventIdSchema.parse(uuid(713)),
+      sourceEventVersion: 2 as const,
+      correlationId: CorrelationIdSchema.parse(uuid(714)),
+      causationId: null,
+      occurredAt: '2026-07-14T12:12:00.000Z',
+    };
+    await authority.applyRelationship(input);
+
+    await expect(
+      authority.applyRelationship({
+        ...input,
+        relationship: { ...friend, version: friend.version + 1 },
+      }),
+    ).rejects.toMatchObject({ code: 'event_replay_conflict' });
+  });
 });
+
+function readCoreV2Fixture(
+  group: 'provider' | 'consumer',
+  name: string,
+): unknown {
+  return JSON.parse(
+    fs.readFileSync(
+      path.join(process.cwd(), 'contracts/core-v2/fixtures', group, name),
+      'utf8',
+    ),
+  ) as unknown;
+}
 
 function authSession(
   state: 'active' | 'suspended',
