@@ -52,7 +52,12 @@
     "profile-identity-snapshot.json",
     "profile-identity-update-command.json",
     "profile-identity-update-replay.json",
-    "player-profile-updated-event.json"
+    "player-profile-updated-event.json",
+    "candidate-page-snapshot.json",
+    "home-match-facts.json",
+    "set-discovery-page.json",
+    "set-invite-created-event.json",
+    "set-join-requested-event.json"
   ],
   "consumerFixtures": [
     "conversation-bootstrap-requested.json",

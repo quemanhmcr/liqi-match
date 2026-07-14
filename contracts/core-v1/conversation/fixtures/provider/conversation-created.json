@@ -1,0 +1,51 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "ConversationSnapshotV1",
+      "data": {
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "matchId": "60000000-0000-4000-8000-000000000001",
+        "participantIds": [
+          "20000000-0000-4000-8000-000000000001",
+          "20000000-0000-4000-8000-000000000002"
+        ],
+        "state": "open",
+        "lastMessage": null,
+        "unreadCount": 0,
+        "version": 1
+      }
+    },
+    {
+      "schema": "ConversationCreatedEventV1",
+      "data": {
+        "eventId": "80000000-0000-4000-8000-000000000031",
+        "eventType": "conversation.created.v1",
+        "aggregateType": "conversation",
+        "aggregateId": "90000000-0000-4000-8000-000000000001",
+        "occurredAt": "2026-07-14T08:10:00.000Z",
+        "correlationId": "70000000-0000-4000-8000-000000000001",
+        "causationId": "80000000-0000-4000-8000-000000000011",
+        "data": {
+          "conversation": {
+            "conversationId": "90000000-0000-4000-8000-000000000001",
+            "matchId": "60000000-0000-4000-8000-000000000001",
+            "participantIds": [
+              "20000000-0000-4000-8000-000000000001",
+              "20000000-0000-4000-8000-000000000002"
+            ],
+            "state": "open",
+            "lastMessage": null,
+            "unreadCount": 0,
+            "version": 1
+          },
+          "bootstrapEventId": "80000000-0000-4000-8000-000000000011"
+        }
+      }
+    }
+  ],
+  "expectation": {
+    "conversationCreateCount": 1,
+    "matchMappingCount": 1
+  }
+}

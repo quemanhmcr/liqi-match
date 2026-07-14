@@ -1,3 +1,7 @@
+import type { HomeMatchFactsRepository } from '@/entities/home-match-facts';
+import type { MatchDecisionRepository } from '@/entities/match-decision';
+import type { MatchIntentRepository } from '@/entities/match-intent';
+import type { MatchSetRepository } from '@/entities/match-set';
 import type { AssetResolver } from '@/entities/media-asset';
 import type { NotificationInboxRepository } from '@/entities/notifications';
 import type {
@@ -15,7 +19,11 @@ import type { ApplicationRuntimeMode } from './application-runtime-mode';
 type ApplicationFeatureServices = {
   assetResolver: AssetResolver;
   discoverRepository: DiscoverRepository;
+  homeMatchFactsRepository: HomeMatchFactsRepository;
   homeRepository: HomeRepository;
+  matchDecisionRepository: MatchDecisionRepository;
+  matchIntentRepository: MatchIntentRepository;
+  matchSetRepository: MatchSetRepository;
   messageRepository: ChatRepository;
   messageTransport: ChatMessageTransport;
   notificationRepository: NotificationInboxRepository;

@@ -1,0 +1,29 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "core:ConversationBootstrapRequestedEventV1",
+      "data": {
+        "eventId": "80000000-0000-4000-8000-000000000011",
+        "eventType": "conversation.bootstrap_requested.v1",
+        "aggregateType": "match",
+        "aggregateId": "60000000-0000-4000-8000-000000000001",
+        "occurredAt": "2026-07-14T08:05:00.000Z",
+        "correlationId": "70000000-0000-4000-8000-000000000001",
+        "causationId": null,
+        "data": {
+          "matchId": "60000000-0000-4000-8000-000000000001",
+          "participantIds": [
+            "20000000-0000-4000-8000-000000000001",
+            "20000000-0000-4000-8000-000000000002"
+          ],
+          "requestedAt": "2026-07-14T08:05:00.000Z"
+        }
+      }
+    }
+  ],
+  "expectation": {
+    "conversationCreateCount": 1,
+    "result": "created"
+  }
+}

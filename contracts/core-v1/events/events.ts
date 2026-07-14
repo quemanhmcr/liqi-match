@@ -1,14 +1,23 @@
 import { z } from 'zod';
+
+import {
+  ConversationSnapshotV1Schema,
+  MessageV1Schema,
+  ReadStateV1Schema,
+} from '../conversation/conversation';
 import {
   ConversationIdSchema,
   CorrelationIdSchema,
   EventIdSchema,
   MatchIdSchema,
   MatchIntentIdSchema,
+  MatchSetIdSchema,
   AccountIdSchema,
   PlayerIdSchema,
   ProfileIdSchema,
   SetIdSchema,
+  SetInviteIdSchema,
+  SetJoinRequestIdSchema,
 } from '../identity/semantic-ids';
 import { MatchCreatedV1Schema } from '../match/match-created';
 import { MatchIntentSnapshotV1Schema } from '../discovery/match-intent';
@@ -58,6 +67,7 @@ export const ConversationBootstrapRequestedEventV1Schema =
     }),
   });
 
+/** @deprecated Use ConversationCreatedEventV1Schema for canonical Conversation v1 consumers. */
 export const ConversationBootstrappedEventV1Schema =
   EventEnvelopeBaseV1Schema.extend({
     eventType: z.literal('conversation.bootstrapped.v1'),
@@ -71,18 +81,23 @@ export const ConversationBootstrappedEventV1Schema =
 
 export const SetJoinRequestedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
   eventType: z.literal('set.join_requested.v1'),
-  aggregateType: z.literal('set'),
-  aggregateId: SetIdSchema,
-  data: z.object({ setId: SetIdSchema, actorPlayerId: PlayerIdSchema }),
+  aggregateType: z.literal('set_join_request'),
+  aggregateId: SetJoinRequestIdSchema,
+  data: z.object({
+    joinRequestId: SetJoinRequestIdSchema,
+    requesterPlayerId: PlayerIdSchema,
+    setId: MatchSetIdSchema,
+  }),
 });
 
 export const SetInviteCreatedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
   eventType: z.literal('set.invite_created.v1'),
-  aggregateType: z.literal('set'),
-  aggregateId: SetIdSchema,
+  aggregateType: z.literal('set_invite'),
+  aggregateId: SetInviteIdSchema,
   data: z.object({
-    setId: SetIdSchema,
     actorPlayerId: PlayerIdSchema,
+    inviteId: SetInviteIdSchema,
+    setId: MatchSetIdSchema,
     targetPlayerId: PlayerIdSchema,
   }),
 });
@@ -94,13 +109,81 @@ export const NotificationRequestedEventV1Schema =
     aggregateId: PlayerIdSchema,
     data: z.object({
       recipientPlayerId: PlayerIdSchema,
-      reasonCode: z.enum(['match_created', 'set_invite', 'set_join_requested']),
+      reasonCode: z.enum([
+        'match_created',
+        'message_received',
+        'set_invite',
+        'set_invite_created',
+        'set_join_requested',
+      ]),
       target: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('match'), matchId: MatchIdSchema }),
         z.object({ kind: z.literal('set'), setId: SetIdSchema }),
+        z.object({
+          kind: z.literal('set_invite'),
+          inviteId: SetInviteIdSchema,
+          setId: MatchSetIdSchema,
+        }),
+        z.object({
+          kind: z.literal('set_join_request'),
+          joinRequestId: SetJoinRequestIdSchema,
+          setId: MatchSetIdSchema,
+        }),
+        z.object({
+          kind: z.literal('conversation'),
+          conversationId: ConversationIdSchema,
+          messageId: z.string().uuid(),
+          senderPlayerId: PlayerIdSchema,
+          authoritativeUnreadCount: z.number().int().positive(),
+          foregroundPolicy: z.enum(['suppress_push', 'allow_push']),
+        }),
       ]),
     }),
   });
+
+export const ConversationCreatedEventV1Schema =
+  EventEnvelopeBaseV1Schema.extend({
+    eventType: z.literal('conversation.created.v1'),
+    aggregateType: z.literal('conversation'),
+    aggregateId: ConversationIdSchema,
+    data: z.object({
+      conversation: ConversationSnapshotV1Schema,
+      bootstrapEventId: EventIdSchema,
+    }),
+  });
+
+export const MessageSentEventV1Schema = EventEnvelopeBaseV1Schema.extend({
+  eventType: z.literal('message.sent.v1'),
+  aggregateType: z.literal('conversation'),
+  aggregateId: ConversationIdSchema,
+  data: z.object({
+    message: MessageV1Schema,
+    recipientPlayerIds: z.array(PlayerIdSchema).min(1).max(1),
+  }),
+});
+
+export const ConversationReadAdvancedEventV1Schema =
+  EventEnvelopeBaseV1Schema.extend({
+    eventType: z.literal('conversation.read_advanced.v1'),
+    aggregateType: z.literal('conversation'),
+    aggregateId: ConversationIdSchema,
+    data: z.object({ readState: ReadStateV1Schema }),
+  });
+
+export const ConversationClosedEventV1Schema = EventEnvelopeBaseV1Schema.extend(
+  {
+    eventType: z.literal('conversation.closed.v1'),
+    aggregateType: z.literal('conversation'),
+    aggregateId: ConversationIdSchema,
+    data: z.object({
+      conversationId: ConversationIdSchema,
+      matchId: MatchIdSchema,
+      reason: z.enum(['unmatched', 'blocked', 'retention', 'administrative']),
+      closedAt: z.string().datetime({ offset: true }),
+      version: z.number().int().positive(),
+    }),
+  },
+);
 
 const PlayerLifecycleEventDataV1Schema = z.object({
   accountId: AccountIdSchema,

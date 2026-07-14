@@ -1,0 +1,14 @@
+{
+  "aggregateId": "a4000000-0000-4000-8000-000000000001",
+  "aggregateType": "set_join_request",
+  "causationId": null,
+  "correlationId": "70000000-0000-4000-8000-000000000011",
+  "data": {
+    "joinRequestId": "a4000000-0000-4000-8000-000000000001",
+    "requesterPlayerId": "20000000-0000-4000-8000-000000000011",
+    "setId": "a1000000-0000-4000-8000-000000000001"
+  },
+  "eventId": "80000000-0000-4000-8000-000000000011",
+  "eventType": "set.join_requested.v1",
+  "occurredAt": "2026-07-14T08:03:00.000Z"
+}

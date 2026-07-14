@@ -1,0 +1,39 @@
+{
+  "fixtureVersion": 1,
+  "cases": [
+    {
+      "schema": "MessageV1",
+      "data": {
+        "messageId": "91000000-0000-4000-8000-000000000009",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "senderPlayerId": "20000000-0000-4000-8000-000000000002",
+        "clientMessageId": "client-message-b-0009",
+        "sequence": 9,
+        "content": {
+          "kind": "text",
+          "text": "Message 9"
+        },
+        "createdAt": "2026-07-14T08:09:00.000Z"
+      }
+    },
+    {
+      "schema": "MessageV1",
+      "data": {
+        "messageId": "91000000-0000-4000-8000-000000000008",
+        "conversationId": "90000000-0000-4000-8000-000000000001",
+        "senderPlayerId": "20000000-0000-4000-8000-000000000002",
+        "clientMessageId": "client-message-b-0008",
+        "sequence": 8,
+        "content": {
+          "kind": "text",
+          "text": "Message 8"
+        },
+        "createdAt": "2026-07-14T08:08:00.000Z"
+      }
+    }
+  ],
+  "expectation": {
+    "canonicalTimelineSequences": [8, 9],
+    "duplicateCount": 0
+  }
+}

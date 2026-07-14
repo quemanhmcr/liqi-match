@@ -50,3 +50,15 @@ export const RequestIdSchema = semanticString('RequestId', {
   max: 160,
   min: 8,
 });
+
+export const MatchSetIdSchema = z.string().uuid().brand<'MatchSetId'>();
+export type MatchSetId = z.infer<typeof MatchSetIdSchema>;
+
+export const SetInviteIdSchema = z.string().uuid().brand<'SetInviteId'>();
+export type SetInviteId = z.infer<typeof SetInviteIdSchema>;
+
+export const SetJoinRequestIdSchema = z
+  .string()
+  .uuid()
+  .brand<'SetJoinRequestId'>();
+export type SetJoinRequestId = z.infer<typeof SetJoinRequestIdSchema>;
