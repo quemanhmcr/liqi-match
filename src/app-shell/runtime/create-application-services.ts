@@ -1,4 +1,8 @@
 import {
+  InMemoryHomeMatchFactsRepository,
+  SupabaseHomeMatchFactsRepository,
+} from '@/entities/home-match-facts';
+import {
   InMemoryMatchDecisionRepository,
   SupabaseMatchDecisionRepository,
 } from '@/entities/match-decision';
@@ -6,6 +10,10 @@ import {
   InMemoryMatchIntentRepository,
   SupabaseMatchIntentRepository,
 } from '@/entities/match-intent';
+import {
+  InMemoryMatchSetRepository,
+  SupabaseMatchSetRepository,
+} from '@/entities/match-set';
 import {
   createGoldenWorldAssetResolver,
   createGoldenWorldSimulationAssetResolver,
@@ -96,9 +104,11 @@ export function createSimulationApplicationServices(
       runtime: simulationRuntime,
     }),
     discoverRepository: createSimulationDiscoverRepository(simulationRuntime),
+    homeMatchFactsRepository: new InMemoryHomeMatchFactsRepository(),
     homeRepository: createSimulationHomeRepository(simulationRuntime),
     matchDecisionRepository: new InMemoryMatchDecisionRepository(),
     matchIntentRepository: new InMemoryMatchIntentRepository(),
+    matchSetRepository: new InMemoryMatchSetRepository(),
     messageRepository: messages,
     messageTransport: messages.transport,
     mode: 'simulation',
@@ -120,9 +130,11 @@ export function createApiApplicationServices(): ApiApplicationServices {
     discoverRepository: new ApiDiscoverRepository(
       createDiscoverHttpTransport(),
     ),
+    homeMatchFactsRepository: new SupabaseHomeMatchFactsRepository(),
     homeRepository: createApiHomeRepository(),
     matchDecisionRepository: new SupabaseMatchDecisionRepository(),
     matchIntentRepository: new SupabaseMatchIntentRepository(),
+    matchSetRepository: new SupabaseMatchSetRepository(),
     messageRepository: createUnavailableMessageRepository(),
     messageTransport: createUnavailableMessageTransport(),
     mode: 'api',

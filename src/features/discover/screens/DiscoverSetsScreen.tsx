@@ -18,7 +18,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { LiquidCard, LiquidGlassSurface } from '@/shared/components/liquid';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { env } from '@/shared/config/env';
 
+import { MatchSetDiscoveryScreen } from './MatchSetDiscoveryScreen';
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
 import {
   DiscoverQueryState,
@@ -60,6 +62,14 @@ function DiscoverText(props: DiscoverTextProps) {
 }
 
 export function DiscoverSetsScreen() {
+  return env.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE === 'api' ? (
+    <MatchSetDiscoveryScreen />
+  ) : (
+    <SimulationDiscoverSetsScreen />
+  );
+}
+
+function SimulationDiscoverSetsScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const inheritedActiveFilterIds = useDiscoverStore(

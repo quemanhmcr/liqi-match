@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
-import { discoverContractVersion } from '../contracts/discover-contracts';
 import {
   ApiDiscoverRepository,
-  discoverApiRoutes,
   type DiscoverApiTransport,
   type DiscoverRpcTransport,
 } from '../services/discover-api-repository';
