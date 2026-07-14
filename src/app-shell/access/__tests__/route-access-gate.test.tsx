@@ -7,7 +7,7 @@ import {
   it,
   jest,
 } from '@jest/globals';
-import { act, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
 import React from 'react';
 import { Text } from 'react-native';
 
@@ -31,6 +31,13 @@ import {
   testOnboardingAuthSession,
 } from '@/test/render-with-providers';
 
+jest.mock('@/shared/auth/account-deletion-service', () => {
+  const actual = jest.requireActual<
+    typeof import('@/shared/auth/account-deletion-service')
+  >('@/shared/auth/account-deletion-service');
+  return { ...actual, deleteOwnAccount: jest.fn() };
+});
+
 jest.mock('expo-router', () => ({
   __esModule: true,
   Redirect: ({ href }: { href: string }) => {
@@ -51,6 +58,14 @@ const { RouteAccessGate } =
 const mockExpoRouter = jest.requireMock('expo-router') as {
   usePathname: ReturnType<typeof jest.fn<() => string>>;
 };
+const mockDeleteOwnAccount = jest.mocked(
+  jest.requireMock<typeof import('@/shared/auth/account-deletion-service')>(
+    '@/shared/auth/account-deletion-service',
+  ).deleteOwnAccount,
+);
+const { AccountDeletionClientError } = jest.requireActual<
+  typeof import('@/shared/auth/account-deletion-service')
+>('@/shared/auth/account-deletion-service');
 
 describe('RouteAccessGate authoritative lifecycle integration', () => {
   beforeEach(async () => {
@@ -59,6 +74,7 @@ describe('RouteAccessGate authoritative lifecycle integration', () => {
     });
     mockExpoRouter.usePathname.mockReset();
     mockExpoRouter.usePathname.mockReturnValue('/home');
+    mockDeleteOwnAccount.mockReset();
     jest.spyOn(AsyncStorage, 'getItem').mockResolvedValue(null);
   });
 
@@ -206,6 +222,37 @@ describe('RouteAccessGate authoritative lifecycle integration', () => {
       expect(queryByText('App content')).toBeNull();
     },
   );
+
+  it('retries deletion with the current authoritative session and preserves request ID', async () => {
+    const deleting = createTestAuthSession({ lifecycleState: 'deleting' });
+    mockDeleteOwnAccount.mockRejectedValueOnce(
+      new AccountDeletionClientError(
+        'Cleanup incomplete.',
+        'account_deletion_cleanup_incomplete',
+        503,
+        true,
+        'request-delete-route-0001',
+        {},
+        deleting,
+        false,
+      ),
+    );
+    const { getByRole, getByText } = await renderWithProviders(
+      <RouteAccessGate area="app">
+        <Text>App content</Text>
+      </RouteAccessGate>,
+      { session: deleting },
+    );
+
+    await act(async () => {
+      await fireEvent.press(getByRole('button', { name: 'Thử hoàn tất xoá' }));
+    });
+
+    await waitFor(() => {
+      expect(mockDeleteOwnAccount).toHaveBeenCalledWith(deleting);
+      expect(getByText(/request-delete-route-0001/)).toBeTruthy();
+    });
+  });
 
   it('does not reuse another account local draft', async () => {
     await act(async () => {

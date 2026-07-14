@@ -1,5 +1,4 @@
 import type { AuthSession } from '@/shared/auth/auth-service';
-import { env } from '@/shared/config/env';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
 import { profileMediaUrl } from './profile-service';
@@ -20,20 +19,6 @@ type BlockedProfileRow = {
   deleted_at: string | null;
   display_name: string | null;
   reason: string | null;
-};
-
-type AccountDeleteResponse = {
-  auditLogged: boolean;
-  cleanup: {
-    attempted: number;
-    failed: string[];
-    succeeded: number;
-  };
-  deletedAt: string;
-  mediaDeleted: number;
-  profileFound: boolean;
-  profileId: string;
-  status: 'deleted';
 };
 
 export type ProfileSettingsState = {
@@ -173,27 +158,6 @@ export async function unblockProfile(session: AuthSession, blockedId: string) {
   );
 }
 
-export async function deleteOwnAccount(session: AuthSession) {
-  const response = await fetch(
-    new URL('/functions/v1/account-delete', env.EXPO_PUBLIC_SUPABASE_URL),
-    {
-      body: JSON.stringify({ confirmation: 'DELETE' }),
-      headers: {
-        apikey: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
-        authorization: `Bearer ${session.accessToken}`,
-        'content-type': 'application/json',
-      },
-      method: 'POST',
-    },
-  );
-
-  if (!response.ok) {
-    throw await toAccountDeleteError(response);
-  }
-
-  return (await response.json()) as AccountDeleteResponse;
-}
-
 function settingsFromMediaSummary(value: unknown) {
   const summary = mediaSummaryRecord(value);
   const settings = mediaSummaryRecord(summary.settings);
@@ -216,16 +180,4 @@ function booleanSetting(value: unknown, fallback: boolean) {
 function mediaSummaryRecord(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
   return value as Record<string, unknown>;
-}
-async function toAccountDeleteError(response: Response) {
-  try {
-    const body = (await response.json()) as {
-      error?: { code?: string; message?: string };
-    };
-    return new Error(
-      body.error?.message ?? `Không thể xoá tài khoản (${response.status}).`,
-    );
-  } catch {
-    return new Error(`Không thể xoá tài khoản (${response.status}).`);
-  }
 }

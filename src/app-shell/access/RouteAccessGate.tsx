@@ -6,7 +6,7 @@ import {
   Text,
   View,
 } from 'react-native';
-import { useEffect, type PropsWithChildren } from 'react';
+import { useEffect, useState, type PropsWithChildren } from 'react';
 
 import {
   clearActivePersistedOnboardingDraft,
@@ -18,6 +18,10 @@ import {
   type OnboardingStep,
 } from '@/features/onboarding';
 import { useAuth } from '@/shared/auth/auth-context';
+import {
+  AccountDeletionClientError,
+  deleteOwnAccount,
+} from '@/shared/auth/account-deletion-service';
 import { env } from '@/shared/config/env';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
@@ -37,7 +41,11 @@ export type RouteAccessGateProps = PropsWithChildren<{
  * onboarding resume state. Local draft fields never grant application access.
  */
 export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
-  const { loading, session } = useAuth();
+  const { loading, session, setSession, signOut } = useAuth();
+  const [deletionRetrying, setDeletionRetrying] = useState(false);
+  const [deletionRetryError, setDeletionRetryError] = useState<string | null>(
+    null,
+  );
   const pathname = usePathname();
   const draftState = usePersistedOnboardingDraftStore();
   const authorityValid = Boolean(
@@ -99,6 +107,33 @@ export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
     void hydrateAndRecover(accountId);
   }, [accountId, needsDraft]);
 
+  const retryAccountDeletion = async () => {
+    if (!session || deletionRetrying) return;
+    setDeletionRetrying(true);
+    setDeletionRetryError(null);
+    try {
+      await deleteOwnAccount(session);
+      await signOut();
+    } catch (error) {
+      if (error instanceof AccountDeletionClientError) {
+        if (error.synchronizedSession) {
+          setSession(error.synchronizedSession);
+        } else if (error.sessionEnded) {
+          await signOut().catch(() => undefined);
+        }
+        setDeletionRetryError(formatDeletionRetryError(error));
+      } else {
+        setDeletionRetryError(
+          error instanceof Error
+            ? error.message
+            : 'Không thể tiếp tục xoá tài khoản lúc này.',
+        );
+      }
+    } finally {
+      setDeletionRetrying(false);
+    }
+  };
+
   if (loading) return <RouteAccessLoading />;
   if (!session) {
     return area === 'public' ? (
@@ -125,7 +160,11 @@ export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
     return (
       <RouteLifecycleStatus
         accessibilityLabel="Đang xóa tài khoản"
+        actionLabel="Thử hoàn tất xoá"
+        actionPending={deletionRetrying}
         body="Yêu cầu xóa đang được xử lý. Các deep link đã được vô hiệu hóa."
+        error={deletionRetryError}
+        onAction={() => void retryAccountDeletion()}
         title="Đang xóa tài khoản"
       />
     );
@@ -317,19 +356,52 @@ function RouteAccessUnavailable({ onRetry }: { onRetry: () => void }) {
 
 function RouteLifecycleStatus({
   accessibilityLabel,
+  actionLabel,
+  actionPending = false,
   body,
+  error,
+  onAction,
   title,
 }: {
   accessibilityLabel: string;
+  actionLabel?: string;
+  actionPending?: boolean;
   body: string;
+  error?: string | null;
+  onAction?: () => void;
   title: string;
 }) {
   return (
     <View accessibilityLabel={accessibilityLabel} style={styles.centered}>
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.body}>{body}</Text>
+      {error ? (
+        <Text accessibilityRole="alert" style={styles.errorText}>
+          {error}
+        </Text>
+      ) : null}
+      {actionLabel && onAction ? (
+        <Pressable
+          accessibilityRole="button"
+          disabled={actionPending}
+          onPress={onAction}
+          style={styles.retry}
+        >
+          {actionPending ? (
+            <ActivityIndicator color="#F8F4FF" size="small" />
+          ) : (
+            <Text style={styles.retryText}>{actionLabel}</Text>
+          )}
+        </Pressable>
+      ) : null}
     </View>
   );
+}
+
+function formatDeletionRetryError(error: AccountDeletionClientError) {
+  return error.requestId
+    ? `${error.message} Mã yêu cầu: ${error.requestId}`
+    : error.message;
 }
 
 const styles = StyleSheet.create({
@@ -339,6 +411,14 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     marginTop: 8,
     maxWidth: 288,
+    textAlign: 'center',
+  },
+  errorText: {
+    color: 'rgba(255,190,196,0.92)',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 12,
+    maxWidth: 320,
     textAlign: 'center',
   },
   centered: {
