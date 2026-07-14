@@ -37,6 +37,14 @@ const files = {
     root,
     'supabase/tests/database/profile_social_visibility_bridge_v2.test.sql',
   ),
+  blockedPlayersMigration: path.join(
+    root,
+    'supabase/migrations/202607141255_social_blocked_players_read_v2.sql',
+  ),
+  blockedPlayersTest: path.join(
+    root,
+    'supabase/tests/database/social_blocked_players_read_v2.test.sql',
+  ),
 };
 const source = Object.fromEntries(
   Object.entries(files).map(([name, filename]) => [
@@ -120,6 +128,24 @@ if (
   );
 }
 
+for (const marker of [
+  'public.list_blocked_players_v2',
+  'public.player_blocks_v2',
+  'private.social_relationship_snapshot_v2',
+  "'totalCount', total_count",
+]) {
+  if (!source.blockedPlayersMigration.includes(marker)) {
+    throw new Error(`Missing Core V2 blocked-player read marker: ${marker}`);
+  }
+}
+if (
+  !source.blockedPlayersTest.includes('each account sees only blocks it owns')
+) {
+  throw new Error(
+    'Blocked-player pgTAP must prove directional cross-account isolation.',
+  );
+}
+
 if (/auth\.uid\(\).*player/i.test(source.foundationMigration)) {
   throw new Error('Core V2 must not treat auth.uid() as canonical PlayerId.');
 }
@@ -160,7 +186,8 @@ const assertionCount =
   countAssertions(source.foundationTest, 'Foundation') +
   countAssertions(source.trustTest, 'Trust visibility') +
   countAssertions(source.consumerBridgeTest, 'Consumer bridge') +
-  countAssertions(source.profileVisibilityTest, 'Profile visibility');
+  countAssertions(source.profileVisibilityTest, 'Profile visibility') +
+  countAssertions(source.blockedPlayersTest, 'Blocked players');
 
 (async () => {
   const parser = await new PgQueryModule();
@@ -169,6 +196,7 @@ const assertionCount =
     ['trust visibility', source.trustMigration],
     ['consumer bridge', source.consumerBridgeMigration],
     ['profile visibility', source.profileVisibilityMigration],
+    ['blocked players', source.blockedPlayersMigration],
   ]) {
     const parsed = parser.parse(sql);
     if (parsed.error) {

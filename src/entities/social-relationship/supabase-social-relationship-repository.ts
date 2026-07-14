@@ -1,4 +1,5 @@
 import {
+  BlockedPlayerListPageV2Schema,
   FriendshipListPageV2Schema,
   PlayerPrivacyCommandReceiptV2Schema,
   PlayerPrivacySettingsV2Schema,
@@ -159,6 +160,18 @@ export class SupabaseSocialRelationshipRepository
   async reportMessage(session: AuthSession, command: ReportMessageCommandV2) {
     return ReportReceiptV2Schema.parse(
       await this.rpc('report_message_v2', session, { command }),
+    );
+  }
+
+  async listBlockedPlayers(
+    session: AuthSession,
+    input: Readonly<{ afterPlayerId?: string | null; limit?: number }> = {},
+  ) {
+    return BlockedPlayerListPageV2Schema.parse(
+      await this.rpc('list_blocked_players_v2', session, {
+        p_after_player_id: input.afterPlayerId ?? null,
+        p_limit: normalizeLimit(input.limit),
+      }),
     );
   }
 

@@ -1,4 +1,5 @@
 import {
+  BlockedPlayerListPageV2Schema,
   FriendshipListPageV2Schema,
   SocialRelationshipSnapshotV2Schema,
   TrustVisibilityDecisionV2Schema,
@@ -68,6 +69,43 @@ export class InMemorySocialRelationshipRepository implements SocialRelationshipR
       targetPlayerId,
       trustVisibility: 'friends',
       viewerPlayerId,
+    });
+  }
+
+  async listBlockedPlayers(
+    session: AuthSession,
+    input: Readonly<{ afterPlayerId?: string | null; limit?: number }> = {},
+  ) {
+    const viewerPlayerId = requireActiveCanonicalPlayer(session);
+    const limit = normalizeLimit(input.limit);
+    const ordered = [...this.relationships.values()]
+      .filter(
+        (relationship) =>
+          relationship.viewerPlayerId === viewerPlayerId &&
+          relationship.block.viewerBlocksTarget &&
+          (!input.afterPlayerId ||
+            relationship.targetPlayerId > input.afterPlayerId),
+      )
+      .sort((left, right) =>
+        left.targetPlayerId.localeCompare(right.targetPlayerId),
+      );
+    const page = ordered.slice(0, limit);
+    return BlockedPlayerListPageV2Schema.parse({
+      contractVersion: 2,
+      items: page.map((relationship) => ({
+        blockedAt: relationship.updatedAt,
+        player: {
+          avatarAssetId: null,
+          displayName: null,
+          playerId: relationship.targetPlayerId,
+          profileId: null,
+        },
+        reasonCode: null,
+        relationship,
+      })),
+      nextCursor:
+        ordered.length > limit ? (page.at(-1)?.targetPlayerId ?? null) : null,
+      totalCount: ordered.length,
     });
   }
 

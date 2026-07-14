@@ -10,6 +10,7 @@ import {
   ReportReceiptV2Schema,
   ReportSubmittedEventV2Schema,
   SocialRelationshipSnapshotV2Schema,
+  BlockedPlayerListPageV2Schema,
   VisibleProfileIdentityV2Schema,
   TrustVisibilityDecisionV2Schema,
 } from '../../../contracts/core-v2';
@@ -127,6 +128,17 @@ describe('Core V2 social relationship provider contracts', () => {
     expect(event.payload.reasonCode).toBe('user_safety');
     expect(event.payload).not.toHaveProperty('reputationDelta');
   });
+});
+
+it('publishes canonical blocked-player management rows', () => {
+  const page = BlockedPlayerListPageV2Schema.parse(
+    read('provider', 'blocked-player-page.json'),
+  );
+  expect(page.totalCount).toBe(1);
+  expect(page.items[0]?.relationship.capabilities.canUnblock).toBe(true);
+  expect(page.items[0]?.player.playerId).toBe(
+    page.items[0]?.relationship.targetPlayerId,
+  );
 });
 
 it('publishes the privacy-gated canonical profile identity bridge', () => {
