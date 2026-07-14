@@ -145,15 +145,28 @@ select is((select status::text from private.notification_push_deliveries_v1 wher
 select is((select count(*)::integer from private.push_devices_v1 where player_id = '21000000-0000-4000-8000-000000000811' and enabled), 0, 'DeviceNotRegistered receipt disables the remaining token');
 
 update private.return_loop_config_v1 set push_enabled = false;
+insert into public.notifications_v1 (
+  id, recipient_player_id, kind, source_event_id, occurred_at,
+  deep_link, title, body
+) values (
+  '91000000-0000-4000-8000-000000000813',
+  '21000000-0000-4000-8000-000000000811',
+  'message_received',
+  '81000000-0000-4000-8000-000000000813',
+  now(),
+  '{"target":"conversation","conversationId":"61000000-0000-4000-8000-000000000811"}',
+  'Tin nhắn',
+  'Tin nhắn mới'
+);
 insert into private.notification_push_jobs_v1 (
   notification_id, recipient_player_id, foreground_policy
 ) values (
-  '91000000-0000-4000-8000-000000000812',
+  '91000000-0000-4000-8000-000000000813',
   '21000000-0000-4000-8000-000000000811',
   'allow_push'
 );
 select is(jsonb_array_length(public.claim_notification_push_jobs_v1(10)), 0, 'push kill switch stops claims');
-select is((select count(*)::integer from public.notifications_v1), 2, 'push rollback leaves notification history intact');
+select is((select count(*)::integer from public.notifications_v1), 3, 'push rollback leaves notification history intact');
 
 select * from finish();
 rollback;

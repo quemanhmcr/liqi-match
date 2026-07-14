@@ -17,6 +17,12 @@ const notificationAuthorityRepair = fs.readFileSync(
   notificationAuthorityRepairPath,
   'utf8',
 );
+const conversationProjectionRepairPath =
+  'supabase/migrations/202607140050_repair_return_loop_conversation_projection_v1.sql';
+const conversationProjectionRepair = fs.readFileSync(
+  conversationProjectionRepairPath,
+  'utf8',
+);
 const homeApiRepository = fs.readFileSync(
   'src/features/home/services/api-home-repository.ts',
   'utf8',
@@ -194,6 +200,19 @@ requireInvariant(
       notificationAuthorityRepair,
     ),
   'Forward notification repair must avoid enqueue variable collisions and preserve authenticated RLS helper execution.',
+);
+requireInvariant(
+  /create or replace function private\.consume_conversation_ready_v1[\s\S]*conversation_id_value uuid :=/i.test(
+    conversationProjectionRepair,
+  ) &&
+    /create or replace function private\.consume_message_sent_v1[\s\S]*conversation_id_value uuid :=/i.test(
+      conversationProjectionRepair,
+    ) &&
+    !/\bconversation_id uuid :=/i.test(conversationProjectionRepair) &&
+    /on conflict \(player_id, conversation_id\)/i.test(
+      conversationProjectionRepair,
+    ),
+  'Forward conversation projection repair must separate PL/pgSQL values from ON CONFLICT columns.',
 );
 requireInvariant(
   /create or replace function private\.consume_return_loop_event_without_suspension_v1\(p_event jsonb\)/i.test(

@@ -1218,7 +1218,7 @@ select ok(
   not exists (
     select 1
     from public.list_discoverable_player_lifecycle_v1(null) snapshots
-    where jsonb_object_length(snapshots) <> 7
+    where (select count(*) from jsonb_object_keys(snapshots)) <> 7
       or snapshots->>'state' <> 'active'
       or snapshots->>'discoverable' <> 'true'
   ),

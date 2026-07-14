@@ -140,7 +140,7 @@ select is((select (receipt ->> 'repeated')::boolean from invite_retry), true, 'i
 select is((select (receipt ->> 'repeated')::boolean from invite_semantic_duplicate), true, 'new key returns existing pending invite semantic result');
 select is((select count(*)::integer from public.match_set_invites_v1), 1, 'duplicate invite creates one row');
 select is((select count(*)::integer from private.outbox_events where event_type = 'set.invite_created.v1'), 1, 'invite emits one transactional event');
-select is((select count(*)::integer from private.outbox_events where event_type = 'notification.requested.v1' and payload ->> 'reasonCode' = 'set_invite_created'), 1, 'invite emits one notification request');
+select is((select count(*)::integer from private.outbox_events where event_type = 'notification.requested.v1' and payload #>> '{data,reasonCode}' = 'set_invite_created'), 1, 'invite emits one notification request');
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
@@ -169,7 +169,7 @@ select is((select receipt ->> 'setId' from join_duplicate), 'a1000000-0000-4000-
 select is((select (receipt ->> 'repeated')::boolean from join_duplicate), true, 'duplicate join request returns same semantic result');
 select is((select count(*)::integer from public.match_set_join_requests_v1), 1, 'duplicate join request creates one row');
 select is((select count(*)::integer from private.outbox_events where event_type = 'set.join_requested.v1'), 1, 'join emits one transactional event');
-select is((select count(*)::integer from private.outbox_events where event_type = 'notification.requested.v1' and payload ->> 'reasonCode' = 'set_join_requested'), 1, 'join emits one owner notification request');
+select is((select count(*)::integer from private.outbox_events where event_type = 'notification.requested.v1' and payload #>> '{data,reasonCode}' = 'set_join_requested'), 1, 'join emits one owner notification request');
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
