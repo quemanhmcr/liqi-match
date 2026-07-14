@@ -24,6 +24,7 @@ import {
   type InvitePlayerToSetCommand,
   type RequestSetJoinCommand,
 } from '../contracts/discover-contracts';
+import { createAuthoritativePlayerOverview } from './discover-authoritative-overview';
 import type {
   DiscoverRepository,
   DiscoverRequestContext,
@@ -34,7 +35,6 @@ export const discoverApiRoutes = {
     `/v1/discover/sets/${encodeURIComponent(setId)}/invites`,
   joinSet: (setId: string) =>
     `/v1/discover/sets/${encodeURIComponent(setId)}/join-requests`,
-  overview: '/v1/discover/overview',
   sets: '/v1/discover/sets',
   vibes: '/v1/discover/vibes',
 } as const;
@@ -68,13 +68,19 @@ export class ApiDiscoverRepository implements DiscoverRepository {
     context: DiscoverRequestContext,
     params: CanonicalDiscoverOverviewParams,
   ) {
+    const players = await this.listPlayers(context, {
+      facetIds: params.facetIds,
+      limit: params.previewLimit,
+      query: params.query,
+      sort: 'best_match',
+    });
+
     return parseResponse(
       DiscoverOverviewResponseSchema,
-      await this.transport.request({
-        method: 'GET',
-        path: discoverApiRoutes.overview,
-        query: overviewQuery(context, params),
-        session: context.session,
+      createAuthoritativePlayerOverview({
+        generatedAt: players.meta.generatedAt,
+        players: players.data.items,
+        requestId: players.meta.requestId,
       }),
     );
   }
@@ -189,19 +195,6 @@ export class ApiDiscoverRepository implements DiscoverRepository {
       }),
     );
   }
-}
-
-function overviewQuery(
-  context: DiscoverRequestContext,
-  params: CanonicalDiscoverOverviewParams,
-) {
-  return {
-    facetId: params.facetIds,
-    locale: context.locale,
-    previewLimit: String(params.previewLimit),
-    query: optional(params.query),
-    timezone: context.timezone,
-  };
 }
 
 function listQuery(
