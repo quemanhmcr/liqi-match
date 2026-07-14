@@ -40,32 +40,73 @@ alter table public.conversations
   add column bootstrap_event_id_v1 uuid,
   add column closed_at_v1 timestamptz;
 
-alter table public.conversation_members
-  add column player_id_v1 uuid,
-  add column last_read_sequence_v1 bigint not null default 0
-    check (last_read_sequence_v1 >= 0),
-  add column read_version_v1 integer not null default 1
-    check (read_version_v1 > 0);
+create table public.conversation_participants_v1 (
+  conversation_id uuid not null references public.conversations(id) on delete cascade,
+  player_id uuid not null references public.players(id) on delete restrict,
+  profile_id uuid not null references public.player_profiles_v1(id) on delete restrict,
+  legacy_profile_id uuid references public.profiles(id) on delete set null,
+  last_read_sequence bigint not null default 0 check (last_read_sequence >= 0),
+  version integer not null default 1 check (version > 0),
+  created_at timestamptz not null default now(),
+  last_read_at timestamptz,
+  primary key (conversation_id, player_id),
+  unique (conversation_id, profile_id)
+);
+
+alter table public.conversation_participants_v1 enable row level security;
+revoke all on public.conversation_participants_v1 from public, anon, authenticated;
+grant all on public.conversation_participants_v1 to service_role;
+
+-- Legacy profile rows are compatibility projections only. Canonical participant
+-- identity and read state live in conversation_participants_v1 so account
+-- deletion cannot erase membership, messages, or unread authority.
+insert into public.conversation_participants_v1 (
+  conversation_id,
+  player_id,
+  profile_id,
+  legacy_profile_id,
+  last_read_sequence,
+  version,
+  created_at,
+  last_read_at
+)
+select
+  member.conversation_id,
+  canonical_profile.player_id,
+  canonical_profile.id,
+  member.profile_id,
+  0,
+  1,
+  member.created_at,
+  member.last_read_at
+from public.conversation_members as member
+join public.player_profiles_v1 as canonical_profile
+  on canonical_profile.legacy_profile_id = member.profile_id
+on conflict (conversation_id, player_id) do nothing;
 
 alter table public.messages
   add column schema_version_v1 integer not null default 0
     check (schema_version_v1 in (0, 1)),
-  add column sender_account_id_v1 uuid,
   add column sender_player_id_v1 uuid,
   add column client_message_id_v1 text,
   add column sequence_v1 bigint,
   add column content_kind_v1 public.message_content_kind_v1,
   add column content_v1 jsonb,
-  add column media_asset_id_v1 uuid references public.media_assets(id) on delete restrict,
+  add column media_asset_id_v1 uuid references public.media_assets(id) on delete set null,
   add column correlation_id_v1 uuid,
   add column request_fingerprint_v1 text;
+
+alter table public.messages
+  alter column sender_id drop not null,
+  drop constraint messages_sender_id_fkey,
+  add constraint messages_sender_id_fkey
+    foreign key (sender_id) references public.profiles(id) on delete set null;
 
 alter table public.messages
   add constraint messages_v1_shape_check check (
     schema_version_v1 = 0
     or (
-      sender_account_id_v1 is not null
-      and sender_player_id_v1 is not null
+sender_player_id_v1 is not null
       and client_message_id_v1 is not null
       and char_length(client_message_id_v1) between 16 and 128
       and sequence_v1 is not null
@@ -85,8 +126,11 @@ alter table public.messages
         or (
           content_kind_v1 = 'media'
           and content_v1 ->> 'kind' = 'media'
-          and content_v1 ->> 'assetId' = media_asset_id_v1::text
-          and media_asset_id_v1 is not null
+          and nullif(content_v1 ->> 'assetId', '') is not null
+          and (
+            media_asset_id_v1 is null
+            or content_v1 ->> 'assetId' = media_asset_id_v1::text
+          )
           and (
             content_v1 ->> 'caption' is null
             or char_length(content_v1 ->> 'caption') between 1 and 4000
@@ -102,14 +146,13 @@ alter table public.messages
     )
   );
 
-create unique index conversation_members_player_v1_key
-  on public.conversation_members (conversation_id, player_id_v1)
-  where player_id_v1 is not null;
+create index conversation_participants_inbox_v1_idx
+  on public.conversation_participants_v1 (player_id, conversation_id);
 
 create unique index messages_client_id_v1_key
   on public.messages (
     conversation_id,
-    sender_account_id_v1,
+    sender_player_id_v1,
     client_message_id_v1
   )
   where schema_version_v1 = 1;
@@ -122,9 +165,51 @@ create index messages_timeline_v1_idx
   on public.messages (conversation_id, sequence_v1 desc)
   where schema_version_v1 = 1 and deleted_at is null;
 
-create index conversation_members_inbox_v1_idx
-  on public.conversation_members (player_id_v1, conversation_id)
-  where player_id_v1 is not null;
+with ranked_legacy_messages as (
+  select
+    message.id,
+    canonical_profile.player_id,
+    row_number() over (
+      partition by message.conversation_id
+      order by message.created_at, message.id
+    )::bigint as sequence
+  from public.messages as message
+  join public.player_profiles_v1 as canonical_profile
+    on canonical_profile.legacy_profile_id = message.sender_id
+  where message.schema_version_v1 = 0
+), migrated_legacy_messages as (
+  update public.messages as message
+  set schema_version_v1 = 1,
+      sender_player_id_v1 = ranked.player_id,
+      client_message_id_v1 = 'legacy:' || message.id::text,
+      sequence_v1 = ranked.sequence,
+      content_kind_v1 = 'text',
+      content_v1 = jsonb_build_object('kind', 'text', 'text', message.body),
+      correlation_id_v1 = message.id,
+      request_fingerprint_v1 = private.request_fingerprint_v1(
+        jsonb_build_object(
+          'conversationId', message.conversation_id,
+          'content', jsonb_build_object('kind', 'text', 'text', message.body)
+        )
+      )
+  from ranked_legacy_messages as ranked
+  where message.id = ranked.id
+  returning message.conversation_id
+)
+update public.conversations as conversation
+set last_sequence_v1 = aggregate.last_sequence,
+    last_message_at = aggregate.last_message_at,
+    version_v1 = greatest(conversation.version_v1, 1)
+from (
+  select
+    message.conversation_id,
+    max(message.sequence_v1) as last_sequence,
+    max(message.created_at) as last_message_at
+  from public.messages as message
+  where message.schema_version_v1 = 1
+  group by message.conversation_id
+) as aggregate
+where conversation.id = aggregate.conversation_id;
 
 create table private.conversation_bootstrap_receipts_v1 (
   match_id uuid primary key references public.matches(id) on delete cascade,
@@ -223,66 +308,6 @@ as $$
   where config.singleton
 $$;
 
-create or replace function private.require_messaging_snapshot_by_account_v1(
-  p_account_id uuid,
-  p_lock boolean default false
-)
-returns private.messaging_player_snapshot_v1
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  raw_snapshot jsonb;
-  snapshot private.messaging_player_snapshot_v1;
-begin
-  begin
-    execute 'select public.get_player_lifecycle_snapshot_v1($1, $2)'
-      into raw_snapshot
-      using p_account_id, p_lock;
-  exception
-    when undefined_function then
-      raise exception 'Player lifecycle provider is unavailable'
-        using errcode = '55000', detail = 'lifecycle_provider_unavailable';
-  end;
-
-  if raw_snapshot is null then
-    raise exception 'Player lifecycle snapshot not found'
-      using errcode = 'P0002', detail = 'player_not_found';
-  end if;
-
-  begin
-    snapshot := row(
-      (raw_snapshot ->> 'accountId')::uuid,
-      (raw_snapshot ->> 'playerId')::uuid,
-      (raw_snapshot ->> 'profileId')::uuid,
-      raw_snapshot ->> 'state',
-      (raw_snapshot ->> 'messagingAllowed')::boolean,
-      (raw_snapshot ->> 'version')::integer,
-      (raw_snapshot ->> 'updatedAt')::timestamptz
-    )::private.messaging_player_snapshot_v1;
-  exception
-    when others then
-      raise exception 'Invalid PlayerLifecycleSnapshotV1 payload'
-        using errcode = '22023', detail = 'lifecycle_contract_violation';
-  end;
-
-  if snapshot.account_id is distinct from p_account_id
-    or snapshot.player_id is null
-    or snapshot.profile_id is null
-    or snapshot.state is null
-    or snapshot.messaging_allowed is null
-    or snapshot.lifecycle_version is null
-    or snapshot.updated_at is null
-  then
-    raise exception 'Invalid PlayerLifecycleSnapshotV1 payload'
-      using errcode = '22023', detail = 'lifecycle_contract_violation';
-  end if;
-
-  return snapshot;
-end;
-$$;
-
 create or replace function private.require_messaging_snapshot_by_player_v1(
   p_player_id uuid,
   p_lock boolean default false
@@ -343,6 +368,69 @@ begin
 end;
 $$;
 
+create or replace function private.require_authenticated_messaging_snapshot_v1(
+  p_lock boolean default false
+)
+returns private.messaging_player_snapshot_v1
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  authenticated_player jsonb;
+  principal jsonb;
+  raw_snapshot jsonb;
+  snapshot private.messaging_player_snapshot_v1;
+begin
+  authenticated_player := public.get_authenticated_player_v1();
+  principal := authenticated_player -> 'principal';
+  raw_snapshot := authenticated_player -> 'lifecycle';
+
+  if principal is null or raw_snapshot is null then
+    raise exception 'Invalid authenticated player contract'
+      using errcode = '22023', detail = 'authenticated_player_contract_violation';
+  end if;
+
+  if p_lock then
+    raw_snapshot := public.get_player_lifecycle_snapshot_v1(
+      (principal ->> 'accountId')::uuid,
+      true
+    );
+  end if;
+
+  begin
+    snapshot := row(
+      (raw_snapshot ->> 'accountId')::uuid,
+      (raw_snapshot ->> 'playerId')::uuid,
+      (raw_snapshot ->> 'profileId')::uuid,
+      raw_snapshot ->> 'state',
+      (raw_snapshot ->> 'messagingAllowed')::boolean,
+      (raw_snapshot ->> 'version')::integer,
+      (raw_snapshot ->> 'updatedAt')::timestamptz
+    )::private.messaging_player_snapshot_v1;
+  exception
+    when others then
+      raise exception 'Invalid authenticated player contract'
+        using errcode = '22023', detail = 'authenticated_player_contract_violation';
+  end;
+
+  if snapshot.account_id is distinct from (principal ->> 'accountId')::uuid
+    or snapshot.player_id is distinct from (principal ->> 'playerId')::uuid
+    or nullif(principal ->> 'sessionId', '') is null
+    or snapshot.profile_id is null
+    or snapshot.state is null
+    or snapshot.messaging_allowed is null
+    or snapshot.lifecycle_version is null
+    or snapshot.updated_at is null
+  then
+    raise exception 'Invalid authenticated player contract'
+      using errcode = '22023', detail = 'authenticated_player_contract_violation';
+  end if;
+
+  return snapshot;
+end;
+$$;
+
 create or replace function private.assert_messaging_allowed_v1(
   p_snapshot private.messaging_player_snapshot_v1
 )
@@ -385,9 +473,9 @@ set search_path = ''
 as $$
   select exists (
     select 1
-    from public.conversation_members as member
+    from public.conversation_participants_v1 as member
     where member.conversation_id = p_conversation_id
-      and member.player_id_v1 = p_player_id
+      and member.player_id = p_player_id
   )
 $$;
 
@@ -443,7 +531,6 @@ as $$
   from public.messages as message
   where message.conversation_id = p_conversation_id
     and message.schema_version_v1 = 1
-    and message.deleted_at is null
     and message.sequence_v1 > p_last_read_sequence
     and message.sender_player_id_v1 <> p_player_id
 $$;
@@ -460,7 +547,7 @@ set search_path = ''
 as $$
 declare
   conversation public.conversations%rowtype;
-  member public.conversation_members%rowtype;
+  member public.conversation_participants_v1%rowtype;
   last_message public.messages%rowtype;
   participant_ids jsonb;
   unread_count integer;
@@ -475,33 +562,32 @@ begin
   end if;
 
   select * into member
-  from public.conversation_members
+  from public.conversation_participants_v1
   where conversation_id = p_conversation_id
-    and player_id_v1 = p_viewer_player_id;
+    and player_id = p_viewer_player_id;
 
   if member.conversation_id is null then
     raise exception 'Conversation membership required'
       using errcode = '42501', detail = 'conversation_forbidden';
   end if;
 
-  select coalesce(jsonb_agg(player_id_v1 order by player_id_v1), '[]'::jsonb)
+  select coalesce(jsonb_agg(player_id order by player_id), '[]'::jsonb)
     into participant_ids
-  from public.conversation_members
+  from public.conversation_participants_v1
   where conversation_id = p_conversation_id
-    and player_id_v1 is not null;
+    and player_id is not null;
 
   select * into last_message
   from public.messages
   where conversation_id = p_conversation_id
     and schema_version_v1 = 1
-    and deleted_at is null
   order by sequence_v1 desc
   limit 1;
 
   unread_count := private.conversation_unread_count_v1(
     p_conversation_id,
     p_viewer_player_id,
-    member.last_read_sequence_v1
+    member.last_read_sequence
   );
 
   return jsonb_build_object(
@@ -648,9 +734,9 @@ begin
   then
     if not exists (
       select 1
-      from public.conversation_members as existing_member
+      from public.conversation_participants_v1 as existing_member
       where existing_member.conversation_id = conversation.id
-        and existing_member.player_id_v1 in (participant_low, participant_high)
+        and existing_member.player_id in (participant_low, participant_high)
       group by existing_member.conversation_id
       having count(*) = 2
     ) then
@@ -664,26 +750,57 @@ begin
       and bootstrap_event_id_v1 is null;
   end if;
 
-  insert into public.conversation_members (
+  insert into public.conversation_participants_v1 (
     conversation_id,
+    player_id,
     profile_id,
-    player_id_v1,
-    last_read_sequence_v1,
-    read_version_v1
+    legacy_profile_id,
+    last_read_sequence,
+    version
   )
   values
-    (conversation.id, low_snapshot.profile_id, low_snapshot.player_id, 0, 1),
-    (conversation.id, high_snapshot.profile_id, high_snapshot.player_id, 0, 1)
-  on conflict (conversation_id, profile_id) do update
-    set player_id_v1 = excluded.player_id_v1
-  where conversation_members.player_id_v1 is null
-     or conversation_members.player_id_v1 = excluded.player_id_v1;
+    (
+      conversation.id,
+      low_snapshot.player_id,
+      low_snapshot.profile_id,
+      match_row.profile_low_id,
+      0,
+      1
+    ),
+    (
+      conversation.id,
+      high_snapshot.player_id,
+      high_snapshot.profile_id,
+      match_row.profile_high_id,
+      0,
+      1
+    )
+  on conflict (conversation_id, player_id) do nothing;
+
+  -- Keep the pre-v1 table as a compatibility projection while canonical
+  -- authorization and read state remain in conversation_participants_v1.
+  insert into public.conversation_members (conversation_id, profile_id)
+  values
+    (conversation.id, match_row.profile_low_id),
+    (conversation.id, match_row.profile_high_id)
+  on conflict (conversation_id, profile_id) do nothing;
 
   if (
     select count(*)
-    from public.conversation_members
-    where conversation_id = conversation.id
-      and player_id_v1 in (participant_low, participant_high)
+    from public.conversation_participants_v1 as participant
+    where participant.conversation_id = conversation.id
+      and (
+        (
+          participant.player_id = participant_low
+          and participant.profile_id = low_snapshot.profile_id
+          and participant.legacy_profile_id = match_row.profile_low_id
+        )
+        or (
+          participant.player_id = participant_high
+          and participant.profile_id = high_snapshot.profile_id
+          and participant.legacy_profile_id = match_row.profile_high_id
+        )
+      )
   ) <> 2 then
     raise exception 'Conversation participant mapping conflict'
       using errcode = '23505', detail = 'conversation_bootstrap_conflict';
@@ -834,14 +951,16 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid := auth.uid();
+  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   conversation public.conversations%rowtype;
   existing_message public.messages%rowtype;
   created_message public.messages%rowtype;
   media_asset public.media_assets%rowtype;
   recipient_player_id uuid;
-  recipient_member public.conversation_members%rowtype;
+  actor_member public.conversation_participants_v1%rowtype;
+  recipient_member public.conversation_participants_v1%rowtype;
+  recipient_count integer;
   content_kind public.message_content_kind_v1;
   canonical_content jsonb;
   compatibility_body text;
@@ -851,10 +970,8 @@ declare
   message_event_id uuid;
   unread_count integer;
 begin
-  if actor_account_id is null then
-    raise exception 'Authentication required'
-      using errcode = '28000', detail = 'unauthenticated';
-  end if;
+  actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
+  actor_account_id := actor_snapshot.account_id;
 
   if p_conversation_id is null
     or p_correlation_id is null
@@ -882,11 +999,6 @@ begin
         'text', compatibility_body
       );
     when 'media' then
-      if not private.image_messages_enabled_v1() then
-        raise exception 'Image messages are disabled'
-          using errcode = '55000', detail = 'image_messages_disabled';
-      end if;
-
       begin
         media_asset_id := (p_content ->> 'assetId')::uuid;
       exception
@@ -927,7 +1039,7 @@ begin
   select * into existing_message
   from public.messages
   where conversation_id = p_conversation_id
-    and sender_account_id_v1 = actor_account_id
+    and sender_player_id_v1 = actor_snapshot.player_id
     and client_message_id_v1 = p_client_message_id
     and schema_version_v1 = 1;
 
@@ -943,10 +1055,11 @@ begin
     );
   end if;
 
-  actor_snapshot := private.require_messaging_snapshot_by_account_v1(
-    actor_account_id,
-    true
-  );
+  actor_snapshot := private.require_authenticated_messaging_snapshot_v1(true);
+  if actor_snapshot.account_id is distinct from actor_account_id then
+    raise exception 'Authenticated principal changed during send'
+      using errcode = '40001', detail = 'principal_changed';
+  end if;
 
   if not private.conversation_writes_enabled_v1() then
     raise exception 'Conversation writes are disabled'
@@ -954,6 +1067,11 @@ begin
   end if;
 
   perform private.assert_messaging_allowed_v1(actor_snapshot);
+
+  if content_kind = 'media' and not private.image_messages_enabled_v1() then
+    raise exception 'Image messages are disabled'
+      using errcode = '55000', detail = 'image_messages_disabled';
+  end if;
 
   select * into conversation
   from public.conversations
@@ -970,10 +1088,14 @@ begin
       using errcode = '42501', detail = 'conversation_closed';
   end if;
 
-  if not private.is_conversation_player_member_v1(
-    conversation.id,
-    actor_snapshot.player_id
-  ) then
+  select * into actor_member
+  from public.conversation_participants_v1
+  where conversation_id = conversation.id
+    and player_id = actor_snapshot.player_id;
+
+  if actor_member.conversation_id is null
+    or actor_member.profile_id is distinct from actor_snapshot.profile_id
+  then
     raise exception 'Conversation membership required'
       using errcode = '42501', detail = 'conversation_forbidden';
   end if;
@@ -981,7 +1103,7 @@ begin
   select * into existing_message
   from public.messages
   where conversation_id = p_conversation_id
-    and sender_account_id_v1 = actor_account_id
+    and sender_player_id_v1 = actor_snapshot.player_id
     and client_message_id_v1 = p_client_message_id
     and schema_version_v1 = 1;
 
@@ -1004,7 +1126,7 @@ begin
     for share;
 
     if media_asset.id is null
-      or media_asset.owner_id is distinct from actor_snapshot.profile_id
+      or media_asset.owner_id is distinct from actor_member.legacy_profile_id
       or media_asset.purpose is distinct from 'chat_attachment'
       or media_asset.visibility is distinct from 'conversation_members'
       or media_asset.status is distinct from 'ready'
@@ -1016,21 +1138,21 @@ begin
     end if;
   end if;
 
-  select member.player_id_v1 into recipient_player_id
-  from public.conversation_members as member
+  select min(member.player_id), count(*)::integer
+    into recipient_player_id, recipient_count
+  from public.conversation_participants_v1 as member
   where member.conversation_id = conversation.id
-    and member.player_id_v1 is not null
-    and member.player_id_v1 <> actor_snapshot.player_id;
+    and member.player_id <> actor_snapshot.player_id;
 
-  if recipient_player_id is null then
+  if recipient_count <> 1 or recipient_player_id is null then
     raise exception 'Conversation requires exactly one recipient'
       using errcode = '22023', detail = 'conversation_contract_violation';
   end if;
 
   select * into recipient_member
-  from public.conversation_members
+  from public.conversation_participants_v1
   where conversation_id = conversation.id
-    and player_id_v1 = recipient_player_id
+    and player_id = recipient_player_id
   for update;
 
   next_sequence := conversation.last_sequence_v1 + 1;
@@ -1040,7 +1162,6 @@ begin
     sender_id,
     body,
     schema_version_v1,
-    sender_account_id_v1,
     sender_player_id_v1,
     client_message_id_v1,
     sequence_v1,
@@ -1052,10 +1173,9 @@ begin
   )
   values (
     conversation.id,
-    actor_snapshot.profile_id,
+    actor_member.legacy_profile_id,
     compatibility_body,
     1,
-    actor_account_id,
     actor_snapshot.player_id,
     p_client_message_id,
     next_sequence,
@@ -1076,7 +1196,7 @@ begin
   unread_count := private.conversation_unread_count_v1(
     conversation.id,
     recipient_player_id,
-    recipient_member.last_read_sequence_v1
+    recipient_member.last_read_sequence
   );
 
   message_event_id := private.enqueue_contract_event_v1(
@@ -1139,19 +1259,14 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid := auth.uid();
+  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   conversation public.conversations%rowtype;
-  member public.conversation_members%rowtype;
+  member public.conversation_participants_v1%rowtype;
   unread_count integer;
   updated_at timestamptz;
   event_id uuid;
 begin
-  if actor_account_id is null then
-    raise exception 'Authentication required'
-      using errcode = '28000', detail = 'unauthenticated';
-  end if;
-
   if p_conversation_id is null
     or p_last_read_sequence is null
     or p_last_read_sequence < 0
@@ -1166,10 +1281,8 @@ begin
       using errcode = '55000', detail = 'conversation_reads_disabled';
   end if;
 
-  actor_snapshot := private.require_messaging_snapshot_by_account_v1(
-    actor_account_id,
-    false
-  );
+  actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
+  actor_account_id := actor_snapshot.account_id;
 
   select * into conversation
   from public.conversations
@@ -1186,9 +1299,9 @@ begin
   end if;
 
   select * into member
-  from public.conversation_members
+  from public.conversation_participants_v1
   where conversation_id = conversation.id
-    and player_id_v1 = actor_snapshot.player_id
+    and player_id = actor_snapshot.player_id
   for update;
 
   if member.conversation_id is null then
@@ -1196,18 +1309,18 @@ begin
       using errcode = '42501', detail = 'conversation_forbidden';
   end if;
 
-  if p_last_read_sequence <= member.last_read_sequence_v1 then
+  if p_last_read_sequence <= member.last_read_sequence then
     unread_count := private.conversation_unread_count_v1(
       conversation.id,
       actor_snapshot.player_id,
-      member.last_read_sequence_v1
+      member.last_read_sequence
     );
 
     return jsonb_build_object(
       'readState', jsonb_build_object(
         'conversationId', conversation.id,
         'playerId', actor_snapshot.player_id,
-        'lastReadSequence', member.last_read_sequence_v1,
+        'lastReadSequence', member.last_read_sequence,
         'unreadCount', unread_count,
         'updatedAt', coalesce(member.last_read_at, member.created_at)
       ),
@@ -1216,18 +1329,18 @@ begin
   end if;
 
   updated_at := now();
-  update public.conversation_members
-  set last_read_sequence_v1 = p_last_read_sequence,
+  update public.conversation_participants_v1
+  set last_read_sequence = p_last_read_sequence,
       last_read_at = updated_at,
-      read_version_v1 = read_version_v1 + 1
+      version = version + 1
   where conversation_id = conversation.id
-    and player_id_v1 = actor_snapshot.player_id
+    and player_id = actor_snapshot.player_id
   returning * into member;
 
   unread_count := private.conversation_unread_count_v1(
     conversation.id,
     actor_snapshot.player_id,
-    member.last_read_sequence_v1
+    member.last_read_sequence
   );
 
   event_id := private.enqueue_contract_event_v1(
@@ -1240,7 +1353,7 @@ begin
       'readState', jsonb_build_object(
         'conversationId', conversation.id,
         'playerId', actor_snapshot.player_id,
-        'lastReadSequence', member.last_read_sequence_v1,
+        'lastReadSequence', member.last_read_sequence,
         'unreadCount', unread_count,
         'updatedAt', updated_at
       )
@@ -1249,7 +1362,7 @@ begin
       'conversation.read_advanced.v1:%s:%s:%s',
       conversation.id,
       actor_snapshot.player_id,
-      member.last_read_sequence_v1
+      member.last_read_sequence
     )
   );
 
@@ -1257,7 +1370,7 @@ begin
     'readState', jsonb_build_object(
       'conversationId', conversation.id,
       'playerId', actor_snapshot.player_id,
-      'lastReadSequence', member.last_read_sequence_v1,
+      'lastReadSequence', member.last_read_sequence,
       'unreadCount', unread_count,
       'updatedAt', updated_at
     ),
@@ -1279,34 +1392,27 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid := auth.uid();
+  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   safe_limit integer := greatest(1, least(coalesce(p_limit, 30), 100));
 begin
-  if actor_account_id is null then
-    raise exception 'Authentication required'
-      using errcode = '28000', detail = 'unauthenticated';
-  end if;
-
   if not private.conversation_reads_enabled_v1() then
     raise exception 'Conversation reads are disabled'
       using errcode = '55000', detail = 'conversation_reads_disabled';
   end if;
 
-  actor_snapshot := private.require_messaging_snapshot_by_account_v1(
-    actor_account_id,
-    false
-  );
+  actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
+  actor_account_id := actor_snapshot.account_id;
 
   return query
   select private.conversation_snapshot_json_v1(
     conversation.id,
     actor_snapshot.player_id
   )
-  from public.conversation_members as member
+  from public.conversation_participants_v1 as member
   join public.conversations as conversation
     on conversation.id = member.conversation_id
-  where member.player_id_v1 = actor_snapshot.player_id
+  where member.player_id = actor_snapshot.player_id
     and (
       p_before_last_message_at is null
       or (
@@ -1334,15 +1440,10 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid := auth.uid();
+  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   safe_limit integer := greatest(1, least(coalesce(p_limit, 50), 100));
 begin
-  if actor_account_id is null then
-    raise exception 'Authentication required'
-      using errcode = '28000', detail = 'unauthenticated';
-  end if;
-
   if p_before_sequence is not null and p_after_sequence is not null then
     raise exception 'Choose either beforeSequence or afterSequence'
       using errcode = '22023', detail = 'validation_failed';
@@ -1353,10 +1454,8 @@ begin
       using errcode = '55000', detail = 'conversation_reads_disabled';
   end if;
 
-  actor_snapshot := private.require_messaging_snapshot_by_account_v1(
-    actor_account_id,
-    false
-  );
+  actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
+  actor_account_id := actor_snapshot.account_id;
 
   if not private.is_conversation_player_member_v1(
     p_conversation_id,
@@ -1372,7 +1471,6 @@ begin
     from public.messages as message
     where message.conversation_id = p_conversation_id
       and message.schema_version_v1 = 1
-      and message.deleted_at is null
       and message.sequence_v1 > p_after_sequence
     order by message.sequence_v1
     limit safe_limit;
@@ -1388,7 +1486,6 @@ begin
     from public.messages as message
     where message.conversation_id = p_conversation_id
       and message.schema_version_v1 = 1
-      and message.deleted_at is null
       and (
         p_before_sequence is null
         or message.sequence_v1 < p_before_sequence
@@ -1410,30 +1507,23 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid := auth.uid();
+  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
-  member public.conversation_members%rowtype;
+  member public.conversation_participants_v1%rowtype;
   unread_count integer;
 begin
-  if actor_account_id is null then
-    raise exception 'Authentication required'
-      using errcode = '28000', detail = 'unauthenticated';
-  end if;
-
   if not private.conversation_reads_enabled_v1() then
     raise exception 'Conversation reads are disabled'
       using errcode = '55000', detail = 'conversation_reads_disabled';
   end if;
 
-  actor_snapshot := private.require_messaging_snapshot_by_account_v1(
-    actor_account_id,
-    false
-  );
+  actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
+  actor_account_id := actor_snapshot.account_id;
 
   select * into member
-  from public.conversation_members
+  from public.conversation_participants_v1
   where conversation_id = p_conversation_id
-    and player_id_v1 = actor_snapshot.player_id;
+    and player_id = actor_snapshot.player_id;
 
   if member.conversation_id is null then
     raise exception 'Conversation membership required'
@@ -1443,13 +1533,13 @@ begin
   unread_count := private.conversation_unread_count_v1(
     p_conversation_id,
     actor_snapshot.player_id,
-    member.last_read_sequence_v1
+    member.last_read_sequence
   );
 
   return jsonb_build_object(
     'conversationId', p_conversation_id,
     'playerId', actor_snapshot.player_id,
-    'lastReadSequence', member.last_read_sequence_v1,
+    'lastReadSequence', member.last_read_sequence,
     'unreadCount', unread_count,
     'updatedAt', coalesce(member.last_read_at, member.created_at)
   );
@@ -1464,25 +1554,18 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid := auth.uid();
+  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   conversation_count integer;
   unread_count integer;
 begin
-  if actor_account_id is null then
-    raise exception 'Authentication required'
-      using errcode = '28000', detail = 'unauthenticated';
-  end if;
-
   if not private.conversation_reads_enabled_v1() then
     raise exception 'Conversation reads are disabled'
       using errcode = '55000', detail = 'conversation_reads_disabled';
   end if;
 
-  actor_snapshot := private.require_messaging_snapshot_by_account_v1(
-    actor_account_id,
-    false
-  );
+  actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
+  actor_account_id := actor_snapshot.account_id;
 
   select
     count(*) filter (where member_unread.unread_count > 0)::integer,
@@ -1492,10 +1575,10 @@ begin
     select private.conversation_unread_count_v1(
       member.conversation_id,
       actor_snapshot.player_id,
-      member.last_read_sequence_v1
+      member.last_read_sequence
     ) as unread_count
-    from public.conversation_members as member
-    where member.player_id_v1 = actor_snapshot.player_id
+    from public.conversation_participants_v1 as member
+    where member.player_id = actor_snapshot.player_id
   ) as member_unread;
 
   return jsonb_build_object(
@@ -1515,16 +1598,12 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid := auth.uid();
+  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
 begin
-  if actor_account_id is null then return false; end if;
-
   begin
-    actor_snapshot := private.require_messaging_snapshot_by_account_v1(
-      actor_account_id,
-      false
-    );
+    actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
+    actor_account_id := actor_snapshot.account_id;
   exception
     when others then return false;
   end;
@@ -1534,7 +1613,6 @@ begin
     from public.messages as message
     where message.media_asset_id_v1 = p_media_asset_id
       and message.schema_version_v1 = 1
-      and message.deleted_at is null
       and private.is_conversation_player_member_v1(
         message.conversation_id,
         actor_snapshot.player_id
@@ -1553,12 +1631,11 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid := auth.uid();
+  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   conversation_id uuid;
 begin
-  if actor_account_id is null
-    or not private.conversation_realtime_enabled_v1()
+  if not private.conversation_realtime_enabled_v1()
     or p_topic !~ '^conversation:[0-9a-fA-F-]{36}$'
   then
     return false;
@@ -1566,10 +1643,8 @@ begin
 
   begin
     conversation_id := substring(p_topic from 14)::uuid;
-    actor_snapshot := private.require_messaging_snapshot_by_account_v1(
-      actor_account_id,
-      false
-    );
+    actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
+    actor_account_id := actor_snapshot.account_id;
   exception
     when others then return false;
   end;

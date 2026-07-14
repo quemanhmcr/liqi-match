@@ -3,9 +3,13 @@ const fs = require('node:fs');
 const migrationPath =
   'supabase/migrations/202607140002_conversation_reliability_v1.sql';
 const testPath = 'supabase/tests/database/conversation_reliability_v1.test.sql';
+const accountDeletePath = 'supabase/functions/account-delete/handler.ts';
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const databaseTest = fs.existsSync(testPath)
   ? fs.readFileSync(testPath, 'utf8')
+  : '';
+const accountDelete = fs.existsSync(accountDeletePath)
+  ? fs.readFileSync(accountDeletePath, 'utf8')
   : '';
 const failures = [];
 
@@ -45,6 +49,22 @@ requireInvariant(
   'Conversation v1 must expand the canonical messages table, not create a second store',
 );
 requireInvariant(
+  /create table public\.conversation_participants_v1/i.test(migration) &&
+    /references public\.players\(id\)/i.test(migration) &&
+    /references public\.player_profiles_v1\(id\)/i.test(migration),
+  'participant authority must persist canonical PlayerId and ProfileId independently of legacy profiles',
+);
+requireInvariant(
+  /foreign key \(sender_id\) references public\.profiles\(id\) on delete set null/i.test(
+    migration,
+  ),
+  'legacy profile deletion must not cascade-delete canonical messages',
+);
+requireInvariant(
+  /public\.get_authenticated_player_v1\(\)/i.test(migration),
+  'authenticated Conversation commands must consume Mission 1 principal authority',
+);
+requireInvariant(
   /create unique index conversations?_?.*|conversations_match_id_key/i.test(
     migration,
   ) || /on conflict \(match_id\)/i.test(bootstrap),
@@ -75,10 +95,10 @@ requireInvariant(
 );
 requireInvariant(
   /messages_client_id_v1_key/i.test(migration) &&
-    /conversation_id,[\s\n]*sender_account_id_v1,[\s\n]*client_message_id_v1/i.test(
+    /conversation_id,[\s\n]*sender_player_id_v1,[\s\n]*client_message_id_v1/i.test(
       migration,
     ),
-  'message idempotency must be scoped by conversation, AccountId and clientMessageId',
+  'message idempotency must be scoped by conversation, sender PlayerId and clientMessageId',
 );
 requireInvariant(
   /messages_sequence_v1_key/i.test(migration),
@@ -86,10 +106,15 @@ requireInvariant(
 );
 requireInvariant(
   send.indexOf('select * into existing_message') <
-    send.indexOf('require_messaging_snapshot_by_account_v1') &&
+    send.indexOf('require_authenticated_messaging_snapshot_v1(true)') &&
     send.indexOf('select * into existing_message') <
       send.indexOf('conversation_writes_enabled_v1'),
-  'committed send retries must replay by AccountId before provider, rollout or lifecycle checks',
+  'committed send retries must replay by authenticated PlayerId before rollout or lifecycle enforcement',
+);
+requireInvariant(
+  send.indexOf('select * into existing_message') <
+    send.indexOf('image_messages_enabled_v1'),
+  'committed image retries must replay before the image-message rollout flag',
 );
 requireInvariant(
   /from public\.conversations[\s\S]*for update/i.test(send) &&
@@ -117,9 +142,7 @@ requireInvariant(
   'send must publish message and attention events transactionally',
 );
 requireInvariant(
-  /greatest\(|p_last_read_sequence <= member\.last_read_sequence_v1/i.test(
-    read,
-  ),
+  /greatest\(|p_last_read_sequence <= member\.last_read_sequence/i.test(read),
   'read watermark must be monotonic and repeated advances idempotent',
 );
 requireInvariant(
@@ -144,6 +167,18 @@ requireInvariant(
   /media_asset_id_v1/i.test(migration) &&
     !/m\.body like '%' \|\| media_assets\.id/i.test(migration),
   'v1 media access must use an explicit message attachment association',
+);
+requireInvariant(
+  /from\('players'\)[\s\S]*\.eq\('account_id', user\.id\)/i.test(
+    accountDelete,
+  ) && /sender_player_id_v1\.eq\.\$\{playerId\}/i.test(accountDelete),
+  'account deletion must tombstone messages through authoritative PlayerId, not only legacy profile identity',
+);
+requireInvariant(
+  /content_kind_v1: 'system'/i.test(accountDelete) &&
+    /eventType: 'message_removed'/i.test(accountDelete) &&
+    /media_asset_id_v1: null/i.test(accountDelete),
+  'account deletion must remove message content and attachment association without deleting message rows',
 );
 requireInvariant(
   /security definer[\s\S]*set search_path = ''/i.test(migration),

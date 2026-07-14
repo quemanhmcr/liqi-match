@@ -2,90 +2,29 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(37);
+select plan(38);
 
-create table public.test_conversation_lifecycle_snapshots_v1 (
-  account_id uuid primary key,
-  player_id uuid not null unique,
-  profile_id uuid not null unique,
-  state text not null,
-  messaging_allowed boolean not null,
-  version integer not null,
-  updated_at timestamptz not null default now()
-);
-
-create or replace function public.get_player_lifecycle_snapshot_v1(
+create or replace function public.test_set_conversation_actor_v1(
   p_account_id uuid,
-  p_lock boolean default false
+  p_session_id uuid
 )
-returns jsonb
+returns void
 language plpgsql
-security definer
 set search_path = ''
 as $$
-declare
-  snapshot public.test_conversation_lifecycle_snapshots_v1%rowtype;
 begin
-  if p_lock then
-    select * into snapshot
-    from public.test_conversation_lifecycle_snapshots_v1
-    where account_id = p_account_id
-    for update;
-  else
-    select * into snapshot
-    from public.test_conversation_lifecycle_snapshots_v1
-    where account_id = p_account_id;
-  end if;
-
-  if snapshot.account_id is null then return null; end if;
-  return jsonb_build_object(
-    'accountId', snapshot.account_id,
-    'playerId', snapshot.player_id,
-    'profileId', snapshot.profile_id,
-    'state', snapshot.state,
-    'discoverable', snapshot.state = 'active',
-    'messagingAllowed', snapshot.messaging_allowed,
-    'profileVersion', 1,
-    'version', snapshot.version,
-    'updatedAt', snapshot.updated_at
-  );
-end;
-$$;
-
-create or replace function public.get_player_lifecycle_snapshot_by_player_v1(
-  p_player_id uuid,
-  p_lock boolean default false
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  snapshot public.test_conversation_lifecycle_snapshots_v1%rowtype;
-begin
-  if p_lock then
-    select * into snapshot
-    from public.test_conversation_lifecycle_snapshots_v1
-    where player_id = p_player_id
-    for update;
-  else
-    select * into snapshot
-    from public.test_conversation_lifecycle_snapshots_v1
-    where player_id = p_player_id;
-  end if;
-
-  if snapshot.player_id is null then return null; end if;
-  return jsonb_build_object(
-    'accountId', snapshot.account_id,
-    'playerId', snapshot.player_id,
-    'profileId', snapshot.profile_id,
-    'state', snapshot.state,
-    'discoverable', snapshot.state = 'active',
-    'messagingAllowed', snapshot.messaging_allowed,
-    'profileVersion', 1,
-    'version', snapshot.version,
-    'updatedAt', snapshot.updated_at
+  perform set_config('request.jwt.claim.role', 'authenticated', true);
+  perform set_config('request.jwt.claim.sub', p_account_id::text, true);
+  perform set_config(
+    'request.jwt.claims',
+    jsonb_build_object(
+      'sub', p_account_id,
+      'role', 'authenticated',
+      'session_id', p_session_id,
+      'iat', extract(epoch from now() - interval '1 minute')::bigint,
+      'exp', extract(epoch from now() + interval '1 hour')::bigint
+    )::text,
+    true
   );
 end;
 $$;
@@ -104,13 +43,31 @@ values
   ('01000000-0000-4000-8000-000000000402', 'Conversation B'),
   ('01000000-0000-4000-8000-000000000403', 'Conversation C');
 
-insert into public.test_conversation_lifecycle_snapshots_v1 (
-  account_id, player_id, profile_id, state, messaging_allowed, version
+insert into public.players (
+  id,
+  account_id,
+  auth_user_id,
+  lifecycle_state,
+  lifecycle_version,
+  discoverable,
+  messaging_allowed
 )
 values
-  ('01000000-0000-4000-8000-000000000401', '20000000-0000-4000-8000-000000000401', '01000000-0000-4000-8000-000000000401', 'active', true, 2),
-  ('01000000-0000-4000-8000-000000000402', '20000000-0000-4000-8000-000000000402', '01000000-0000-4000-8000-000000000402', 'active', true, 2),
-  ('01000000-0000-4000-8000-000000000403', '20000000-0000-4000-8000-000000000403', '01000000-0000-4000-8000-000000000403', 'active', true, 2);
+  ('20000000-0000-4000-8000-000000000401', '01000000-0000-4000-8000-000000000401', '01000000-0000-4000-8000-000000000401', 'active', 2, true, true),
+  ('20000000-0000-4000-8000-000000000402', '01000000-0000-4000-8000-000000000402', '01000000-0000-4000-8000-000000000402', 'active', 2, true, true),
+  ('20000000-0000-4000-8000-000000000403', '01000000-0000-4000-8000-000000000403', '01000000-0000-4000-8000-000000000403', 'active', 2, true, true);
+
+insert into public.player_profiles_v1 (
+  id,
+  player_id,
+  legacy_profile_id,
+  version,
+  completed_at
+)
+values
+  ('30000000-0000-4000-8000-000000000401', '20000000-0000-4000-8000-000000000401', '01000000-0000-4000-8000-000000000401', 1, now()),
+  ('30000000-0000-4000-8000-000000000402', '20000000-0000-4000-8000-000000000402', '01000000-0000-4000-8000-000000000402', 1, now()),
+  ('30000000-0000-4000-8000-000000000403', '20000000-0000-4000-8000-000000000403', '01000000-0000-4000-8000-000000000403', 1, now());
 
 update private.conversation_authority_config_v1
 set bootstrap_enabled = true,
@@ -154,7 +111,7 @@ select private.enqueue_contract_event_v1(
 ) as id;
 
 select has_column('public', 'conversations', 'last_sequence_v1', 'conversation stores canonical sequence');
-select has_column('public', 'conversation_members', 'last_read_sequence_v1', 'membership stores read watermark');
+select has_column('public', 'conversation_participants_v1', 'last_read_sequence', 'canonical participant stores read watermark');
 select has_column('public', 'messages', 'client_message_id_v1', 'message stores client idempotency key');
 select has_function(
   'public',
@@ -178,7 +135,7 @@ select is(
   'bootstrap receipt is persisted by MatchId'
 );
 select is(
-  (select count(*)::integer from public.conversation_members where conversation_id = (select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401') and player_id_v1 is not null),
+  (select count(*)::integer from public.conversation_participants_v1 where conversation_id = (select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401') and player_id is not null),
   2,
   'conversation has two PlayerId members'
 );
@@ -229,8 +186,10 @@ select throws_ok(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000401', true);
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000401',
+  '09000000-0000-4000-8000-000000000401'
+);
 
 create temporary table text_send_first as
 select public.send_message_v1(
@@ -293,8 +252,10 @@ values (
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000401', true);
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000401',
+  '09000000-0000-4000-8000-000000000401'
+);
 
 create temporary table image_send as
 select public.send_message_v1(
@@ -317,7 +278,32 @@ select is(
   'message sequences are contiguous and monotonic'
 );
 
-select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000402', true);
+reset role;
+update private.conversation_authority_config_v1
+set image_messages_enabled = false;
+set local role authenticated;
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000401',
+  '09000000-0000-4000-8000-000000000401'
+);
+select is(
+  (
+    public.send_message_v1(
+      (select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401'),
+      'client-message-a-00000002',
+      '{"kind":"media","assetId":"92000000-0000-4000-8000-000000000401","caption":"Build hiện tại"}'::jsonb,
+      now(),
+      '70000000-0000-4000-8000-000000000498'
+    ) ->> 'repeated'
+  )::boolean,
+  true,
+  'committed image retry replays after image rollout is disabled'
+);
+
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000402',
+  '09000000-0000-4000-8000-000000000402'
+);
 
 select is(
   (public.get_conversation_read_state_v1((select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401')) ->> 'unreadCount')::integer,
@@ -367,13 +353,15 @@ select is((public.get_conversation_unread_summary_v1() ->> 'unreadCount')::integ
 select ok(not has_table_privilege('authenticated', 'public.messages', 'INSERT'), 'direct message insert is revoked');
 
 reset role;
-update public.test_conversation_lifecycle_snapshots_v1
-set state = 'suspended', messaging_allowed = false, version = version + 1
+update public.players
+set lifecycle_state = 'suspended', discoverable = false, messaging_allowed = false, lifecycle_version = lifecycle_version + 1
 where account_id = '01000000-0000-4000-8000-000000000401';
 
 set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000401', true);
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000401',
+  '09000000-0000-4000-8000-000000000401'
+);
 
 select is(
   (
@@ -390,13 +378,15 @@ select is(
 );
 
 reset role;
-update public.test_conversation_lifecycle_snapshots_v1
-set state = 'suspended', messaging_allowed = false, version = version + 1
+update public.players
+set lifecycle_state = 'suspended', discoverable = false, messaging_allowed = false, lifecycle_version = lifecycle_version + 1
 where account_id = '01000000-0000-4000-8000-000000000402';
 
 set local role authenticated;
-select set_config('request.jwt.claim.role', 'authenticated', true);
-select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000402', true);
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000402',
+  '09000000-0000-4000-8000-000000000402'
+);
 
 select throws_ok(
   $$select public.send_message_v1(
@@ -411,7 +401,10 @@ select throws_ok(
   'suspended participant cannot send'
 );
 
-select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000403', true);
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000403',
+  '09000000-0000-4000-8000-000000000403'
+);
 select throws_ok(
   $$select * from public.get_conversation_timeline_v1(
     (select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401'),

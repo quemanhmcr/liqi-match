@@ -20,6 +20,10 @@ type MediaAssetRow = {
   object_key: string;
 };
 
+type PlayerRow = {
+  id: string;
+};
+
 type CleanupResult = {
   error?: string;
   name: string;
@@ -57,6 +61,17 @@ export async function handleDeleteAccount(request: Request) {
       return errorResponse(500, 'profile_lookup_failed', profile.error.message);
     }
 
+    const player = await supabase
+      .from('players')
+      .select('id')
+      .eq('account_id', user.id)
+      .maybeSingle();
+
+    if (player.error) {
+      return errorResponse(500, 'player_lookup_failed', player.error.message);
+    }
+
+    const canonicalPlayer = player.data as PlayerRow | null;
     const mediaRows = await supabase
       .from('media_assets')
       .select('id, object_key')
@@ -75,6 +90,7 @@ export async function handleDeleteAccount(request: Request) {
       eventType: 'account_deletion_requested',
       payload: {
         mediaFound: media.length,
+        playerFound: Boolean(canonicalPlayer),
         profileFound: Boolean(profile.data),
         requestedAt: deletedAt,
       },
@@ -107,9 +123,15 @@ export async function handleDeleteAccount(request: Request) {
       }
     }
 
-    const cleanupResults = profile.data
-      ? await cleanupProfileData(supabase, user.id, deletedAt)
-      : [];
+    const cleanupResults =
+      profile.data || canonicalPlayer
+        ? await cleanupProfileData(
+            supabase,
+            user.id,
+            canonicalPlayer?.id ?? null,
+            deletedAt,
+          )
+        : [];
     const failedCleanup = cleanupResults.filter((result) => !result.ok);
 
     if (failedCleanup.length > 0) {
@@ -137,6 +159,7 @@ export async function handleDeleteAccount(request: Request) {
       },
       deletedAt,
       mediaDeleted: media.length,
+      playerFound: Boolean(canonicalPlayer),
       profileFound: Boolean(profile.data),
       profileId: user.id,
       status: 'deleted',
@@ -153,6 +176,7 @@ export async function handleDeleteAccount(request: Request) {
 async function cleanupProfileData(
   supabase: Awaited<ReturnType<typeof authenticateUser>>['supabase'],
   profileId: string,
+  playerId: string | null,
   deletedAt: string,
 ) {
   const operations = [
@@ -201,12 +225,21 @@ async function cleanupProfileData(
     cleanupOperation('teams', () =>
       supabase.from('teams').delete().eq('owner_id', profileId),
     ),
-    cleanupOperation('messages', () =>
-      supabase
-        .from('messages')
-        .update({ body: 'Tin nhắn đã bị xoá', deleted_at: deletedAt })
-        .eq('sender_id', profileId),
-    ),
+    cleanupOperation('messages', () => {
+      const messageCleanup = supabase.from('messages').update({
+        body: 'Tin nhắn đã bị xoá',
+        content_kind_v1: 'system',
+        content_v1: { kind: 'system', eventType: 'message_removed' },
+        deleted_at: deletedAt,
+        media_asset_id_v1: null,
+      });
+
+      return playerId
+        ? messageCleanup.or(
+            `sender_id.eq.${profileId},sender_player_id_v1.eq.${playerId}`,
+          )
+        : messageCleanup.eq('sender_id', profileId);
+    }),
     cleanupOperation('matches', () =>
       supabase
         .from('matches')
