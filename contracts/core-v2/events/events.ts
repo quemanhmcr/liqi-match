@@ -4,7 +4,6 @@ import { ActivityItemV2Schema } from '../activity/activity';
 import { ActivityNotificationRequestedEventV2Schema } from '../notification/activity-notification';
 import {
   PlayerIdSchema,
-  PlaySessionIdSchema,
   SessionOutcomeIdSchema,
 } from '../identity/semantic-ids';
 import {
@@ -27,6 +26,24 @@ import {
   PlayerTrustProjectionV2Schema,
 } from '../trust/reputation';
 import { CoreV2EventEnvelopeSchema, coreV2EventSchema } from './event-envelope';
+import {
+  SessionCancelledEventV2Schema,
+  SessionCompletedEventV2Schema,
+  SessionCompletionProposedEventV2Schema,
+  SessionCreatedEventV2Schema,
+  SessionDisputedEventV2Schema,
+  SessionInviteCreatedEventV2Schema,
+  SessionMemberJoinedEventV2Schema,
+  SessionMemberLeftEventV2Schema,
+  SessionMemberNotReadyEventV2Schema,
+  SessionMemberReadyEventV2Schema,
+  SessionReadyCheckExpiredEventV2Schema,
+  SessionReadyCheckOpenedEventV2Schema,
+  SessionReadyCheckPassedEventV2Schema,
+  SessionRoleAssignedEventV2Schema,
+  SessionScheduledEventV2Schema,
+  SessionStartedEventV2Schema,
+} from './session-events';
 
 const relationshipEvent = <T extends z.ZodTypeAny>(
   eventType: string,
@@ -133,37 +150,6 @@ export const ReportSubmittedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
     .strict(),
 });
 
-export const SessionCompletedEventV2Schema = coreV2EventSchema({
-  aggregateType: 'play_session',
-  eventType: 'session.completed.v2',
-  payload: z
-    .object({
-      completedAt: z.string().datetime({ offset: true }),
-      memberPlayerIds: z.array(PlayerIdSchema).min(2).max(10),
-      scheduledAt: z.string().datetime({ offset: true }).nullable(),
-      sessionId: PlaySessionIdSchema,
-      sessionVersion: z.number().int().positive(),
-      startedAt: z.string().datetime({ offset: true }),
-    })
-    .strict()
-    .superRefine((value, context) => {
-      if (
-        new Set(value.memberPlayerIds).size !== value.memberPlayerIds.length
-      ) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'memberPlayerIds must be unique.',
-        });
-      }
-      if (Date.parse(value.completedAt) <= Date.parse(value.startedAt)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          message: 'completedAt must be after startedAt.',
-        });
-      }
-    }),
-});
-
 export const SessionOutcomeRecordedEventV2Schema = coreV2EventSchema({
   aggregateType: 'session_outcome',
   eventType: 'session.outcome_recorded.v2',
@@ -243,6 +229,25 @@ export const CoreV2SocialEventSchema = z.discriminatedUnion('eventType', [
   ReportSubmittedEventV2Schema,
 ]);
 
+export const CoreV2PartySessionEventSchema = z.discriminatedUnion('eventType', [
+  SessionCreatedEventV2Schema,
+  SessionInviteCreatedEventV2Schema,
+  SessionMemberJoinedEventV2Schema,
+  SessionMemberLeftEventV2Schema,
+  SessionRoleAssignedEventV2Schema,
+  SessionReadyCheckOpenedEventV2Schema,
+  SessionReadyCheckExpiredEventV2Schema,
+  SessionMemberNotReadyEventV2Schema,
+  SessionMemberReadyEventV2Schema,
+  SessionReadyCheckPassedEventV2Schema,
+  SessionScheduledEventV2Schema,
+  SessionStartedEventV2Schema,
+  SessionCompletionProposedEventV2Schema,
+  SessionCompletedEventV2Schema,
+  SessionCancelledEventV2Schema,
+  SessionDisputedEventV2Schema,
+]);
+
 export const CoreV2TrustOutcomeEventSchema = z.discriminatedUnion('eventType', [
   SessionCompletedEventV2Schema,
   SessionOutcomeRecordedEventV2Schema,
@@ -268,7 +273,22 @@ export const CoreV2EventSchema = z.discriminatedUnion('eventType', [
   PlayerUnmutedEventV2Schema,
   PrivacyUpdatedEventV2Schema,
   ReportSubmittedEventV2Schema,
+  SessionCreatedEventV2Schema,
+  SessionInviteCreatedEventV2Schema,
+  SessionMemberJoinedEventV2Schema,
+  SessionMemberLeftEventV2Schema,
+  SessionRoleAssignedEventV2Schema,
+  SessionReadyCheckOpenedEventV2Schema,
+  SessionReadyCheckExpiredEventV2Schema,
+  SessionMemberNotReadyEventV2Schema,
+  SessionMemberReadyEventV2Schema,
+  SessionReadyCheckPassedEventV2Schema,
+  SessionScheduledEventV2Schema,
+  SessionStartedEventV2Schema,
+  SessionCompletionProposedEventV2Schema,
   SessionCompletedEventV2Schema,
+  SessionCancelledEventV2Schema,
+  SessionDisputedEventV2Schema,
   SessionOutcomeRecordedEventV2Schema,
   SessionParticipationConfirmedEventV2Schema,
   SessionParticipationDisputedEventV2Schema,

@@ -1,22 +1,61 @@
 {
-  "conversationId": "30000000-0000-4000-8000-000000000020",
-  "source": {
-    "sourceType": "friendship",
-    "sourceId": "40000000-0000-4000-8000-000000000001",
-    "sourceVersion": 8
+  "relationship": {
+    "contractVersion": 2,
+    "relationshipId": "41000000-0000-4000-8000-000000000001",
+    "viewerPlayerId": "20000000-0000-4000-8000-000000000001",
+    "targetPlayerId": "20000000-0000-4000-8000-000000000002",
+    "version": 5,
+    "friendship": {
+      "state": "removed",
+      "label": "removed",
+      "requestId": "42000000-0000-4000-8000-000000000001",
+      "requestState": "accepted",
+      "requestVersion": 2,
+      "acceptedAt": "2026-07-14T10:00:00.000Z"
+    },
+    "block": {
+      "viewerBlocksTarget": true,
+      "targetBlocksViewer": false
+    },
+    "mute": {
+      "viewerMutedTarget": false
+    },
+    "targetPrivacy": {
+      "contractVersion": 2,
+      "playerId": "20000000-0000-4000-8000-000000000002",
+      "version": 1,
+      "profileVisibility": "friends",
+      "presenceVisibility": "friends",
+      "friendshipRequests": "everyone",
+      "sessionInvites": "friends",
+      "updatedAt": "2026-07-14T09:00:00.000Z"
+    },
+    "capabilities": {
+      "blocked": true,
+      "muted": false,
+      "friendshipLabel": "removed",
+      "canViewProfile": false,
+      "canDiscover": false,
+      "canMessage": false,
+      "canViewConversation": false,
+      "canInviteToSession": false,
+      "canViewPresence": false,
+      "canRequestFriendship": false,
+      "canAcceptFriendship": false,
+      "canDeclineFriendship": false,
+      "canCancelFriendship": false,
+      "canRemoveFriendship": false,
+      "canBlock": false,
+      "canUnblock": true,
+      "canMute": false,
+      "canUnmute": false,
+      "canReport": true
+    },
+    "updatedAt": "2026-07-14T10:05:00.000Z"
   },
-  "members": [],
-  "revocationReason": "blocked",
-  "metadata": {
-    "idempotencyKey": "relationship-block:30000000-0000-4000-8000-000000000021",
-    "correlationId": "30000000-0000-4000-8000-000000000022",
-    "causationId": "30000000-0000-4000-8000-000000000023",
-    "expectedAggregateVersion": 6,
-    "audit": {
-      "requestId": "relationship-block-8",
-      "clientCreatedAt": "2026-07-14T12:06:00.000Z",
-      "clientPlatform": "service",
-      "clientVersion": "relationship-authority-v2"
-    }
-  }
+  "sourceEventId": "30000000-0000-4000-8000-000000000021",
+  "sourceEventVersion": 2,
+  "correlationId": "30000000-0000-4000-8000-000000000022",
+  "causationId": "30000000-0000-4000-8000-000000000023",
+  "occurredAt": "2026-07-14T12:06:00.000Z"
 }

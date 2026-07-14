@@ -9,6 +9,20 @@ const contract = fs.readFileSync(
   path.join(root, 'conversation', 'conversation.ts'),
   'utf8',
 );
+const sessionContract = fs.readFileSync(
+  path.join(root, 'party', 'play-session.ts'),
+  'utf8',
+);
+const sessionEvents = fs.readFileSync(
+  path.join(root, 'events', 'session-events.ts'),
+  'utf8',
+);
+const sessionMemberJoinedFixture = JSON.parse(
+  fs.readFileSync(
+    path.join(root, 'fixtures', 'provider', 'session-member-joined.json'),
+    'utf8',
+  ),
+);
 const providers = fs.readFileSync(
   path.join(
     process.cwd(),
@@ -61,6 +75,7 @@ requireInvariant(
 for (const [group, names] of [
   ['provider', manifest.providerFixtures],
   ['consumer', manifest.consumerFixtures],
+  ['provider', manifest.supplierFixtures],
 ]) {
   for (const name of names) {
     const file = path.join(root, 'fixtures', group, name);
@@ -113,10 +128,44 @@ for (const provider of [
   );
 }
 requireInvariant(
+  providers.includes('applyRelationshipEvent') &&
+    contract.includes('RelationshipConversationAccessEventV2Schema') &&
+    contract.includes('PlayerBlockedEventV2Schema') &&
+    contract.includes('PlayerMutedEventV2Schema'),
+  'Conversation must consume canonical relationship block/mute events through an explicit projection seam',
+);
+requireInvariant(
   /sourceType[\s\S]*direct_match[\s\S]*friendship[\s\S]*play_session[\s\S]*system/.test(
     contract,
   ),
   'conversation source contract must cover direct match, friendship, play session, and system',
+);
+requireInvariant(
+  /sourceType: z\.literal\('play_session'\)[\s\S]*sourceId: PlaySessionIdSchema[\s\S]*sourceAggregateVersion/.test(
+    contract,
+  ),
+  'play_session conversation sources must use canonical PlaySessionId and sourceAggregateVersion',
+);
+requireInvariant(
+  /membership: PlaySessionMembershipProjectionV2Schema/.test(contract) &&
+    /acceptedSourceAggregateVersion/.test(contract) &&
+    /acceptedMembership/.test(contract),
+  'session provision/reconcile receipts must echo the accepted aggregate version and full membership snapshot',
+);
+requireInvariant(
+  /membershipVersion/.test(sessionContract) &&
+    /SessionMemberJoinedEventV2Schema/.test(sessionEvents) &&
+    Number.isInteger(sessionMemberJoinedFixture.aggregateVersion) &&
+    Number.isInteger(
+      sessionMemberJoinedFixture.payload?.membership?.membershipVersion,
+    ) &&
+    sessionMemberJoinedFixture.aggregateVersion === 2 &&
+    sessionMemberJoinedFixture.payload.membership.membershipVersion === 2,
+  'Senior 2 session events must preserve independent aggregate and membership versions',
+);
+requireInvariant(
+  !/sourceId: SessionIdSchema/.test(contract),
+  'Conversation V2 must not reuse the Core V1 authentication SessionId for play sessions',
 );
 requireInvariant(
   !/auth\.uid\(\)/.test(contract + providers),
@@ -127,7 +176,13 @@ requireInvariant(
     /Core V1 resolves the authenticated account/.test(adr) &&
     /public history fetch, send, realtime subscription/.test(adr) &&
     /privileged moderation seam/.test(adr) &&
-    /Delivery recipients and push recipients/.test(adr),
+    /Delivery recipients and push recipients/.test(adr) &&
+    /source aggregate version/.test(adr) &&
+    /membership version/.test(adr) &&
+    /accepted membership snapshot/.test(adr) &&
+    /player\.blocked\.v2/.test(adr) &&
+    /player\.unblocked\.v2` never restores access/.test(adr) &&
+    /Observed event versions prevent an older snapshot/.test(adr),
   'ADR must preserve supplier-owned membership and Core V1 identity authority',
 );
 
@@ -187,5 +242,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(
-  `Conversation V2 contract check passed (${manifest.providerFixtures.length} provider fixtures, ${manifest.consumerFixtures.length} consumer fixtures).`,
+  `Conversation V2 contract check passed (${manifest.providerFixtures.length} provider fixtures, ${manifest.consumerFixtures.length} consumer fixtures, ${manifest.supplierFixtures.length} supplier fixtures).`,
 );

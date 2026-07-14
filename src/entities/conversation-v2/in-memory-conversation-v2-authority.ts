@@ -19,6 +19,7 @@ import {
   MessageV2Schema,
   ProvisionDirectConversationCommandV2Schema,
   ProvisionSessionConversationCommandV2Schema,
+  RelationshipConversationAccessEventV2Schema,
   RelationshipConversationProjectionInputV2Schema,
   RelationshipConversationProjectionReceiptV2Schema,
   ReconcileConversationMembershipCommandV2Schema,
@@ -40,8 +41,10 @@ import {
   type ConversationSourceBindingV2,
   type ConversationSourceV2,
   type MessageV2,
+  type PlaySessionMembershipProjectionV2,
   type ProvisionDirectConversationCommandV2,
   type ProvisionSessionConversationCommandV2,
+  type RelationshipConversationAccessEventV2,
   type RelationshipConversationProjectionInputV2,
   type RelationshipConversationProjectionReceiptV2,
   type ReconcileConversationMembershipCommandV2,
@@ -81,6 +84,7 @@ type StoredConversation = {
   snapshot: ConversationSnapshotV2;
   sources: Map<string, ConversationSourceBindingV2>;
   members: Map<string, ConversationMemberV2>;
+  membershipVersion: number;
   messages: MessageV2[];
   cursors: Map<string, ConversationReadCursorV2>;
   conversationMutedPlayerIds: Set<string>;
@@ -137,6 +141,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     string,
     { version: number; fingerprint: string }
   >();
+  private readonly relationshipObservedVersions = new Map<string, number>();
   private readonly commandReceipts = new Map<string, StoredReceipt>();
   private readonly clientMessageReceipts = new Map<string, StoredReceipt>();
   private readonly systemMessagesByEvent = new Map<string, MessageV2>();
@@ -175,6 +180,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       commandName: 'provision_direct_conversation_v2',
       kind: 'direct',
       members,
+      membershipVersion: command.source.sourceAggregateVersion,
       metadata: command.metadata,
       source: command.source,
       title: null,
@@ -189,7 +195,8 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     return this.provision(actor, {
       commandName: 'provision_session_conversation_v2',
       kind: 'group',
-      members: command.members,
+      members: command.membership.members,
+      membershipVersion: command.membership.membershipVersion,
       metadata: command.metadata,
       source: command.source,
       title: command.title,
@@ -270,6 +277,16 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
 
     const relationship = projection.relationship;
     const relationshipFingerprint = stableJson(relationship);
+    const observedVersion =
+      this.relationshipObservedVersions.get(relationship.relationshipId) ?? 0;
+    if (relationship.version < observedVersion) {
+      throw new ConversationV2ProviderError(
+        'source_version_conflict',
+        'Relationship projection version is older than an observed authority event.',
+        false,
+        { current: observedVersion, requested: relationship.version },
+      );
+    }
     const projectedVersion = this.relationshipProjectionVersions.get(
       relationship.relationshipId,
     );
@@ -303,7 +320,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     const friendshipSource: ConversationSourceV2 = {
       sourceType: 'friendship',
       sourceId: relationship.relationshipId,
-      sourceVersion: Math.max(1, relationship.version),
+      sourceAggregateVersion: Math.max(1, relationship.version),
     };
     const eventIds: EventId[] = [];
     let conversationId = this.directConversationByPair.get(pair) ?? null;
@@ -320,6 +337,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
           { playerId: relationship.viewerPlayerId, role: 'member' },
           { playerId: relationship.targetPlayerId, role: 'member' },
         ],
+        membershipVersion: friendshipSource.sourceAggregateVersion,
         metadata: {
           idempotencyKey: IdempotencyKeySchema.parse(
             `relationship-projection:${projection.sourceEventId}`,
@@ -362,6 +380,10 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         version: relationship.version,
         fingerprint: relationshipFingerprint,
       });
+      this.relationshipObservedVersions.set(
+        relationship.relationshipId,
+        Math.max(observedVersion, relationship.version),
+      );
       return receipt;
     }
 
@@ -393,7 +415,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         if (!canViewConversation) continue;
         const member = this.newMember(
           { playerId, role: 'member' },
-          friendshipSource.sourceVersion,
+          friendshipSource.sourceAggregateVersion,
           now,
         );
         member.canMessage = canMessage;
@@ -412,7 +434,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         existing.canMessage !== canMessage ||
         existing.canViewConversation !== canViewConversation ||
         existing.state !== nextState ||
-        existing.sourceVersion !== friendshipSource.sourceVersion;
+        existing.membershipVersion !== friendshipSource.sourceAggregateVersion;
       if (!changed) continue;
       const previousState = existing.state;
       const member: ConversationMemberV2 = {
@@ -420,7 +442,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         canMessage,
         canViewConversation,
         state: nextState,
-        sourceVersion: friendshipSource.sourceVersion,
+        membershipVersion: friendshipSource.sourceAggregateVersion,
         version: existing.version + 1,
         revokedAt: nextState === 'revoked' ? now : null,
         revocationReason: nextState === 'revoked' ? reason : null,
@@ -437,8 +459,8 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
 
     const sourceChanged =
       !currentSourceBinding ||
-      currentSourceBinding.source.sourceVersion !==
-        friendshipSource.sourceVersion;
+      currentSourceBinding.source.sourceAggregateVersion !==
+        friendshipSource.sourceAggregateVersion;
     const relationshipMuted = relationship.mute.viewerMutedTarget;
     const relationshipMuteChanged =
       stored.relationshipMutedPlayerIds.has(relationship.viewerPlayerId) !==
@@ -449,6 +471,10 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       stored.relationshipMutedPlayerIds.delete(relationship.viewerPlayerId);
     }
     if (sourceChanged || accessChanged || relationshipMuteChanged) {
+      stored.membershipVersion = Math.max(
+        stored.membershipVersion,
+        friendshipSource.sourceAggregateVersion,
+      );
       stored.snapshot = this.advanceConversation(stored, now);
     }
     if (sourceChanged) {
@@ -552,6 +578,147 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     this.relationshipProjectionVersions.set(relationship.relationshipId, {
       version: relationship.version,
       fingerprint: relationshipFingerprint,
+    });
+    this.relationshipObservedVersions.set(
+      relationship.relationshipId,
+      Math.max(observedVersion, relationship.version),
+    );
+    return receipt;
+  }
+
+  async applyRelationshipEvent(
+    input: RelationshipConversationAccessEventV2,
+  ): Promise<RelationshipConversationProjectionReceiptV2> {
+    const event = RelationshipConversationAccessEventV2Schema.parse(input);
+    const fingerprint = stableJson(event);
+    const replay = this.relationshipProjectionReceipts.get(event.eventId);
+    if (replay) {
+      if (replay.fingerprint !== fingerprint) {
+        throw new ConversationV2ProviderError(
+          'event_replay_conflict',
+          'Relationship event ID is already bound to different access facts.',
+          false,
+        );
+      }
+      return { ...replay.receipt, repeated: true };
+    }
+
+    const pairIds =
+      'blockerPlayerId' in event.payload
+        ? [event.payload.blockerPlayerId, event.payload.blockedPlayerId]
+        : [event.payload.muterPlayerId, event.payload.mutedPlayerId];
+    const conversationId =
+      this.directConversationByPair.get(directPairKey(pairIds)) ?? null;
+    const observedVersion =
+      this.relationshipObservedVersions.get(event.aggregateId) ?? 0;
+    const eventIds: EventId[] = [];
+    let action: RelationshipConversationProjectionReceiptV2['action'] = 'none';
+
+    if (event.aggregateVersion >= observedVersion && conversationId) {
+      const stored = this.requireConversation(conversationId);
+      if (event.eventType === 'player.blocked.v2') {
+        const transitions: ConversationMemberV2[] = [];
+        for (const playerId of pairIds) {
+          const existing = stored.members.get(playerId);
+          if (!existing) continue;
+          const changed =
+            existing.state !== 'revoked' ||
+            existing.canMessage ||
+            existing.canViewConversation ||
+            existing.revocationReason !== 'blocked' ||
+            existing.membershipVersion < event.aggregateVersion;
+          if (!changed) continue;
+          const member: ConversationMemberV2 = {
+            ...existing,
+            canMessage: false,
+            canViewConversation: false,
+            membershipVersion: Math.max(
+              existing.membershipVersion,
+              event.aggregateVersion,
+            ),
+            state: 'revoked',
+            revokedAt: event.occurredAt,
+            revocationReason: 'blocked',
+            version: existing.version + 1,
+          };
+          stored.members.set(playerId, member);
+          transitions.push(member);
+        }
+
+        if (transitions.length) {
+          stored.membershipVersion = Math.max(
+            stored.membershipVersion,
+            event.aggregateVersion,
+          );
+          stored.snapshot = this.advanceConversation(stored, event.occurredAt);
+          for (const member of transitions) {
+            const memberEventId = this.eventId();
+            eventIds.push(memberEventId);
+            this.eventLog.push(
+              ConversationMemberRemovedEventV2Schema.parse({
+                eventId: memberEventId,
+                eventType: 'conversation.member_removed.v2',
+                eventVersion: 2,
+                aggregateType: 'conversation',
+                aggregateId: conversationId,
+                aggregateVersion: stored.snapshot.version,
+                actorPlayerId: event.actorPlayerId,
+                correlationId: event.correlationId,
+                causationId: event.eventId,
+                occurredAt: event.occurredAt,
+                payload: {
+                  conversationId,
+                  member,
+                  source: stored.snapshot.source,
+                },
+              }),
+            );
+            const revoked = this.accessRevokedEvent(
+              stored,
+              member.playerId,
+              'blocked',
+              event.occurredAt,
+              event.actorPlayerId,
+              event.correlationId,
+              event.eventId,
+            );
+            eventIds.push(revoked.eventId);
+            this.eventLog.push(revoked);
+            this.notifyAccess(stored, member.playerId);
+          }
+          action = 'access_revoked';
+        }
+      } else if ('muterPlayerId' in event.payload) {
+        const muted = event.eventType === 'player.muted.v2';
+        const muterPlayerId = event.payload.muterPlayerId;
+        const current = stored.relationshipMutedPlayerIds.has(muterPlayerId);
+        if (current !== muted) {
+          if (muted) stored.relationshipMutedPlayerIds.add(muterPlayerId);
+          else stored.relationshipMutedPlayerIds.delete(muterPlayerId);
+          stored.snapshot = this.advanceConversation(stored, event.occurredAt);
+          action = 'notification_policy_reconciled';
+        }
+      }
+      // player.unblocked.v2 never grants access by itself. A complete
+      // relationship snapshot at the same or a newer version must reconcile it.
+    }
+
+    this.relationshipObservedVersions.set(
+      event.aggregateId,
+      Math.max(observedVersion, event.aggregateVersion),
+    );
+    const receipt = RelationshipConversationProjectionReceiptV2Schema.parse({
+      action,
+      conversationId,
+      relationshipId: event.aggregateId,
+      relationshipVersion: event.aggregateVersion,
+      sourceEventId: event.eventId,
+      eventIds,
+      repeated: false,
+    });
+    this.relationshipProjectionReceipts.set(event.eventId, {
+      fingerprint,
+      receipt,
     });
     return receipt;
   }
@@ -675,25 +842,47 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         false,
       );
     }
-    if (command.source.sourceVersion < stored.snapshot.source.sourceVersion) {
+
+    const currentSourceAggregateVersion =
+      stored.snapshot.source.sourceAggregateVersion;
+    const requestedSourceAggregateVersion =
+      command.source.sourceAggregateVersion;
+    if (requestedSourceAggregateVersion < currentSourceAggregateVersion) {
       throw new ConversationV2ProviderError(
         'source_version_conflict',
-        'Membership source version is stale.',
+        'Session aggregate version is stale.',
         true,
         {
-          current: stored.snapshot.source.sourceVersion,
-          requested: command.source.sourceVersion,
+          dimension: 'source_aggregate',
+          current: currentSourceAggregateVersion,
+          requested: requestedSourceAggregateVersion,
         },
       );
     }
-    const requestedMembers = normalizedMembers(command.members);
+    if (command.membership.membershipVersion < stored.membershipVersion) {
+      throw new ConversationV2ProviderError(
+        'source_version_conflict',
+        'Session membership version is stale.',
+        true,
+        {
+          dimension: 'membership',
+          current: stored.membershipVersion,
+          requested: command.membership.membershipVersion,
+        },
+      );
+    }
+
+    const requestedMembers = normalizedMembers(command.membership.members);
     const currentMembers = normalizedActiveMembers(stored.members);
     if (
-      command.source.sourceVersion === stored.snapshot.source.sourceVersion &&
+      requestedSourceAggregateVersion === currentSourceAggregateVersion &&
+      command.membership.membershipVersion === stored.membershipVersion &&
       stableJson(requestedMembers) === stableJson(currentMembers)
     ) {
       const eventId = this.eventId();
       const receipt = this.receipt({
+        acceptedMembership: command.membership,
+        acceptedSourceAggregateVersion: requestedSourceAggregateVersion,
         actorPlayerId: actor?.playerId ?? null,
         commandName: 'reconcile_conversation_membership_v2',
         eventId,
@@ -708,7 +897,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
 
     const now = this.now();
     const requestedByPlayer = new Map(
-      command.members.map((member) => [member.playerId, member]),
+      command.membership.members.map((member) => [member.playerId, member]),
     );
     const memberEvents: ConversationEventV2[] = [];
     for (const existing of stored.members.values()) {
@@ -716,16 +905,20 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       if (requested) {
         const reactivated = existing.state === 'revoked';
         const roleChanged = existing.role !== requested.role;
+        const capabilityChanged =
+          !existing.canMessage || !existing.canViewConversation;
         stored.members.set(existing.playerId, {
           ...existing,
           canMessage: true,
           canViewConversation: true,
+          membershipVersion: command.membership.membershipVersion,
           role: requested.role,
-          sourceVersion: command.source.sourceVersion,
           state: 'active',
           revokedAt: null,
           revocationReason: null,
-          version: existing.version + (reactivated || roleChanged ? 1 : 0),
+          version:
+            existing.version +
+            (reactivated || roleChanged || capabilityChanged ? 1 : 0),
         });
         requestedByPlayer.delete(existing.playerId);
         if (reactivated) {
@@ -745,8 +938,8 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
           ...existing,
           canMessage: false,
           canViewConversation: false,
+          membershipVersion: command.membership.membershipVersion,
           state: 'revoked',
-          sourceVersion: command.source.sourceVersion,
           revokedAt: now,
           revocationReason: command.revocationReason,
           version: existing.version + 1,
@@ -775,7 +968,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     for (const member of requestedByPlayer.values()) {
       stored.members.set(
         member.playerId,
-        this.newMember(member, command.source.sourceVersion, now),
+        this.newMember(member, command.membership.membershipVersion, now),
       );
       memberEvents.push(
         this.memberEvent(
@@ -789,10 +982,22 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       );
     }
 
+    stored.membershipVersion = command.membership.membershipVersion;
     stored.snapshot = ConversationSnapshotV2Schema.parse({
       ...this.advanceConversation(stored, now),
       source: command.source,
     });
+    const bindingKey = sourceKey(command.source);
+    const existingBinding = stored.sources.get(bindingKey);
+    stored.sources.set(
+      bindingKey,
+      ConversationSourceBindingV2Schema.parse({
+        conversationId: stored.snapshot.conversationId,
+        source: command.source,
+        boundAt: existingBinding?.boundAt ?? now,
+      }),
+    );
+
     const eventId = this.eventId();
     this.eventLog.push(
       ConversationMembershipReconciledEventV2Schema.parse({
@@ -809,9 +1014,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         payload: {
           conversationId: stored.snapshot.conversationId,
           source: command.source,
-          activeMemberPlayerIds: normalizedActiveMembers(stored.members).map(
-            (member) => member.playerId,
-          ),
+          membership: command.membership,
         },
       }),
       ...memberEvents.map(
@@ -826,6 +1029,8 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       this.notifyAccess(stored, member.playerId);
     }
     const receipt = this.receipt({
+      acceptedMembership: command.membership,
+      acceptedSourceAggregateVersion: requestedSourceAggregateVersion,
       actorPlayerId: actor?.playerId ?? null,
       commandName: 'reconcile_conversation_membership_v2',
       eventId,
@@ -1084,6 +1289,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         | 'provision_session_conversation_v2';
       kind: 'direct' | 'group';
       members: readonly AuthoritativeConversationMemberV2[];
+      membershipVersion: number;
       metadata: CoreV2CommandMetadata;
       source: ConversationSourceV2;
       title: string | null;
@@ -1105,10 +1311,32 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       (pair ? this.directConversationByPair.get(pair) : undefined);
     if (existingId) {
       const existing = this.requireConversation(existingId);
+      const sessionCommand =
+        input.commandName === 'provision_session_conversation_v2';
+      if (
+        sessionCommand &&
+        (existing.snapshot.source.sourceAggregateVersion !==
+          input.source.sourceAggregateVersion ||
+          existing.membershipVersion !== input.membershipVersion)
+      ) {
+        throw new ConversationV2ProviderError(
+          'source_version_conflict',
+          'Existing session conversation must be updated through membership reconciliation.',
+          true,
+          {
+            acceptedMembershipVersion: existing.membershipVersion,
+            acceptedSourceAggregateVersion:
+              existing.snapshot.source.sourceAggregateVersion,
+            requestedMembershipVersion: input.membershipVersion,
+            requestedSourceAggregateVersion:
+              input.source.sourceAggregateVersion,
+          },
+        );
+      }
       const same =
         existing.snapshot.kind === input.kind &&
         existing.snapshot.title === input.title &&
-        stableJson(normalizedStoredMembers(existing.members)) ===
+        stableJson(normalizedActiveMembers(existing.members)) ===
           stableJson(normalizedMembers(input.members));
       if (!same) {
         throw new ConversationV2ProviderError(
@@ -1148,6 +1376,13 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         );
       }
       const receipt = this.receipt({
+        ...(sessionCommand
+          ? {
+              acceptedMembership: this.sessionMembership(existing),
+              acceptedSourceAggregateVersion:
+                existing.snapshot.source.sourceAggregateVersion,
+            }
+          : {}),
         actorPlayerId: actor?.playerId ?? null,
         commandName: input.commandName,
         eventId,
@@ -1177,7 +1412,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     for (const member of input.members) {
       members.set(
         member.playerId,
-        this.newMember(member, input.source.sourceVersion, now),
+        this.newMember(member, input.membershipVersion, now),
       );
     }
     const binding = ConversationSourceBindingV2Schema.parse({
@@ -1189,6 +1424,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       snapshot,
       sources: new Map([[key, binding]]),
       members,
+      membershipVersion: input.membershipVersion,
       messages: [],
       cursors: new Map(),
       conversationMutedPlayerIds: new Set(),
@@ -1214,6 +1450,13 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       }),
     );
     const receipt = this.receipt({
+      ...(input.commandName === 'provision_session_conversation_v2'
+        ? {
+            acceptedMembership: this.sessionMembership(stored),
+            acceptedSourceAggregateVersion:
+              snapshot.source.sourceAggregateVersion,
+          }
+        : {}),
       actorPlayerId: actor?.playerId ?? null,
       commandName: input.commandName,
       eventId,
@@ -1435,9 +1678,26 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
         });
   }
 
+  private sessionMembership(
+    stored: StoredConversation,
+  ): PlaySessionMembershipProjectionV2 {
+    if (stored.snapshot.source.sourceType !== 'play_session') {
+      throw new ConversationV2ProviderError(
+        'conversation_source_conflict',
+        'Session membership is unavailable for a non-session conversation.',
+        false,
+      );
+    }
+    return {
+      sessionId: stored.snapshot.source.sourceId,
+      membershipVersion: stored.membershipVersion,
+      members: normalizedActiveMembers(stored.members),
+    };
+  }
+
   private newMember(
     member: AuthoritativeConversationMemberV2,
-    sourceVersion: number,
+    membershipVersion: number,
     now: string,
   ): ConversationMemberV2 {
     return {
@@ -1446,7 +1706,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       playerId: member.playerId,
       role: member.role,
       state: 'active',
-      sourceVersion,
+      membershipVersion,
       version: 1,
       joinedAt: now,
       revokedAt: null,
@@ -1512,8 +1772,8 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       canSubscribe: Boolean(activeMember && member?.canViewConversation),
       reason,
       conversationVersion: stored.snapshot.version,
-      sourceVersion:
-        member?.sourceVersion ?? stored.snapshot.source.sourceVersion,
+      sourceAggregateVersion: stored.snapshot.source.sourceAggregateVersion,
+      membershipVersion: member?.membershipVersion ?? stored.membershipVersion,
     });
   }
 
@@ -1574,6 +1834,8 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
   }
 
   private receipt(input: {
+    acceptedMembership?: PlaySessionMembershipProjectionV2;
+    acceptedSourceAggregateVersion?: number;
     actorPlayerId: PlayerId | null;
     commandName: ConversationCommandReceiptV2['commandName'];
     eventId: EventId;
@@ -1596,6 +1858,15 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       eventId: input.eventId,
       acceptedAt: this.now(),
       repeated: input.repeated ?? false,
+      ...(input.acceptedMembership
+        ? { acceptedMembership: input.acceptedMembership }
+        : {}),
+      ...(input.acceptedSourceAggregateVersion !== undefined
+        ? {
+            acceptedSourceAggregateVersion:
+              input.acceptedSourceAggregateVersion,
+          }
+        : {}),
       ...(input.message ? { message: input.message } : {}),
       ...(input.readCursor ? { readCursor: input.readCursor } : {}),
     });
@@ -1698,15 +1969,6 @@ function normalizedMembers(
   return [...members]
     .map((member) => ({ playerId: member.playerId, role: member.role }))
     .sort((left, right) => left.playerId.localeCompare(right.playerId));
-}
-
-function normalizedStoredMembers(members: Map<string, ConversationMemberV2>) {
-  return normalizedMembers(
-    [...members.values()].filter(
-      (member): member is ConversationMemberV2 & { role: 'owner' | 'member' } =>
-        member.role !== 'system',
-    ),
-  );
 }
 
 function directPairKey(playerIds: readonly string[]) {

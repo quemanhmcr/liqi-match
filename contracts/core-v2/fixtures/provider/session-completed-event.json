@@ -10,14 +10,32 @@
   "causationId": null,
   "occurredAt": "2026-07-14T12:00:00.000Z",
   "payload": {
-    "sessionId": "42000000-0000-4000-8000-000000000001",
-    "sessionVersion": 7,
-    "memberPlayerIds": [
+    "completedAt": "2026-07-14T12:00:00.000Z",
+    "participantPlayerIds": [
       "20000000-0000-4000-8000-000000000001",
       "20000000-0000-4000-8000-000000000002"
     ],
-    "scheduledAt": "2026-07-14T10:45:00.000Z",
+    "roleAssignments": [
+      {
+        "assignmentId": "46000000-0000-4000-8000-000000000001",
+        "assignedAt": "2026-07-14T10:40:00.000Z",
+        "playerId": "20000000-0000-4000-8000-000000000001",
+        "roleSlug": "leader"
+      },
+      {
+        "assignmentId": "46000000-0000-4000-8000-000000000002",
+        "assignedAt": "2026-07-14T10:40:00.000Z",
+        "playerId": "20000000-0000-4000-8000-000000000002",
+        "roleSlug": "member"
+      }
+    ],
+    "scheduledFor": "2026-07-14T10:45:00.000Z",
+    "sessionId": "42000000-0000-4000-8000-000000000001",
+    "source": {
+      "kind": "match",
+      "matchId": "12000000-0000-4000-8000-000000000001"
+    },
     "startedAt": "2026-07-14T11:00:00.000Z",
-    "completedAt": "2026-07-14T12:00:00.000Z"
+    "verification": "participant_quorum"
   }
 }

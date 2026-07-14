@@ -16,5 +16,9 @@
   "activityNotificationConsumerFixtures": [
     "activity-feedback-notification-request.json",
     "activity-frequency-capped-request.json"
+  ],
+  "supplierFixtures": [
+    "session-member-joined.json",
+    "player-blocked-event.json"
   ]
 }

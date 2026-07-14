@@ -8,9 +8,16 @@ import {
   MatchIdSchema,
   PlayerIdSchema,
   RequestIdSchema,
-  SessionIdSchema,
 } from '../../core-v1/identity/semantic-ids';
 import { coreV2EventSchema } from '../events/event-envelope';
+import {
+  PlayerBlockedEventV2Schema,
+  PlayerMutedEventV2Schema,
+  PlayerUnblockedEventV2Schema,
+  PlayerUnmutedEventV2Schema,
+} from '../events/events';
+import { PlaySessionIdSchema } from '../identity/semantic-ids';
+import { PlaySessionMembershipProjectionV2Schema } from '../party/play-session';
 import { SocialRelationshipSnapshotV2Schema } from '../social/relationship';
 
 export const ConversationSourceTypeV2Schema = z.enum([
@@ -30,28 +37,28 @@ export const ConversationSourceV2Schema = z.discriminatedUnion('sourceType', [
     .object({
       sourceType: z.literal('direct_match'),
       sourceId: MatchIdSchema,
-      sourceVersion: z.number().int().positive(),
+      sourceAggregateVersion: z.number().int().positive(),
     })
     .strict(),
   z
     .object({
       sourceType: z.literal('friendship'),
       sourceId: SourceIdSchema,
-      sourceVersion: z.number().int().positive(),
+      sourceAggregateVersion: z.number().int().positive(),
     })
     .strict(),
   z
     .object({
       sourceType: z.literal('play_session'),
-      sourceId: SessionIdSchema,
-      sourceVersion: z.number().int().positive(),
+      sourceId: PlaySessionIdSchema,
+      sourceAggregateVersion: z.number().int().positive(),
     })
     .strict(),
   z
     .object({
       sourceType: z.literal('system'),
       sourceId: SourceIdSchema,
-      sourceVersion: z.number().int().positive(),
+      sourceAggregateVersion: z.number().int().positive(),
     })
     .strict(),
 ]);
@@ -95,7 +102,7 @@ export const ConversationMemberV2Schema = z
     playerId: PlayerIdSchema,
     role: ConversationMemberRoleV2Schema,
     state: ConversationMemberStateV2Schema,
-    sourceVersion: z.number().int().positive(),
+    membershipVersion: z.number().int().positive(),
     version: z.number().int().positive(),
     joinedAt: z.string().datetime({ offset: true }),
     revokedAt: z.string().datetime({ offset: true }).nullable(),
@@ -132,7 +139,8 @@ export const ConversationAccessV2Schema = z
     canSubscribe: z.boolean(),
     reason: ConversationAccessReasonV2Schema,
     conversationVersion: z.number().int().positive(),
-    sourceVersion: z.number().int().positive(),
+    sourceAggregateVersion: z.number().int().positive(),
+    membershipVersion: z.number().int().positive(),
   })
   .strict();
 export type ConversationAccessV2 = z.infer<typeof ConversationAccessV2Schema>;
@@ -251,29 +259,6 @@ export type AuthoritativeConversationMemberV2 = z.infer<
   typeof AuthoritativeConversationMemberV2Schema
 >;
 
-function authoritativeMemberListV2(minimum: number) {
-  return z
-    .array(AuthoritativeConversationMemberV2Schema)
-    .min(minimum)
-    .max(20)
-    .superRefine((members, context) => {
-      const seen = new Set<string>();
-      members.forEach((member, index) => {
-        if (seen.has(member.playerId)) {
-          context.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: 'conversation members must be unique',
-            path: [index, 'playerId'],
-          });
-        }
-        seen.add(member.playerId);
-      });
-    });
-}
-
-const ProvisioningMemberListV2Schema = authoritativeMemberListV2(2);
-const ReconciliationMemberListV2Schema = authoritativeMemberListV2(0);
-
 export const ProvisionDirectConversationCommandV2Schema = z
   .object({
     source: ConversationSourceV2Schema.refine(
@@ -305,13 +290,30 @@ export const ProvisionSessionConversationCommandV2Schema = z
       'session conversation source must be play_session',
     ),
     title: z.string().trim().min(1).max(160),
-    members: ProvisioningMemberListV2Schema,
+    membership: PlaySessionMembershipProjectionV2Schema,
     metadata: CoreV2CommandMetadataSchema.refine(
       (metadata) => metadata.expectedAggregateVersion === 0,
       'create commands expect aggregate version 0',
     ),
   })
-  .strict();
+  .strict()
+  .superRefine((command, context) => {
+    if (command.membership.sessionId !== command.source.sourceId) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Session membership must belong to the conversation source.',
+        path: ['membership', 'sessionId'],
+      });
+    }
+    if (command.membership.members.length < 2) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Session conversation provisioning requires at least two members.',
+        path: ['membership', 'members'],
+      });
+    }
+  });
 export type ProvisionSessionConversationCommandV2 = z.infer<
   typeof ProvisionSessionConversationCommandV2Schema
 >;
@@ -363,15 +365,24 @@ export type ConversationMuteCommandV2 = z.infer<
 export const ReconcileConversationMembershipCommandV2Schema = z
   .object({
     conversationId: ConversationIdSchema,
-    source: ConversationSourceV2Schema,
-    members: ReconciliationMemberListV2Schema,
-    revocationReason: ConversationAccessReasonV2Schema.extract([
-      'blocked',
-      'source_membership_revoked',
-    ]),
+    source: ConversationSourceV2Schema.refine(
+      (source) => source.sourceType === 'play_session',
+      'membership reconciliation requires a play_session source',
+    ),
+    membership: PlaySessionMembershipProjectionV2Schema,
+    revocationReason: z.literal('source_membership_revoked'),
     metadata: CoreV2CommandMetadataSchema,
   })
-  .strict();
+  .strict()
+  .superRefine((command, context) => {
+    if (command.membership.sessionId !== command.source.sourceId) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Session membership must belong to the conversation source.',
+        path: ['membership', 'sessionId'],
+      });
+    }
+  });
 export type ReconcileConversationMembershipCommandV2 = z.infer<
   typeof ReconcileConversationMembershipCommandV2Schema
 >;
@@ -390,6 +401,19 @@ export const ConversationSystemActivityInputV2Schema = z
   .strict();
 export type ConversationSystemActivityInputV2 = z.infer<
   typeof ConversationSystemActivityInputV2Schema
+>;
+
+export const RelationshipConversationAccessEventV2Schema = z.discriminatedUnion(
+  'eventType',
+  [
+    PlayerBlockedEventV2Schema,
+    PlayerUnblockedEventV2Schema,
+    PlayerMutedEventV2Schema,
+    PlayerUnmutedEventV2Schema,
+  ],
+);
+export type RelationshipConversationAccessEventV2 = z.infer<
+  typeof RelationshipConversationAccessEventV2Schema
 >;
 
 export const RelationshipConversationProjectionInputV2Schema = z
@@ -460,10 +484,35 @@ export const ConversationCommandReceiptV2Schema = z
     eventId: EventIdSchema,
     acceptedAt: z.string().datetime({ offset: true }),
     repeated: z.boolean(),
+    acceptedSourceAggregateVersion: z.number().int().positive().optional(),
+    acceptedMembership: PlaySessionMembershipProjectionV2Schema.optional(),
     message: MessageV2Schema.optional(),
     readCursor: ConversationReadCursorV2Schema.optional(),
   })
-  .strict();
+  .strict()
+  .superRefine((receipt, context) => {
+    const sessionCommand =
+      receipt.commandName === 'provision_session_conversation_v2' ||
+      receipt.commandName === 'reconcile_conversation_membership_v2';
+    if (
+      sessionCommand &&
+      receipt.acceptedSourceAggregateVersion === undefined
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Session receipts require the accepted source aggregate version.',
+        path: ['acceptedSourceAggregateVersion'],
+      });
+    }
+    if (sessionCommand && receipt.acceptedMembership === undefined) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Session receipts require the accepted membership snapshot.',
+        path: ['acceptedMembership'],
+      });
+    }
+  });
 export type ConversationCommandReceiptV2 = z.infer<
   typeof ConversationCommandReceiptV2Schema
 >;
@@ -547,7 +596,7 @@ export const ConversationMembershipReconciledEventV2Schema = coreV2EventSchema({
     .object({
       conversationId: ConversationIdSchema,
       source: ConversationSourceV2Schema,
-      activeMemberPlayerIds: z.array(PlayerIdSchema).max(20),
+      membership: PlaySessionMembershipProjectionV2Schema,
     })
     .strict(),
 });

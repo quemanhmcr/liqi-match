@@ -11,6 +11,8 @@ import {
   CoreV2EventEnvelopeSchema,
   ProvisionSessionConversationCommandV2Schema,
   ReconcileConversationMembershipCommandV2Schema,
+  RelationshipConversationAccessEventV2Schema,
+  RelationshipConversationProjectionInputV2Schema,
 } from '../../../contracts/core-v2';
 
 const uuid = (value: number) =>
@@ -51,10 +53,10 @@ describe('Core V2 conversation contracts', () => {
     const source = ConversationSourceV2Schema.parse({
       sourceType: 'play_session',
       sourceId: uuid(6),
-      sourceVersion: 3,
+      sourceAggregateVersion: 3,
     });
     expect(source.sourceType).toBe('play_session');
-    expect(source.sourceVersion).toBe(3);
+    expect(source.sourceAggregateVersion).toBe(3);
   });
 
   it('requires create commands to expect aggregate version zero', () => {
@@ -63,32 +65,43 @@ describe('Core V2 conversation contracts', () => {
         source: {
           sourceType: 'play_session',
           sourceId: uuid(6),
-          sourceVersion: 1,
+          sourceAggregateVersion: 1,
         },
         title: 'Session group',
-        members: [
-          { playerId: uuid(7), role: 'owner' },
-          { playerId: uuid(8), role: 'member' },
-        ],
+        membership: {
+          sessionId: uuid(6),
+          membershipVersion: 1,
+          members: [
+            { playerId: uuid(7), role: 'owner' },
+            { playerId: uuid(8), role: 'member' },
+          ],
+        },
         metadata: { ...metadata, expectedAggregateVersion: 1 },
       }),
     ).toThrow();
   });
 
-  it('allows an authority source to revoke every member without deleting history', () => {
+  it('separates session aggregate and membership versions', () => {
     const command = ReconcileConversationMembershipCommandV2Schema.parse({
       conversationId: uuid(4),
       source: {
-        sourceType: 'friendship',
-        sourceId: uuid(9),
-        sourceVersion: 2,
+        sourceType: 'play_session',
+        sourceId: uuid(6),
+        sourceAggregateVersion: 5,
       },
-      members: [],
-      revocationReason: 'blocked',
+      membership: {
+        sessionId: uuid(6),
+        membershipVersion: 3,
+        members: [
+          { playerId: uuid(7), role: 'owner' },
+          { playerId: uuid(8), role: 'member' },
+        ],
+      },
+      revocationReason: 'source_membership_revoked',
       metadata: { ...metadata, expectedAggregateVersion: 1 },
     });
-    expect(command.members).toHaveLength(0);
-    expect(command.revocationReason).toBe('blocked');
+    expect(command.source.sourceAggregateVersion).toBe(5);
+    expect(command.membership.membershipVersion).toBe(3);
   });
 
   it('rejects unsupported event versions at the typed consumer boundary', () => {
@@ -111,7 +124,7 @@ describe('Core V2 conversation contracts', () => {
             source: {
               sourceType: 'play_session',
               sourceId: uuid(6),
-              sourceVersion: 1,
+              sourceAggregateVersion: 1,
             },
             state: 'open',
             title: 'Session group',
@@ -132,21 +145,34 @@ describe('Core V2 conversation contracts', () => {
         fs.readFileSync(path.join(root, group, name), 'utf8'),
       ) as unknown;
 
-    expect(
-      ConversationCommandReceiptV2Schema.parse(
-        read('provider', 'session-conversation-provisioned.json'),
-      ).commandName,
-    ).toBe('provision_session_conversation_v2');
+    const provisioned = ConversationCommandReceiptV2Schema.parse(
+      read('provider', 'session-conversation-provisioned.json'),
+    );
+    expect(provisioned).toMatchObject({
+      commandName: 'provision_session_conversation_v2',
+      acceptedSourceAggregateVersion: 1,
+      acceptedMembership: { membershipVersion: 1 },
+    });
     expect(
       ConversationAccessRevokedEventV2Schema.parse(
         read('provider', 'conversation-access-revoked.json'),
       ).payload.reason,
     ).toBe('source_membership_revoked');
     expect(
-      ReconcileConversationMembershipCommandV2Schema.parse(
+      RelationshipConversationProjectionInputV2Schema.parse(
         read('consumer', 'relationship-block-revoke.json'),
-      ).members,
-    ).toHaveLength(0);
+      ).relationship.capabilities.blocked,
+    ).toBe(true);
+    expect(
+      RelationshipConversationAccessEventV2Schema.parse(
+        read('provider', 'player-blocked-event.json'),
+      ).eventType,
+    ).toBe('player.blocked.v2');
+    expect(
+      ReconcileConversationMembershipCommandV2Schema.parse(
+        read('consumer', 'session-membership-reconcile.json'),
+      ).membership.membershipVersion,
+    ).toBe(2);
     expect(
       ConversationSystemActivityInputV2Schema.parse(
         read('consumer', 'session-ready-system-activity.json'),

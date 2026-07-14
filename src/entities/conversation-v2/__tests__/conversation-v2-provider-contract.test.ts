@@ -14,10 +14,17 @@ import {
   RequestIdSchema,
   SessionIdSchema,
 } from '@/shared/contracts/core-v1';
-import { SocialRelationshipSnapshotV2Schema } from '@/shared/contracts/core-v2';
+import {
+  PlayerBlockedEventV2Schema,
+  PlayerMutedEventV2Schema,
+  PlayerUnblockedEventV2Schema,
+  PlayerUnmutedEventV2Schema,
+  PlaySessionIdSchema,
+  SessionMemberJoinedEventV2Schema,
+  SocialRelationshipSnapshotV2Schema,
+} from '@/shared/contracts/core-v2';
 import type {
   CoreV2CommandMetadata,
-  ProvisionDirectConversationCommandV2,
   ProvisionSessionConversationCommandV2,
 } from '@/shared/contracts/core-v2';
 
@@ -82,30 +89,23 @@ function metadata(
 }
 
 function sessionCommand(suffix = 1): ProvisionSessionConversationCommandV2 {
+  const sessionId = PlaySessionIdSchema.parse(uuid(200));
   return {
     source: {
       sourceType: 'play_session',
-      sourceId: SessionIdSchema.parse(uuid(200)),
-      sourceVersion: 1,
+      sourceId: sessionId,
+      sourceAggregateVersion: 1,
     },
     title: 'Ranked squad',
-    members: [
-      { playerId: playerA, role: 'owner' },
-      { playerId: playerB, role: 'member' },
-    ],
-    metadata: metadata(0, suffix, 'provision-session'),
-  };
-}
-
-function friendshipCommand(suffix = 20): ProvisionDirectConversationCommandV2 {
-  return {
-    source: {
-      sourceType: 'friendship',
-      sourceId: uuid(201),
-      sourceVersion: 1,
+    membership: {
+      sessionId,
+      membershipVersion: 1,
+      members: [
+        { playerId: playerA, role: 'owner' },
+        { playerId: playerB, role: 'member' },
+      ],
     },
-    participantPlayerIds: [playerA, playerB],
-    metadata: metadata(0, suffix, 'provision-friendship'),
+    metadata: metadata(0, suffix, 'provision-session'),
   };
 }
 
@@ -130,7 +130,11 @@ describe('Core V2 conversation provider contract', () => {
   it('runs the session conversation walking skeleton end to end', async () => {
     const { authority, conversationId, receipt } = await provisionSession();
 
-    expect(receipt.commandName).toBe('provision_session_conversation_v2');
+    expect(receipt).toMatchObject({
+      commandName: 'provision_session_conversation_v2',
+      acceptedSourceAggregateVersion: 1,
+      acceptedMembership: sessionCommand().membership,
+    });
     expect(await authority.listInbox(actorA)).toHaveLength(1);
     expect(await authority.listInbox(actorB)).toHaveLength(1);
 
@@ -161,29 +165,46 @@ describe('Core V2 conversation provider contract', () => {
       conversationId,
       source: {
         ...sessionCommand().source,
-        sourceVersion: 2,
+        sourceAggregateVersion: 2,
       },
-      members: [
-        { playerId: playerA, role: 'owner' },
-        { playerId: playerB, role: 'member' },
-        { playerId: playerC, role: 'member' },
-      ],
+      membership: {
+        sessionId: sessionCommand().membership.sessionId,
+        membershipVersion: 2,
+        members: [
+          { playerId: playerA, role: 'owner' },
+          { playerId: playerB, role: 'member' },
+          { playerId: playerC, role: 'member' },
+        ],
+      },
       revocationReason: 'source_membership_revoked',
       metadata: metadata(3, 4, 'reconcile-members'),
     });
-    expect(addC.aggregateVersion).toBe(4);
+    expect(addC).toMatchObject({
+      aggregateVersion: 4,
+      acceptedSourceAggregateVersion: 2,
+      acceptedMembership: {
+        membershipVersion: 2,
+        members: expect.arrayContaining([
+          { playerId: playerC, role: 'member' },
+        ]),
+      },
+    });
     expect(await authority.listInbox(actorC)).toHaveLength(1);
 
     await authority.reconcile(null, {
       conversationId,
       source: {
         ...sessionCommand().source,
-        sourceVersion: 3,
+        sourceAggregateVersion: 3,
       },
-      members: [
-        { playerId: playerA, role: 'owner' },
-        { playerId: playerB, role: 'member' },
-      ],
+      membership: {
+        sessionId: sessionCommand().membership.sessionId,
+        membershipVersion: 3,
+        members: [
+          { playerId: playerA, role: 'owner' },
+          { playerId: playerB, role: 'member' },
+        ],
+      },
       revocationReason: 'source_membership_revoked',
       metadata: metadata(4, 5, 'reconcile-members'),
     });
@@ -260,11 +281,15 @@ describe('Core V2 conversation provider contract', () => {
 
     await authority.reconcile(null, {
       conversationId,
-      source: { ...sessionCommand().source, sourceVersion: 2 },
-      members: [
-        { playerId: playerA, role: 'owner' },
-        { playerId: playerC, role: 'member' },
-      ],
+      source: { ...sessionCommand().source, sourceAggregateVersion: 2 },
+      membership: {
+        sessionId: sessionCommand().membership.sessionId,
+        membershipVersion: 2,
+        members: [
+          { playerId: playerA, role: 'owner' },
+          { playerId: playerC, role: 'member' },
+        ],
+      },
       revocationReason: 'source_membership_revoked',
       metadata: metadata(1, 10, 'reconcile-members'),
     });
@@ -300,36 +325,6 @@ describe('Core V2 conversation provider contract', () => {
     expect(notificationFacts).not.toContainEqual(
       expect.objectContaining({ recipientPlayerId: playerB }),
     );
-  });
-
-  it('consumes authoritative block revocation without defining block semantics', async () => {
-    const { authority } = createHarness();
-    const provisioned = await authority.provisionDirect(
-      actorA,
-      friendshipCommand(),
-    );
-
-    await authority.reconcile(null, {
-      conversationId: provisioned.conversationId,
-      source: { ...friendshipCommand().source, sourceVersion: 2 },
-      members: [],
-      revocationReason: 'blocked',
-      metadata: metadata(1, 21, 'reconcile-block'),
-    });
-
-    await expect(
-      authority.getConversation(actorA, provisioned.conversationId),
-    ).rejects.toMatchObject({
-      code: 'conversation_access_revoked',
-      details: { reason: 'blocked' },
-    });
-    expect(
-      authority
-        .events()
-        .filter(
-          (event) => event.eventType === 'conversation.access_revoked.v2',
-        ),
-    ).toHaveLength(2);
   });
 
   it('enforces monotonic read cursors and aggregate versions', async () => {
@@ -429,6 +424,51 @@ describe('Core V2 conversation provider contract', () => {
     ).rejects.toMatchObject({ code: 'conversation_tombstoned' });
   });
 
+  it('consumes Senior 2 full membership events and echoes the accepted supplier facts', async () => {
+    const { authority } = createHarness();
+    const event = SessionMemberJoinedEventV2Schema.parse(
+      readCoreV2Fixture('provider', 'session-member-joined.json'),
+    );
+    const command = {
+      source: {
+        sourceType: 'play_session' as const,
+        sourceId: event.payload.sessionId,
+        sourceAggregateVersion: event.aggregateVersion,
+      },
+      title: 'Supplier-owned session conversation',
+      membership: event.payload.membership,
+      metadata: {
+        ...metadata(0, 801, 'session-event-provision'),
+        causationId: event.eventId,
+        correlationId: event.correlationId,
+      },
+    };
+
+    const receipt = await authority.provisionSession(null, command);
+    expect(receipt).toMatchObject({
+      conversationId: expect.any(String),
+      acceptedSourceAggregateVersion: event.aggregateVersion,
+      acceptedMembership: event.payload.membership,
+      repeated: false,
+    });
+
+    const replay = await authority.provisionSession(null, {
+      ...command,
+      metadata: {
+        ...command.metadata,
+        idempotencyKey: IdempotencyKeySchema.parse(
+          `session-event-replay:${uuid(802)}`,
+        ),
+      },
+    });
+    expect(replay).toMatchObject({
+      conversationId: receipt.conversationId,
+      acceptedSourceAggregateVersion: event.aggregateVersion,
+      acceptedMembership: event.payload.membership,
+      repeated: true,
+    });
+  });
+
   it('keeps source-to-conversation mapping unique and replay-safe', async () => {
     const { authority } = createHarness();
     const first = await authority.provisionSession(actorA, sessionCommand(30));
@@ -485,6 +525,213 @@ describe('Core V2 conversation provider contract', () => {
       expect((error as ConversationV2ProviderError).retryable).toBe(true);
     }
   });
+  it('consumes player.blocked.v2 to revoke API, realtime, and push before a snapshot refresh', async () => {
+    const { authority, notificationFacts } = createHarness();
+    const event = PlayerBlockedEventV2Schema.parse(
+      readCoreV2Fixture('provider', 'player-blocked-event.json'),
+    );
+    const blocker = actor(event.payload.blockerPlayerId, 730);
+    const blocked = actor(event.payload.blockedPlayerId, 731);
+    const provisioned = await authority.provisionDirect(blocker, {
+      source: {
+        sourceType: 'direct_match',
+        sourceId: MatchIdSchema.parse(uuid(732)),
+        sourceAggregateVersion: 1,
+      },
+      participantPlayerIds: [
+        event.payload.blockerPlayerId,
+        event.payload.blockedPlayerId,
+      ],
+      metadata: metadata(0, 733, 'block-event-direct'),
+    });
+    await authority.sendText(blocker, {
+      conversationId: provisioned.conversationId,
+      clientMessageId: IdempotencyKeySchema.parse(
+        `client-message:${uuid(734)}`,
+      ),
+      text: 'Before authoritative block.',
+      metadata: metadata(1, 735, 'block-event-message'),
+    });
+    expect(notificationFacts).toHaveLength(1);
+
+    const accessUpdates: unknown[] = [];
+    authority.subscribeAccess(blocked, provisioned.conversationId, (access) =>
+      accessUpdates.push(access),
+    );
+    const receipt = await authority.applyRelationshipEvent(event);
+    const replay = await authority.applyRelationshipEvent(event);
+
+    expect(receipt).toMatchObject({
+      action: 'access_revoked',
+      conversationId: provisioned.conversationId,
+      relationshipId: event.aggregateId,
+      relationshipVersion: event.aggregateVersion,
+      repeated: false,
+    });
+    expect(receipt.eventIds).toHaveLength(4);
+    expect(replay).toMatchObject({
+      conversationId: provisioned.conversationId,
+      repeated: true,
+    });
+    expect(accessUpdates).toContainEqual(
+      expect.objectContaining({
+        canRead: false,
+        canSend: false,
+        canSubscribe: false,
+        reason: 'blocked',
+      }),
+    );
+    await expect(
+      authority.getTimeline(blocker, provisioned.conversationId),
+    ).rejects.toMatchObject({ code: 'conversation_access_revoked' });
+    expect(() =>
+      authority.subscribeAccess(blocked, provisioned.conversationId, jest.fn()),
+    ).toThrow(expect.objectContaining({ code: 'conversation_access_revoked' }));
+    await expect(
+      authority.sendText(blocked, {
+        conversationId: provisioned.conversationId,
+        clientMessageId: IdempotencyKeySchema.parse(
+          `client-message:${uuid(736)}`,
+        ),
+        text: 'Blocked event must stop writes.',
+        metadata: metadata(3, 737, 'blocked-event-send'),
+      }),
+    ).rejects.toMatchObject({ code: 'conversation_access_revoked' });
+    expect(notificationFacts).toHaveLength(1);
+
+    await expect(
+      authority.applyRelationshipEvent({
+        ...event,
+        payload: {
+          ...event.payload,
+          blockerPlayerId: event.payload.blockedPlayerId,
+          blockedPlayerId: event.payload.blockerPlayerId,
+        },
+      }),
+    ).rejects.toMatchObject({ code: 'event_replay_conflict' });
+
+    const unblocked = PlayerUnblockedEventV2Schema.parse({
+      ...event,
+      eventId: uuid(752),
+      eventType: 'player.unblocked.v2',
+      aggregateVersion: event.aggregateVersion + 1,
+      correlationId: uuid(753),
+      causationId: event.eventId,
+      occurredAt: '2026-07-14T12:29:00.000Z',
+      payload: {
+        blockerPlayerId: event.payload.blockerPlayerId,
+        blockedPlayerId: event.payload.blockedPlayerId,
+        friendshipRestored: false,
+      },
+    });
+    expect(await authority.applyRelationshipEvent(unblocked)).toMatchObject({
+      action: 'none',
+      conversationId: provisioned.conversationId,
+    });
+    expect(
+      await authority.getAccess(blocker, provisioned.conversationId),
+    ).toMatchObject({ canRead: false, canSend: false, canSubscribe: false });
+
+    const staleFriend = SocialRelationshipSnapshotV2Schema.parse(
+      readCoreV2Fixture('consumer', 'relationship-friend.json'),
+    );
+    await expect(
+      authority.applyRelationship({
+        relationship: staleFriend,
+        sourceEventId: EventIdSchema.parse(uuid(738)),
+        sourceEventVersion: 2,
+        correlationId: CorrelationIdSchema.parse(uuid(739)),
+        causationId: event.eventId,
+        occurredAt: '2026-07-14T12:30:00.000Z',
+      }),
+    ).rejects.toMatchObject({ code: 'source_version_conflict' });
+  });
+
+  it('consumes player mute events as notification policy without denying messaging', async () => {
+    const { authority, notificationFacts } = createHarness();
+    const friend = SocialRelationshipSnapshotV2Schema.parse(
+      readCoreV2Fixture('consumer', 'relationship-friend.json'),
+    );
+    const viewer = actor(friend.viewerPlayerId, 740);
+    const target = actor(friend.targetPlayerId, 741);
+    const provisioned = await authority.provisionDirect(viewer, {
+      source: {
+        sourceType: 'direct_match',
+        sourceId: MatchIdSchema.parse(uuid(742)),
+        sourceAggregateVersion: 1,
+      },
+      participantPlayerIds: [friend.viewerPlayerId, friend.targetPlayerId],
+      metadata: metadata(0, 743, 'mute-event-direct'),
+    });
+    const mutedEvent = PlayerMutedEventV2Schema.parse({
+      eventId: uuid(744),
+      eventType: 'player.muted.v2',
+      eventVersion: 2,
+      aggregateType: 'social_relationship',
+      aggregateId: friend.relationshipId,
+      aggregateVersion: friend.version + 1,
+      actorPlayerId: friend.viewerPlayerId,
+      correlationId: uuid(745),
+      causationId: null,
+      occurredAt: '2026-07-14T12:31:00.000Z',
+      payload: {
+        muterPlayerId: friend.viewerPlayerId,
+        mutedPlayerId: friend.targetPlayerId,
+      },
+    });
+    const muteReceipt = await authority.applyRelationshipEvent(mutedEvent);
+    expect(muteReceipt.action).toBe('notification_policy_reconciled');
+    expect(
+      await authority.getAccess(viewer, provisioned.conversationId),
+    ).toMatchObject({ canRead: true, canSend: true, canSubscribe: true });
+    expect((await authority.listInbox(viewer))[0]).toMatchObject({
+      muted: true,
+    });
+
+    const afterMute = await authority.getConversation(
+      target,
+      provisioned.conversationId,
+    );
+    await authority.sendText(target, {
+      conversationId: provisioned.conversationId,
+      clientMessageId: IdempotencyKeySchema.parse(
+        `client-message:${uuid(746)}`,
+      ),
+      text: 'Delivered without relationship push.',
+      metadata: metadata(afterMute!.version, 747, 'muted-event-message'),
+    });
+    expect(notificationFacts).toHaveLength(0);
+
+    const unmutedEvent = PlayerUnmutedEventV2Schema.parse({
+      ...mutedEvent,
+      eventId: uuid(748),
+      eventType: 'player.unmuted.v2',
+      aggregateVersion: mutedEvent.aggregateVersion + 1,
+      correlationId: uuid(749),
+      causationId: mutedEvent.eventId,
+      occurredAt: '2026-07-14T12:32:00.000Z',
+    });
+    const unmuteReceipt = await authority.applyRelationshipEvent(unmutedEvent);
+    expect(unmuteReceipt.action).toBe('notification_policy_reconciled');
+    expect((await authority.listInbox(viewer))[0]).toMatchObject({
+      muted: false,
+    });
+
+    const afterUnmute = await authority.getConversation(
+      target,
+      provisioned.conversationId,
+    );
+    await authority.sendText(target, {
+      conversationId: provisioned.conversationId,
+      clientMessageId: IdempotencyKeySchema.parse(
+        `client-message:${uuid(750)}`,
+      ),
+      text: 'Push eligibility restored.',
+      metadata: metadata(afterUnmute!.version, 751, 'unmuted-event-message'),
+    });
+    expect(notificationFacts).toHaveLength(1);
+  });
+
   it('integrates Senior 1 friendship and block fixtures without duplicating the direct thread', async () => {
     const { authority, notificationFacts } = createHarness();
     const friend = SocialRelationshipSnapshotV2Schema.parse(
@@ -500,7 +747,7 @@ describe('Core V2 conversation provider contract', () => {
       source: {
         sourceType: 'direct_match',
         sourceId: MatchIdSchema.parse(uuid(703)),
-        sourceVersion: 1,
+        sourceAggregateVersion: 1,
       },
       participantPlayerIds: [friend.viewerPlayerId, friend.targetPlayerId],
       metadata: metadata(0, 704, 'provision-direct'),

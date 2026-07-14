@@ -26,8 +26,8 @@ describe('Core V2 trust outcome provider contracts', () => {
     );
 
     expect(event.aggregateId).toBe(event.payload.sessionId);
-    expect(event.aggregateVersion).toBe(event.payload.sessionVersion);
-    expect(event.payload.memberPlayerIds).toHaveLength(2);
+    expect(event.payload.verification).toBe('participant_quorum');
+    expect(event.payload.participantPlayerIds).toHaveLength(2);
   });
 
   it('publishes an authoritative participation receipt', () => {

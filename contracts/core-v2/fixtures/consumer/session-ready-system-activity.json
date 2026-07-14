@@ -3,7 +3,7 @@
   "source": {
     "sourceType": "play_session",
     "sourceId": "20000000-0000-4000-8000-000000000001",
-    "sourceVersion": 3
+    "sourceAggregateVersion": 3
   },
   "sourceEventId": "30000000-0000-4000-8000-000000000030",
   "sourceEventType": "session.ready_check_opened.v2",

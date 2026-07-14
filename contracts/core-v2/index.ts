@@ -1,3 +1,5 @@
+export * from './party';
+export * from './commands/command';
 export * from './activity/activity';
 export * from './conversation/conversation';
 export * from './errors/errors';

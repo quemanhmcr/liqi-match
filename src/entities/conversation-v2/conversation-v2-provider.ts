@@ -13,6 +13,7 @@ import type {
   MessageV2,
   ProvisionDirectConversationCommandV2,
   ProvisionSessionConversationCommandV2,
+  RelationshipConversationAccessEventV2,
   RelationshipConversationProjectionInputV2,
   RelationshipConversationProjectionReceiptV2,
   ReconcileConversationMembershipCommandV2,
@@ -72,6 +73,9 @@ export type ConversationSystemActivityV2 = ConversationSystemActivityInputV2;
 export interface ConversationRelationshipProjection {
   applyRelationship(
     input: RelationshipConversationProjectionInputV2,
+  ): Promise<RelationshipConversationProjectionReceiptV2>;
+  applyRelationshipEvent(
+    event: RelationshipConversationAccessEventV2,
   ): Promise<RelationshipConversationProjectionReceiptV2>;
 }
 

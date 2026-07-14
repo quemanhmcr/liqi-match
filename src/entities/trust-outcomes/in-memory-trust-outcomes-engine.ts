@@ -94,7 +94,7 @@ export class InMemoryTrustOutcomesEngine
 
     const existing = this.outcomes.get(event.payload.sessionId);
     if (existing) {
-      if (existing.sessionVersion !== event.payload.sessionVersion) {
+      if (existing.sessionVersion !== event.aggregateVersion) {
         throw coreV2Error(
           'aggregate_version_conflict',
           'A completed-session event was replayed with a different session version.',
@@ -109,10 +109,10 @@ export class InMemoryTrustOutcomesEngine
       confirmationDeadlineAt: new Date(
         Date.parse(event.payload.completedAt) + 72 * 60 * 60 * 1000,
       ).toISOString(),
-      memberPlayerIds: [...event.payload.memberPlayerIds],
+      memberPlayerIds: [...event.payload.participantPlayerIds],
       outcomeId: this.uuid('outcome') as never,
       sessionId: event.payload.sessionId,
-      sessionVersion: event.payload.sessionVersion,
+      sessionVersion: event.aggregateVersion,
       startedAt: event.payload.startedAt,
       state: 'awaiting_confirmation' as const,
       version: 1,

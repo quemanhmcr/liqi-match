@@ -60,13 +60,15 @@ function completedEvent(
     occurredAt: completedAt,
     payload: {
       completedAt,
-      memberPlayerIds: [PLAYER_A, PLAYER_B],
-      scheduledAt: null,
+      participantPlayerIds: [PLAYER_A, PLAYER_B],
+      roleAssignments: [],
+      scheduledFor: null,
       sessionId,
-      sessionVersion: 7,
+      source: { kind: 'manual' },
       startedAt: new Date(
         Date.parse(completedAt) - 60 * 60 * 1000,
       ).toISOString(),
+      verification: 'participant_quorum',
     },
   });
 }

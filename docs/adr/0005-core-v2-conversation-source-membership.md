@@ -21,9 +21,16 @@ friendship source without creating a second thread. Retried provisioning and
 source-event replay return the original receipt.
 
 `conversation_members_v2` is a replayable projection. Supplier events provide
-`sourceId`, `sourceVersion`, and the complete authoritative member set. The
-projection may cache role and active/revoked access, but it never derives a
-friendship or session state. Mobile clients cannot add members.
+the canonical `PlaySessionId`, a source aggregate version, an independent
+membership version, and the complete authoritative `{ playerId, role }` member
+set. The projection may cache role and active/revoked access, but it never
+derives friendship or session state. Mobile clients cannot add members.
+
+Session provisioning and reconciliation receipts echo the accepted source
+aggregate version and the exact accepted membership snapshot. A retry can
+therefore distinguish an already-applied event from a newer session aggregate,
+a newer membership projection, or a conflicting replay without reading or
+mutating the supplier aggregate.
 
 A member may read/send/subscribe only when all of these are true:
 
@@ -44,6 +51,14 @@ Relationship-level mute is projected into notification policy only. It does not
 remove messages from inbox/timeline and cannot be overridden by the separate
 conversation-level mute command. Delivery recipients and push recipients are
 therefore distinct facts.
+
+The relationship event consumer accepts canonical `player.blocked.v2`,
+`player.unblocked.v2`, `player.muted.v2`, and `player.unmuted.v2` envelopes.
+`player.blocked.v2` revokes the direct pair projection without waiting for a
+mobile refresh. Mute events update only the directional notification projection.
+`player.unblocked.v2` never restores access by itself; a complete relationship
+snapshot at the same or a newer aggregate version must authorize restoration.
+Observed event versions prevent an older snapshot from reversing a safety event.
 
 ### Production relationship authorization seam
 
