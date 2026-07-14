@@ -7,6 +7,8 @@ const sqlPaths = [
   'supabase/migrations/202607140054_core_v2_party_play_session_foundation.sql',
   'supabase/migrations/202607141200_core_v2_play_session_walking_skeleton.sql',
   'supabase/migrations/202607141210_core_v2_match_set_commands.sql',
+  'supabase/migrations/202607141220_core_v2_match_set_membership.sql',
+  'supabase/migrations/202607141230_core_v2_play_session_commands.sql',
 ];
 
 function fail(message) {

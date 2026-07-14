@@ -8,8 +8,8 @@ import {
   SessionDisputedEventV2Schema,
   SessionInviteCreatedEventV2Schema,
   SessionMemberJoinedEventV2Schema,
-  SessionMemberNotReadyEventV2Schema,
   SessionMemberLeftEventV2Schema,
+  SessionMemberNotReadyEventV2Schema,
   SessionMemberReadyEventV2Schema,
   SessionReadyCheckExpiredEventV2Schema,
   SessionReadyCheckOpenedEventV2Schema,
@@ -19,14 +19,11 @@ import {
   SessionStartedEventV2Schema,
   SetClosedEventV2Schema,
   SetCreatedEventV2Schema,
-  SetUpdatedEventV2Schema,
   SetInviteCreatedEventV2Schema,
   SetJoinRequestedEventV2Schema,
-  SetInviteCreatedEventV2Schema,
-  SetJoinRequestedEventV2Schema,
-  SetUpdatedEventV2Schema,
   SetMemberJoinedEventV2Schema,
   SetMemberRemovedEventV2Schema,
+  SetUpdatedEventV2Schema,
 } from './events';
 import { CoreV2SocialEventSchema } from './social-events';
 
@@ -35,6 +32,9 @@ export * from './social-events';
 
 export const CoreV2PartySessionEventSchema = z.discriminatedUnion('eventType', [
   SetCreatedEventV2Schema,
+  SetUpdatedEventV2Schema,
+  SetInviteCreatedEventV2Schema,
+  SetJoinRequestedEventV2Schema,
   SetMemberJoinedEventV2Schema,
   SetMemberRemovedEventV2Schema,
   SetClosedEventV2Schema,

@@ -7,8 +7,8 @@ import {
   SetIdSchema,
 } from '../../core-v1';
 import {
-  MatchSetInviteV2IdSchema,
-  MatchSetJoinRequestV2IdSchema,
+  SetInviteV2IdSchema,
+  SetJoinRequestV2IdSchema,
   PlaySessionIdSchema,
   SessionInviteV2IdSchema,
 } from '../identity/semantic-ids';
@@ -56,7 +56,7 @@ export const SetCreatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
 
 export const SetUpdatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
   ...setEventBase,
-  aggregateId: MatchSetIdSchema,
+  aggregateId: SetIdSchema,
   eventType: z.literal('set.updated.v2'),
   payload: z
     .object({
@@ -78,13 +78,13 @@ export const SetUpdatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
 
 export const SetInviteCreatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
   ...setEventBase,
-  aggregateId: MatchSetIdSchema,
+  aggregateId: SetIdSchema,
   eventType: z.literal('set.invite_created.v2'),
   payload: z
     .object({
-      inviteId: MatchSetInviteV2IdSchema,
+      inviteId: SetInviteV2IdSchema,
       inviterPlayerId: PlayerIdSchema,
-      setId: MatchSetIdSchema,
+      setId: SetIdSchema,
       targetPlayerId: PlayerIdSchema,
     })
     .strict(),
@@ -92,13 +92,13 @@ export const SetInviteCreatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
 
 export const SetJoinRequestedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
   ...setEventBase,
-  aggregateId: MatchSetIdSchema,
+  aggregateId: SetIdSchema,
   eventType: z.literal('set.join_requested.v2'),
   payload: z
     .object({
-      joinRequestId: MatchSetJoinRequestV2IdSchema,
+      joinRequestId: SetJoinRequestV2IdSchema,
       requesterPlayerId: PlayerIdSchema,
-      setId: MatchSetIdSchema,
+      setId: SetIdSchema,
     })
     .strict(),
 }).strict();

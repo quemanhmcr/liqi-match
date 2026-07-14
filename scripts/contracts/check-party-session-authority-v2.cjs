@@ -14,6 +14,14 @@ const setCommandMigrationPath = path.join(
   root,
   'supabase/migrations/202607141210_core_v2_match_set_commands.sql',
 );
+const setMembershipMigrationPath = path.join(
+  root,
+  'supabase/migrations/202607141220_core_v2_match_set_membership.sql',
+);
+const sessionCommandMigrationPath = path.join(
+  root,
+  'supabase/migrations/202607141230_core_v2_play_session_commands.sql',
+);
 const contractPath = path.join(root, 'contracts/core-v2/party/play-session.ts');
 const eventPath = path.join(root, 'contracts/core-v2/events/events.ts');
 const adrPath = path.join(
@@ -46,6 +54,8 @@ const read = (file) => {
 const migration = read(migrationPath);
 const walkingMigration = read(walkingMigrationPath);
 const setCommandMigration = read(setCommandMigrationPath);
+const setMembershipMigration = read(setMembershipMigrationPath);
+const sessionCommandMigration = read(sessionCommandMigrationPath);
 const contract = read(contractPath);
 const events = read(eventPath);
 const adr = read(adrPath);
@@ -481,6 +491,302 @@ expect(
       setCommandMigration,
     ),
   'Set command RPCs must be authenticated/service-role only.',
+);
+
+const setMembershipMutationFunctions = [
+  'public.accept_set_invite_v2',
+  'public.decline_set_invite_v2',
+  'public.cancel_set_invite_v2',
+  'public.accept_set_join_request_v2',
+  'public.reject_set_join_request_v2',
+  'public.cancel_set_join_request_v2',
+  'public.leave_set_v2',
+  'public.remove_set_member_v2',
+  'public.transfer_set_ownership_v2',
+  'public.create_session_from_set_v2',
+];
+for (const functionName of setMembershipMutationFunctions) {
+  const sql = functionSql(setMembershipMigration, functionName);
+  expect(sql.length > 0, `${functionName} RPC is missing.`);
+  expect(
+    /private\.begin_command_v1\s*\(/i.test(sql) &&
+      /private\.finish_command_v1\s*\(/i.test(sql),
+    `${functionName} must use durable command receipts.`,
+  );
+  expect(
+    /private\.record_core_v2_command_audit\s*\(/i.test(sql),
+    `${functionName} must persist audit metadata.`,
+  );
+  expect(
+    /pg_advisory_xact_lock/i.test(sql) && /for update/i.test(sql),
+    `${functionName} must serialize the Set aggregate.`,
+  );
+  expect(
+    /set_row\.version\s*<>\s*p_expected_version/i.test(sql),
+    `${functionName} must reject stale Set writes.`,
+  );
+  expect(
+    /private\.enqueue_contract_event_v2\s*\(/i.test(sql),
+    `${functionName} must emit at least one Set/Session outbox fact.`,
+  );
+}
+
+for (const functionName of [
+  'public.accept_set_invite_v2',
+  'public.accept_set_join_request_v2',
+]) {
+  const sql = functionSql(setMembershipMigration, functionName);
+  expect(
+    /active_count\s*>=\s*set_row\.capacity/i.test(sql),
+    `${functionName} must enforce final-slot capacity while locked.`,
+  );
+  expect(
+    /private\.assert_match_set_pairwise_eligible_v2/i.test(sql),
+    `${functionName} must re-check pairwise block/lifecycle authority.`,
+  );
+  expect(
+    /private\.advance_match_set_after_join_v2/i.test(sql),
+    `${functionName} must derive full/open state from post-join membership.`,
+  );
+  expect(
+    /'set\.member_joined\.v2'/i.test(sql),
+    `${functionName} must publish set.member_joined.v2.`,
+  );
+}
+
+const pairwiseSetSql = functionSql(
+  setMembershipMigration,
+  'private.assert_match_set_pairwise_eligible_v2',
+);
+expect(
+  /private\.are_players_blocked_v2/i.test(pairwiseSetSql) &&
+    /assert_party_session_player_active_v2/i.test(pairwiseSetSql),
+  'Set acceptance must consume canonical lifecycle and block authorities.',
+);
+
+const leaveSetSql = functionSql(setMembershipMigration, 'public.leave_set_v2');
+expect(
+  /owner_transfer_required/i.test(leaveSetSql) &&
+    /owner_player_id\s*=\s*actor_player_id/i.test(leaveSetSql),
+  'Set owner must transfer ownership or close before leaving.',
+);
+expect(
+  /'set\.member_removed\.v2'/i.test(leaveSetSql),
+  'Set leave must publish an authoritative membership removal fact.',
+);
+
+const removeSetSql = functionSql(
+  setMembershipMigration,
+  'public.remove_set_member_v2',
+);
+expect(
+  /p_member_player_id\s*=\s*set_row\.owner_player_id/i.test(removeSetSql) &&
+    /owner_transfer_required/i.test(removeSetSql),
+  'Set owner cannot remove themselves through the member-removal command.',
+);
+
+const transferSetSql = functionSql(
+  setMembershipMigration,
+  'public.transfer_set_ownership_v2',
+);
+expect(
+  /set role = 'member'/i.test(transferSetSql) &&
+    /set role = 'owner'/i.test(transferSetSql) &&
+    /owner_player_id = p_new_owner_player_id/i.test(transferSetSql),
+  'Ownership transfer must update both member roles and aggregate owner atomically.',
+);
+expect(
+  /'changeType',\s*'owner_transferred'/i.test(transferSetSql),
+  'Ownership transfer must publish a typed administrative update event.',
+);
+
+const convertSetSql = functionSql(
+  setMembershipMigration,
+  'public.create_session_from_set_v2',
+);
+expect(
+  /insert into public\.play_sessions_v2/i.test(convertSetSql) &&
+    /insert into public\.play_session_members_v2[\s\S]*select/i.test(
+      convertSetSql,
+    ),
+  'Set conversion must create a distinct Session aggregate and copy active membership.',
+);
+expect(
+  /source_kind[\s\S]*'set'/i.test(convertSetSql) &&
+    /source_set_id/i.test(convertSetSql),
+  'Converted Session must retain its authoritative Set source.',
+);
+expect(
+  /close_reason = 'converted_to_session'/i.test(convertSetSql) &&
+    /'set\.closed\.v2'/i.test(convertSetSql) &&
+    /'session\.created\.v2'/i.test(convertSetSql),
+  'Set conversion must close recruitment and emit both aggregate facts atomically.',
+);
+expect(
+  /insert into private\.play_session_conversation_projection_v2/i.test(
+    convertSetSql,
+  ) &&
+    !/record_session_conversation_projection_v2|conversationProvision/i.test(
+      convertSetSql,
+    ),
+  'Set conversion may enqueue conversation work but must not fake a distributed transaction.',
+);
+expect(
+  /communicationProvisioningRequired',\s*true/i.test(convertSetSql) &&
+    /play_session_membership_snapshot_v2/i.test(convertSetSql),
+  'Converted Session must publish full membership for conversation provisioning.',
+);
+
+for (const functionName of [
+  'public.get_match_set_v2',
+  'public.list_recruiting_match_sets_v2',
+]) {
+  const sql = functionSql(setMembershipMigration, functionName);
+  expect(sql.length > 0, `${functionName} read RPC is missing.`);
+  expect(
+    /assert_party_session_feature_v2\('read'\)/i.test(sql) &&
+      /resolve_party_session_actor_v2\(true, false\)/i.test(sql),
+    `${functionName} must use the read gate and active canonical identity.`,
+  );
+}
+expect(
+  /private\.are_players_blocked_v2/i.test(
+    functionSql(setMembershipMigration, 'public.list_recruiting_match_sets_v2'),
+  ),
+  'Recruiting Set discovery must fail closed for canonical block authority.',
+);
+
+const extendedSessionMutationFunctions = [
+  'public.create_play_session_v2',
+  'public.leave_session_v2',
+  'public.remove_session_member_v2',
+  'public.assign_session_role_v2',
+  'public.schedule_session_v2',
+];
+for (const functionName of extendedSessionMutationFunctions) {
+  const sql = functionSql(sessionCommandMigration, functionName);
+  expect(sql.length > 0, `${functionName} RPC is missing.`);
+  expect(
+    /private\.begin_command_v1\s*\(/i.test(sql) &&
+      /private\.finish_command_v1\s*\(/i.test(sql),
+    `${functionName} must use durable receipts.`,
+  );
+  expect(
+    /private\.record_core_v2_command_audit\s*\(/i.test(sql),
+    `${functionName} must persist audit metadata.`,
+  );
+  expect(
+    /private\.enqueue_contract_event_v2\s*\(/i.test(sql),
+    `${functionName} must emit a versioned Session event.`,
+  );
+}
+
+for (const functionName of [
+  'public.leave_session_v2',
+  'public.remove_session_member_v2',
+  'public.assign_session_role_v2',
+  'public.schedule_session_v2',
+]) {
+  const sql = functionSql(sessionCommandMigration, functionName);
+  expect(
+    /pg_advisory_xact_lock/i.test(sql) && /for update/i.test(sql),
+    `${functionName} must serialize the Session aggregate.`,
+  );
+  expect(
+    /session_row\.version\s*<>\s*p_expected_version/i.test(sql),
+    `${functionName} must reject stale Session writes.`,
+  );
+}
+
+const communicationTriggerSql = functionSql(
+  sessionCommandMigration,
+  'private.mark_play_session_communication_pending_v2',
+);
+expect(
+  /play_session_conversation_projection_v2/i.test(communicationTriggerSql) &&
+    /state = 'pending'/i.test(communicationTriggerSql),
+  'Session membership changes must invalidate the communication projection immediately.',
+);
+expect(
+  /create trigger play_session_members_v2_mark_communication_pending[\s\S]*after insert or update of state, role/i.test(
+    sessionCommandMigration,
+  ),
+  'Communication invalidation must be attached to authoritative membership writes.',
+);
+
+const manualSessionSql = functionSql(
+  sessionCommandMigration,
+  'public.create_play_session_v2',
+);
+expect(
+  /source_kind[\s\S]*'manual'/i.test(manualSessionSql) &&
+    /insert into public\.play_session_members_v2/i.test(manualSessionSql),
+  'Manual Session creation must use the manual source and create owner membership.',
+);
+expect(
+  /communicationProvisioningRequired',\s*false/i.test(manualSessionSql),
+  'One-member manual Session must not provision a conversation prematurely.',
+);
+
+for (const functionName of [
+  'public.leave_session_v2',
+  'public.remove_session_member_v2',
+]) {
+  const sql = functionSql(sessionCommandMigration, functionName);
+  expect(
+    /membership_version = membership_version \+ 1/i.test(sql) &&
+      /play_session_membership_snapshot_v2/i.test(sql),
+    `${functionName} must advance membershipVersion and publish the full active snapshot.`,
+  );
+  expect(
+    /cancel_open_ready_check_for_membership_v2/i.test(sql),
+    `${functionName} must invalidate an open ready check.`,
+  );
+  expect(
+    /'session\.member_left\.v2'/i.test(sql),
+    `${functionName} must publish session.member_left.v2.`,
+  );
+}
+expect(
+  /owner_transfer_required/i.test(
+    functionSql(sessionCommandMigration, 'public.leave_session_v2'),
+  ),
+  'Session owner cannot leave without terminating the aggregate.',
+);
+expect(
+  /p_member_player_id\s*=\s*session_row\.owner_player_id/i.test(
+    functionSql(sessionCommandMigration, 'public.remove_session_member_v2'),
+  ),
+  'Session owner cannot remove themselves.',
+);
+
+const roleSql = functionSql(
+  sessionCommandMigration,
+  'public.assign_session_role_v2',
+);
+expect(
+  /play_session_role_assignments_v2/i.test(roleSql) &&
+    /active = false/i.test(roleSql) &&
+    /'session\.role_assigned\.v2'/i.test(roleSql),
+  'Role assignment must revoke the prior assignment and emit the canonical fact.',
+);
+expect(
+  !/membership_version = membership_version/i.test(roleSql),
+  'Game-role assignment must not advance membershipVersion.',
+);
+
+const scheduleSql = functionSql(
+  sessionCommandMigration,
+  'public.schedule_session_v2',
+);
+expect(
+  /cardinality\(active_player_ids\) < 2/i.test(scheduleSql) &&
+    /'session\.scheduled\.v2'/i.test(scheduleSql),
+  'Scheduling requires at least two active members and publishes the schedule fact.',
+);
+expect(
+  !/membership_version = membership_version/i.test(scheduleSql),
+  'Scheduling must not advance membershipVersion.',
 );
 
 expect(
