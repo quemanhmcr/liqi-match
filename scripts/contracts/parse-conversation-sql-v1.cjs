@@ -26,6 +26,7 @@ const sqlPaths = [
   'supabase/migrations/202607140032_correct_authorized_read_volatility_v1.sql',
   'supabase/migrations/202607140033_remove_match_command_overloads_v1.sql',
   'supabase/migrations/202607140034_shared_player_summary_home_facts_v1.sql',
+  'supabase/migrations/202607140035_match_intent_lifecycle_dispatch_v1.sql',
   'supabase/tests/database/production_match_authority_v1.test.sql',
   'supabase/tests/database/home_match_facts_v1.test.sql',
   'supabase/tests/database/conversation_reliability_v1.test.sql',
@@ -33,6 +34,7 @@ const sqlPaths = [
   'supabase/tests/database/secure_identity_lifecycle_v1.test.sql',
   'supabase/tests/database/discovery_candidate_snapshot_v1.test.sql',
   'supabase/tests/database/match_conversation_projection_v1.test.sql',
+  'supabase/tests/database/match_intent_lifecycle_projection_v1.test.sql',
   'supabase/tests/database/match_funnel_telemetry_v1.test.sql',
 ];
 

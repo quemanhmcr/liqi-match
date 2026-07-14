@@ -16,6 +16,10 @@ const projection = fs.readFileSync(
   'supabase/migrations/202607140014_match_intent_lifecycle_projection_v1.sql',
   'utf8',
 );
+const dispatch = fs.readFileSync(
+  'supabase/migrations/202607140035_match_intent_lifecycle_dispatch_v1.sql',
+  'utf8',
+);
 const setAuthority = fs.readFileSync(
   'supabase/migrations/202607140020_match_set_authority_v1.sql',
   'utf8',
@@ -95,6 +99,29 @@ requireInvariant(
   projection.includes('to service_role') &&
     projection.includes('from public, anon, authenticated'),
   'lifecycle projection must be service-only',
+);
+requireInvariant(
+  dispatch.includes('process_pending_match_intent_lifecycle_events_v1') &&
+    dispatch.includes('match_intent_lifecycle_projection_receipts_v1') &&
+    dispatch.includes('for update of events skip locked'),
+  'lifecycle dispatch must batch unprojected events with concurrency-safe selection',
+);
+requireInvariant(
+  dispatch.includes('apply_player_lifecycle_to_match_intent_v1') &&
+    dispatch.includes('failedCount') &&
+    dispatch.includes('processedEventIds'),
+  'lifecycle dispatch must invoke the idempotent projection and expose operational results',
+);
+requireInvariant(
+  !/update\s+private\.outbox_events/i.test(dispatch) &&
+    !/processed_at\s*=/.test(dispatch) &&
+    !/status\s*=/.test(dispatch),
+  'Match Intent dispatch must not claim shared outbox state owned by other consumers',
+);
+requireInvariant(
+  dispatch.includes('to service_role') &&
+    dispatch.includes('from public, anon, authenticated'),
+  'lifecycle dispatch must be service-only',
 );
 
 const assertionCount = (

@@ -1,7 +1,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(33);
+select plan(41);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at
@@ -149,10 +149,38 @@ select is(
   'suspend event preserves the authoritative reason code'
 );
 
+create temporary table suspend_dispatch as
+select public.process_pending_match_intent_lifecycle_events_v1(10) as response;
+
+select is(
+  (select (response ->> 'selectedCount')::integer from suspend_dispatch),
+  1,
+  'lifecycle worker selects the unprojected suspend event'
+);
+select is(
+  (select (response ->> 'processedCount')::integer from suspend_dispatch),
+  1,
+  'lifecycle worker processes the suspend event'
+);
+select is(
+  (select (response ->> 'failedCount')::integer from suspend_dispatch),
+  0,
+  'lifecycle worker reports no suspend failure'
+);
+select ok(
+  (
+    select processed_at is null
+    from private.outbox_events
+    where event_type = 'player.suspended.v1'
+      and aggregate_id = '20000000-0000-4000-8000-000000000901'
+  ),
+  'Match Intent consumer does not claim the shared outbox globally'
+);
+
 create temporary table suspend_projection as
-select public.apply_player_lifecycle_to_match_intent_v1(
-  (select event from suspend_event)
-) as response;
+select response
+from private.match_intent_lifecycle_projection_receipts_v1
+where event_id = (select (event ->> 'eventId')::uuid from suspend_event);
 
 select is(
   (select response ->> 'resultCode' from suspend_projection),
@@ -286,10 +314,29 @@ set state = 'active',
     expires_at = now() + interval '2 hours'
 where player_id = '20000000-0000-4000-8000-000000000901';
 
+create temporary table resume_dispatch as
+select public.process_pending_match_intent_lifecycle_events_v1(10) as response;
+
+select is(
+  (select (response ->> 'selectedCount')::integer from resume_dispatch),
+  1,
+  'lifecycle worker selects the unprojected resume event'
+);
+select is(
+  (select (response ->> 'processedCount')::integer from resume_dispatch),
+  1,
+  'lifecycle worker processes the resume event'
+);
+select is(
+  (select (response ->> 'failedCount')::integer from resume_dispatch),
+  0,
+  'lifecycle worker reports no resume failure'
+);
+
 create temporary table resume_projection as
-select public.apply_player_lifecycle_to_match_intent_v1(
-  (select event from resume_event)
-) as response;
+select response
+from private.match_intent_lifecycle_projection_receipts_v1
+where event_id = (select (event ->> 'eventId')::uuid from resume_event);
 
 select is(
   (select response ->> 'resultCode' from resume_projection),
@@ -395,6 +442,13 @@ select throws_ok(
   '42501',
   null,
   'client cannot execute the service-only lifecycle projection'
+);
+
+select throws_ok(
+  $$select public.process_pending_match_intent_lifecycle_events_v1(10)$$,
+  '42501',
+  null,
+  'client cannot execute the service-only lifecycle dispatch worker'
 );
 
 reset role;
