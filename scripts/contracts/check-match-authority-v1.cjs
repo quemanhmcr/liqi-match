@@ -9,6 +9,10 @@ const testPath =
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const lifecycleMigration = fs.readFileSync(lifecycleMigrationPath, 'utf8');
 const databaseTest = fs.readFileSync(testPath, 'utf8');
+const overloadRepair = fs.readFileSync(
+  'supabase/migrations/202607140033_remove_match_command_overloads_v1.sql',
+  'utf8',
+);
 
 const activationStart = migration.indexOf(
   'create or replace function public.activate_match_intent_v1',
@@ -109,6 +113,27 @@ requireInvariant(
 requireInvariant(
   !/\) values \(\s*\) values \(/i.test(migration),
   'SQL contains a duplicate values clause',
+);
+
+requireInvariant(
+  overloadRepair.includes(
+    'drop function if exists public.activate_match_intent_v1(jsonb, text, integer)',
+  ) &&
+    overloadRepair.includes(
+      'drop function if exists public.record_player_decision_v1(',
+    ) &&
+    /integer,\s*integer\s*\)/i.test(overloadRepair),
+  'parallel integer Match command overloads must be removed so the shared-receipt bigint signatures remain canonical',
+);
+requireInvariant(
+  !fs
+    .readdirSync('supabase/migrations')
+    .some((name) =>
+      fs
+        .readFileSync(`supabase/migrations/${name}`, 'utf8')
+        .includes('create table private.command_idempotency_v1'),
+    ),
+  'the integrated schema must not create a second Match command idempotency engine',
 );
 
 const assertionCount = (

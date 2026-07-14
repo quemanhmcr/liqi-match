@@ -24,6 +24,7 @@ const sqlPaths = [
   'supabase/migrations/202607140030_restore_private_policy_helper_execute_v1.sql',
   'supabase/migrations/202607140031_send_message_uuid_recipient_v1.sql',
   'supabase/migrations/202607140032_correct_authorized_read_volatility_v1.sql',
+  'supabase/migrations/202607140033_remove_match_command_overloads_v1.sql',
   'supabase/tests/database/production_match_authority_v1.test.sql',
   'supabase/tests/database/conversation_reliability_v1.test.sql',
   'supabase/tests/database/conversation_bootstrap_dispatch_v1.test.sql',
