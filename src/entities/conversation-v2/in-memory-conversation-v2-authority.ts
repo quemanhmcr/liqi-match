@@ -604,17 +604,80 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     }
 
     const pairIds =
-      'blockerPlayerId' in event.payload
-        ? [event.payload.blockerPlayerId, event.payload.blockedPlayerId]
-        : [event.payload.muterPlayerId, event.payload.mutedPlayerId];
-    const conversationId =
+      'requesterPlayerId' in event.payload
+        ? [event.payload.requesterPlayerId, event.payload.recipientPlayerId]
+        : 'blockerPlayerId' in event.payload
+          ? [event.payload.blockerPlayerId, event.payload.blockedPlayerId]
+          : [event.payload.muterPlayerId, event.payload.mutedPlayerId];
+    let conversationId =
       this.directConversationByPair.get(directPairKey(pairIds)) ?? null;
     const observedVersion =
       this.relationshipObservedVersions.get(event.aggregateId) ?? 0;
     const eventIds: EventId[] = [];
     let action: RelationshipConversationProjectionReceiptV2['action'] = 'none';
 
-    if (event.aggregateVersion >= observedVersion && conversationId) {
+    if (
+      event.eventType === 'friendship.accepted.v2' &&
+      event.aggregateVersion >= observedVersion
+    ) {
+      if (!('requesterPlayerId' in event.payload)) {
+        throw new ConversationV2ProviderError(
+          'validation_failed',
+          'Friendship accepted event payload is invalid.',
+          false,
+        );
+      }
+      const friendshipPayload = event.payload;
+      const existingConversationId = conversationId;
+      const receipt = await this.provision(null, {
+        commandName: 'provision_direct_conversation_v2',
+        kind: 'direct',
+        members: [
+          { playerId: friendshipPayload.requesterPlayerId, role: 'member' },
+          { playerId: friendshipPayload.recipientPlayerId, role: 'member' },
+        ],
+        membershipVersion: event.aggregateVersion,
+        metadata: {
+          idempotencyKey: IdempotencyKeySchema.parse(
+            `friendship-conversation:${event.eventId}`,
+          ),
+          correlationId: event.correlationId,
+          causationId: event.eventId,
+          expectedAggregateVersion: 0,
+          audit: {
+            requestId: RequestIdSchema.parse(
+              `relationship-event:${event.eventId}`,
+            ),
+            clientCreatedAt: event.occurredAt,
+            clientPlatform: 'service',
+          },
+        },
+        source: {
+          sourceType: 'friendship',
+          sourceId: event.aggregateId,
+          sourceAggregateVersion: event.aggregateVersion,
+        },
+        title: null,
+      });
+      const acceptedConversationId = receipt.conversationId;
+      conversationId = acceptedConversationId;
+      eventIds.push(receipt.eventId);
+      await this.projectSystemActivity({
+        conversationId: acceptedConversationId,
+        source: {
+          sourceType: 'friendship',
+          sourceId: event.aggregateId,
+          sourceAggregateVersion: event.aggregateVersion,
+        },
+        sourceEventId: event.eventId,
+        sourceEventType: event.eventType,
+        sourceEventVersion: event.eventVersion,
+        correlationId: event.correlationId,
+        causationId: event.causationId,
+        payload: friendshipPayload,
+      });
+      action = existingConversationId ? 'bound_existing' : 'provisioned';
+    } else if (event.aggregateVersion >= observedVersion && conversationId) {
       const stored = this.requireConversation(conversationId);
       if (event.eventType === 'player.blocked.v2') {
         const transitions: ConversationMemberV2[] = [];

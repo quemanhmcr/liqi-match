@@ -11,6 +11,7 @@ import {
 } from '../../core-v1/identity/semantic-ids';
 import { coreV2EventSchema } from '../events/event-envelope';
 import {
+  FriendshipAcceptedEventV2Schema,
   PlayerBlockedEventV2Schema,
   PlayerMutedEventV2Schema,
   PlayerUnblockedEventV2Schema,
@@ -215,6 +216,19 @@ export const MessageV2Schema = z
   .strict();
 export type MessageV2 = z.infer<typeof MessageV2Schema>;
 
+export const MessageReportEvidenceV2Schema = z
+  .object({
+    evidenceId: MessageReportEvidenceIdV2Schema,
+    conversationId: ConversationIdSchema,
+    message: MessageV2Schema,
+    reporterPlayerId: PlayerIdSchema,
+    capturedAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+export type MessageReportEvidenceV2 = z.infer<
+  typeof MessageReportEvidenceV2Schema
+>;
+
 export const ConversationReadCursorV2Schema = z
   .object({
     conversationId: ConversationIdSchema,
@@ -406,6 +420,7 @@ export type ConversationSystemActivityInputV2 = z.infer<
 export const RelationshipConversationAccessEventV2Schema = z.discriminatedUnion(
   'eventType',
   [
+    FriendshipAcceptedEventV2Schema,
     PlayerBlockedEventV2Schema,
     PlayerUnblockedEventV2Schema,
     PlayerMutedEventV2Schema,
