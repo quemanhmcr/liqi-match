@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(31);
+select plan(39);
 
 select has_table('public', 'players', 'canonical players table exists');
 select has_table('public', 'player_profiles_v1', 'canonical player profile mapping exists');
@@ -398,6 +398,142 @@ select isnt(
   ),
   true,
   'onboarding player cannot send messages'
+);
+
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000101', true);
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '01000000-0000-4000-8000-000000000101',
+    'role', 'authenticated',
+    'session_id', '09000000-0000-4000-8000-000000000105',
+    'iat', extract(epoch from now() - interval '1 minute')::bigint,
+    'exp', extract(epoch from now() + interval '1 hour')::bigint
+  )::text,
+  true
+);
+
+create temporary table deletion_first as
+select public.request_player_deletion_v1(
+  jsonb_build_object(
+    'confirmation', 'DELETE',
+    'expectedLifecycleVersion', (
+      select lifecycle_version
+      from public.players
+      where account_id = '01000000-0000-4000-8000-000000000101'
+    ),
+    'idempotencyKey', 'account.delete.000000000101'
+  )
+) as result;
+
+select is(
+  (select result->'lifecycle'->>'state' from deletion_first),
+  'deleting',
+  'deletion request transitions the active player to deleting'
+);
+
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '01000000-0000-4000-8000-000000000101',
+    'role', 'authenticated',
+    'session_id', '09000000-0000-4000-8000-000000000106',
+    'iat', extract(epoch from now() - interval '1 minute')::bigint,
+    'exp', extract(epoch from now() + interval '1 hour')::bigint
+  )::text,
+  true
+);
+
+select is(
+  (public.request_player_deletion_v1(
+    jsonb_build_object(
+      'confirmation', 'DELETE',
+      'expectedLifecycleVersion', 3,
+      'idempotencyKey', 'account.delete.000000000101'
+    )
+  )->>'repeated')::boolean,
+  true,
+  'deletion retry returns the durable receipt'
+);
+
+select is(
+  public.request_player_deletion_v1(
+    jsonb_build_object(
+      'confirmation', 'DELETE',
+      'expectedLifecycleVersion', 3,
+      'idempotencyKey', 'account.delete.000000000101'
+    )
+  )->'principal'->>'sessionId',
+  '09000000-0000-4000-8000-000000000106',
+  'deletion replay refreshes the authenticated principal'
+);
+
+select throws_like(
+  $$select public.request_player_deletion_v1(
+    jsonb_build_object(
+      'confirmation', 'DELETE',
+      'expectedLifecycleVersion', 3,
+      'idempotencyKey', 'account.delete.stale.000000000101'
+    )
+  )$$,
+  '%lifecycle_version_conflict%',
+  'stale deletion lifecycle version returns a structured conflict'
+);
+
+select throws_like(
+  $$select public.request_player_deletion_v1(
+    jsonb_build_object(
+      'confirmation', 'delete',
+      'expectedLifecycleVersion', 4,
+      'idempotencyKey', 'account.delete.invalid.000000000101'
+    )
+  )$$,
+  '%validation_failed%',
+  'deletion command rejects missing explicit confirmation'
+);
+
+reset role;
+
+select is(
+  (
+    select count(*)::integer
+    from private.outbox_events events
+    join public.players players on players.id = events.aggregate_id
+    where players.account_id = '01000000-0000-4000-8000-000000000101'
+      and events.event_type = 'player.deletion_requested.v1'
+  ),
+  1,
+  'deletion retries emit exactly one deletion-requested event'
+);
+
+select is(
+  (
+    select jsonb_build_object(
+      'state', lifecycle_state,
+      'discoverable', discoverable,
+      'messagingAllowed', messaging_allowed
+    )
+    from public.players
+    where account_id = '01000000-0000-4000-8000-000000000101'
+  ),
+  '{"state":"deleting","discoverable":false,"messagingAllowed":false}'::jsonb,
+  'deleting lifecycle immediately disables discovery and messaging'
+);
+
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.request_player_deletion_v1(jsonb)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'anon',
+    'public.request_player_deletion_v1(jsonb)',
+    'EXECUTE'
+  ),
+  'deletion request command is authenticated-only'
 );
 
 delete from auth.users

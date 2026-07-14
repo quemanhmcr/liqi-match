@@ -239,6 +239,8 @@ alter table private.outbox_events
       'set.join_requested.v1',
       'set.invite_created.v1',
       'match.created.v1',
+      'player.deletion_requested.v1',
+      'player.deleted.v1',
       'conversation.bootstrap_requested.v1',
       'conversation.created.v1',
       'message.sent.v1',

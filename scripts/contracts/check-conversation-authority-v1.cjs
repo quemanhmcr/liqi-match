@@ -193,6 +193,11 @@ requireInvariant(
   'authenticated messaging must compose identity, lifecycle, and profile-version provider seams',
 );
 requireInvariant(
+  migration.includes("'player.deletion_requested.v1'") &&
+    migration.includes("'player.deleted.v1'"),
+  'Conversation outbox compatibility must preserve deletion lifecycle events',
+);
+requireInvariant(
   !/foregroundPolicy/i.test(migration) &&
     /authoritativeUnreadCount/i.test(migration),
   'notification requests must provide authoritative unread without deciding foreground suppression',
