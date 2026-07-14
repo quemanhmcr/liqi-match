@@ -7,7 +7,7 @@ const root = process.cwd();
 const migration = fs.readFileSync(
   path.join(
     root,
-    'supabase/migrations/202607140056_social_privacy_report_authority_v2.sql',
+    'supabase/migrations/202607140057_social_privacy_report_authority_v2.sql',
   ),
   'utf8',
 );
