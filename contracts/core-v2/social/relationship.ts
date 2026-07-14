@@ -281,6 +281,14 @@ export const ReportMessageCommandV2Schema = ReportCommandBaseV2Schema.extend({
   messageId: z.string().uuid(),
 });
 
+export const FriendshipListPageV2Schema = z
+  .object({
+    contractVersion: CoreV2ContractVersionSchema,
+    items: z.array(SocialRelationshipSnapshotV2Schema),
+    nextCursor: PlayerIdSchema.nullable(),
+  })
+  .strict();
+
 export const SocialRelationshipCommandReceiptV2Schema = z
   .object({
     correlationId: CorrelationIdSchema,
@@ -380,6 +388,7 @@ export const TrustVisibilityDecisionV2Schema = z
     }
   });
 
+export type FriendshipListPageV2 = z.infer<typeof FriendshipListPageV2Schema>;
 export type TrustVisibilityV2 = z.infer<typeof TrustVisibilityV2Schema>;
 export type TrustVisibilityDecisionV2 = z.infer<
   typeof TrustVisibilityDecisionV2Schema
