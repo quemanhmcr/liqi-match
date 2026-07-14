@@ -29,6 +29,9 @@ begin
 end;
 $$;
 
+grant execute on function public.test_set_conversation_actor_v1(uuid, uuid)
+  to authenticated;
+
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at
 )

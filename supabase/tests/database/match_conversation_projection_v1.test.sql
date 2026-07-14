@@ -79,6 +79,7 @@ select jsonb_build_object(
   )
 ) as event;
 grant select on table projection_event to service_role;
+grant select on table public.matches to service_role;
 
 set local role service_role;
 

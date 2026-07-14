@@ -177,22 +177,38 @@ jobs:
               "Parse errors:",
               "You planned",
           )
-          selected = set()
+          blocks = []
           for index, line in enumerate(lines):
-              if any(pattern in line for pattern in patterns):
-                  selected.update(
-                      range(max(0, index - 8), min(len(lines), index + 14))
+              if "psql:" in line and "ERROR:" in line:
+                  blocks.append(
+                      "\n".join(
+                          lines[max(0, index - 2) : min(len(lines), index + 14)]
+                      )
                   )
-          excerpt = "\n".join(lines[index] for index in sorted(selected))
-          if not excerpt:
-              excerpt = text[-18000:]
-          excerpt = excerpt[-50000:]
-          escaped = (
-              excerpt.replace("%", "%25")
-              .replace("\r", "%0D")
-              .replace("\n", "%0A")
-          )
-          print(f"::error title=Supabase pgTAP failure::{escaped}")
+              elif line.lstrip().startswith("not ok"):
+                  blocks.append(
+                      "\n".join(
+                          lines[max(0, index - 2) : min(len(lines), index + 12)]
+                      )
+                  )
+          selected = [
+              line for line in lines if any(pattern in line for pattern in patterns)
+          ]
+          if selected:
+              blocks.append("\n".join(selected[-120:]))
+          if not blocks:
+              blocks.append(text[-18000:])
+
+          for index, block in enumerate(blocks[:40], start=1):
+              escaped = (
+                  block[-14000:]
+                  .replace("%", "%25")
+                  .replace("\r", "%0D")
+                  .replace("\n", "%0A")
+              )
+              print(
+                  f"::error title=Supabase pgTAP failure {index}::{escaped}"
+              )
           PYTHON
           exit 1
 

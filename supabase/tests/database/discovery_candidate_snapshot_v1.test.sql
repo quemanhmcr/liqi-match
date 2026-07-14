@@ -92,7 +92,7 @@ select is(
 );
 select is(
   (select version from public.match_intents_v1 where player_id = '20000000-0000-4000-8000-000000000306'),
-  2,
+  2::bigint,
   'repeating Match Intent expiry does not advance the version twice'
 );
 set local role authenticated;
