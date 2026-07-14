@@ -50,6 +50,16 @@ export type JoinRequestNotification = NotificationBase<
   { setId: string }
 >;
 
+export type FriendshipRequestedNotification = NotificationBase<
+  'friendship-requested',
+  { requesterPlayerId: string }
+>;
+
+export type FriendshipAcceptedNotification = NotificationBase<
+  'friendship-accepted',
+  { friendPlayerId: string }
+>;
+
 export type SystemNotification = NotificationBase<
   'system',
   { deepLink: DeepLinkV1 }
@@ -100,6 +110,8 @@ export type NotificationRecord =
   | MessageReceivedNotification
   | MatchCreatedNotification
   | JoinRequestNotification
+  | FriendshipRequestedNotification
+  | FriendshipAcceptedNotification
   | SystemNotification
   | PraiseReceivedNotification
   | TeamEventNotification
@@ -190,6 +202,8 @@ type NotificationBase<
 
 const categoryByKind: Record<NotificationKind, NotificationCategory> = {
   'direct-message': 'message',
+  'friendship-accepted': 'interaction',
+  'friendship-requested': 'interaction',
   'message-received': 'message',
   'join-request': 'set-invite',
   'match-created': 'interaction',

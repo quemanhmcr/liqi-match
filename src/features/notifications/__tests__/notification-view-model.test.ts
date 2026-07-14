@@ -104,6 +104,46 @@ describe('notification view model', () => {
     });
   });
 
+  it('routes friendship notifications to the latest authoritative profile state', () => {
+    const request = mapNotificationToViewModel(
+      {
+        id: 'friendship-requested',
+        kind: 'friendship-requested',
+        occurredAt: now.toISOString(),
+        payload: { requesterPlayerId: 'player-requester' },
+        readAt: null,
+        recipientId: 'player-recipient',
+        seenAt: null,
+      },
+      { assetResolver, now },
+    );
+    const accepted = mapNotificationToViewModel(
+      {
+        id: 'friendship-accepted',
+        kind: 'friendship-accepted',
+        occurredAt: now.toISOString(),
+        payload: { friendPlayerId: 'player-friend' },
+        readAt: null,
+        recipientId: 'player-requester',
+        seenAt: null,
+      },
+      { assetResolver, now },
+    );
+
+    expect(request.action?.destination).toEqual({
+      kind: 'profile',
+      playerId: 'player-requester',
+    });
+    expect(request).toMatchObject({
+      category: 'interaction',
+      title: 'Lời mời kết bạn',
+    });
+    expect(accepted.action?.destination).toEqual({
+      kind: 'profile',
+      playerId: 'player-friend',
+    });
+  });
+
   it('formats yesterday separately from an empty or current inbox state', () => {
     expect(formatNotificationTime('2026-07-10T09:00:00.000Z', now)).toBe(
       'Hôm qua',

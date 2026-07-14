@@ -15,6 +15,7 @@ const ids = {
   notification1: '90000000-0000-4000-8000-000000000001',
   notification2: '90000000-0000-4000-8000-000000000002',
   player: '20000000-0000-4000-8000-000000000001',
+  friend: '20000000-0000-4000-8000-000000000002',
   profile: '30000000-0000-4000-8000-000000000001',
   set: 'a0000000-0000-4000-8000-000000000001',
 } as const;
@@ -39,6 +40,8 @@ function notification(
       | 'message_received'
       | 'set_invite'
       | 'join_request'
+      | 'friendship_requested'
+      | 'friendship_accepted'
       | 'system';
     notificationId: string;
     sourceEventId: string;
@@ -115,6 +118,39 @@ describe('ApiNotificationInboxRepository', () => {
     expect(page.latestWatermark).toEqual({
       id: ids.notification1,
       occurredAt: '2026-07-14T00:00:00.000Z',
+    });
+  });
+
+  it('maps friendship notifications to canonical PlayerId profile actions', async () => {
+    const { repository } = repositoryWith({
+      items: [
+        notification({
+          deepLink: { playerId: ids.friend, target: 'profile' },
+          kind: 'friendship_requested',
+        }),
+        notification({
+          deepLink: { playerId: ids.friend, target: 'profile' },
+          kind: 'friendship_accepted',
+          notificationId: ids.notification2,
+          sourceEventId: ids.event2,
+        }),
+      ],
+      latestWatermark: null,
+      nextCursor: null,
+      unseenCount: 2,
+    });
+
+    await expect(repository.list({ session })).resolves.toMatchObject({
+      items: [
+        {
+          kind: 'friendship-requested',
+          payload: { requesterPlayerId: ids.friend },
+        },
+        {
+          kind: 'friendship-accepted',
+          payload: { friendPlayerId: ids.friend },
+        },
+      ],
     });
   });
 

@@ -72,6 +72,14 @@ Profile relationship actions consume the exact `SocialRelationshipSnapshotV2` re
 
 Blocked-user settings read `list_blocked_players_v2`, which returns viewer-owned directional blocks plus the exact relationship version required by `unblock_player_v2`. Mobile settings no longer query or delete legacy `blocks` rows directly; the legacy table remains rollback/shadow data only.
 
+## Friendship notification integration agreement
+
+`friendship.requested.v2` and `friendship.accepted.v2` remain Social-owned source events. A supplier-owned outbox projection creates the existing `notification.requested.v1` envelope with the friendship event as `causationId`; Return Loop continues to own notification persistence, inbox read state, push delivery, replay receipts and deep-link resolution.
+
+Friendship notification navigation contains only the counterpart canonical `PlayerId`. It never contains a friendship request ID or client capability. Tapping opens `/profile/[playerId]`, where the latest relationship snapshot decides whether Accept, Cancel or no friendship action is available.
+
+Block is checked both before notification persistence and during profile deep-link resolution. A block created after an inbox row was persisted therefore makes the old notification destination expire instead of reopening a hidden profile. Rollback disables friendship mutations or the Social read flag; it does not delete source events, projected notification requests or canonical relationship history.
+
 ## Conversation consumer agreement (S1/S3)
 
 The relationship aggregate is the conversation source for friendship-derived direct conversations. Consumers use `aggregateId` as `sourceId` and `aggregateVersion` as the monotonic `sourceVersion`. `friendship.accepted.v2` supplies the complete two-player active member set. Replay of the same event/source must return the existing direct conversation rather than create another.
