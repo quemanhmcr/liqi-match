@@ -7,6 +7,7 @@ import {
   dispatchPushJobs,
   type ClaimedPushJob,
   type PushWorkerDependencies,
+  type PushWorkerFetch,
   type RpcClient,
 } from '../../supabase/functions/notification-push-worker/handler';
 
@@ -27,7 +28,7 @@ const job: ClaimedPushJob = {
 };
 
 function dependencies(
-  fetchImplementation: typeof fetch,
+  fetchImplementation: PushWorkerFetch,
 ): PushWorkerDependencies {
   return {
     env: {
@@ -72,7 +73,7 @@ describe('notification push worker', () => {
   });
 
   it('records provider tickets per token after a successful dispatch', async () => {
-    const fetchMock = jest.fn<typeof fetch>();
+    const fetchMock = jest.fn<PushWorkerFetch>();
     fetchMock.mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -124,7 +125,7 @@ describe('notification push worker', () => {
   });
 
   it('returns a retryable job failure for Expo throttling', async () => {
-    const fetchMock = jest.fn<typeof fetch>();
+    const fetchMock = jest.fn<PushWorkerFetch>();
     fetchMock.mockResolvedValue(new Response('rate limited', { status: 429 }));
     const rpc = rpcWith(async (name) => {
       if (name === 'claim_notification_push_jobs_v1') return [job];
@@ -146,7 +147,7 @@ describe('notification push worker', () => {
   });
 
   it('records ready receipts and leaves missing receipts leased for retry', async () => {
-    const fetchMock = jest.fn<typeof fetch>();
+    const fetchMock = jest.fn<PushWorkerFetch>();
     fetchMock.mockResolvedValue(
       new Response(JSON.stringify({ data: { 'ticket-1': { status: 'ok' } } }), {
         status: 200,
@@ -196,7 +197,7 @@ describe('notification push worker', () => {
         SUPABASE_SERVICE_ROLE_KEY: '',
         SUPABASE_URL: '',
       },
-      fetch: jest.fn<typeof fetch>(),
+      fetch: jest.fn<PushWorkerFetch>(),
     });
 
     const response = await handler(
@@ -218,7 +219,7 @@ describe('notification push worker', () => {
       throw new Error(`Unexpected RPC ${name}`);
     });
     const handler = createNotificationPushWorkerHandler({
-      ...dependencies(jest.fn<typeof fetch>()),
+      ...dependencies(jest.fn<PushWorkerFetch>()),
       rpc,
     });
 

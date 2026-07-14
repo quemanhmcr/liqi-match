@@ -11,9 +11,14 @@ export type RpcClient = Readonly<{
   call<T>(name: string, body: Readonly<Record<string, unknown>>): Promise<T>;
 }>;
 
+export type PushWorkerFetch = (
+  input: string | URL | Request,
+  init?: RequestInit,
+) => Promise<Response>;
+
 export type PushWorkerDependencies = Readonly<{
   env: PushWorkerEnvironment;
-  fetch: typeof fetch;
+  fetch: PushWorkerFetch;
   rpc?: RpcClient;
 }>;
 
