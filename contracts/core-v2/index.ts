@@ -3,6 +3,7 @@ export * from './conversation/conversation';
 export * from './errors/errors';
 export * from './events';
 export * from './identity/semantic-ids';
+export * from './notification';
 export * from './outcomes/session-outcomes';
 export * from './social';
 export * from './trust/reputation';

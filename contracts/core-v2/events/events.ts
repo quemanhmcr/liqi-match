@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ActivityItemV2Schema } from '../activity/activity';
+import { ActivityNotificationRequestedEventV2Schema } from '../notification/activity-notification';
 import {
   PlayerIdSchema,
   PlaySessionIdSchema,
@@ -252,6 +253,7 @@ export const CoreV2TrustOutcomeEventSchema = z.discriminatedUnion('eventType', [
   RepeatPlayRequestedEventV2Schema,
   RepeatTeammateFormedEventV2Schema,
   ActivityItemCreatedEventV2Schema,
+  ActivityNotificationRequestedEventV2Schema,
 ]);
 
 export const CoreV2EventSchema = z.discriminatedUnion('eventType', [
@@ -275,6 +277,7 @@ export const CoreV2EventSchema = z.discriminatedUnion('eventType', [
   RepeatPlayRequestedEventV2Schema,
   RepeatTeammateFormedEventV2Schema,
   ActivityItemCreatedEventV2Schema,
+  ActivityNotificationRequestedEventV2Schema,
 ]);
 
 export type CoreV2Event = z.infer<typeof CoreV2EventSchema>;

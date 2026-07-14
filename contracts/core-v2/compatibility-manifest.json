@@ -12,5 +12,9 @@
     "session-membership-reconcile.json",
     "relationship-block-revoke.json",
     "session-ready-system-activity.json"
+  ],
+  "activityNotificationConsumerFixtures": [
+    "activity-feedback-notification-request.json",
+    "activity-frequency-capped-request.json"
   ]
 }

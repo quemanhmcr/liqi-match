@@ -1,0 +1,35 @@
+{
+  "activityItem": {
+    "activityItemId": "47000000-0000-4000-8000-000000000011",
+    "playerId": "20000000-0000-4000-8000-000000000001",
+    "kind": "repeat_play_recommendation",
+    "payload": {
+      "teammatePlayerId": "20000000-0000-4000-8000-000000000002",
+      "completedSessionCount": 2
+    },
+    "priority": 800,
+    "deduplicationKey": "repeat:20000000-0000-4000-8000-000000000001:20000000-0000-4000-8000-000000000002:2",
+    "version": 1,
+    "createdAt": "2026-07-14T12:08:00.000Z",
+    "dismissedAt": null
+  },
+  "sourceEventId": "43000000-0000-4000-8000-000000000011",
+  "causationId": "43000000-0000-4000-8000-000000000001",
+  "correlationId": "43000000-0000-4000-8000-000000000002",
+  "target": {
+    "target": "repeat_play",
+    "sourceSessionId": null,
+    "teammatePlayerIds": ["20000000-0000-4000-8000-000000000002"]
+  },
+  "deliveryDecision": {
+    "decisionId": "48000000-0000-4000-8000-000000000002",
+    "engagementPreferencesVersion": 3,
+    "evaluatedAt": "2026-07-14T12:08:00.000Z",
+    "frequencyWindowKey": "2026-07-14:Asia/Bangkok",
+    "inboxAllowed": true,
+    "maxReactivationNotificationsPerDay": 2,
+    "pushAllowed": false,
+    "reactivationNotificationsUsed": 2,
+    "reason": "frequency_capped"
+  }
+}
