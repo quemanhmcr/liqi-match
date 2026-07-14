@@ -7,6 +7,11 @@ import { ApplicationServiceProviders } from '@/app-shell/providers/ApplicationSe
 import type { ApplicationServices } from '@/app-shell/runtime/application-services';
 import { createSimulationApplicationServices } from '@/app-shell/runtime/create-application-services';
 import type { AuthSession } from '@/shared/auth/auth-service';
+import {
+  AuthenticatedPrincipalV1Schema,
+  PlayerLifecycleSnapshotV1Schema,
+  type PlayerLifecycleStateV1,
+} from '@/shared/contracts/core-v1';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
 
 type ApplicationServiceOverrides = Partial<
@@ -22,17 +27,57 @@ type ApplicationServiceOverrides = Partial<
   >
 >;
 
-export const testAuthSession: AuthSession = {
-  accessToken: 'test-access-token',
-  expiresAt: 4102444800,
-  refreshToken: 'test-refresh-token',
-  tokenType: 'bearer',
-  user: {
-    email: 'tester@example.com',
-    id: '00000000-0000-0000-0000-000000000001',
-    user_metadata: { full_name: 'Test Player' },
-  },
-};
+export const testAccountId = '01000000-0000-4000-8000-000000000001';
+export const testPlayerId = '20000000-0000-4000-8000-000000000001';
+export const testProfileId = '30000000-0000-4000-8000-000000000001';
+
+export function createTestAuthSession({
+  accountId = testAccountId,
+  lifecycleState = 'active',
+  playerId = testPlayerId,
+  profileId = testProfileId,
+  sessionId = '09000000-0000-4000-8000-000000000001',
+}: {
+  accountId?: string;
+  lifecycleState?: PlayerLifecycleStateV1;
+  playerId?: string;
+  profileId?: string;
+  sessionId?: string;
+} = {}): AuthSession {
+  const active = lifecycleState === 'active';
+  return {
+    accessToken: 'test-access-token',
+    expiresAt: 4_102_444_800,
+    lifecycle: PlayerLifecycleSnapshotV1Schema.parse({
+      discoverable: active,
+      messagingAllowed: active,
+      playerId,
+      profileId,
+      state: lifecycleState,
+      updatedAt: '2026-07-14T00:00:00.000Z',
+      version: active ? 2 : 1,
+    }),
+    principal: AuthenticatedPrincipalV1Schema.parse({
+      accountId,
+      expiresAt: '2100-01-01T00:00:00.000Z',
+      issuedAt: '2099-12-31T23:00:00.000Z',
+      playerId,
+      sessionId,
+    }),
+    refreshToken: 'test-refresh-token',
+    tokenType: 'bearer',
+    user: {
+      email: 'tester@example.com',
+      id: accountId,
+      user_metadata: { full_name: 'Test Player' },
+    },
+  };
+}
+
+export const testAuthSession = createTestAuthSession();
+export const testOnboardingAuthSession = createTestAuthSession({
+  lifecycleState: 'onboarding',
+});
 
 export async function renderWithProviders(
   ui: ReactElement,

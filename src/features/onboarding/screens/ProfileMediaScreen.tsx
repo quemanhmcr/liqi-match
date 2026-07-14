@@ -42,6 +42,7 @@ import {
   usePersistedOnboardingDraftStore,
 } from '../model/persisted-onboarding-draft';
 import { completeOnboardingProfile } from '../services/onboarding-profile-service';
+import { synchronizeAuthSession } from '@/shared/auth/auth-service';
 import { useAuth } from '@/shared/auth/auth-context';
 import { appRoutes } from '@/app-shell/navigation/routes';
 
@@ -52,7 +53,7 @@ type SubmitPhase = 'idle' | 'saving' | 'media' | 'done';
 const WALL_SLOT_COUNT = 4;
 
 export default function ProfileMediaScreen() {
-  const { session } = useAuth();
+  const { session, setSession } = useAuth();
   const envelope = usePersistedOnboardingDraftStore((state) => state.envelope);
   const mediaQueue = envelope?.data.mediaQueue ?? [];
   const avatar = mediaQueue.find(
@@ -249,6 +250,14 @@ export default function ProfileMediaScreen() {
         remaining.every(isOnboardingMediaItemComplete)
       ) {
         await markOnboardingCompleted();
+        const activeSession =
+          session.lifecycle?.state === 'active'
+            ? session
+            : await synchronizeAuthSession();
+        if (activeSession?.lifecycle?.state !== 'active') {
+          throw new Error('Chưa thể đồng bộ active player sau khi upload ảnh.');
+        }
+        setSession(activeSession);
         router.replace(appRoutes.main.home);
       }
     } catch (caught) {
@@ -274,22 +283,30 @@ export default function ProfileMediaScreen() {
 
     try {
       let current = getPersistedOnboardingDraft();
-      if (current.status === 'completed') {
+      let operationSession = session;
+      if (
+        current.status === 'completed' &&
+        session.lifecycle?.state === 'active'
+      ) {
         router.replace(appRoutes.main.home);
         return;
       }
 
-      if (current.status !== 'media_pending') {
+      if (session.lifecycle?.state !== 'active') {
         const completion = await completeOnboardingProfile(
           session,
           current.data,
         );
-        if (!completion.completed) {
-          throw new Error(
-            'Hồ sơ chưa được xác nhận hoàn tất. Vui lòng thử lại.',
-          );
-        }
+        operationSession = completion.session;
         await markOnboardingCoreProfileCompleted(completion.warnings);
+        current = getPersistedOnboardingDraft();
+      } else if (
+        current.status !== 'media_pending' &&
+        current.status !== 'completed'
+      ) {
+        await markOnboardingCoreProfileCompleted(
+          current.data.compatibilityWarnings ?? [],
+        );
         current = getPersistedOnboardingDraft();
       }
 
@@ -302,7 +319,7 @@ export default function ProfileMediaScreen() {
             await updateOnboardingMediaItem(nextItem);
           },
           onProgress: setUploadProgress,
-          session,
+          session: operationSession,
         });
         if (result.failed.length > 0) {
           throw new Error(
@@ -313,6 +330,14 @@ export default function ProfileMediaScreen() {
 
       await markOnboardingCompleted();
       setSubmitPhase('done');
+      const activeSession =
+        operationSession.lifecycle?.state === 'active'
+          ? operationSession
+          : await synchronizeAuthSession();
+      if (activeSession?.lifecycle?.state !== 'active') {
+        throw new Error('Chưa thể đồng bộ active player sau onboarding.');
+      }
+      setSession(activeSession);
       router.replace(appRoutes.main.home);
     } catch (caught) {
       setSubmitPhase('idle');
@@ -322,6 +347,7 @@ export default function ProfileMediaScreen() {
       );
     }
   };
+
   return (
     <View style={styles.root}>
       <OnboardingCinematicShell

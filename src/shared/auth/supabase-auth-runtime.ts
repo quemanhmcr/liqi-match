@@ -322,6 +322,23 @@ export async function restoreAuthSession(): Promise<AuthSession | null> {
   return coordinator.getCurrent();
 }
 
+export async function synchronizeAuthSession(): Promise<AuthSession | null> {
+  await initialize();
+  const { data, error } = await supabaseAuthClient.auth.getSession();
+  if (error) {
+    throw new AuthError(
+      error.message || 'Không thể đồng bộ phiên đăng nhập.',
+      error.code ?? 'session_sync_failed',
+      { cause: error },
+    );
+  }
+  if (!data.session) {
+    coordinator.clear();
+    return null;
+  }
+  return reconcile(data.session);
+}
+
 export async function refreshAuthSession(): Promise<AuthSession | null> {
   await initialize();
   if (refreshRequest !== null) return refreshRequest;

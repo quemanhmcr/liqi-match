@@ -24,8 +24,11 @@ import {
   type OnboardingDraftEnvelope,
 } from '@/features/onboarding';
 import {
+  createTestAuthSession,
   renderWithProviders,
+  testAccountId,
   testAuthSession,
+  testOnboardingAuthSession,
 } from '@/test/render-with-providers';
 
 jest.mock('expo-router', () => ({
@@ -48,9 +51,8 @@ const { RouteAccessGate } =
 const mockExpoRouter = jest.requireMock('expo-router') as {
   usePathname: ReturnType<typeof jest.fn<() => string>>;
 };
-const testAccountId = '00000000-0000-0000-0000-000000000001';
 
-describe('RouteAccessGate onboarding integration', () => {
+describe('RouteAccessGate authoritative lifecycle integration', () => {
   beforeEach(async () => {
     await act(async () => {
       clearActivePersistedOnboardingDraft();
@@ -67,11 +69,12 @@ describe('RouteAccessGate onboarding integration', () => {
     jest.restoreAllMocks();
   });
 
-  it('sends a new authenticated user to the first onboarding step', async () => {
+  it('sends an authoritative onboarding player to the first local resume step', async () => {
     const { getByLabelText } = await renderWithProviders(
       <RouteAccessGate area="app">
         <Text>App content</Text>
       </RouteAccessGate>,
+      { session: testOnboardingAuthSession },
     );
 
     await waitFor(() => {
@@ -81,7 +84,7 @@ describe('RouteAccessGate onboarding integration', () => {
     });
   });
 
-  it('blocks a deep link to media when rank is still unanswered', async () => {
+  it('blocks an onboarding deep link when local prerequisites are unanswered', async () => {
     mockExpoRouter.usePathname.mockReturnValue('/profile-media');
     jest.spyOn(AsyncStorage, 'getItem').mockResolvedValue(
       JSON.stringify(
@@ -95,6 +98,7 @@ describe('RouteAccessGate onboarding integration', () => {
       <RouteAccessGate area="onboarding">
         <Text>Media content</Text>
       </RouteAccessGate>,
+      { session: testOnboardingAuthSession },
     );
 
     await waitFor(() => {
@@ -102,7 +106,7 @@ describe('RouteAccessGate onboarding integration', () => {
     });
   });
 
-  it('keeps a core-complete user with media errors inside media_pending', async () => {
+  it('keeps a media-pending onboarding player at the final resume step', async () => {
     jest.spyOn(AsyncStorage, 'getItem').mockImplementation(async (key) => {
       if (key !== onboardingDraftStorageKey(testAccountId)) return null;
       return JSON.stringify(
@@ -128,6 +132,7 @@ describe('RouteAccessGate onboarding integration', () => {
       <RouteAccessGate area="app">
         <Text>App content</Text>
       </RouteAccessGate>,
+      { session: testOnboardingAuthSession },
     );
 
     await waitFor(() => {
@@ -137,14 +142,76 @@ describe('RouteAccessGate onboarding integration', () => {
     });
   });
 
-  it('does not reuse a completed draft after the authenticated account changes', async () => {
+  it('does not grant Home from a stale local completed marker', async () => {
+    jest
+      .spyOn(AsyncStorage, 'getItem')
+      .mockResolvedValue(JSON.stringify(envelope({ status: 'completed' })));
+
+    const { getByLabelText, queryByText } = await renderWithProviders(
+      <RouteAccessGate area="app">
+        <Text>App content</Text>
+      </RouteAccessGate>,
+      { session: testOnboardingAuthSession },
+    );
+
+    await waitFor(() => {
+      expect(getByLabelText('redirect-target').props.children).toBe(
+        '/profile-media',
+      );
+    });
+    expect(queryByText('App content')).toBeNull();
+  });
+
+  it('allows an authoritative active player without hydrating local onboarding state', async () => {
+    const getItem = jest.spyOn(AsyncStorage, 'getItem');
+    const { getByText } = await renderWithProviders(
+      <RouteAccessGate area="app">
+        <Text>App content</Text>
+      </RouteAccessGate>,
+      { session: testAuthSession },
+    );
+
+    await waitFor(() => expect(getByText('App content')).toBeTruthy());
+    expect(getItem).not.toHaveBeenCalled();
+  });
+
+  it('redirects an active player away from public auth routes', async () => {
+    const { getByLabelText } = await renderWithProviders(
+      <RouteAccessGate area="public">
+        <Text>Login content</Text>
+      </RouteAccessGate>,
+      { session: testAuthSession },
+    );
+
+    expect(getByLabelText('redirect-target').props.children).toBe('/home');
+  });
+
+  const blockedCases: ['suspended' | 'deleting' | 'deleted', string][] = [
+    ['suspended', 'Tài khoản đang bị tạm ngưng'],
+    ['deleting', 'Đang xóa tài khoản'],
+    ['deleted', 'Tài khoản đã được xóa'],
+  ];
+
+  it.each(blockedCases)(
+    'fails closed for lifecycle %s',
+    async (state, label) => {
+      const { getByLabelText, queryByText } = await renderWithProviders(
+        <RouteAccessGate area="app">
+          <Text>App content</Text>
+        </RouteAccessGate>,
+        { session: createTestAuthSession({ lifecycleState: state }) },
+      );
+
+      expect(getByLabelText(label)).toBeTruthy();
+      expect(queryByText('App content')).toBeNull();
+    },
+  );
+
+  it('does not reuse another account local draft', async () => {
     await act(async () => {
       usePersistedOnboardingDraftStore.setState({
-        accountId: 'account-a',
-        envelope: envelope({
-          accountId: 'account-a',
-          status: 'completed',
-        }),
+        accountId: testAccountId,
+        envelope: envelope({ status: 'completed' }),
         hydration: 'ready',
         hydrationError: null,
         migrationIssues: [],
@@ -152,16 +219,19 @@ describe('RouteAccessGate onboarding integration', () => {
         source: 'persisted',
       });
     });
-    const accountBSession = {
-      ...testAuthSession,
-      user: { ...testAuthSession.user, id: 'account-b' },
-    };
+    const accountB = createTestAuthSession({
+      accountId: '01000000-0000-4000-8000-000000000002',
+      lifecycleState: 'onboarding',
+      playerId: '20000000-0000-4000-8000-000000000002',
+      profileId: '30000000-0000-4000-8000-000000000002',
+      sessionId: '09000000-0000-4000-8000-000000000002',
+    });
 
     const { getByLabelText } = await renderWithProviders(
       <RouteAccessGate area="app">
         <Text>App content</Text>
       </RouteAccessGate>,
-      { session: accountBSession },
+      { session: accountB },
     );
 
     await waitFor(() => {
@@ -170,24 +240,8 @@ describe('RouteAccessGate onboarding integration', () => {
       );
     });
     expect(usePersistedOnboardingDraftStore.getState().accountId).toBe(
-      'account-b',
+      accountB.user.id,
     );
-  });
-
-  it('allows the app only after the persisted workflow is completed', async () => {
-    jest
-      .spyOn(AsyncStorage, 'getItem')
-      .mockResolvedValue(JSON.stringify(envelope({ status: 'completed' })));
-
-    const { getByText } = await renderWithProviders(
-      <RouteAccessGate area="app">
-        <Text>App content</Text>
-      </RouteAccessGate>,
-    );
-
-    await waitFor(() => {
-      expect(getByText('App content')).toBeTruthy();
-    });
   });
 });
 

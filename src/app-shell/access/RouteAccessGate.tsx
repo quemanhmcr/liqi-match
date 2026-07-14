@@ -9,8 +9,8 @@ import {
 import { useEffect, type PropsWithChildren } from 'react';
 
 import {
-  hydratePersistedOnboardingDraft,
   clearActivePersistedOnboardingDraft,
+  hydratePersistedOnboardingDraft,
   onboardingStepFromPathname,
   recoverInterruptedOnboardingMediaQueue,
   resolveOnboardingStepAccess,
@@ -18,9 +18,14 @@ import {
   type OnboardingStep,
 } from '@/features/onboarding';
 import { useAuth } from '@/shared/auth/auth-context';
+import { env } from '@/shared/config/env';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
 
-import type { AccessArea } from './access-policy';
+import {
+  resolvePlayerAccessMode,
+  type AccessArea,
+  type PlayerAccessMode,
+} from './access-policy';
 import { appRoutes } from '../navigation/routes';
 
 export type RouteAccessGateProps = PropsWithChildren<{
@@ -28,17 +33,56 @@ export type RouteAccessGateProps = PropsWithChildren<{
 }>;
 
 /**
- * Sole route orchestrator for auth, account-scoped draft hydration, onboarding
- * prerequisites, and completion. Screens only persist their step then navigate.
+ * Sole route orchestrator for auth, authoritative lifecycle, and local
+ * onboarding resume state. Local draft fields never grant application access.
  */
 export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
   const { loading, session } = useAuth();
   const pathname = usePathname();
-  const accountId = session?.user.id ?? null;
   const draftState = usePersistedOnboardingDraftStore();
+  const authorityValid = Boolean(
+    session?.principal &&
+    session.lifecycle &&
+    session.principal.accountId === session.user.id &&
+    session.principal.playerId === session.lifecycle.playerId,
+  );
+  const authorityPartiallyPresent = Boolean(
+    session?.principal || session?.lifecycle,
+  );
+  const accessMode: PlayerAccessMode = authorityPartiallyPresent
+    ? authorityValid
+      ? resolvePlayerAccessMode({
+          lifecycleState: session!.lifecycle!.state,
+          runtimeMode: env.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE,
+        })
+      : 'unavailable'
+    : resolvePlayerAccessMode({
+        lifecycleState: null,
+        runtimeMode: env.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE,
+      });
+  const accountId = authorityValid
+    ? session!.principal!.accountId
+    : accessMode === 'legacy_simulation'
+      ? (session?.user.id ?? null)
+      : null;
+  const requestedStep = onboardingStepFromPathname(pathname);
+  const preserveActiveFinalStep = Boolean(
+    accessMode === 'active' &&
+    area === 'onboarding' &&
+    requestedStep === 'profile_media' &&
+    accountId &&
+    draftState.accountId === accountId &&
+    draftState.hydration === 'ready' &&
+    draftState.envelope &&
+    draftState.envelope.status !== 'completed',
+  );
+  const needsDraft =
+    accessMode === 'onboarding' ||
+    accessMode === 'legacy_simulation' ||
+    preserveActiveFinalStep;
 
   useEffect(() => {
-    if (!accountId) {
+    if (!accountId || !needsDraft) {
       clearActivePersistedOnboardingDraft();
       return;
     }
@@ -53,14 +97,8 @@ export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
 
     clearActivePersistedOnboardingDraft();
     void hydrateAndRecover(accountId);
-  }, [accountId]);
+  }, [accountId, needsDraft]);
 
-  const draftReady = Boolean(
-    accountId &&
-    draftState.accountId === accountId &&
-    draftState.hydration === 'ready' &&
-    draftState.envelope,
-  );
   if (loading) return <RouteAccessLoading />;
   if (!session) {
     return area === 'public' ? (
@@ -70,6 +108,52 @@ export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
     );
   }
 
+  if (accessMode === 'active') {
+    if (preserveActiveFinalStep) return children;
+    return area === 'app' ? children : <Redirect href={appRoutes.main.home} />;
+  }
+  if (accessMode === 'suspended') {
+    return (
+      <RouteLifecycleStatus
+        accessibilityLabel="Tài khoản đang bị tạm ngưng"
+        body="Tài khoản này hiện không thể được khám phá hoặc nhắn tin."
+        title="Tài khoản đã bị tạm ngưng"
+      />
+    );
+  }
+  if (accessMode === 'deleting') {
+    return (
+      <RouteLifecycleStatus
+        accessibilityLabel="Đang xóa tài khoản"
+        body="Yêu cầu xóa đang được xử lý. Các deep link đã được vô hiệu hóa."
+        title="Đang xóa tài khoản"
+      />
+    );
+  }
+  if (accessMode === 'deleted') {
+    return (
+      <RouteLifecycleStatus
+        accessibilityLabel="Tài khoản đã được xóa"
+        body="Phiên này không còn quyền truy cập nội dung đã xác thực."
+        title="Tài khoản đã được xóa"
+      />
+    );
+  }
+  if (accessMode === 'unavailable' || !accountId) {
+    return (
+      <RouteLifecycleStatus
+        accessibilityLabel="Không thể xác minh player"
+        body="Ứng dụng chưa nhận được canonical identity và lifecycle từ server."
+        title="Chưa thể xác minh tài khoản"
+      />
+    );
+  }
+
+  const draftReady = Boolean(
+    draftState.accountId === accountId &&
+    draftState.hydration === 'ready' &&
+    draftState.envelope,
+  );
   if (!draftReady) {
     if (
       draftState.hydration === 'error' &&
@@ -77,7 +161,7 @@ export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
     ) {
       return (
         <RouteAccessUnavailable
-          onRetry={() => void hydrateAndRecover(session.user.id)}
+          onRetry={() => void hydrateAndRecover(accountId)}
         />
       );
     }
@@ -85,36 +169,35 @@ export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
   }
 
   const envelope = draftState.envelope!;
-  const requestedStep = onboardingStepFromPathname(pathname);
   const onboardingAccess = resolveOnboardingStepAccess({
     envelope,
     requestedStep,
   });
 
-  if (area === 'public') {
-    return (
-      <Redirect
-        href={
-          onboardingAccess.canLeaveOnboarding
-            ? appRoutes.main.home
-            : routeForOnboardingStep(onboardingAccess.currentStep)
-        }
-      />
-    );
+  if (accessMode === 'legacy_simulation') {
+    return renderLegacySimulationAccess({
+      area,
+      children,
+      onboardingAccess,
+      requestedStep,
+    });
   }
 
-  if (area === 'app') {
-    return onboardingAccess.canLeaveOnboarding ? (
+  // Production onboarding: a stale local "completed" marker means retry the
+  // authoritative command from the final step, never grant Home access.
+  const resumeStep = onboardingAccess.canLeaveOnboarding
+    ? 'profile_media'
+    : onboardingAccess.currentStep;
+  if (area === 'public' || area === 'app') {
+    return <Redirect href={routeForOnboardingStep(resumeStep)} />;
+  }
+  if (onboardingAccess.canLeaveOnboarding) {
+    return requestedStep === 'profile_media' ? (
       children
     ) : (
-      <Redirect href={routeForOnboardingStep(onboardingAccess.currentStep)} />
+      <Redirect href={appRoutes.onboarding.profileMedia} />
     );
   }
-
-  if (onboardingAccess.canLeaveOnboarding) {
-    return <Redirect href={appRoutes.main.home} />;
-  }
-
   if (
     requestedStep &&
     onboardingAccess.redirectTarget &&
@@ -127,6 +210,52 @@ export function RouteAccessGate({ area, children }: RouteAccessGateProps) {
     );
   }
 
+  return children;
+}
+
+function renderLegacySimulationAccess({
+  area,
+  children,
+  onboardingAccess,
+  requestedStep,
+}: {
+  area: AccessArea;
+  children: React.ReactNode;
+  onboardingAccess: ReturnType<typeof resolveOnboardingStepAccess>;
+  requestedStep: OnboardingStep | null | undefined;
+}) {
+  if (area === 'public') {
+    return (
+      <Redirect
+        href={
+          onboardingAccess.canLeaveOnboarding
+            ? appRoutes.main.home
+            : routeForOnboardingStep(onboardingAccess.currentStep)
+        }
+      />
+    );
+  }
+  if (area === 'app') {
+    return onboardingAccess.canLeaveOnboarding ? (
+      children
+    ) : (
+      <Redirect href={routeForOnboardingStep(onboardingAccess.currentStep)} />
+    );
+  }
+  if (onboardingAccess.canLeaveOnboarding) {
+    return <Redirect href={appRoutes.main.home} />;
+  }
+  if (
+    requestedStep &&
+    onboardingAccess.redirectTarget &&
+    onboardingAccess.redirectTarget !== 'home'
+  ) {
+    return (
+      <Redirect
+        href={routeForOnboardingStep(onboardingAccess.redirectTarget)}
+      />
+    );
+  }
   return children;
 }
 
@@ -182,6 +311,23 @@ function RouteAccessUnavailable({ onRetry }: { onRetry: () => void }) {
       >
         <Text style={styles.retryText}>Thử lại</Text>
       </Pressable>
+    </View>
+  );
+}
+
+function RouteLifecycleStatus({
+  accessibilityLabel,
+  body,
+  title,
+}: {
+  accessibilityLabel: string;
+  body: string;
+  title: string;
+}) {
+  return (
+    <View accessibilityLabel={accessibilityLabel} style={styles.centered}>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.body}>{body}</Text>
     </View>
   );
 }

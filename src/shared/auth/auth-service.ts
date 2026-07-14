@@ -31,6 +31,10 @@ export async function restoreAuthSession(): Promise<AuthSession | null> {
   return (await loadRuntime()).restoreAuthSession();
 }
 
+export async function synchronizeAuthSession(): Promise<AuthSession | null> {
+  return (await loadRuntime()).synchronizeAuthSession();
+}
+
 export async function refreshAuthSession(
   _legacyRefreshToken?: string,
 ): Promise<AuthSession | null> {
