@@ -12,6 +12,7 @@ const sqlPaths = [
   'supabase/migrations/202607140006_discovery_candidate_snapshot_v1.sql',
   'supabase/migrations/202607140015_request_fingerprint_compatibility_v1.sql',
   'supabase/migrations/202607140016_enable_pg_cron_v1.sql',
+  'supabase/migrations/202607140017_restore_match_lifecycle_snapshot_type_v1.sql',
   'supabase/migrations/202607140021_conversation_reliability_v1.sql',
   'supabase/migrations/202607140007_match_conversation_projection_v1.sql',
   'supabase/migrations/202607140022_conversation_mobile_surface_v1.sql',

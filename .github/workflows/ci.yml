@@ -109,14 +109,24 @@ jobs:
 
           python - "$log_file" <<'PYTHON'
           import pathlib
+          import re
           import sys
 
           text = pathlib.Path(sys.argv[1]).read_text(
               encoding="utf-8",
               errors="replace",
-          )[-3500:]
+          )
+          text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
+          error_index = text.rfind("\nERROR:")
+          if error_index < 0:
+              error_index = text.rfind("ERROR:")
+          excerpt = (
+              text[error_index : error_index + 10000]
+              if error_index >= 0
+              else text[-10000:]
+          )
           escaped = (
-              text.replace("%", "%25")
+              excerpt.replace("%", "%25")
               .replace("\r", "%0D")
               .replace("\n", "%0A")
           )

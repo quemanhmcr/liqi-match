@@ -144,6 +144,7 @@ void main();
 
 async function main() {
   const definedPrivateFunctions = new Map();
+  const definedPrivateTypes = new Map();
   const enabledExtensions = new Map();
   const failures = [];
 
@@ -173,6 +174,17 @@ async function main() {
 
       const extension = extensionDefinition(statement);
       if (extension) enabledExtensions.set(extension, file);
+
+      const typeDefinition = privateTypeDefinition(statement);
+      if (typeDefinition) definedPrivateTypes.set(typeDefinition, file);
+
+      for (const typeReference of privateTypeReferences(statement)) {
+        if (!definedPrivateTypes.has(typeReference)) {
+          failures.push(
+            `${file}: references private type ${typeReference} before it is defined`,
+          );
+        }
+      }
 
       const definition = privateFunctionDefinition(statement);
       if (definition) {
@@ -226,8 +238,35 @@ async function main() {
   }
 
   console.log(
-    `Migration dependency order check passed (${migrationFiles.length} migrations, ${definedPrivateFunctions.size} private functions, ${enabledExtensions.size} extensions).`,
+    `Migration dependency order check passed (${migrationFiles.length} migrations, ${definedPrivateFunctions.size} private functions, ${definedPrivateTypes.size} private types, ${enabledExtensions.size} extensions).`,
   );
+}
+
+function privateTypeDefinition(statement) {
+  const composite = statement?.CompositeTypeStmt?.typevar;
+  if (composite?.schemaname === 'private' && composite.relname) {
+    return composite.relname.toLowerCase();
+  }
+
+  const table = statement?.CreateStmt?.relation;
+  if (table?.schemaname === 'private' && table.relname) {
+    return table.relname.toLowerCase();
+  }
+
+  const enumName = qualifiedName(statement?.CreateEnumStmt?.typeName);
+  if (enumName?.schema === 'private') return enumName.object;
+
+  return null;
+}
+
+function privateTypeReferences(statement) {
+  const references = [];
+  visit(statement, (key, value) => {
+    if (key !== 'typeName' && key !== 'argType' && key !== 'returnType') return;
+    const name = qualifiedName(value?.names);
+    if (name?.schema === 'private') references.push(name.object);
+  });
+  return references;
 }
 
 function extensionDefinition(statement) {
