@@ -78,6 +78,7 @@ select jsonb_build_object(
     'bootstrapEventId', '80000000-0000-4000-8000-000000000400'
   )
 ) as event;
+grant select on table projection_event to service_role;
 
 set local role service_role;
 
