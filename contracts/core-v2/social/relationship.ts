@@ -382,10 +382,15 @@ export type UnmutePlayerCommandV2 = z.infer<typeof UnmutePlayerCommandV2Schema>;
 export type UpdatePlayerPrivacyCommandV2 = z.infer<
   typeof UpdatePlayerPrivacyCommandV2Schema
 >;
+export type ReportCategoryV2 = z.infer<typeof ReportCategoryV2Schema>;
 export type ReportPlayerCommandV2 = z.infer<typeof ReportPlayerCommandV2Schema>;
 export type ReportMessageCommandV2 = z.infer<
   typeof ReportMessageCommandV2Schema
 >;
+export type PlayerPrivacyCommandReceiptV2 = z.infer<
+  typeof PlayerPrivacyCommandReceiptV2Schema
+>;
+export type ReportReceiptV2 = z.infer<typeof ReportReceiptV2Schema>;
 export type SocialRelationshipCommandReceiptV2 = z.infer<
   typeof SocialRelationshipCommandReceiptV2Schema
 >;
