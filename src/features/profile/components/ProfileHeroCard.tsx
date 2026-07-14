@@ -23,6 +23,8 @@ import { ProfileText } from './ProfileShared';
 export type ProfileHeroMode = 'self' | 'other';
 
 export type ProfileHeroCardProps = {
+  inviteDisabled?: boolean;
+  messageDisabled?: boolean;
   mode: ProfileHeroMode;
   onEdit?: () => void;
   onInvite?: () => void;
@@ -33,6 +35,8 @@ export type ProfileHeroCardProps = {
 };
 
 export function ProfileHeroCard({
+  inviteDisabled = false,
+  messageDisabled = false,
   mode,
   onEdit,
   onInvite,
@@ -325,6 +329,7 @@ export function ProfileHeroCard({
             contentStyle={styles.secondaryActionContent}
             glowIntensity="none"
             gradientColors={['rgba(24,28,47,0.42)', 'rgba(13,17,32,0.34)']}
+            disabled={!isSelf && messageDisabled}
             onPress={isSelf ? onEdit : onMessage}
             radius={22}
             style={styles.messageButton}
@@ -352,6 +357,7 @@ export function ProfileHeroCard({
               'rgba(72,226,255,0.82)',
             ]}
             gradientLocations={[0, 0.2, 0.58, 1]}
+            disabled={!isSelf && inviteDisabled}
             onPress={isSelf ? onShare : onInvite}
             radius={22}
             style={styles.inviteButton}

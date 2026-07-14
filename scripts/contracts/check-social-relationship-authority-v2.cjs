@@ -29,6 +29,14 @@ const files = {
     root,
     'supabase/tests/database/social_block_consumer_bridge_v2.test.sql',
   ),
+  profileVisibilityMigration: path.join(
+    root,
+    'supabase/migrations/202607140062_profile_social_visibility_bridge_v2.sql',
+  ),
+  profileVisibilityTest: path.join(
+    root,
+    'supabase/tests/database/profile_social_visibility_bridge_v2.test.sql',
+  ),
 };
 const source = Object.fromEntries(
   Object.entries(files).map(([name, filename]) => [
@@ -92,6 +100,26 @@ if (
   );
 }
 
+for (const marker of [
+  'private.can_view_legacy_profile_v2',
+  'public.resolve_visible_profile_identity_v2',
+  'Profiles follow Core V2 social visibility',
+  "'profile_visibility_denied'",
+]) {
+  if (!source.profileVisibilityMigration.includes(marker)) {
+    throw new Error(`Missing Core V2 profile visibility marker: ${marker}`);
+  }
+}
+if (
+  !source.profileVisibilityTest.includes(
+    'block override also revokes legacy profile RLS visibility',
+  )
+) {
+  throw new Error(
+    'Profile visibility pgTAP must prove block revokes direct legacy profile reads.',
+  );
+}
+
 if (/auth\.uid\(\).*player/i.test(source.foundationMigration)) {
   throw new Error('Core V2 must not treat auth.uid() as canonical PlayerId.');
 }
@@ -131,7 +159,8 @@ function countAssertions(sql, label) {
 const assertionCount =
   countAssertions(source.foundationTest, 'Foundation') +
   countAssertions(source.trustTest, 'Trust visibility') +
-  countAssertions(source.consumerBridgeTest, 'Consumer bridge');
+  countAssertions(source.consumerBridgeTest, 'Consumer bridge') +
+  countAssertions(source.profileVisibilityTest, 'Profile visibility');
 
 (async () => {
   const parser = await new PgQueryModule();
@@ -139,6 +168,7 @@ const assertionCount =
     ['foundation', source.foundationMigration],
     ['trust visibility', source.trustMigration],
     ['consumer bridge', source.consumerBridgeMigration],
+    ['profile visibility', source.profileVisibilityMigration],
   ]) {
     const parsed = parser.parse(sql);
     if (parsed.error) {

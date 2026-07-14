@@ -117,7 +117,7 @@ describe('application service composition', () => {
 
     const profile = await services.profileRepository.getProfile({
       session: simulationSession(),
-      userId: discoverPlayer.profileId,
+      identityId: discoverPlayer.profileId,
     });
 
     expect(profile).not.toBeNull();

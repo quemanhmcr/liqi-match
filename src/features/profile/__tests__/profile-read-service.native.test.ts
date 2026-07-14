@@ -11,6 +11,8 @@ jest.mock('@/shared/services/supabase-rest', () => ({
 
 const mockSupabaseRest = jest.mocked(supabaseRest);
 
+const canonicalPlayerId = '20000000-0000-4000-8000-000000000003';
+
 const session: AuthSession = {
   accessToken: 'access-token',
   expiresAt: 4_102_444_800,
@@ -18,7 +20,7 @@ const session: AuthSession = {
   tokenType: 'bearer',
   user: {
     email: 'profile@example.com',
-    id: '00000000-0000-0000-0000-000000000003',
+    id: '01000000-0000-4000-8000-000000000003',
     user_metadata: {},
   },
 };
@@ -30,6 +32,12 @@ describe('fetchProfileView', () => {
 
   it('keeps absent backend fields neutral instead of borrowing preview fixture data', async () => {
     mockSupabaseRest
+      .mockResolvedValueOnce({
+        contractVersion: 2,
+        legacyProfileId: session.user.id,
+        playerId: canonicalPlayerId,
+        profileId: '30000000-0000-4000-8000-000000000003',
+      })
       .mockResolvedValueOnce([
         {
           avatar_media_id: null,
@@ -67,14 +75,33 @@ describe('fetchProfileView', () => {
         statusLabel: 'Offline',
         statusValue: 'offline',
         verified: false,
+        playerId: canonicalPlayerId,
       }),
     );
-    expect(mockSupabaseRest).toHaveBeenCalledTimes(2);
+    expect(mockSupabaseRest).toHaveBeenCalledTimes(3);
+    expect(mockSupabaseRest.mock.calls[0]?.[0]).toBe(
+      'rpc/resolve_visible_profile_identity_v2',
+    );
+    expect(mockSupabaseRest.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({
+        body: { p_target_player_id: null },
+        method: 'POST',
+      }),
+    );
+    expect(mockSupabaseRest.mock.calls[1]?.[0]).toContain(
+      `profiles?id=eq.${session.user.id}`,
+    );
   });
 
   it('does not borrow the viewer identity for another incomplete profile', async () => {
-    const targetUserId = '00000000-0000-0000-0000-000000000099';
+    const targetUserId = '01000000-0000-4000-8000-000000000099';
     mockSupabaseRest
+      .mockResolvedValueOnce({
+        contractVersion: 2,
+        legacyProfileId: targetUserId,
+        playerId: '20000000-0000-4000-8000-000000000099',
+        profileId: '30000000-0000-4000-8000-000000000099',
+      })
       .mockResolvedValueOnce([
         {
           avatar_media_id: null,
@@ -82,6 +109,7 @@ describe('fetchProfileView', () => {
           display_name: null,
           game_profiles: [{ handle: null, ranks: [], server_region: null }],
           id: targetUserId,
+          playerId: '20000000-0000-4000-8000-000000000099',
           profile_habits: [
             {
               communication_channels: null,
@@ -97,7 +125,10 @@ describe('fetchProfileView', () => {
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([]);
 
-    const profile = await fetchProfileView({ session, userId: targetUserId });
+    const profile = await fetchProfileView({
+      session,
+      identityId: targetUserId,
+    });
 
     expect(profile).toEqual(
       expect.objectContaining({
@@ -111,6 +142,12 @@ describe('fetchProfileView', () => {
 
   it('propagates hero read failures to the repository error state', async () => {
     mockSupabaseRest
+      .mockResolvedValueOnce({
+        contractVersion: 2,
+        legacyProfileId: session.user.id,
+        playerId: canonicalPlayerId,
+        profileId: '30000000-0000-4000-8000-000000000003',
+      })
       .mockResolvedValueOnce([
         {
           avatar_media_id: null,
@@ -131,6 +168,12 @@ describe('fetchProfileView', () => {
 
   it('propagates compatibility cover read failures instead of hiding them', async () => {
     mockSupabaseRest
+      .mockResolvedValueOnce({
+        contractVersion: 2,
+        legacyProfileId: session.user.id,
+        playerId: canonicalPlayerId,
+        profileId: '30000000-0000-4000-8000-000000000003',
+      })
       .mockResolvedValueOnce([
         {
           avatar_media_id: null,

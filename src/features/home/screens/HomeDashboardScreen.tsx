@@ -609,7 +609,7 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
   const actionGlowPreset = actionGlowPresets[set.kind];
   const chipVariant = chipVariantForKind(set.kind);
   const buttonVariant = buttonVariantForKind(set.kind);
-  const profileId = set.profileId;
+  const profileIdentity = set.playerId ?? set.profileId;
   const displayKind = matchedSetKindLabel(set.kind);
   const displayStatus = matchedSetStatusLabel(set.status);
   const tags = buildMatchedSetTags({
@@ -689,14 +689,18 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
             <Pressable
               accessibilityLabel={`Mở hồ sơ ${set.name}`}
               accessibilityRole="button"
-              accessibilityState={{ disabled: !profileId }}
-              disabled={!profileId}
+              accessibilityState={{ disabled: !profileIdentity }}
+              disabled={!profileIdentity}
               hitSlop={8}
               onPress={(event) => {
                 event.stopPropagation();
-                if (!profileId) return;
+                if (!profileIdentity) return;
                 selectionImpact();
-                router.push(appRoutes.profile.detail(profileId));
+                router.push(
+                  set.playerId
+                    ? appRoutes.profile.playerDetail(set.playerId)
+                    : appRoutes.profile.detail(profileIdentity),
+                );
               }}
               style={({ pressed }) => [pressed && styles.avatarPressed]}
             >

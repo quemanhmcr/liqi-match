@@ -5,10 +5,15 @@ import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import {
+  useSocialCommandCoordinator,
+  useSocialRelationshipRepository,
+} from '@/entities/social-relationship/RelationshipCapabilitiesProvider';
 import { usePreloadAssetSurface } from '@/entities/media-asset';
 import { LiquidButton, LiquidOrbButton } from '@/shared/components/liquid';
 import { classifyApplicationError } from '@/shared/errors/application-error';
 import { useAuth } from '@/shared/auth/auth-context';
+import { PlayerIdSchema } from '@/shared/contracts/core-v1';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
   liquidColors,
@@ -21,19 +26,22 @@ import {
   type ProfileHeroMode,
 } from '../components/ProfileHeroCard';
 import { ProfileHighlights } from '../components/ProfileHighlights';
+import { ProfileRelationshipActions } from '../components/ProfileRelationshipActions';
 import { ProfilePlayStyle } from '../components/ProfilePlayStyle';
 import { ProfileText } from '../components/ProfileShared';
 import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
 
 export type ProfileScreenProps = {
+  identityId?: string;
   mode: ProfileHeroMode;
-  userId?: string;
 };
 
-export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
+export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
   usePreloadAssetSurface('profile');
   const { session } = useAuth();
   const profileRepository = useProfileReadRepository();
+  const relationshipRepository = useSocialRelationshipRepository();
+  const socialCoordinator = useSocialCommandCoordinator();
   const openProfileEditor = () => {
     selectionImpact();
     router.push(appRoutes.profile.edit);
@@ -47,21 +55,57 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
     router.push(appRoutes.profile.settings);
   };
   const profileQuery = useQuery({
-    enabled: Boolean(session && (mode === 'self' || userId)),
+    enabled: Boolean(session && (mode === 'self' || identityId)),
     queryFn: () => {
       if (!session) throw new Error('Missing auth session');
       return profileRepository.getProfile({
         session,
-        userId: mode === 'other' ? userId : undefined,
+        identityId: mode === 'other' ? identityId : undefined,
       });
     },
-    queryKey: ['profile-view', mode, userId ?? session?.user.id],
+    queryKey: ['profile-view', mode, identityId ?? session?.user.id],
   });
 
   const profile = profileQuery.data;
   const profileFailure = classifyApplicationError(profileQuery.error);
+  const viewerPlayerId = session?.principal?.playerId;
+  const targetPlayerId = profile?.playerId;
+  const hasCanonicalSocialIdentity = Boolean(
+    mode === 'other' &&
+    socialCoordinator &&
+    viewerPlayerId &&
+    targetPlayerId &&
+    targetPlayerId !== viewerPlayerId &&
+    PlayerIdSchema.safeParse(targetPlayerId).success,
+  );
+  const relationshipQueryKey = [
+    'social-relationship',
+    viewerPlayerId,
+    targetPlayerId,
+  ] as const;
+  const relationshipQuery = useQuery({
+    enabled: hasCanonicalSocialIdentity,
+    queryFn: () => {
+      if (!session || !targetPlayerId) {
+        throw new Error('Missing canonical social relationship identity.');
+      }
+      return relationshipRepository.getRelationship(session, targetPlayerId);
+    },
+    queryKey: relationshipQueryKey,
+  });
+  const relationship = relationshipQuery.data;
+  const authoritativeMessageDisabled = Boolean(
+    socialCoordinator &&
+    mode === 'other' &&
+    (!relationship?.capabilities.canMessage || !profile?.conversationId),
+  );
+  const authoritativeInviteDisabled = Boolean(
+    socialCoordinator &&
+    mode === 'other' &&
+    !relationship?.capabilities.canInviteToSession,
+  );
 
-  if (!session || (mode === 'other' && !userId)) {
+  if (!session || (mode === 'other' && !identityId)) {
     return (
       <ProfileReadState
         mode={mode}
@@ -138,6 +182,8 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
         </View>
       ) : null}
       <ProfileHeroCard
+        inviteDisabled={authoritativeInviteDisabled}
+        messageDisabled={authoritativeMessageDisabled}
         mode={mode}
         onEdit={mode === 'self' ? openProfileEditor : selectionImpact}
         onInvite={impactLight}
@@ -151,6 +197,18 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
         profile={profile}
         vibe={vibe}
       />
+      {mode === 'other' && socialCoordinator ? (
+        relationship ? (
+          <ProfileRelationshipActions
+            coordinator={socialCoordinator}
+            queryKey={relationshipQueryKey}
+            relationship={relationship}
+            session={session}
+          />
+        ) : (
+          <RelationshipReadState loading={relationshipQuery.isPending} />
+        )
+      ) : null}
       <ProfileFavoriteHeroes
         heroes={profile.favoriteHeroes}
         showWinRate={profile.showWinRate}
@@ -159,6 +217,22 @@ export function ProfileScreen({ mode, userId }: ProfileScreenProps) {
       <ProfilePlayStyle tags={profile.playStyleTags} />
       <ProfileHighlights mode={mode} wallAssetKeys={profile.wallAssetKeys} />
     </LiquidScreen>
+  );
+}
+
+function RelationshipReadState({ loading }: { loading: boolean }) {
+  return (
+    <View
+      accessibilityLabel="Trạng thái quan hệ không khả dụng"
+      style={styles.relationshipReadState}
+    >
+      {loading ? <ActivityIndicator color="#C679FF" size="small" /> : null}
+      <ProfileText style={styles.relationshipReadStateText}>
+        {loading
+          ? 'Đang kiểm tra quyền quan hệ và an toàn…'
+          : 'Không thể xác minh quyền quan hệ. Các hành động tương tác đang bị khoá an toàn.'}
+      </ProfileText>
+    </View>
   );
 }
 
@@ -262,6 +336,24 @@ function selectionImpact() {
 }
 
 const styles = StyleSheet.create({
+  relationshipReadState: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(198,121,255,0.08)',
+    borderColor: 'rgba(198,121,255,0.18)',
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 9,
+    marginTop: 12,
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+  },
+  relationshipReadStateText: {
+    color: 'rgba(226,232,255,0.70)',
+    flex: 1,
+    fontSize: 12,
+    lineHeight: 17,
+  },
   staleBanner: {
     alignItems: 'center',
     backgroundColor: 'rgba(255,184,107,0.09)',

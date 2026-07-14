@@ -98,6 +98,7 @@ export type MatchedSet = {
   kind: 'Set Love' | 'Tri kỉ' | 'Normal' | 'Rank' | 'Team Rank';
   meta: string;
   name: string;
+  playerId?: string;
   profileId?: string;
   rankName?: string;
   roleNames: string[];

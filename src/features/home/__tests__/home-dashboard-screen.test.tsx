@@ -63,6 +63,7 @@ const syncedDashboard: HomeDashboard = {
       kind: 'Tri kỉ',
       meta: 'Tối · Có voice',
       name: 'Minh Anh',
+      playerId: '20000000-0000-4000-8000-000000000002',
       profileId: 'minh-anh',
       rankName: 'Cao Thủ',
       roleNames: ['Trợ Thủ'],
@@ -162,6 +163,16 @@ describe('HomeDashboardScreen', () => {
     expect(queryByText('Idle')).toBeNull();
     expect(queryByText('Normal')).toBeNull();
     expect(queryByText('Đã match thành công')).toBeNull();
+  });
+
+  it('opens matched profiles through the canonical PlayerId route', async () => {
+    const { getByLabelText } = await renderHomeDashboard();
+
+    await fireEvent.press(getByLabelText('Mở hồ sơ Minh Anh'));
+
+    expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.playerDetail('20000000-0000-4000-8000-000000000002'),
+    );
   });
 
   it('uses one explicit ready action and keeps the selected mood visible', async () => {
