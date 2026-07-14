@@ -1,0 +1,27 @@
+{
+  "correlationId": "43000000-0000-4000-8000-000000000002",
+  "repeated": false,
+  "outcome": {
+    "outcomeId": "44000000-0000-4000-8000-000000000001",
+    "sessionId": "42000000-0000-4000-8000-000000000001",
+    "sessionVersion": 7,
+    "memberPlayerIds": [
+      "20000000-0000-4000-8000-000000000001",
+      "20000000-0000-4000-8000-000000000002"
+    ],
+    "state": "awaiting_confirmation",
+    "version": 2,
+    "startedAt": "2026-07-14T11:00:00.000Z",
+    "completedAt": "2026-07-14T12:00:00.000Z",
+    "confirmationDeadlineAt": "2026-07-17T12:00:00.000Z"
+  },
+  "confirmation": {
+    "confirmationId": "45000000-0000-4000-8000-000000000001",
+    "sessionId": "42000000-0000-4000-8000-000000000001",
+    "playerId": "20000000-0000-4000-8000-000000000001",
+    "status": "confirmed",
+    "reasonCode": null,
+    "version": 1,
+    "confirmedAt": "2026-07-14T12:05:00.000Z"
+  }
+}

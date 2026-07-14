@@ -1,0 +1,13 @@
+{
+  "correlationId": "43000000-0000-4000-8000-000000000003",
+  "repeated": false,
+  "endorsement": {
+    "endorsementId": "46000000-0000-4000-8000-000000000001",
+    "sessionId": "42000000-0000-4000-8000-000000000001",
+    "actorPlayerId": "20000000-0000-4000-8000-000000000001",
+    "targetPlayerId": "20000000-0000-4000-8000-000000000002",
+    "kinds": ["good_communication", "would_play_again"],
+    "version": 1,
+    "createdAt": "2026-07-14T12:07:00.000Z"
+  }
+}

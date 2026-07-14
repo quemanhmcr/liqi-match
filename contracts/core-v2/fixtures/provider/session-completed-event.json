@@ -1,0 +1,23 @@
+{
+  "eventId": "41000000-0000-4000-8000-000000000001",
+  "eventType": "session.completed.v2",
+  "eventVersion": 2,
+  "aggregateType": "play_session",
+  "aggregateId": "42000000-0000-4000-8000-000000000001",
+  "aggregateVersion": 7,
+  "actorPlayerId": "20000000-0000-4000-8000-000000000001",
+  "correlationId": "43000000-0000-4000-8000-000000000001",
+  "causationId": null,
+  "occurredAt": "2026-07-14T12:00:00.000Z",
+  "payload": {
+    "sessionId": "42000000-0000-4000-8000-000000000001",
+    "sessionVersion": 7,
+    "memberPlayerIds": [
+      "20000000-0000-4000-8000-000000000001",
+      "20000000-0000-4000-8000-000000000002"
+    ],
+    "scheduledAt": "2026-07-14T10:45:00.000Z",
+    "startedAt": "2026-07-14T11:00:00.000Z",
+    "completedAt": "2026-07-14T12:00:00.000Z"
+  }
+}
