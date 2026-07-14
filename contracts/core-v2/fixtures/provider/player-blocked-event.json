@@ -1,0 +1,17 @@
+{
+  "eventId": "43000000-0000-4000-8000-000000000002",
+  "eventType": "player.blocked.v2",
+  "eventVersion": 2,
+  "aggregateType": "social_relationship",
+  "aggregateId": "41000000-0000-4000-8000-000000000001",
+  "aggregateVersion": 5,
+  "actorPlayerId": "20000000-0000-4000-8000-000000000001",
+  "correlationId": "44000000-0000-4000-8000-000000000002",
+  "causationId": null,
+  "occurredAt": "2026-07-14T10:05:00.000Z",
+  "payload": {
+    "blockerPlayerId": "20000000-0000-4000-8000-000000000001",
+    "blockedPlayerId": "20000000-0000-4000-8000-000000000002",
+    "reasonCode": "user_safety"
+  }
+}

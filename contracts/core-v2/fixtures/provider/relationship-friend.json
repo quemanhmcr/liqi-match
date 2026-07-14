@@ -1,0 +1,52 @@
+{
+  "contractVersion": 2,
+  "relationshipId": "41000000-0000-4000-8000-000000000001",
+  "viewerPlayerId": "20000000-0000-4000-8000-000000000001",
+  "targetPlayerId": "20000000-0000-4000-8000-000000000002",
+  "version": 4,
+  "friendship": {
+    "state": "accepted",
+    "label": "friend",
+    "requestId": "42000000-0000-4000-8000-000000000001",
+    "requestState": "accepted",
+    "requestVersion": 2,
+    "acceptedAt": "2026-07-14T10:00:00.000Z"
+  },
+  "block": {
+    "viewerBlocksTarget": false,
+    "targetBlocksViewer": false
+  },
+  "mute": { "viewerMutedTarget": false },
+  "targetPrivacy": {
+    "contractVersion": 2,
+    "playerId": "20000000-0000-4000-8000-000000000002",
+    "version": 1,
+    "profileVisibility": "friends",
+    "presenceVisibility": "friends",
+    "friendshipRequests": "everyone",
+    "sessionInvites": "friends",
+    "updatedAt": "2026-07-14T09:00:00.000Z"
+  },
+  "capabilities": {
+    "blocked": false,
+    "muted": false,
+    "friendshipLabel": "friend",
+    "canViewProfile": true,
+    "canDiscover": true,
+    "canMessage": true,
+    "canViewConversation": true,
+    "canInviteToSession": true,
+    "canViewPresence": true,
+    "canRequestFriendship": false,
+    "canAcceptFriendship": false,
+    "canDeclineFriendship": false,
+    "canCancelFriendship": false,
+    "canRemoveFriendship": true,
+    "canBlock": true,
+    "canUnblock": false,
+    "canMute": true,
+    "canUnmute": false,
+    "canReport": true
+  },
+  "updatedAt": "2026-07-14T10:00:00.000Z"
+}

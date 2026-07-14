@@ -55,6 +55,25 @@ checking capacity or transition policy. Optimistic version checks reject stale
 mobile writes. The final-slot invariant is enforced inside the same transaction
 that accepts membership.
 
+## Relationship and block consumption
+
+Session invite/join authorization consumes Senior 1's relationship capability
+and requires `canInviteToSession = true`; Core V2 never infers permission from
+friendship, match or chat history.
+
+A block created before start invalidates pending invites, removes the blocked
+participant from active pre-start membership, invalidates the ready check and
+preserves the membership row as history. A block created during `in_progress`
+or `completion_pending` fail-closes further coordination and moves the Session
+to `disputed` for explicit resolution; it does not rewrite participation
+history or synthesize a completed outcome. Senior 3 independently revokes
+conversation access from the same block/session events.
+
+Historical Set/Session rows are retained for participants, audit and outcome
+integrity. User-facing history may redact the blocked counterpart's live
+profile/presence projection, but must not delete or alter the canonical member
+and timestamp facts.
+
 ## Conversation saga
 
 `session.created.v2` is the first shared seam for Senior 3. It contains the

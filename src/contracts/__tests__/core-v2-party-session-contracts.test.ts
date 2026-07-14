@@ -8,6 +8,7 @@ import {
   PlaySessionSnapshotV2Schema,
   SessionCompletedEventV2Schema,
   SessionCreatedEventV2Schema,
+  SocialRelationshipSnapshotV2Schema,
 } from '../../../contracts/core-v2';
 
 const root = path.join(process.cwd(), 'contracts/core-v2/fixtures');
@@ -23,6 +24,15 @@ describe('Core V2 party and play-session contracts', () => {
     expect(event.eventVersion).toBe(2);
     expect(event.payload.communicationProvisioningRequired).toBe(true);
     expect(event.payload.session.communication.status).toBe('pending');
+  });
+
+  it('fails session invitation eligibility closed when Senior 1 reports a block', () => {
+    const relationship = SocialRelationshipSnapshotV2Schema.parse(
+      read('consumer', 'relationship-blocked.json'),
+    );
+
+    expect(relationship.capabilities.blocked).toBe(true);
+    expect(relationship.capabilities.canInviteToSession).toBe(false);
   });
 
   it('publishes only quorum-completed sessions to the outcome seam', () => {

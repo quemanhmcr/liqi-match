@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { CoreV2SocialEventSchema } from './social-events';
+
 import {
   SessionCancelledEventV2Schema,
   SessionCompletedEventV2Schema,
@@ -21,8 +23,9 @@ import {
 } from './events';
 
 export * from './events';
+export * from './social-events';
 
-export const CoreV2EventSchema = z.discriminatedUnion('eventType', [
+export const CoreV2PartySessionEventSchema = z.discriminatedUnion('eventType', [
   SetCreatedEventV2Schema,
   SetMemberJoinedEventV2Schema,
   SetMemberRemovedEventV2Schema,
@@ -40,6 +43,11 @@ export const CoreV2EventSchema = z.discriminatedUnion('eventType', [
   SessionCompletedEventV2Schema,
   SessionCancelledEventV2Schema,
   SessionDisputedEventV2Schema,
+]);
+
+export const CoreV2EventSchema = z.union([
+  CoreV2PartySessionEventSchema,
+  CoreV2SocialEventSchema,
 ]);
 
 export type CoreV2Event = z.infer<typeof CoreV2EventSchema>;
