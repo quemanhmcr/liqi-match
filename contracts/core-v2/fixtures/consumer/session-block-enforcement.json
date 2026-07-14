@@ -1,0 +1,88 @@
+{
+  "event": {
+    "eventId": "43000000-0000-4000-8000-000000000002",
+    "eventType": "player.blocked.v2",
+    "eventVersion": 2,
+    "aggregateType": "social_relationship",
+    "aggregateId": "41000000-0000-4000-8000-000000000001",
+    "aggregateVersion": 5,
+    "actorPlayerId": "20000000-0000-4000-8000-000000000001",
+    "correlationId": "44000000-0000-4000-8000-000000000002",
+    "causationId": null,
+    "occurredAt": "2026-07-14T10:05:00.000Z",
+    "payload": {
+      "blockerPlayerId": "20000000-0000-4000-8000-000000000001",
+      "blockedPlayerId": "20000000-0000-4000-8000-000000000002",
+      "reasonCode": "user_safety"
+    }
+  },
+  "relationship": {
+    "contractVersion": 2,
+    "relationshipId": "41000000-0000-4000-8000-000000000001",
+    "viewerPlayerId": "20000000-0000-4000-8000-000000000001",
+    "targetPlayerId": "20000000-0000-4000-8000-000000000002",
+    "version": 5,
+    "friendship": {
+      "state": "removed",
+      "label": "removed",
+      "requestId": "42000000-0000-4000-8000-000000000001",
+      "requestState": "accepted",
+      "requestVersion": 2,
+      "acceptedAt": "2026-07-14T10:00:00.000Z"
+    },
+    "block": {
+      "viewerBlocksTarget": true,
+      "targetBlocksViewer": false
+    },
+    "mute": { "viewerMutedTarget": false },
+    "targetPrivacy": {
+      "contractVersion": 2,
+      "playerId": "20000000-0000-4000-8000-000000000002",
+      "version": 1,
+      "profileVisibility": "friends",
+      "presenceVisibility": "friends",
+      "friendshipRequests": "everyone",
+      "sessionInvites": "friends",
+      "updatedAt": "2026-07-14T09:00:00.000Z"
+    },
+    "capabilities": {
+      "blocked": true,
+      "muted": false,
+      "friendshipLabel": "removed",
+      "canViewProfile": false,
+      "canDiscover": false,
+      "canMessage": false,
+      "canViewConversation": false,
+      "canInviteToSession": false,
+      "canViewPresence": false,
+      "canRequestFriendship": false,
+      "canAcceptFriendship": false,
+      "canDeclineFriendship": false,
+      "canCancelFriendship": false,
+      "canRemoveFriendship": false,
+      "canBlock": false,
+      "canUnblock": true,
+      "canMute": false,
+      "canUnmute": false,
+      "canReport": true
+    },
+    "updatedAt": "2026-07-14T10:05:00.000Z"
+  },
+  "policy": {
+    "preStart": {
+      "cancelPendingInvites": true,
+      "deny": ["invite", "join", "ready_response", "member_visibility"],
+      "revokeActiveMembership": true
+    },
+    "activePlay": {
+      "preserveHistoricalMembership": true,
+      "transition": "disputed"
+    },
+    "replay": "idempotent",
+    "unblock": {
+      "restoreFriendship": false,
+      "restoreReadiness": false,
+      "restoreSessionMembership": false
+    }
+  }
+}

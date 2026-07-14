@@ -171,6 +171,22 @@ export const SessionInviteCreatedEventV2Schema =
       .strict(),
   }).strict();
 
+export const SessionInviteCancelledEventV2Schema =
+  CoreV2EventEnvelopeSchema.extend({
+    ...sessionEventBase,
+    aggregateId: PlaySessionIdSchema,
+    eventType: z.literal('session.invite_cancelled.v2'),
+    payload: z
+      .object({
+        inviteId: SessionInviteV2IdSchema,
+        reasonCode: z.string().min(1).max(64),
+        sessionId: PlaySessionIdSchema,
+        sourceSocialEventId: EventIdSchema,
+        targetPlayerId: PlayerIdSchema,
+      })
+      .strict(),
+  }).strict();
+
 export const SessionMemberJoinedEventV2Schema =
   CoreV2EventEnvelopeSchema.extend({
     ...sessionEventBase,
@@ -388,3 +404,19 @@ export const SessionDisputedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
     })
     .strict(),
 }).strict();
+
+export const SessionSafetyDisputedEventV2Schema =
+  CoreV2EventEnvelopeSchema.extend({
+    ...sessionEventBase,
+    aggregateId: PlaySessionIdSchema,
+    eventType: z.literal('session.safety_disputed.v2'),
+    payload: z
+      .object({
+        blockedPlayerId: PlayerIdSchema,
+        blockerPlayerId: PlayerIdSchema,
+        reasonCode: z.string().min(1).max(64),
+        sessionId: PlaySessionIdSchema,
+        sourceSocialEventId: EventIdSchema,
+      })
+      .strict(),
+  }).strict();

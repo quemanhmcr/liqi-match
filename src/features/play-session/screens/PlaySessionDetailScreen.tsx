@@ -73,13 +73,22 @@ export function PlaySessionDetailScreen() {
       </LiquidScreen>
     );
   }
+  if (detail.error && !snapshot) {
+    return (
+      <LiquidScreen title="Không thể tải Session">
+        <Text accessibilityRole="alert" style={styles.error}>
+          {detail.error.message}
+        </Text>
+        <LiquidButton onPress={() => void detail.refetch()} variant="ghost">
+          Thử lại
+        </LiquidButton>
+      </LiquidScreen>
+    );
+  }
   if (detail.isLoading || !snapshot) {
     return (
       <LiquidScreen title="Đang tải Session">
         <ActivityIndicator color={liquidColors.text.primary} />
-        {detail.error ? (
-          <Text style={styles.error}>{detail.error.message}</Text>
-        ) : null}
       </LiquidScreen>
     );
   }

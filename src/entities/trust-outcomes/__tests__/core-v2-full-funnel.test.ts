@@ -16,12 +16,13 @@ import {
 } from '@/shared/contracts/core-v2';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { InMemoryConversationV2Authority } from '@/entities/conversation-v2';
-import {
-  InMemoryPlaySessionService,
-  createConversationV2SessionProvisioner,
-  type PlaySessionActorContext,
-  type PlaySessionSourceProvider,
-} from '@/entities/play-session';
+import { createConversationV2SessionProvisioner } from '@/entities/play-session/conversation-v2-session-provisioner';
+import { InMemoryRepeatPlaySessionService } from '@/entities/play-session/in-memory-repeat-play-session-service';
+import type {
+  PlaySessionActorContext,
+  PlaySessionSourceProvider,
+} from '@/entities/play-session/play-session-repository';
+import { createRepeatAwareRecommendationProvider } from '@/entities/play-session/repeat-play-session-bridge';
 import { InMemorySocialRelationshipRepository } from '@/entities/social-relationship';
 
 import { InMemoryTrustOutcomesEngine } from '../in-memory-trust-outcomes-engine';
@@ -139,7 +140,7 @@ describe('Core V2 integrated full funnel', () => {
       clock,
       createUuid: uuidFactory('61000000'),
     });
-    const sessions = new InMemoryPlaySessionService({
+    const sessions = new InMemoryRepeatPlaySessionService({
       clock,
       conversationProvisioner: createConversationV2SessionProvisioner({
         authority: conversation,
@@ -152,6 +153,11 @@ describe('Core V2 integrated full funnel', () => {
       delegate: sessions,
       eventLog: sessions,
       sessionOutcomeRepository: trust,
+    });
+    const repeatPlay = createRepeatAwareRecommendationProvider({
+      consumer: sessions,
+      delegate: trust,
+      eventLog: trust,
     });
     const actorA = actor(PLAYER_A);
     const actorB = actor(PLAYER_B);
@@ -265,22 +271,34 @@ describe('Core V2 integrated full funnel', () => {
       }),
     ]);
 
-    await trust.requestRepeatSession(authA, {
+    const repeatReceipt = await repeatPlay.requestRepeatSession(authA, {
       ...metadata(12, 0),
       relationshipVersions: [{ teammatePlayerId: PLAYER_B, version: 0 }],
       teammatePlayerIds: [PLAYER_B],
     });
-    const repeatSession = await sessionCommands.create(actorA, {
-      ...metadata(13, 0),
-      capacity: 2,
-      initialInviteePlayerIds: [PLAYER_B],
-      scheduledFor: null,
-      timezone: 'Asia/Bangkok',
-      title: 'Play again',
+    const repeatEvent = trust
+      .listEvents('repeat_play.requested.v2')
+      .find((event) => event.eventId === repeatReceipt.eventIds[0]);
+    expect(repeatEvent).toBeDefined();
+    const repeatCreatedEvent = sessions
+      .listEvents()
+      .find(
+        (event) =>
+          event.eventType === 'session.created.v2' &&
+          event.causationId === repeatEvent?.eventId,
+      );
+    expect(repeatCreatedEvent).toBeDefined();
+    const repeatSessionId = PlaySessionIdSchema.parse(
+      repeatCreatedEvent?.aggregateId,
+    );
+    const repeatSession = await sessions.get(actorA, repeatSessionId);
+    expect(repeatSessionId).not.toBe(sessionId);
+    expect(repeatSession.source).toEqual({
+      kind: 'repeat_play',
+      requestId: repeatReceipt.requestId,
     });
-    expect(repeatSession.session.sessionId).not.toBe(sessionId);
-    expect(
-      sessions.listSessionInvites(repeatSession.session.sessionId),
-    ).toEqual([expect.objectContaining({ targetPlayerId: PLAYER_B })]);
+    expect(sessions.listSessionInvites(repeatSessionId)).toEqual([
+      expect.objectContaining({ targetPlayerId: PLAYER_B }),
+    ]);
   });
 });

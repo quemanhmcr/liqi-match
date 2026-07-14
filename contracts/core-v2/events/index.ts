@@ -6,6 +6,7 @@ import {
   SessionCompletionProposedEventV2Schema,
   SessionCreatedEventV2Schema,
   SessionDisputedEventV2Schema,
+  SessionInviteCancelledEventV2Schema,
   SessionInviteCreatedEventV2Schema,
   SessionMemberJoinedEventV2Schema,
   SessionMemberLeftEventV2Schema,
@@ -15,6 +16,7 @@ import {
   SessionReadyCheckOpenedEventV2Schema,
   SessionReadyCheckPassedEventV2Schema,
   SessionRoleAssignedEventV2Schema,
+  SessionSafetyDisputedEventV2Schema,
   SessionScheduledEventV2Schema,
   SessionStartedEventV2Schema,
   SetClosedEventV2Schema,
@@ -41,6 +43,7 @@ export const CoreV2PartySessionEventSchema = z.discriminatedUnion('eventType', [
   SetMemberRemovedEventV2Schema,
   SetClosedEventV2Schema,
   SessionCreatedEventV2Schema,
+  SessionInviteCancelledEventV2Schema,
   SessionInviteCreatedEventV2Schema,
   SessionMemberJoinedEventV2Schema,
   SessionMemberNotReadyEventV2Schema,
@@ -56,6 +59,7 @@ export const CoreV2PartySessionEventSchema = z.discriminatedUnion('eventType', [
   SessionCompletedEventV2Schema,
   SessionCancelledEventV2Schema,
   SessionDisputedEventV2Schema,
+  SessionSafetyDisputedEventV2Schema,
 ]);
 
 export const CoreV2EventSchema = z.union([

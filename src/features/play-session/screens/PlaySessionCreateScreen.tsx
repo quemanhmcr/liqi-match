@@ -23,6 +23,7 @@ export function PlaySessionCreateScreen() {
   const [title, setTitle] = useState('Party tối nay');
   const [capacity, setCapacity] = useState(2);
   const [invitees, setInvitees] = useState('');
+  const [validationError, setValidationError] = useState<string | null>(null);
   const create = usePlaySessionCommandMutation<CreatePlaySessionCommandV2>(
     (actor, command) => commandService.create(actor, command),
     {
@@ -33,11 +34,41 @@ export function PlaySessionCreateScreen() {
   );
 
   const submit = () => {
-    const initialInviteePlayerIds = invitees
+    setValidationError(null);
+    const rawInvitees = invitees
       .split(',')
       .map((value) => value.trim())
-      .filter(Boolean)
-      .map((value) => PlayerIdSchema.parse(value));
+      .filter(Boolean);
+    const parsedInvitees = rawInvitees.map((value) =>
+      PlayerIdSchema.safeParse(value),
+    );
+    const invalidIndex = parsedInvitees.findIndex((result) => !result.success);
+    if (invalidIndex >= 0) {
+      setValidationError(
+        `PlayerId thứ ${invalidIndex + 1} không phải UUID hợp lệ.`,
+      );
+      return;
+    }
+    const initialInviteePlayerIds = parsedInvitees.map((result) => {
+      if (!result.success) throw new Error('Unreachable PlayerId parse state.');
+      return result.data;
+    });
+    if (
+      new Set(initialInviteePlayerIds).size !== initialInviteePlayerIds.length
+    ) {
+      setValidationError('Danh sách mời không được chứa PlayerId trùng nhau.');
+      return;
+    }
+    if (initialInviteePlayerIds.length > capacity - 1) {
+      setValidationError(
+        `Session tối đa ${capacity} người chỉ có thể mời trước ${capacity - 1} người.`,
+      );
+      return;
+    }
+    if (!title.trim()) {
+      setValidationError('Tên buổi chơi không được để trống.');
+      return;
+    }
     create.mutate({
       ...prepareCoreV2CommandMetadata(0),
       capacity,
@@ -59,7 +90,10 @@ export function PlaySessionCreateScreen() {
         <TextInput
           accessibilityLabel="Tên buổi chơi"
           maxLength={80}
-          onChangeText={setTitle}
+          onChangeText={(value) => {
+            setTitle(value);
+            setValidationError(null);
+          }}
           placeholder="Party tối nay"
           placeholderTextColor="rgba(255,255,255,0.35)"
           style={styles.input}
@@ -81,7 +115,10 @@ export function PlaySessionCreateScreen() {
         <TextInput
           accessibilityLabel="PlayerId mời ban đầu"
           autoCapitalize="none"
-          onChangeText={setInvitees}
+          onChangeText={(value) => {
+            setInvitees(value);
+            setValidationError(null);
+          }}
           placeholder="UUID, UUID"
           placeholderTextColor="rgba(255,255,255,0.35)"
           style={[styles.input, styles.multiline]}
@@ -95,8 +132,10 @@ export function PlaySessionCreateScreen() {
       >
         {create.isPending ? 'Đang tạo…' : 'Tạo buổi chơi'}
       </LiquidButton>
-      {create.error ? (
-        <Text style={styles.error}>{create.error.message}</Text>
+      {validationError || create.error ? (
+        <Text accessibilityRole="alert" style={styles.error}>
+          {validationError ?? create.error?.message}
+        </Text>
       ) : null}
     </LiquidScreen>
   );

@@ -14,6 +14,7 @@ import type {
   PlaySessionMembershipProjectionV2,
   PlaySessionCommandReceiptV2,
   PlaySessionSnapshotV2,
+  PlayerBlockedEventV2,
   PlaySessionId,
   ProposeSessionCompletionCommandV2,
   RemoveSessionMemberCommandV2,
@@ -189,4 +190,26 @@ export interface PlaySessionMaintenanceService {
 
 export interface PlaySessionEventLog {
   listEvents(sessionId?: PlaySessionId): readonly CoreV2Event[];
+}
+
+export type SessionSocialPolicyActionV2 = Readonly<{
+  action:
+    'invite_cancelled' | 'member_removed' | 'session_disputed' | 'no_change';
+  cancelledInviteCount?: number;
+  membershipVersion: number;
+  sessionId: PlaySessionId;
+  sessionVersion: number;
+}>;
+
+export type SessionSocialPolicyReceiptV2 = Readonly<{
+  actions: readonly SessionSocialPolicyActionV2[];
+  repeated: boolean;
+  sourceEventId: string;
+}>;
+
+/** Consumer seam for Senior 1 social safety events. */
+export interface PlaySessionSocialEventConsumer {
+  consumePlayerBlocked(
+    event: PlayerBlockedEventV2,
+  ): Promise<SessionSocialPolicyReceiptV2>;
 }

@@ -1,5 +1,3 @@
-import { Platform } from 'react-native';
-
 import {
   CorrelationIdSchema,
   IdempotencyKeySchema,
@@ -8,6 +6,7 @@ import {
 } from '@/shared/contracts/core-v1';
 import type { CoreV2CommandAuditMetadata } from '@/shared/contracts/core-v2';
 
+import { getRuntimeAuditPlatform } from './runtime-platform';
 import { createRuntimeUuid } from './runtime-uuid';
 
 export type PreparedCoreV2CommandMetadata<TVersion extends number = number> =
@@ -22,8 +21,7 @@ export function prepareCoreV2CommandMetadata<TVersion extends number>(
   expectedVersion: TVersion,
   now = new Date(),
 ): PreparedCoreV2CommandMetadata<TVersion> {
-  const platform =
-    Platform.OS === 'ios' || Platform.OS === 'web' ? Platform.OS : 'android';
+  const platform = getRuntimeAuditPlatform();
   return {
     audit: {
       appVersion: 'core-v2',

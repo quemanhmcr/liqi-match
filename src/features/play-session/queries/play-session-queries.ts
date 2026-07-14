@@ -24,7 +24,9 @@ export function useCurrentPlaySessions() {
     enabled: Boolean(session?.principal?.playerId && session.lifecycle),
     queryFn: async () =>
       repository.listCurrent(resolvePlaySessionActor(session)),
-    queryKey: playSessionQueryKeys.current(),
+    queryKey: playSessionQueryKeys.current(
+      session?.lifecycle?.playerId ?? 'anonymous',
+    ),
   });
 }
 
@@ -35,7 +37,9 @@ export function usePlaySessionInvites() {
     enabled: Boolean(session?.principal?.playerId && session.lifecycle),
     queryFn: async () =>
       repository.listInvites(resolvePlaySessionActor(session)),
-    queryKey: playSessionQueryKeys.invites(),
+    queryKey: playSessionQueryKeys.invites(
+      session?.lifecycle?.playerId ?? 'anonymous',
+    ),
   });
 }
 
@@ -50,7 +54,10 @@ export function usePlaySessionDetail(sessionId: PlaySessionId | null) {
       if (!sessionId) throw new Error('PlaySessionId is required.');
       return repository.get(resolvePlaySessionActor(session), sessionId);
     },
-    queryKey: playSessionQueryKeys.detail(sessionId ?? 'missing'),
+    queryKey: playSessionQueryKeys.detail(
+      session?.lifecycle?.playerId ?? 'anonymous',
+      sessionId ?? 'missing',
+    ),
   });
 }
 
@@ -68,20 +75,49 @@ export function usePlaySessionCommandMutation<TCommand>(
 ) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
+  const playerId = session?.lifecycle?.playerId ?? 'anonymous';
   return useMutation({
     ...options,
     mutationFn: async (command) =>
       execute(resolvePlaySessionActor(session), command),
+    onError: async (error, command, onMutateResult, mutationContext) => {
+      const commandSessionId =
+        command &&
+        typeof command === 'object' &&
+        'sessionId' in command &&
+        typeof command.sessionId === 'string'
+          ? command.sessionId
+          : null;
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: playSessionQueryKeys.current(playerId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: playSessionQueryKeys.invites(playerId),
+        }),
+        ...(commandSessionId
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: playSessionQueryKeys.detail(
+                  playerId,
+                  commandSessionId,
+                ),
+              }),
+            ]
+          : []),
+      ]);
+      await options.onError?.(error, command, onMutateResult, mutationContext);
+    },
     onSuccess: async (receipt, command, onMutateResult, mutationContext) => {
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: playSessionQueryKeys.current(),
+          queryKey: playSessionQueryKeys.current(playerId),
         }),
         queryClient.invalidateQueries({
-          queryKey: playSessionQueryKeys.invites(),
+          queryKey: playSessionQueryKeys.invites(playerId),
         }),
         queryClient.invalidateQueries({
-          queryKey: playSessionQueryKeys.detail(receipt.aggregateId),
+          queryKey: playSessionQueryKeys.detail(playerId, receipt.aggregateId),
         }),
       ]);
       await options.onSuccess?.(

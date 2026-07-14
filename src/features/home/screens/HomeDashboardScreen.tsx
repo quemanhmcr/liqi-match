@@ -251,7 +251,9 @@ export default function HomeDashboardScreen() {
     enabled: Boolean(session?.principal?.playerId && session.lifecycle),
     queryFn: async () =>
       playSessionRepository.listCurrent(resolvePlaySessionActor(session)),
-    queryKey: playSessionQueryKeys.current(),
+    queryKey: playSessionQueryKeys.current(
+      session?.lifecycle?.playerId ?? 'anonymous',
+    ),
   });
   const createSessionFromMatch = useMutation({
     mutationFn: async ({
@@ -265,7 +267,9 @@ export default function HomeDashboardScreen() {
       ),
     onSuccess: async (receipt) => {
       await queryClient.invalidateQueries({
-        queryKey: playSessionQueryKeys.current(),
+        queryKey: playSessionQueryKeys.current(
+          session?.lifecycle?.playerId ?? 'anonymous',
+        ),
       });
       router.push(appRoutes.sessions.detail(receipt.aggregateId));
     },

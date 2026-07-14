@@ -73,6 +73,8 @@ export const PlayerBlockedEventV2Schema = relationshipEvent(
     })
     .strict(),
 );
+export type PlayerBlockedEventV2 = z.infer<typeof PlayerBlockedEventV2Schema>;
+
 export const PlayerUnblockedEventV2Schema = relationshipEvent(
   'player.unblocked.v2',
   z

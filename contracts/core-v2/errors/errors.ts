@@ -16,6 +16,7 @@ export const CoreV2ErrorCodeSchema = z.enum([
   'unsupported_event_version',
   'event_replay_conflict',
   'session_expired',
+  'session_visibility_revoked',
   'forbidden',
   'validation_failed',
   'not_found',

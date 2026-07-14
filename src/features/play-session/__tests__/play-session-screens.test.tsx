@@ -187,6 +187,19 @@ describe('Core V2 Party/Session mobile surfaces', () => {
     );
   });
 
+  it('shows inline validation instead of throwing for an invalid invitee PlayerId', async () => {
+    const screen = await renderScreen(<PlaySessionCreateScreen />);
+    await fireEvent.changeText(
+      screen.getByLabelText('PlayerId mời ban đầu'),
+      'not-a-player-id',
+    );
+    await fireEvent.press(screen.getByText('Tạo buổi chơi'));
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'PlayerId thứ 1 không phải UUID hợp lệ.',
+    );
+    expect(mockMutate).not.toHaveBeenCalled();
+  });
+
   it('links canonical member profiles and Session conversation', async () => {
     const screen = await renderScreen(<PlaySessionDetailScreen />);
     expect(screen.getAllByText(/membership v2/).length).toBeGreaterThan(0);

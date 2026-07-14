@@ -49,7 +49,9 @@ export function MatchSetDiscoveryScreen() {
     },
     onSuccess: async (receipt) => {
       await queryClient.invalidateQueries({
-        queryKey: playSessionQueryKeys.current(),
+        queryKey: playSessionQueryKeys.current(
+          session?.lifecycle?.playerId ?? 'anonymous',
+        ),
       });
       router.push(appRoutes.sessions.detail(receipt.aggregateId));
     },

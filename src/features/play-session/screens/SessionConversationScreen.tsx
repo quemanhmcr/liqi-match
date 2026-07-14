@@ -22,11 +22,24 @@ import {
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 
-const conversationKeys = {
-  detail: (conversationId: string) =>
-    ['core-v2', 'session-conversation', conversationId] as const,
-  timeline: (conversationId: string) =>
-    ['core-v2', 'session-conversation', conversationId, 'timeline'] as const,
+export const sessionConversationQueryKeys = {
+  detail: (playerId: string, conversationId: string) =>
+    [
+      'core-v2',
+      'session-conversation',
+      'player',
+      playerId,
+      conversationId,
+    ] as const,
+  timeline: (playerId: string, conversationId: string) =>
+    [
+      'core-v2',
+      'session-conversation',
+      'player',
+      playerId,
+      conversationId,
+      'timeline',
+    ] as const,
 };
 
 export function SessionConversationScreen() {
@@ -39,13 +52,17 @@ export function SessionConversationScreen() {
   const queryClient = useQueryClient();
   const [text, setText] = useState('');
   const actor = session ? resolveVerifiedConversationActorV2(session) : null;
+  const actorPlayerId = actor?.playerId ?? 'anonymous';
   const conversation = useQuery({
     enabled: Boolean(actor && conversationId && conversationRepository),
     queryFn: async () => {
       if (!actor || !conversationId || !conversationRepository) return null;
       return conversationRepository.getConversation(actor, conversationId);
     },
-    queryKey: conversationKeys.detail(conversationId ?? 'missing'),
+    queryKey: sessionConversationQueryKeys.detail(
+      actorPlayerId,
+      conversationId ?? 'missing',
+    ),
   });
   const timeline = useQuery({
     enabled: Boolean(actor && conversationId && conversationRepository),
@@ -53,7 +70,10 @@ export function SessionConversationScreen() {
       if (!actor || !conversationId || !conversationRepository) return [];
       return conversationRepository.getTimeline(actor, conversationId);
     },
-    queryKey: conversationKeys.timeline(conversationId ?? 'missing'),
+    queryKey: sessionConversationQueryKeys.timeline(
+      actorPlayerId,
+      conversationId ?? 'missing',
+    ),
   });
   const send = useMutation({
     mutationFn: async (messageText: string) => {
@@ -86,14 +106,36 @@ export function SessionConversationScreen() {
         text: messageText,
       });
     },
+    onError: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: sessionConversationQueryKeys.detail(
+            actorPlayerId,
+            conversationId ?? 'missing',
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: sessionConversationQueryKeys.timeline(
+            actorPlayerId,
+            conversationId ?? 'missing',
+          ),
+        }),
+      ]);
+    },
     onSuccess: async () => {
       setText('');
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: conversationKeys.detail(conversationId ?? 'missing'),
+          queryKey: sessionConversationQueryKeys.detail(
+            actorPlayerId,
+            conversationId ?? 'missing',
+          ),
         }),
         queryClient.invalidateQueries({
-          queryKey: conversationKeys.timeline(conversationId ?? 'missing'),
+          queryKey: sessionConversationQueryKeys.timeline(
+            actorPlayerId,
+            conversationId ?? 'missing',
+          ),
         }),
       ]);
     },

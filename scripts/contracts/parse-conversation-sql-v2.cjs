@@ -24,10 +24,13 @@ function functionStatements(sql) {
     const delimiter = bodyMatch[1];
     const bodyStart = bodyMatch.index + bodyMatch[0].length;
     const closing = candidate.indexOf(delimiter, bodyStart);
-    if (closing < 0) throw new Error(`Unclosed function body near byte ${start}.`);
+    if (closing < 0)
+      throw new Error(`Unclosed function body near byte ${start}.`);
     const semicolon = candidate.indexOf(';', closing + delimiter.length);
     if (semicolon < 0) {
-      throw new Error(`Function lacks terminating semicolon near byte ${start}.`);
+      throw new Error(
+        `Function lacks terminating semicolon near byte ${start}.`,
+      );
     }
     const end = start + semicolon + 1;
     return {
@@ -59,7 +62,9 @@ async function parseOuterSegments(sql, functions) {
     const parser = await PgQueryModule();
     const result = parser.parse(segment);
     if (result.error?.message) {
-      fail(`${relativePath}: outer segment ${index + 1}: ${result.error.message}`);
+      fail(
+        `${relativePath}: outer segment ${index + 1}: ${result.error.message}`,
+      );
     }
     statements += result.parse_tree?.stmts?.length ?? 0;
   }
@@ -83,13 +88,17 @@ async function parseOuterSegments(sql, functions) {
     if (fn.language === 'plpgsql') {
       const result = parser.parsePlpgsql(fn.sql);
       if (result.error?.message) {
-        fail(`${relativePath}: PL/pgSQL function ${index + 1}: ${result.error.message}`);
+        fail(
+          `${relativePath}: PL/pgSQL function ${index + 1}: ${result.error.message}`,
+        );
       }
       plpgsqlFunctions += 1;
     } else if (fn.language === 'sql') {
       const result = parser.parse(fn.body);
       if (result.error?.message) {
-        fail(`${relativePath}: SQL function ${index + 1}: ${result.error.message}`);
+        fail(
+          `${relativePath}: SQL function ${index + 1}: ${result.error.message}`,
+        );
       }
       sqlFunctions += 1;
     }
@@ -99,4 +108,6 @@ async function parseOuterSegments(sql, functions) {
     `${relativePath}: ${outerStatements} outer statements, ${sqlFunctions} SQL functions, ${plpgsqlFunctions} PL/pgSQL functions parsed in segments.`,
   );
   if (!process.exitCode) console.log('Conversation SQL v2 parsing passed.');
-})().catch((error) => fail(error instanceof Error ? error.stack ?? error.message : String(error)));
+})().catch((error) =>
+  fail(error instanceof Error ? (error.stack ?? error.message) : String(error)),
+);
