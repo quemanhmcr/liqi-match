@@ -82,7 +82,7 @@ begin
 
   with eligible_candidates as (
     select
-      candidate.id as candidate_player_id,
+      (candidate_lifecycle ->> 'playerId')::uuid as candidate_player_id,
       canonical_profile.id as candidate_profile_id,
       canonical_profile.version as candidate_profile_version,
       canonical_profile.legacy_profile_id,
@@ -117,14 +117,16 @@ begin
               = p_viewer_filters ->> 'partyFormat'
             then 20 else 0
           end as recommendation_score
-    from public.players candidate
+    from public.list_discoverable_player_lifecycle_v1(
+      p_viewer_player_id
+    ) candidate_lifecycle
     join public.player_profiles_v1 canonical_profile
-      on canonical_profile.player_id = candidate.id
+      on canonical_profile.id = (candidate_lifecycle ->> 'profileId')::uuid
     join public.profiles legacy_profile
       on legacy_profile.id = canonical_profile.legacy_profile_id
       and legacy_profile.deleted_at is null
     join public.match_intents_v1 candidate_intent
-      on candidate_intent.player_id = candidate.id
+      on candidate_intent.player_id = (candidate_lifecycle ->> 'playerId')::uuid
       and candidate_intent.state = 'active'
       and candidate_intent.expires_at > now()
     left join public.game_profiles game_profile
@@ -143,10 +145,8 @@ begin
     ) primary_role on true
     left join public.relationship_decisions_v1 relationship
       on relationship.actor_player_id = p_viewer_player_id
-      and relationship.target_player_id = candidate.id
-    where candidate.id <> p_viewer_player_id
-      and private.is_player_discovery_eligible_v1(candidate.id)
-      and not private.are_profiles_blocked(
+      and relationship.target_player_id = (candidate_lifecycle ->> 'playerId')::uuid
+    where not private.are_profiles_blocked(
         p_viewer_legacy_profile_id,
         canonical_profile.legacy_profile_id
       )
@@ -154,8 +154,14 @@ begin
       and not exists (
         select 1
         from public.matches matches
-        where matches.player_low_id = least(p_viewer_player_id, candidate.id)
-          and matches.player_high_id = greatest(p_viewer_player_id, candidate.id)
+        where matches.player_low_id = least(
+          p_viewer_player_id,
+          (candidate_lifecycle ->> 'playerId')::uuid
+        )
+          and matches.player_high_id = greatest(
+          p_viewer_player_id,
+          (candidate_lifecycle ->> 'playerId')::uuid
+        )
       )
   ),
   ranked_candidates as (

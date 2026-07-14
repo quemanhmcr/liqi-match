@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 
 const migration = fs.readFileSync(
-  'supabase/migrations/202607140005_discovery_candidate_snapshot_v1.sql',
+  'supabase/migrations/202607140006_discovery_candidate_snapshot_v1.sql',
   'utf8',
 );
 const databaseTest = fs.readFileSync(
@@ -14,8 +14,12 @@ const requireInvariant = (condition, message) => {
 };
 
 requireInvariant(
-  migration.includes('private.is_player_discovery_eligible_v1(candidate.id)'),
-  'candidate eligibility must consume Mission 1 lifecycle authority',
+  migration.includes('public.list_discoverable_player_lifecycle_v1'),
+  'candidate enumeration must consume Mission 1 lifecycle authority',
+);
+requireInvariant(
+  !migration.includes('from public.players candidate'),
+  'Discovery must not scan the player authority directly',
 );
 requireInvariant(
   migration.includes("candidate_intent.state = 'active'") &&
