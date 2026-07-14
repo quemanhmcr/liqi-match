@@ -10,12 +10,12 @@ create type public.conversation_state_v1 as enum ('open', 'archived', 'closed');
 create type public.message_content_kind_v1 as enum ('text', 'media', 'system');
 
 create type private.messaging_player_snapshot_v1 as (
-  account_id uuid,
   player_id uuid,
   profile_id uuid,
   state text,
   messaging_allowed boolean,
-  lifecycle_version integer,
+  lifecycle_version bigint,
+  profile_version bigint,
   updated_at timestamptz
 );
 
@@ -318,50 +318,69 @@ security definer
 set search_path = ''
 as $$
 declare
-  raw_snapshot jsonb;
+  lifecycle jsonb;
+  profile_version jsonb;
   snapshot private.messaging_player_snapshot_v1;
 begin
   begin
-    execute 'select public.get_player_lifecycle_snapshot_by_player_v1($1, $2)'
-      into raw_snapshot
-      using p_player_id, p_lock;
+    lifecycle := public.get_player_lifecycle_snapshot_v1(p_player_id, p_lock);
   exception
     when undefined_function then
       raise exception 'Player lifecycle provider is unavailable'
         using errcode = '55000', detail = 'lifecycle_provider_unavailable';
   end;
 
-  if raw_snapshot is null then
+  if lifecycle is null then
     raise exception 'Player lifecycle snapshot not found'
       using errcode = 'P0002', detail = 'player_not_found';
   end if;
 
   begin
+    profile_version := public.get_player_profile_version_v1(
+      (lifecycle ->> 'profileId')::uuid,
+      p_lock
+    );
+  exception
+    when undefined_function then
+      raise exception 'Player profile version provider is unavailable'
+        using errcode = '55000', detail = 'profile_version_provider_unavailable';
+  end;
+
+  if profile_version is null then
+    raise exception 'Player profile version not found'
+      using errcode = 'P0002', detail = 'profile_not_found';
+  end if;
+
+  begin
     snapshot := row(
-      (raw_snapshot ->> 'accountId')::uuid,
-      (raw_snapshot ->> 'playerId')::uuid,
-      (raw_snapshot ->> 'profileId')::uuid,
-      raw_snapshot ->> 'state',
-      (raw_snapshot ->> 'messagingAllowed')::boolean,
-      (raw_snapshot ->> 'version')::integer,
-      (raw_snapshot ->> 'updatedAt')::timestamptz
+      (lifecycle ->> 'playerId')::uuid,
+      (lifecycle ->> 'profileId')::uuid,
+      lifecycle ->> 'state',
+      (lifecycle ->> 'messagingAllowed')::boolean,
+      (lifecycle ->> 'version')::bigint,
+      (profile_version ->> 'version')::bigint,
+      greatest(
+        (lifecycle ->> 'updatedAt')::timestamptz,
+        (profile_version ->> 'updatedAt')::timestamptz
+      )
     )::private.messaging_player_snapshot_v1;
   exception
     when others then
-      raise exception 'Invalid PlayerLifecycleSnapshotV1 payload'
-        using errcode = '22023', detail = 'lifecycle_contract_violation';
+      raise exception 'Invalid split player provider payload'
+        using errcode = '22023', detail = 'player_provider_contract_violation';
   end;
 
   if snapshot.player_id is distinct from p_player_id
-    or snapshot.account_id is null
     or snapshot.profile_id is null
     or snapshot.state is null
     or snapshot.messaging_allowed is null
     or snapshot.lifecycle_version is null
+    or snapshot.profile_version is null
     or snapshot.updated_at is null
+    or (profile_version ->> 'profileId')::uuid is distinct from snapshot.profile_id
   then
-    raise exception 'Invalid PlayerLifecycleSnapshotV1 payload'
-      using errcode = '22023', detail = 'lifecycle_contract_violation';
+    raise exception 'Invalid split player provider payload'
+      using errcode = '22023', detail = 'player_provider_contract_violation';
   end if;
 
   return snapshot;
@@ -379,51 +398,50 @@ as $$
 declare
   authenticated_player jsonb;
   principal jsonb;
-  raw_snapshot jsonb;
+  identity jsonb;
   snapshot private.messaging_player_snapshot_v1;
 begin
   authenticated_player := public.get_authenticated_player_v1();
   principal := authenticated_player -> 'principal';
-  raw_snapshot := authenticated_player -> 'lifecycle';
 
-  if principal is null or raw_snapshot is null then
-    raise exception 'Invalid authenticated player contract'
-      using errcode = '22023', detail = 'authenticated_player_contract_violation';
-  end if;
-
-  if p_lock then
-    raw_snapshot := public.get_player_lifecycle_snapshot_v1(
-      (principal ->> 'accountId')::uuid,
-      true
-    );
+  if principal is null
+    or nullif(principal ->> 'accountId', '') is null
+    or nullif(principal ->> 'playerId', '') is null
+    or nullif(principal ->> 'sessionId', '') is null
+  then
+    raise exception 'Invalid authenticated principal contract'
+      using errcode = '22023', detail = 'authenticated_principal_contract_violation';
   end if;
 
   begin
-    snapshot := row(
-      (raw_snapshot ->> 'accountId')::uuid,
-      (raw_snapshot ->> 'playerId')::uuid,
-      (raw_snapshot ->> 'profileId')::uuid,
-      raw_snapshot ->> 'state',
-      (raw_snapshot ->> 'messagingAllowed')::boolean,
-      (raw_snapshot ->> 'version')::integer,
-      (raw_snapshot ->> 'updatedAt')::timestamptz
-    )::private.messaging_player_snapshot_v1;
+    identity := public.resolve_player_identity_v1(
+      (principal ->> 'accountId')::uuid,
+      p_lock
+    );
   exception
-    when others then
-      raise exception 'Invalid authenticated player contract'
-        using errcode = '22023', detail = 'authenticated_player_contract_violation';
+    when undefined_function then
+      raise exception 'Player identity provider is unavailable'
+        using errcode = '55000', detail = 'identity_provider_unavailable';
   end;
 
-  if snapshot.account_id is distinct from (principal ->> 'accountId')::uuid
+  if identity is null then
+    raise exception 'Authenticated player identity not found'
+      using errcode = 'P0002', detail = 'player_not_found';
+  end if;
+
+  snapshot := private.require_messaging_snapshot_by_player_v1(
+    (identity ->> 'playerId')::uuid,
+    p_lock
+  );
+
+  if (identity ->> 'accountId')::uuid
+      is distinct from (principal ->> 'accountId')::uuid
+    or (identity ->> 'playerId')::uuid
+      is distinct from (principal ->> 'playerId')::uuid
+    or (identity ->> 'profileId')::uuid is distinct from snapshot.profile_id
     or snapshot.player_id is distinct from (principal ->> 'playerId')::uuid
-    or nullif(principal ->> 'sessionId', '') is null
-    or snapshot.profile_id is null
-    or snapshot.state is null
-    or snapshot.messaging_allowed is null
-    or snapshot.lifecycle_version is null
-    or snapshot.updated_at is null
   then
-    raise exception 'Invalid authenticated player contract'
+    raise exception 'Authenticated split player providers disagree'
       using errcode = '22023', detail = 'authenticated_player_contract_violation';
   end if;
 
@@ -971,7 +989,7 @@ declare
   unread_count integer;
 begin
   actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-  actor_account_id := actor_snapshot.account_id;
+  actor_account_id := auth.uid();
 
   if p_conversation_id is null
     or p_correlation_id is null
@@ -1056,7 +1074,7 @@ begin
   end if;
 
   actor_snapshot := private.require_authenticated_messaging_snapshot_v1(true);
-  if actor_snapshot.account_id is distinct from actor_account_id then
+  if auth.uid() is distinct from actor_account_id then
     raise exception 'Authenticated principal changed during send'
       using errcode = '40001', detail = 'principal_changed';
   end if;
@@ -1226,8 +1244,7 @@ begin
         'conversationId', conversation.id,
         'messageId', created_message.id,
         'senderPlayerId', actor_snapshot.player_id,
-        'authoritativeUnreadCount', unread_count,
-        'foregroundPolicy', 'allow_push'
+        'authoritativeUnreadCount', unread_count
       )
     ),
     format(
@@ -1259,7 +1276,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   conversation public.conversations%rowtype;
   member public.conversation_participants_v1%rowtype;
@@ -1282,7 +1298,6 @@ begin
   end if;
 
   actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-  actor_account_id := actor_snapshot.account_id;
 
   select * into conversation
   from public.conversations
@@ -1392,7 +1407,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   safe_limit integer := greatest(1, least(coalesce(p_limit, 30), 100));
 begin
@@ -1402,7 +1416,6 @@ begin
   end if;
 
   actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-  actor_account_id := actor_snapshot.account_id;
 
   return query
   select private.conversation_snapshot_json_v1(
@@ -1440,7 +1453,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   safe_limit integer := greatest(1, least(coalesce(p_limit, 50), 100));
 begin
@@ -1455,7 +1467,6 @@ begin
   end if;
 
   actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-  actor_account_id := actor_snapshot.account_id;
 
   if not private.is_conversation_player_member_v1(
     p_conversation_id,
@@ -1507,7 +1518,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   member public.conversation_participants_v1%rowtype;
   unread_count integer;
@@ -1518,7 +1528,6 @@ begin
   end if;
 
   actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-  actor_account_id := actor_snapshot.account_id;
 
   select * into member
   from public.conversation_participants_v1
@@ -1554,7 +1563,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   conversation_count integer;
   unread_count integer;
@@ -1565,7 +1573,6 @@ begin
   end if;
 
   actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-  actor_account_id := actor_snapshot.account_id;
 
   select
     count(*) filter (where member_unread.unread_count > 0)::integer,
@@ -1598,13 +1605,11 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
 begin
   begin
     actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-    actor_account_id := actor_snapshot.account_id;
-  exception
+    exception
     when others then return false;
   end;
 
@@ -1631,7 +1636,6 @@ security definer
 set search_path = ''
 as $$
 declare
-  actor_account_id uuid;
   actor_snapshot private.messaging_player_snapshot_v1;
   conversation_id uuid;
 begin
@@ -1644,8 +1648,7 @@ begin
   begin
     conversation_id := substring(p_topic from 14)::uuid;
     actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-    actor_account_id := actor_snapshot.account_id;
-  exception
+    exception
     when others then return false;
   end;
 

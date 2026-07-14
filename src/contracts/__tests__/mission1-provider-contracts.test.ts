@@ -10,7 +10,9 @@ import {
   isDiscoveryEligible,
   isMessagingAllowed,
   isPrincipalExpired,
+  PlayerIdentityMappingV1Schema,
   PlayerLifecycleSnapshotV1Schema,
+  PlayerProfileVersionV1Schema,
 } from '../../../contracts/core-v1';
 
 const fixtureRoot = path.join(
@@ -40,6 +42,19 @@ describe('Mission 1 Core V1 provider contracts', () => {
       isPrincipalExpired(principal, new Date('2026-07-14T08:30:00Z')),
     ).toBe(true);
     expect(principal.accountId).not.toBe(principal.playerId);
+  });
+
+  it('publishes distinct identity and profile-version provider seams', () => {
+    const identity = PlayerIdentityMappingV1Schema.parse(
+      read('player-identity-mapping.json'),
+    );
+    const profileVersion = PlayerProfileVersionV1Schema.parse(
+      read('player-profile-version.json'),
+    );
+
+    expect(identity.accountId).not.toBe(identity.playerId);
+    expect(identity.playerId).not.toBe(identity.profileId);
+    expect(profileVersion.profileId).toBe(identity.profileId);
   });
 
   it.each(['onboarding', 'active', 'suspended', 'deleting', 'deleted'])(

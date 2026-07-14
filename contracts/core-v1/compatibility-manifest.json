@@ -37,7 +37,9 @@
     "candidate-already-liked.json",
     "mutual-like-receipt.json",
     "duplicate-like-retry-receipt.json",
-    "match-already-exists-receipt.json"
+    "match-already-exists-receipt.json",
+    "player-identity-mapping.json",
+    "player-profile-version.json"
   ],
   "consumerFixtures": [
     "conversation-bootstrap-requested.json",

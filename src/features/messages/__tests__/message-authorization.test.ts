@@ -4,8 +4,10 @@ import path from 'node:path';
 
 import {
   AuthenticatedPrincipalV1Schema,
+  PlayerIdentityMappingV1Schema,
   PlayerLifecycleSnapshotV1Schema,
   type AuthenticatedPrincipalV1,
+  type PlayerIdentityMappingV1,
   type PlayerLifecycleSnapshotV1,
 } from '../../../../contracts/core-v1';
 
@@ -38,12 +40,21 @@ function lifecycle(
   const value = PlayerLifecycleSnapshotV1Schema.parse(
     read(`player-lifecycle-${state}.json`),
   );
-  const actor = principal();
-  return {
+  return PlayerLifecycleSnapshotV1Schema.parse({
     ...value,
+    playerId: principal().playerId,
+  });
+}
+
+function identity(
+  lifecycleSnapshot: PlayerLifecycleSnapshotV1,
+): PlayerIdentityMappingV1 {
+  const actor = principal();
+  return PlayerIdentityMappingV1Schema.parse({
     accountId: actor.accountId,
-    playerId: actor.playerId!,
-  };
+    playerId: actor.playerId,
+    profileId: lifecycleSnapshot.profileId,
+  });
 }
 
 function expectFailure(
@@ -65,7 +76,12 @@ describe('Conversation messaging authorization', () => {
     const actor = principal();
 
     expect(
-      authorizeMessagingActor({ lifecycle: active, now, principal: actor }),
+      authorizeMessagingActor({
+        identity: identity(active),
+        lifecycle: active,
+        now,
+        principal: actor,
+      }),
     ).toEqual({
       accountId: actor.accountId,
       playerId: active.playerId,
@@ -78,6 +94,7 @@ describe('Conversation messaging authorization', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
+          identity: identity(lifecycle('suspended')),
           lifecycle: lifecycle('suspended'),
           now,
           principal: principal(),
@@ -87,6 +104,7 @@ describe('Conversation messaging authorization', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
+          identity: identity(lifecycle('deleting')),
           lifecycle: lifecycle('deleting'),
           now,
           principal: principal(),
@@ -99,6 +117,7 @@ describe('Conversation messaging authorization', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
+          identity: null,
           lifecycle: null,
           now,
           principal: { ...principal(), playerId: null },
@@ -108,6 +127,7 @@ describe('Conversation messaging authorization', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
+          identity: identity(lifecycle('active')),
           lifecycle: lifecycle('active'),
           now,
           principal: AuthenticatedPrincipalV1Schema.parse({
@@ -123,6 +143,7 @@ describe('Conversation messaging authorization', () => {
     expectFailure(
       () =>
         authorizeMessagingActor({
+          identity: identity(lifecycle('active')),
           lifecycle: lifecycle('active'),
           now,
           principal: principal('authenticated-principal-expired.json'),

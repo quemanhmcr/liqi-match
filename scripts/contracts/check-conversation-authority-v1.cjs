@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 
 const migrationPath =
-  'supabase/migrations/202607140002_conversation_reliability_v1.sql';
+  'supabase/migrations/202607140006_conversation_reliability_v1.sql';
 const testPath = 'supabase/tests/database/conversation_reliability_v1.test.sql';
 const accountDeletePath = 'supabase/functions/account-delete/handler.ts';
 const migration = fs.readFileSync(migrationPath, 'utf8');
@@ -179,6 +179,17 @@ requireInvariant(
     /eventType: 'message_removed'/i.test(accountDelete) &&
     /media_asset_id_v1: null/i.test(accountDelete),
   'account deletion must remove message content and attachment association without deleting message rows',
+);
+requireInvariant(
+  /resolve_player_identity_v1/i.test(migration) &&
+    /get_player_lifecycle_snapshot_v1/i.test(migration) &&
+    /get_player_profile_version_v1/i.test(migration),
+  'authenticated messaging must compose identity, lifecycle, and profile-version provider seams',
+);
+requireInvariant(
+  !/foregroundPolicy/i.test(migration) &&
+    /authoritativeUnreadCount/i.test(migration),
+  'notification requests must provide authoritative unread without deciding foreground suppression',
 );
 requireInvariant(
   /security definer[\s\S]*set search_path = ''/i.test(migration),

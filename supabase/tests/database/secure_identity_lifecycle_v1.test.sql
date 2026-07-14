@@ -454,62 +454,58 @@ select is(
 
 
 select is(
-  public.get_player_lifecycle_snapshot_v1(
+  public.resolve_player_identity_v1(
     '01000000-0000-4000-8000-000000000101',
     false
-  )->>'state',
-  'deleted',
-  'account provider returns the authoritative tombstone lifecycle'
-);
-
-select is(
-  public.get_player_lifecycle_snapshot_by_player_v1(
-    (
-      select id
-      from public.players
-      where account_id = '01000000-0000-4000-8000-000000000102'
-    ),
-    true
-  )->>'state',
-  'onboarding',
-  'player provider lock path returns the authoritative lifecycle'
-);
-
-select is(
-  public.get_player_lifecycle_snapshot_by_player_v1(
-    (
-      select id
-      from public.players
-      where account_id = '01000000-0000-4000-8000-000000000102'
-    ),
-    true
-  )->>'messagingAllowed',
-  'false',
-  'provider snapshot includes authoritative messaging capability'
-);
-
-select is(
-  public.get_player_lifecycle_snapshot_v1(
-    '01000000-0000-4000-8000-000000000102',
-    true
   )->>'playerId',
   (
     select id::text
     from public.players
-    where account_id = '01000000-0000-4000-8000-000000000102'
+    where account_id = '01000000-0000-4000-8000-000000000101'
   ),
-  'account and player provider functions resolve the same canonical PlayerId'
+  'identity provider preserves AccountId to PlayerId mapping after auth deletion'
 );
 
 select is(
-  public.get_player_lifecycle_snapshot_by_player_v1(
+  public.get_player_lifecycle_snapshot_v1(
+    (
+      select id
+      from public.players
+      where account_id = '01000000-0000-4000-8000-000000000101'
+    ),
+    false
+  )->>'state',
+  'deleted',
+  'PlayerId lifecycle provider returns the authoritative tombstone'
+);
+
+select is(
+  public.get_player_profile_version_v1(
+    (
+      select profiles.id
+      from public.player_profiles_v1 profiles
+      join public.players players on players.id = profiles.player_id
+      where players.account_id = '01000000-0000-4000-8000-000000000102'
+    ),
+    true
+  )->>'profileId',
+  (
+    select profiles.id::text
+    from public.player_profiles_v1 profiles
+    join public.players players on players.id = profiles.player_id
+    where players.account_id = '01000000-0000-4000-8000-000000000102'
+  ),
+  'ProfileId version provider returns the canonical profile identity'
+);
+
+select is(
+  public.get_player_lifecycle_snapshot_v1(
     'ffffffff-ffff-4fff-8fff-ffffffffffff',
     true
   ),
   null,
-  'provider returns null for an unknown player'
+  'split lifecycle provider returns null for an unknown PlayerId'
 );
-
 select * from finish();
 
 rollback;

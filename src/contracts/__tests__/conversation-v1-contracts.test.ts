@@ -121,7 +121,8 @@ describe('Conversation v1 executable provider contracts', () => {
     expect(event.data.target.kind).toBe('conversation');
     if (event.data.target.kind !== 'conversation') return;
     expect(event.data.target.authoritativeUnreadCount).toBe(1);
-    expect(event.data.target.foregroundPolicy).toBe('suppress_push');
+    expect(event.data.target.authoritativeUnreadCount).toBe(1);
+    expect('foregroundPolicy' in event.data.target).toBe(false);
   });
 
   it('requires retries to reuse the same clientMessageId and payload', () => {

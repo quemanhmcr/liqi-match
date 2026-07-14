@@ -1,6 +1,7 @@
 import type {
   AuthenticatedPrincipalV1,
   CoreErrorCodeV1,
+  PlayerIdentityMappingV1,
   PlayerLifecycleSnapshotV1,
 } from '../../../../contracts/core-v1';
 import {
@@ -37,6 +38,7 @@ export type AuthorizedMessagingActor = Readonly<{
 }>;
 
 export function authorizeMessagingActor(input: {
+  identity: PlayerIdentityMappingV1 | null;
   lifecycle: PlayerLifecycleSnapshotV1 | null;
   now: string;
   principal: AuthenticatedPrincipalV1 | null;
@@ -57,17 +59,20 @@ export function authorizeMessagingActor(input: {
     );
   }
 
-  if (!principal.playerId || !input.lifecycle) {
+  if (!principal.playerId || !input.identity || !input.lifecycle) {
     throw new MessagingAuthorizationError(
       'player_not_found',
       'The authenticated account is not mapped to a player.',
     );
   }
 
+  const identity = input.identity;
   const lifecycle = input.lifecycle;
   if (
-    lifecycle.accountId !== principal.accountId ||
-    lifecycle.playerId !== principal.playerId
+    identity.accountId !== principal.accountId ||
+    identity.playerId !== principal.playerId ||
+    lifecycle.playerId !== identity.playerId ||
+    lifecycle.profileId !== identity.profileId
   ) {
     throw new MessagingAuthorizationError(
       'player_not_found',

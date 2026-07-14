@@ -103,7 +103,6 @@ export const NotificationRequestedEventV1Schema =
           messageId: z.string().uuid(),
           senderPlayerId: PlayerIdSchema,
           authoritativeUnreadCount: z.number().int().positive(),
-          foregroundPolicy: z.enum(['suppress_push', 'allow_push']),
         }),
       ]),
     }),
