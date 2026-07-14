@@ -24,6 +24,7 @@ type ApplicationServiceOverrides = Partial<
     | 'messageTransport'
     | 'notificationRepository'
     | 'profileRepository'
+    | 'relationshipRepository'
   >
 >;
 

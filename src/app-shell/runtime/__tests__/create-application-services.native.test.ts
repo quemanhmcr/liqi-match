@@ -8,6 +8,10 @@ import {
 
 import { ApiNotificationInboxRepository } from '@/entities/notifications';
 import {
+  InMemorySocialRelationshipRepository,
+  SupabaseSocialRelationshipRepository,
+} from '@/entities/social-relationship';
+import {
   createApiApplicationServices,
   createSimulationApplicationServices,
 } from '../create-application-services';
@@ -47,6 +51,12 @@ describe('application service composition', () => {
     expect(first.messageRepository).not.toBe(second.messageRepository);
     expect(first.notificationRepository).not.toBe(
       second.notificationRepository,
+    );
+    expect(first.relationshipRepository).toBeInstanceOf(
+      InMemorySocialRelationshipRepository,
+    );
+    expect(first.relationshipRepository).not.toBe(
+      second.relationshipRepository,
     );
 
     const participantKeys = first.simulationRuntime.resetRegistry
@@ -199,6 +209,9 @@ describe('application service composition', () => {
     });
     expect(services.notificationRepository).toBeInstanceOf(
       ApiNotificationInboxRepository,
+    );
+    expect(services.relationshipRepository).toBeInstanceOf(
+      SupabaseSocialRelationshipRepository,
     );
   });
 });

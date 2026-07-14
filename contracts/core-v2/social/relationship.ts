@@ -281,6 +281,14 @@ export const ReportMessageCommandV2Schema = ReportCommandBaseV2Schema.extend({
   messageId: z.string().uuid(),
 });
 
+export const FriendshipListPageV2Schema = z
+  .object({
+    contractVersion: CoreV2ContractVersionSchema,
+    items: z.array(SocialRelationshipSnapshotV2Schema),
+    nextCursor: PlayerIdSchema.nullable(),
+  })
+  .strict();
+
 export const SocialRelationshipCommandReceiptV2Schema = z
   .object({
     correlationId: CorrelationIdSchema,
@@ -349,4 +357,39 @@ export type ReportMessageCommandV2 = z.infer<
 >;
 export type SocialRelationshipCommandReceiptV2 = z.infer<
   typeof SocialRelationshipCommandReceiptV2Schema
+>;
+
+export const TrustVisibilityV2Schema = z.enum([
+  'everyone',
+  'friends',
+  'private',
+]);
+
+export const TrustVisibilityDecisionV2Schema = z
+  .object({
+    blocked: z.boolean(),
+    canViewTrust: z.boolean(),
+    contractVersion: CoreV2ContractVersionSchema,
+    privacyVersion: AggregateVersionV2Schema,
+    relationshipVersion: AggregateVersionV2Schema,
+    targetPlayerId: PlayerIdSchema,
+    trustVisibility: TrustVisibilityV2Schema,
+    viewerPlayerId: PlayerIdSchema,
+  })
+  .strict()
+  .superRefine((decision, context) => {
+    if (decision.blocked && decision.canViewTrust) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Trust visibility must fail closed while block override is active.',
+        path: ['canViewTrust'],
+      });
+    }
+  });
+
+export type FriendshipListPageV2 = z.infer<typeof FriendshipListPageV2Schema>;
+export type TrustVisibilityV2 = z.infer<typeof TrustVisibilityV2Schema>;
+export type TrustVisibilityDecisionV2 = z.infer<
+  typeof TrustVisibilityDecisionV2Schema
 >;
