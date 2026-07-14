@@ -3,6 +3,7 @@ export type ConversationTelemetryEvent =
   | 'conversation.gap_recovery.succeeded'
   | 'conversation.read.failed'
   | 'conversation.read.succeeded'
+  | 'conversation.realtime.access_signal'
   | 'conversation.realtime.connected'
   | 'conversation.realtime.disconnected'
   | 'conversation.realtime.message_signal'
