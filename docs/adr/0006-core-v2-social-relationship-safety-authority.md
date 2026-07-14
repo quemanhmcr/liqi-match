@@ -69,3 +69,13 @@ The relationship aggregate is the conversation source for friendship-derived dir
 `player.blocked.v2` supplies the same relationship source at a newer version. Its complete active member set is empty and the revocation reason is `blocked`. Conversation remains the owner of API, realtime and notification-delivery revocation and emits `conversation.access_revoked.v2`; Social does not define conversation state.
 
 Historical conversation content is not deleted by block. Public conversation access remains revoked, while `canReport` stays available through a privileged report-evidence seam owned jointly by Social initiation and Conversation evidence resolution.
+
+## Privacy and report initiation authority
+
+Player privacy is a versioned self aggregate. Active players may update profile, presence, friendship-request, session-invite and trust-projection visibility through one optimistic-concurrency command. Suspended or otherwise unavailable players may still read their own privacy snapshot, but cannot mutate it. Consumers must evaluate the latest server capability at write time; client-cached privacy never grants authorization.
+
+A submitted report is an immutable safety record, not a moderation verdict. `report.submitted.v2` never carries a reputation delta or public recommendation penalty. Any future reputation input requires a separate moderation-confirmed event and explicit policy ownership.
+
+Message reports remain valid after a block because historical conversation membership and messages are retained. Social stores only the authoritative conversation/message reference, sender, sequence, timestamps, content kind and a content fingerprint. It does not copy message text or media payload. Conversation remains responsible for privileged immutable evidence capture through `ConversationModerationProvider.captureReportEvidence` using the canonical `reportId`.
+
+Rollback disables Core V2 privacy/report writes through the shared social feature gate while preserving privacy versions, reports, evidence references, receipts, events, metrics and audit history. Canonical safety history is never deleted during rollback.

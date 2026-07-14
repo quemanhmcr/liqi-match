@@ -41,10 +41,10 @@ class RelationshipConversationConsumerHarness {
     }
   >();
   private readonly processedEvents = new Set<string>();
-  readonly events: Array<{
+  readonly events: {
     eventType: 'conversation.access_revoked.v2';
     payload: { conversationId: string; playerId: string; reason: 'blocked' };
-  }> = [];
+  }[] = [];
 
   consume(event: CoreV2SocialEvent) {
     if (this.processedEvents.has(event.eventId)) return;

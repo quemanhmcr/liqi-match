@@ -55,6 +55,12 @@ export const SessionInvitePolicyV2Schema = z.enum([
   'nobody',
 ]);
 
+export const TrustVisibilityV2Schema = z.enum([
+  'everyone',
+  'friends',
+  'private',
+]);
+
 export const RelationshipCapabilitiesV2Schema = z
   .object({
     blocked: z.boolean(),
@@ -137,6 +143,7 @@ export const PlayerPrivacySettingsV2Schema = z
     presenceVisibility: PresenceVisibilityV2Schema,
     profileVisibility: ProfileVisibilityV2Schema,
     sessionInvites: SessionInvitePolicyV2Schema,
+    trustVisibility: TrustVisibilityV2Schema.default('friends'),
     updatedAt: z.string().datetime({ offset: true }),
     version: AggregateVersionV2Schema,
   })
@@ -198,6 +205,8 @@ export const SocialRelationshipErrorCodeV2Schema = z.enum([
   'mute_already_active',
   'mute_not_found',
   'privacy_forbidden',
+  'privacy_version_conflict',
+  'report_self_forbidden',
   'report_target_not_found',
   'report_evidence_invalid',
   'relationship_unsupported_version',
@@ -268,6 +277,7 @@ export const UpdatePlayerPrivacyCommandV2Schema = z
     presenceVisibility: PresenceVisibilityV2Schema,
     profileVisibility: ProfileVisibilityV2Schema,
     sessionInvites: SessionInvitePolicyV2Schema,
+    trustVisibility: TrustVisibilityV2Schema,
   })
   .strict();
 
@@ -379,12 +389,6 @@ export type ReportMessageCommandV2 = z.infer<
 export type SocialRelationshipCommandReceiptV2 = z.infer<
   typeof SocialRelationshipCommandReceiptV2Schema
 >;
-
-export const TrustVisibilityV2Schema = z.enum([
-  'everyone',
-  'friends',
-  'private',
-]);
 
 export const TrustVisibilityDecisionV2Schema = z
   .object({
