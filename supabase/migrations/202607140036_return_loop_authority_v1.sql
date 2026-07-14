@@ -406,7 +406,7 @@ as $$
     'occurredAt', p_notification.occurred_at,
     'seenAt', p_notification.seen_at,
     'readAt', p_notification.read_at,
-    'deepLink', p_notification.deep_link,
+    'deepLink', p_notification.deep_link
   )
 $$;
 

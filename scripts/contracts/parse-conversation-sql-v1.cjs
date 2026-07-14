@@ -236,6 +236,64 @@ async function parsePostgres(relativePath, sql) {
   return statements.length;
 }
 
+async function parseSqlFunctions(relativePath, sql) {
+  const statements = postgresStatements(sql);
+  let functionCount = 0;
+
+  for (const [statementIndex, statement] of statements.entries()) {
+    const outerParser = await new PgQueryModule();
+    const outerResult = outerParser.parse(statement);
+    if (outerResult.error?.message) {
+      throw new Error(
+        `${relativePath}: PostgreSQL statement ${statementIndex + 1}: ${outerResult.error.message}`,
+      );
+    }
+
+    const definition = sqlFunctionDefinition(
+      outerResult.parse_tree.stmts[0]?.stmt,
+    );
+    if (!definition) continue;
+    functionCount += 1;
+
+    const bodyStatements = postgresStatements(definition.body);
+    for (const [bodyIndex, bodyStatement] of bodyStatements.entries()) {
+      const bodyParser = await new PgQueryModule();
+      const bodyResult = bodyParser.parse(bodyStatement);
+      if (bodyResult.error?.message) {
+        throw new Error(
+          `${relativePath}: SQL function ${definition.name} body statement ${bodyIndex + 1}: ${bodyResult.error.message}`,
+        );
+      }
+    }
+  }
+
+  return functionCount;
+}
+
+function sqlFunctionDefinition(statement) {
+  const node = statement?.CreateFunctionStmt;
+  if (!node) return null;
+
+  let language = null;
+  let body = null;
+  for (const option of node.options ?? []) {
+    const definition = option?.DefElem;
+    if (definition?.defname === 'language') {
+      language = definition.arg?.String?.sval?.toLowerCase() ?? null;
+    }
+    if (definition?.defname === 'as') {
+      body = definition.arg?.List?.items?.[0]?.String?.sval ?? null;
+    }
+  }
+  if (language !== 'sql' || typeof body !== 'string') return null;
+
+  const name = (node.funcname ?? [])
+    .map((part) => part?.String?.sval)
+    .filter(Boolean)
+    .join('.');
+  return { body, name: name || '<anonymous>' };
+}
+
 async function parsePlpgsql(relativePath, sql) {
   const functions = plpgsqlFunctions(sql);
   for (const [index, functionSql] of functions.entries()) {
@@ -261,9 +319,10 @@ async function parsePlpgsql(relativePath, sql) {
     const sql = fs.readFileSync(absolutePath, 'utf8');
     try {
       const statementCount = await parsePostgres(relativePath, sql);
-      const functionCount = await parsePlpgsql(relativePath, sql);
+      const sqlFunctionCount = await parseSqlFunctions(relativePath, sql);
+      const plpgsqlFunctionCount = await parsePlpgsql(relativePath, sql);
       console.log(
-        `${relativePath}: ${statementCount} PostgreSQL statements and ${functionCount} PL/pgSQL functions parsed.`,
+        `${relativePath}: ${statementCount} PostgreSQL statements, ${sqlFunctionCount} SQL functions, and ${plpgsqlFunctionCount} PL/pgSQL functions parsed.`,
       );
     } catch (error) {
       fail(error instanceof Error ? error.message : String(error));
@@ -271,7 +330,9 @@ async function parsePlpgsql(relativePath, sql) {
   }
 
   if (!process.exitCode) {
-    console.log('Conversation SQL v1 PostgreSQL + PL/pgSQL parsing passed.');
+    console.log(
+      'Conversation SQL v1 PostgreSQL + SQL-function + PL/pgSQL parsing passed.',
+    );
   }
 })().catch((error) => {
   fail(error instanceof Error ? error.message : String(error));
