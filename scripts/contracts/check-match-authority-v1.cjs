@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 
 const migrationPath =
-  'supabase/migrations/202607140002_production_match_authority_v1.sql';
+  'supabase/migrations/202607140004_production_match_authority_v1.sql';
 const lifecycleMigrationPath =
   'supabase/migrations/202607140001_secure_identity_lifecycle_v1.sql';
 const testPath =
@@ -55,27 +55,23 @@ requireInvariant(
 );
 requireInvariant(
   decision.indexOf('pg_advisory_xact_lock') <
-    decision.indexOf(
-      'from public.players players',
-      decision.indexOf('pg_advisory_xact_lock'),
-    ),
-  'canonical pair lock must precede authoritative lifecycle row locks',
+    decision.indexOf('get_player_lifecycle_snapshot_v1(low_player_id, true)'),
+  'canonical pair lock must precede provider-owned lifecycle row locks',
 );
 requireInvariant(
-  /from public\.players players[\s\S]*?order by players\.id[\s\S]*?for update/.test(
-    decision,
-  ),
-  'authoritative player lifecycle rows must be locked in PlayerId order',
+  decision.indexOf('get_player_lifecycle_snapshot_v1(low_player_id, true)') <
+    decision.indexOf('get_player_lifecycle_snapshot_v1(high_player_id, true)'),
+  'lifecycle provider locks must be acquired in ascending PlayerId order',
 );
 requireInvariant(
-  /from public\.player_profiles_v1 profiles[\s\S]*?order by profiles\.player_id[\s\S]*?for update/.test(
-    decision,
-  ),
-  'canonical profile rows must be locked in PlayerId order',
+  decision.includes('get_player_profile_version_v1'),
+  'profile optimistic concurrency must consume the profile-version provider',
 );
 requireInvariant(
   decision.includes('private.assert_discovery_eligible_v1') &&
-    migration.includes('private.is_player_discovery_eligible_v1(p_player_id)'),
+    migration.includes(
+      'private.is_player_discovery_eligible_v1(player_id_value)',
+    ),
   'command-time eligibility must consume the Mission 1 lifecycle authority through one wrapper',
 );
 requireInvariant(

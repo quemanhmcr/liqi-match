@@ -3,7 +3,7 @@
 -- Mission 2 owns Match Intent, relationship decisions, canonical match
 -- uniqueness, authoritative Home match facts, and transactional downstream
 -- requests. Identity, lifecycle and canonical profile versions are consumed
--- from the Mission 1 authority introduced by 202607140001.
+-- from the Mission 1 authority introduced by 202607140001–202607140003.
 
 create type public.match_intent_state_v1 as enum (
   'inactive',
@@ -246,44 +246,53 @@ as $$
     and expires_at <= now()
 $$;
 
-create or replace function private.assert_discovery_eligible_v1(p_player_id uuid)
+create or replace function private.assert_discovery_eligible_v1(p_snapshot jsonb)
 returns void
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
-  player_row public.players%rowtype;
+  player_id_value uuid;
+  lifecycle_state_value text;
 begin
-  if private.is_player_discovery_eligible_v1(p_player_id) then
-    return;
-  end if;
-
-  select * into player_row
-  from public.players
-  where id = p_player_id;
-
-  if not found or player_row.auth_user_id is null then
+  if p_snapshot is null then
     perform private.raise_core_error_v1(
       'player_not_found',
       'The player identity is unavailable.'
     );
-  elsif player_row.lifecycle_state = 'suspended' then
+  end if;
+
+  begin
+    player_id_value := (p_snapshot ->> 'playerId')::uuid;
+    lifecycle_state_value := p_snapshot ->> 'state';
+  exception when others then
+    perform private.raise_core_error_v1(
+      'internal_error',
+      'The lifecycle provider returned an invalid snapshot.'
+    );
+  end;
+
+  if private.is_player_discovery_eligible_v1(player_id_value) then
+    return;
+  end if;
+
+  if lifecycle_state_value = 'suspended' then
     perform private.raise_core_error_v1(
       'player_suspended',
       'The player is suspended.'
     );
-  elsif player_row.lifecycle_state = 'deleting' then
+  elsif lifecycle_state_value = 'deleting' then
     perform private.raise_core_error_v1(
       'player_deleting',
       'The player is being deleted.'
     );
-  elsif player_row.lifecycle_state = 'deleted' then
+  elsif lifecycle_state_value = 'deleted' then
     perform private.raise_core_error_v1(
       'player_deleted',
       'The player has been deleted.'
     );
-  elsif player_row.lifecycle_state <> 'active' then
+  elsif lifecycle_state_value <> 'active' then
     perform private.raise_core_error_v1(
       'lifecycle_not_active',
       'The player lifecycle must be active.'
@@ -362,6 +371,7 @@ set search_path = ''
 as $$
 declare
   actor_account_id uuid := auth.uid();
+  actor_identity jsonb;
   actor_player_id uuid;
   intent_id_value uuid;
 begin
@@ -372,14 +382,11 @@ begin
     );
   end if;
 
-  select players.id into actor_player_id
-  from public.players players
-  where players.account_id = actor_account_id
-    and players.auth_user_id = actor_account_id;
-
-  if actor_player_id is null then
+  actor_identity := public.resolve_player_identity_v1(actor_account_id, false);
+  if actor_identity is null then
     return null;
   end if;
+  actor_player_id := (actor_identity ->> 'playerId')::uuid;
 
   perform private.expire_match_intent_v1(actor_player_id);
 
@@ -406,6 +413,8 @@ set search_path = ''
 as $$
 declare
   actor_account_id uuid := auth.uid();
+  actor_identity jsonb;
+  actor_lifecycle jsonb;
   actor_player_id uuid;
   canonical_filters jsonb;
   request_payload jsonb;
@@ -451,20 +460,19 @@ begin
     );
   end if;
 
-  select players.id into actor_player_id
-  from public.players players
-  where players.account_id = actor_account_id
-    and players.auth_user_id = actor_account_id
-  for update;
-
-  if actor_player_id is null then
+  actor_identity := public.resolve_player_identity_v1(actor_account_id, false);
+  if actor_identity is null then
     perform private.raise_core_error_v1(
       'player_not_found',
       'The authenticated player identity was not found.'
     );
   end if;
-
-  perform private.assert_discovery_eligible_v1(actor_player_id);
+  actor_player_id := (actor_identity ->> 'playerId')::uuid;
+  actor_lifecycle := public.get_player_lifecycle_snapshot_v1(
+    actor_player_id,
+    true
+  );
+  perform private.assert_discovery_eligible_v1(actor_lifecycle);
   perform private.expire_match_intent_v1(actor_player_id);
 
   select * into existing_intent
@@ -545,6 +553,8 @@ set search_path = ''
 as $$
 declare
   actor_account_id uuid := auth.uid();
+  actor_identity jsonb;
+  actor_lifecycle jsonb;
   actor_player_id uuid;
   request_payload jsonb;
   request_hash text;
@@ -582,16 +592,22 @@ begin
     );
   end if;
 
-  select players.id into actor_player_id
-  from public.players players
-  where players.account_id = actor_account_id
-    and players.auth_user_id = actor_account_id
-  for update;
-
-  if actor_player_id is null then
+  actor_identity := public.resolve_player_identity_v1(actor_account_id, false);
+  if actor_identity is null then
     perform private.raise_core_error_v1(
       'player_not_found',
       'The authenticated player identity was not found.'
+    );
+  end if;
+  actor_player_id := (actor_identity ->> 'playerId')::uuid;
+  actor_lifecycle := public.get_player_lifecycle_snapshot_v1(
+    actor_player_id,
+    true
+  );
+  if actor_lifecycle is null then
+    perform private.raise_core_error_v1(
+      'player_not_found',
+      'The authenticated player lifecycle was not found.'
     );
   end if;
 
@@ -651,6 +667,12 @@ set search_path = ''
 as $$
 declare
   actor_account_id uuid := auth.uid();
+  actor_identity jsonb;
+  actor_lifecycle jsonb;
+  target_lifecycle jsonb;
+  low_lifecycle jsonb;
+  high_lifecycle jsonb;
+  target_profile_version jsonb;
   actor_player_id uuid;
   low_player_id uuid;
   high_player_id uuid;
@@ -721,19 +743,16 @@ begin
     );
   end if;
 
-  -- Resolve only the semantic PlayerId before the pair lock. No lifecycle row
-  -- is locked yet, avoiding opposite-direction deadlocks.
-  select players.id into actor_player_id
-  from public.players players
-  where players.account_id = actor_account_id
-    and players.auth_user_id = actor_account_id;
-
-  if actor_player_id is null then
+  -- Resolve only the semantic PlayerId before the pair lock. The identity
+  -- provider remains lock-free here, avoiding opposite-direction deadlocks.
+  actor_identity := public.resolve_player_identity_v1(actor_account_id, false);
+  if actor_identity is null then
     perform private.raise_core_error_v1(
       'player_not_found',
       'The authenticated player identity was not found.'
     );
   end if;
+  actor_player_id := (actor_identity ->> 'playerId')::uuid;
 
   if actor_player_id = p_target_player_id then
     perform private.raise_core_error_v1(
@@ -748,30 +767,33 @@ begin
     pg_catalog.hashtextextended(low_player_id::text || ':' || high_player_id::text, 0)
   );
 
-  -- Mission 1 lifecycle transitions lock public.players. Locking both rows in
-  -- canonical PlayerId order makes the command-time eligibility decision and
-  -- the match commit atomic with respect to suspension/deletion transitions.
-  perform players.id
-  from public.players players
-  where players.id in (low_player_id, high_player_id)
-  order by players.id
-  for update;
+  -- The lifecycle provider owns row-lock semantics. Calling it for the low then
+  -- high PlayerId keeps pair commands compatible with lifecycle transitions.
+  low_lifecycle := public.get_player_lifecycle_snapshot_v1(low_player_id, true);
+  high_lifecycle := public.get_player_lifecycle_snapshot_v1(high_player_id, true);
 
-  perform profiles.player_id
-  from public.player_profiles_v1 profiles
-  where profiles.player_id in (low_player_id, high_player_id)
-  order by profiles.player_id
-  for update;
+  if actor_player_id = low_player_id then
+    actor_lifecycle := low_lifecycle;
+    target_lifecycle := high_lifecycle;
+  else
+    actor_lifecycle := high_lifecycle;
+    target_lifecycle := low_lifecycle;
+  end if;
 
-  perform private.assert_discovery_eligible_v1(actor_player_id);
-  perform private.assert_discovery_eligible_v1(p_target_player_id);
+  perform private.assert_discovery_eligible_v1(actor_lifecycle);
+  perform private.assert_discovery_eligible_v1(target_lifecycle);
+
+  target_profile_version := public.get_player_profile_version_v1(
+    (target_lifecycle ->> 'profileId')::uuid,
+    false
+  );
 
   select * into actor_profile
   from public.player_profiles_v1 profiles
-  where profiles.player_id = actor_player_id;
+  where profiles.id = (actor_lifecycle ->> 'profileId')::uuid;
   select * into target_profile
   from public.player_profiles_v1 profiles
-  where profiles.player_id = p_target_player_id;
+  where profiles.id = (target_lifecycle ->> 'profileId')::uuid;
 
   if actor_profile.id is null
     or target_profile.id is null
@@ -784,7 +806,10 @@ begin
     );
   end if;
 
-  if target_profile.version <> p_expected_target_profile_version then
+  if target_profile_version is null
+    or (target_profile_version ->> 'version')::bigint
+      <> p_expected_target_profile_version
+  then
     perform private.raise_core_error_v1(
       'profile_version_conflict',
       'The target profile version changed.'
@@ -1193,7 +1218,7 @@ revoke execute on function private.match_decision_writes_enabled_v1() from publi
 revoke execute on function private.canonical_match_intent_filters_v1(jsonb) from public, anon, authenticated;
 revoke execute on function private.match_intent_snapshot_v1(uuid) from public, anon, authenticated;
 revoke execute on function private.expire_match_intent_v1(uuid) from public, anon, authenticated;
-revoke execute on function private.assert_discovery_eligible_v1(uuid) from public, anon, authenticated;
+revoke execute on function private.assert_discovery_eligible_v1(jsonb) from public, anon, authenticated;
 revoke execute on function private.enqueue_contract_event_v1(text, text, uuid, uuid, uuid, jsonb, text) from public, anon, authenticated;
 
 revoke execute on function public.get_current_match_intent_v1() from public, anon;

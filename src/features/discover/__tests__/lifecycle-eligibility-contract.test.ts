@@ -42,12 +42,10 @@ describe('Mission 1 → Mission 2 lifecycle consumer contract', () => {
     const active = readLifecycle('active');
 
     expect(Object.keys(active).sort()).toEqual([
-      'accountId',
       'discoverable',
       'messagingAllowed',
       'playerId',
       'profileId',
-      'profileVersion',
       'state',
       'updatedAt',
       'version',
