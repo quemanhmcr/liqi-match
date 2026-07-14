@@ -42,7 +42,11 @@
     "candidate-already-liked.json",
     "mutual-like-receipt.json",
     "duplicate-like-retry-receipt.json",
-    "match-already-exists-receipt.json"
+    "match-already-exists-receipt.json",
+    "profile-identity-snapshot.json",
+    "profile-identity-update-command.json",
+    "profile-identity-update-replay.json",
+    "player-profile-updated-event.json"
   ],
   "consumerFixtures": [
     "conversation-bootstrap-requested.json",

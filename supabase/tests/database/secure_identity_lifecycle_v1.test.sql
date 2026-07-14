@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(49);
+select plan(57);
 
 select has_table('public', 'players', 'canonical players table exists');
 select has_table('public', 'player_profiles_v1', 'canonical player profile mapping exists');
@@ -400,6 +400,169 @@ select isnt(
   'onboarding player cannot send messages'
 );
 
+
+
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000000101', true);
+select set_config(
+  'request.jwt.claims',
+  jsonb_build_object(
+    'sub', '01000000-0000-4000-8000-000000000101',
+    'role', 'authenticated',
+    'session_id', '09000000-0000-4000-8000-000000000104',
+    'iat', extract(epoch from now() - interval '1 minute')::bigint,
+    'exp', extract(epoch from now() + interval '1 hour')::bigint
+  )::text,
+  true
+);
+
+select is(
+  public.get_own_player_profile_identity_v1()->>'profileId',
+  (
+    select id::text
+    from public.player_profiles_v1
+    where player_id = '20000000-0000-4000-8000-000000000101'
+  ),
+  'profile identity read returns the canonical ProfileId'
+);
+
+select is(
+  (
+    public.update_player_profile_identity_v1(
+      jsonb_build_object(
+        'expectedProfileVersion', 1,
+        'idempotencyKey', 'profile.identity.000000000101.v1',
+        'identity', jsonb_build_object(
+          'bio', 'Atomic profile identity',
+          'displayName', 'Versioned Player',
+          'genderId', 'hidden',
+          'stats', jsonb_build_object(
+            'matches', 320,
+            'rating', 4.7,
+            'reputation', 96,
+            'winRate', 61
+          ),
+          'status', 'ready'
+        )
+      )
+    )->>'profileVersion'
+  )::integer,
+  2,
+  'profile identity update increments the canonical profile version'
+);
+
+select is(
+  (
+    select jsonb_build_object(
+      'displayName', profiles.display_name,
+      'bio', profiles.bio,
+      'genderId', habits.media_summary #>> '{profile_basics,gender}',
+      'status', habits.media_summary->>'profile_status',
+      'matches', (habits.media_summary #>> '{profile_stats,matches}')::integer,
+      'winRate', (habits.media_summary #>> '{profile_stats,win_rate}')::integer
+    )
+    from public.profiles profiles
+    join public.profile_habits habits on habits.profile_id = profiles.id
+    where profiles.id = '01000000-0000-4000-8000-000000000101'
+  ),
+  '{"displayName":"Versioned Player","bio":"Atomic profile identity","genderId":"hidden","status":"ready","matches":320,"winRate":61}'::jsonb,
+  'profile identity command updates the legacy projection atomically'
+);
+
+select is(
+  (
+    public.update_player_profile_identity_v1(
+      jsonb_build_object(
+        'expectedProfileVersion', 1,
+        'idempotencyKey', 'profile.identity.000000000101.v1',
+        'identity', jsonb_build_object(
+          'bio', 'Atomic profile identity',
+          'displayName', 'Versioned Player',
+          'genderId', 'hidden',
+          'stats', jsonb_build_object(
+            'matches', 320,
+            'rating', 4.7,
+            'reputation', 96,
+            'winRate', 61
+          ),
+          'status', 'ready'
+        )
+      )
+    )->>'repeated'
+  )::boolean,
+  true,
+  'profile identity retry returns the durable receipt'
+);
+
+select is(
+  (
+    select version::integer
+    from public.player_profiles_v1
+    where player_id = '20000000-0000-4000-8000-000000000101'
+  ),
+  2,
+  'profile identity retry does not increment the version twice'
+);
+
+select is(
+  (
+    select count(*)::integer
+    from private.outbox_events
+    where event_type = 'player.profile_updated.v1'
+      and aggregate_id = '20000000-0000-4000-8000-000000000101'
+  ),
+  1,
+  'profile identity retry emits exactly one profile-updated event'
+);
+
+select throws_like(
+  $$select public.update_player_profile_identity_v1(
+    jsonb_build_object(
+      'expectedProfileVersion', 1,
+      'idempotencyKey', 'profile.identity.stale.000000000101',
+      'identity', jsonb_build_object(
+        'bio', 'Stale update',
+        'displayName', 'Stale Player',
+        'genderId', null,
+        'stats', jsonb_build_object(
+          'matches', 1,
+          'rating', 1,
+          'reputation', 1,
+          'winRate', 1
+        ),
+        'status', null
+      )
+    )
+  )$$,
+  '%profile_version_conflict%',
+  'stale profile version returns a structured conflict'
+);
+
+select throws_like(
+  $$select public.update_player_profile_identity_v1(
+    jsonb_build_object(
+      'expectedProfileVersion', 1,
+      'idempotencyKey', 'profile.identity.000000000101.v1',
+      'identity', jsonb_build_object(
+        'bio', 'Different body',
+        'displayName', 'Different Player',
+        'genderId', null,
+        'stats', jsonb_build_object(
+          'matches', 2,
+          'rating', 2,
+          'reputation', 2,
+          'winRate', 2
+        ),
+        'status', null
+      )
+    )
+  )$$,
+  '%idempotency_key_reused%',
+  'profile identity key cannot be reused with a different request'
+);
+
+reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);

@@ -12,7 +12,11 @@ import {
   isPrincipalExpired,
   PlayerIdentityMappingV1Schema,
   PlayerLifecycleSnapshotV1Schema,
+  PlayerProfileIdentitySnapshotV1Schema,
+  PlayerProfileUpdatedEventV1Schema,
   PlayerProfileVersionV1Schema,
+  UpdatePlayerProfileIdentityCommandV1Schema,
+  UpdatePlayerProfileIdentityResultV1Schema,
   PlayerDeletionRequestedEventV1Schema,
   RequestPlayerDeletionCommandV1Schema,
   RequestPlayerDeletionResultV1Schema,
@@ -148,6 +152,42 @@ describe('Mission 1 Core V1 provider contracts', () => {
     );
 
     expect(event.data.lifecycleVersion).toBe(4);
+    expect(event.aggregateId).toBe(event.data.playerId);
+  });
+
+  it('publishes the authoritative profile identity read snapshot', () => {
+    const snapshot = PlayerProfileIdentitySnapshotV1Schema.parse(
+      read('profile-identity-snapshot.json'),
+    );
+
+    expect(snapshot.profileVersion).toBe(3);
+    expect(snapshot.identity.status).toBe('ready');
+  });
+
+  it('publishes the optimistic profile identity command', () => {
+    const command = UpdatePlayerProfileIdentityCommandV1Schema.parse(
+      read('profile-identity-update-command.json'),
+    );
+
+    expect(command.expectedProfileVersion).toBe(2);
+    expect(command.identity.displayName).toBe('Liqi Pro');
+  });
+
+  it('publishes a durable identity update replay receipt', () => {
+    const result = UpdatePlayerProfileIdentityResultV1Schema.parse(
+      read('profile-identity-update-replay.json'),
+    );
+
+    expect(result.repeated).toBe(true);
+    expect(result.profileVersion).toBe(3);
+  });
+
+  it('publishes the profile-updated event', () => {
+    const event = PlayerProfileUpdatedEventV1Schema.parse(
+      read('player-profile-updated-event.json'),
+    );
+
+    expect(event.data.profileVersion).toBe(3);
     expect(event.aggregateId).toBe(event.data.playerId);
   });
 
