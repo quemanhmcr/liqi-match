@@ -1,11 +1,7 @@
 const fs = require('node:fs');
 
 const migration = fs.readFileSync(
-  'supabase/migrations/202607140008_home_match_facts_v1.sql',
-  'utf8',
-);
-const discoveryMigration = fs.readFileSync(
-  'supabase/migrations/202607140006_discovery_candidate_snapshot_v1.sql',
+  'supabase/migrations/202607140034_shared_player_summary_home_facts_v1.sql',
   'utf8',
 );
 const databaseTest = fs.readFileSync(
@@ -18,8 +14,13 @@ const requireInvariant = (condition, message) => {
 };
 
 requireInvariant(
-  discoveryMigration.includes('private.player_summary_v1') &&
-    migration.includes('private.player_summary_v1'),
+  migration.includes(
+    'create or replace function private.player_summary_v1(p_player_id uuid)',
+  ) &&
+    migration.includes(
+      "'profileSummary', private.player_summary_v1(ranked.candidate_player_id)",
+    ) &&
+    migration.includes("'opponent', private.player_summary_v1("),
   'Discover and Home must consume one PlayerSummaryV1 SQL authority',
 );
 requireInvariant(
