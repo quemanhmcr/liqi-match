@@ -94,6 +94,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       favicon: './assets/images/favicon.png',
     },
     plugins: [
+      'expo-notifications',
       'expo-router',
       'expo-dev-client',
       'expo-font',

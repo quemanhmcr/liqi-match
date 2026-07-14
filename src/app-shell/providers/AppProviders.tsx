@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import type { PropsWithChildren } from 'react';
 import { KeyboardProvider } from 'react-native-keyboard-controller';
 
+import { DeepLinkCoordinatorProvider } from '@/app-shell/deep-link/DeepLinkCoordinatorProvider';
 import { AuthStateProvider } from '@/shared/auth/auth-context';
 import { queryClient } from '@/shared/lib/query-client';
 
@@ -20,11 +21,13 @@ export function AppProviders({ children }: PropsWithChildren) {
   return (
     <KeyboardProvider>
       <AuthStateProvider>
-        <ApplicationServiceProviders services={applicationServices}>
-          <QueryClientProvider client={queryClient}>
-            {children}
-          </QueryClientProvider>
-        </ApplicationServiceProviders>
+        <DeepLinkCoordinatorProvider>
+          <ApplicationServiceProviders services={applicationServices}>
+            <QueryClientProvider client={queryClient}>
+              {children}
+            </QueryClientProvider>
+          </ApplicationServiceProviders>
+        </DeepLinkCoordinatorProvider>
       </AuthStateProvider>
     </KeyboardProvider>
   );
