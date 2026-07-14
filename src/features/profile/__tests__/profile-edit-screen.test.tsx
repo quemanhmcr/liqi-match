@@ -99,6 +99,70 @@ describe('ProfileEditScreen', () => {
     expect(result.queryByText('sea')).toBeNull();
   });
 
+  it('uses the latest profile version after a partial save', async () => {
+    const firstDraft = profileDraft();
+    const firstForm = structuredClone(firstDraft.form);
+    firstForm.identity.displayName = 'Saved identity';
+    mockSaveChanges
+      .mockResolvedValueOnce({
+        baseline: firstForm,
+        failedSection: 'lanes',
+        form: firstForm,
+        outcome: 'partially-saved',
+        profileVersion: 3,
+        retrySections: ['lanes'],
+        savedSections: ['identity'],
+        steps: [
+          { id: 'identity', status: 'saved' },
+          { error: 'Lane failed', id: 'lanes', status: 'failed' },
+        ],
+        uploadedButUnassociated: [],
+      })
+      .mockResolvedValueOnce({
+        baseline: firstForm,
+        form: firstForm,
+        outcome: 'saved',
+        profileVersion: 3,
+        retrySections: [],
+        savedSections: ['lanes'],
+        steps: [{ id: 'lanes', status: 'saved' }],
+        uploadedButUnassociated: [],
+      });
+    const result = await renderWithProviders(<ProfileEditScreen />);
+    await result.findByText('Thông tin cá nhân');
+
+    await act(async () => {
+      await fireEvent.changeText(
+        result.getByDisplayValue('Display Name'),
+        'Saved identity',
+      );
+    });
+    await waitFor(() => {
+      expect(
+        result.getByLabelText('Lưu hồ sơ').props.accessibilityState?.disabled ??
+          result.getByLabelText('Lưu hồ sơ').props.disabled,
+      ).toBeFalsy();
+    });
+    await act(async () => {
+      await fireEvent.press(result.getByLabelText('Lưu hồ sơ'));
+    });
+    await waitFor(() => {
+      expect(mockSaveChanges).toHaveBeenCalledTimes(1);
+      expect(result.getByLabelText('Thử lưu lại phần thất bại')).toBeTruthy();
+    });
+
+    await act(async () => {
+      await fireEvent.press(result.getByLabelText('Thử lưu lại phần thất bại'));
+    });
+
+    await waitFor(() => {
+      expect(mockSaveChanges).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({ profileVersion: 3 }),
+      );
+    });
+  });
+
   it('stages a selected image without starting save or upload coordination', async () => {
     mockLaunchPicker.mockResolvedValueOnce({
       assets: [

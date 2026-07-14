@@ -32,8 +32,10 @@ export type ProfileEditSaveStepStatus =
   'pending' | 'running' | 'saved' | 'partially-saved' | 'failed' | 'skipped';
 
 export type ProfileEditSaveStep = {
+  code?: string;
   error?: string;
   id: ProfileEditSectionId;
+  retryable?: boolean;
   status: ProfileEditSaveStepStatus;
 };
 
@@ -42,6 +44,7 @@ export type ProfileEditSaveResult = {
   failedSection?: ProfileEditSectionId;
   form: ProfileEditForm;
   outcome: ProfileEditSaveOutcome;
+  profileVersion: number;
   retrySections: ProfileEditSectionId[];
   savedSections: ProfileEditSectionId[];
   steps: ProfileEditSaveStep[];
@@ -83,6 +86,7 @@ export async function saveProfileEditChanges(input: {
   current: ProfileEditForm;
   draft: ProfileEditDraft;
   onlySections?: readonly ProfileEditSectionId[];
+  profileVersion?: number;
   session: AuthSession;
 }): Promise<ProfileEditSaveResult> {
   const dirty = new Set(
@@ -96,6 +100,8 @@ export async function saveProfileEditChanges(input: {
   const savedSections: ProfileEditSectionId[] = [];
   let workingForm = cloneProfileEditForm(input.current);
   let workingBaseline = cloneProfileEditForm(input.baseline);
+  let workingProfileVersion =
+    input.profileVersion ?? input.draft.meta.profileVersion;
   let uploadedButUnassociated: ProfileEditStagedMedia[] = [];
 
   for (const section of saveOrder) {
@@ -130,13 +136,17 @@ export async function saveProfileEditChanges(input: {
         );
         await clearRecoveredMediaSlots(input.draft.id, associatedSlots);
       } else {
-        await saveNonMediaSection({
+        const sectionResult = await saveNonMediaSection({
           baseline: workingBaseline,
           current: workingForm,
           draft: input.draft,
+          profileVersion: workingProfileVersion,
           section,
           session: input.session,
         });
+        if (sectionResult.profileVersion !== undefined) {
+          workingProfileVersion = sectionResult.profileVersion;
+        }
       }
 
       step.status = 'saved';
@@ -178,13 +188,20 @@ export async function saveProfileEditChanges(input: {
         commandPartial ||
         uploadedButUnassociated.length > 0 ||
         savedSections.length > 0;
+      const retryable =
+        !(error instanceof ProfileEditCommandError) || error.retryable;
       step.status = partiallySaved ? 'partially-saved' : 'failed';
+      step.code =
+        error instanceof ProfileEditCommandError ? error.code : undefined;
       step.error = errorMessage(error);
+      step.retryable = retryable;
       return buildFailureResult({
         baseline: workingBaseline,
         failedSection: section,
         form: workingForm,
         partiallySaved,
+        profileVersion: workingProfileVersion,
+        retryable,
         savedSections,
         steps,
         uploadedButUnassociated,
@@ -196,6 +213,7 @@ export async function saveProfileEditChanges(input: {
     baseline: workingBaseline,
     form: workingForm,
     outcome: 'saved',
+    profileVersion: workingProfileVersion,
     retrySections: [],
     savedSections,
     steps,
@@ -274,37 +292,43 @@ async function saveNonMediaSection(input: {
   baseline: ProfileEditForm;
   current: ProfileEditForm;
   draft: ProfileEditDraft;
+  profileVersion: number;
   section: Exclude<ProfileEditSectionId, 'media'>;
   session: AuthSession;
-}) {
+}): Promise<{ profileVersion?: number }> {
   const shared = { profileId: input.draft.id, session: input.session };
   if (input.section === 'identity') {
     return saveProfileIdentity({
-      ...shared,
       baseline: input.baseline.identity,
+      canonicalProfileId: input.draft.meta.canonicalProfileId,
       current: input.current.identity,
+      expectedProfileVersion: input.profileVersion,
+      playerId: input.draft.meta.playerId,
+      session: input.session,
     });
   }
   if (input.section === 'gameProfile') {
-    return saveProfileGameProfile({
+    await saveProfileGameProfile({
       ...shared,
       baseline: input.baseline.gameProfile,
       current: input.current.gameProfile,
       hasGameProfileRecord: input.draft.meta.hasGameProfileRecord,
       rankDbIds: input.draft.meta.rankDbIds,
     });
+    return {};
   }
   if (input.section === 'lanes') {
-    return saveProfileRoles({
+    await saveProfileRoles({
       ...shared,
       baselineSelection: input.baseline.laneSelection,
       currentSelection: input.current.laneSelection,
       laneDbIds: input.draft.meta.laneDbIds,
       lanesLossless: input.draft.meta.lanesLossless,
     });
+    return {};
   }
   if (input.section === 'heroes') {
-    return saveProfileHeroes({
+    await saveProfileHeroes({
       ...shared,
       baselineHeroes: input.baseline.heroes,
       currentHeroes: input.current.heroes,
@@ -312,15 +336,17 @@ async function saveNonMediaSection(input: {
       heroDbIds: input.draft.meta.heroDbIds,
       heroesLossless: input.draft.meta.heroesLossless,
     });
+    return {};
   }
   if (input.section === 'habits') {
-    return saveProfileHabits({
+    await saveProfileHabits({
       ...shared,
       baseline: input.baseline.habits,
       current: input.current.habits,
       habitsLossless: input.draft.meta.habitsLossless,
       hasHabitRecord: input.draft.meta.hasHabitRecord,
     });
+    return {};
   }
   throw new ProfileEditCommandError(
     'Availability đang chờ primitive dùng chung. Không có dữ liệu nào được ghi bằng adapter tạm.',
@@ -332,16 +358,20 @@ function buildFailureResult(input: {
   failedSection: ProfileEditSectionId;
   form: ProfileEditForm;
   partiallySaved: boolean;
+  profileVersion: number;
+  retryable: boolean;
   savedSections: ProfileEditSectionId[];
   steps: ProfileEditSaveStep[];
   uploadedButUnassociated: ProfileEditStagedMedia[];
 }): ProfileEditSaveResult {
   const failedIndex = saveOrder.indexOf(input.failedSection);
-  const retrySections = saveOrder.filter((section, index) => {
-    if (index < failedIndex) return false;
-    const step = findStep(input.steps, section);
-    return step.status !== 'skipped';
-  });
+  const retrySections = input.retryable
+    ? saveOrder.filter((section, index) => {
+        if (index < failedIndex) return false;
+        const step = findStep(input.steps, section);
+        return step.status !== 'skipped';
+      })
+    : [];
   for (const step of input.steps) {
     if (step.status === 'pending' || step.status === 'running') {
       step.status = 'skipped';
@@ -352,6 +382,7 @@ function buildFailureResult(input: {
     failedSection: input.failedSection,
     form: input.form,
     outcome: input.partiallySaved ? 'partially-saved' : 'failed',
+    profileVersion: input.profileVersion,
     retrySections,
     savedSections: input.savedSections,
     steps: input.steps,

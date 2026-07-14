@@ -1,12 +1,16 @@
-import {
-  GENDER_CATALOG,
-  GenderIdSchema,
-  legacyValueForCatalogId,
-} from '@/entities/player-profile';
+import { GenderIdSchema } from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
-import { supabaseRest } from '@/shared/services/supabase-rest';
+import {
+  PlayerProfileStatusV1Schema,
+  UpdatePlayerProfileIdentityCommandV1Schema,
+  UpdatePlayerProfileIdentityResultV1Schema,
+  type PlayerProfileIdentitySnapshotV1,
+} from '@/shared/contracts/core-v1';
+import {
+  SupabaseRestError,
+  supabaseRest,
+} from '@/shared/services/supabase-rest';
 
-import type { ProfileStats } from '../../../services/profile-service';
 import type { ProfileEditIdentity } from '../../model/profile-edit-model';
 import { ProfileEditCommandError } from './profile-edit-command-error';
 import {
@@ -14,93 +18,116 @@ import {
   normalizeDisplayName,
   normalizeOptionalNumber,
   normalizeRating,
-  recordValue,
-  stableKey,
-  stripUndefined,
 } from './profile-edit-command-utils';
-import { patchProfileMediaSummary } from './profile-edit-media-summary';
+
+export type SaveProfileIdentityResult = {
+  profileVersion: number;
+};
 
 export async function saveProfileIdentity(input: {
   baseline: ProfileEditIdentity;
+  canonicalProfileId: PlayerProfileIdentitySnapshotV1['profileId'];
   current: ProfileEditIdentity;
-  profileId: string;
+  expectedProfileVersion: number;
+  playerId: PlayerProfileIdentitySnapshotV1['playerId'];
   session: AuthSession;
-}) {
-  const profilePatch: Record<string, unknown> = {};
-  if (input.baseline.displayName !== input.current.displayName) {
-    profilePatch.display_name = normalizeDisplayName(input.current.displayName);
-  }
-  if (input.baseline.bio !== input.current.bio) {
-    const bio = normalizeBio(input.current.bio);
-    profilePatch.bio = bio || null;
+}): Promise<SaveProfileIdentityResult> {
+  const accountId = input.session.principal?.accountId ?? input.session.user.id;
+  if (
+    accountId !== input.session.user.id ||
+    (input.session.principal?.playerId &&
+      input.session.principal.playerId !== input.playerId)
+  ) {
+    throw new ProfileEditCommandError(
+      'Session không khớp canonical AccountId → PlayerId mapping.',
+      { code: 'profile_identity_mismatch', retryable: false },
+    );
   }
 
-  let profileSaved = false;
-  if (Object.keys(profilePatch).length) {
-    await supabaseRest(
-      `profiles?id=eq.${encodeURIComponent(input.profileId)}`,
+  const command = UpdatePlayerProfileIdentityCommandV1Schema.parse({
+    expectedProfileVersion: input.expectedProfileVersion,
+    idempotencyKey: `profile.identity.${accountId}.v${input.expectedProfileVersion}`,
+    identity: {
+      bio: normalizeBio(input.current.bio),
+      displayName: normalizeDisplayName(input.current.displayName),
+      genderId:
+        input.current.genderId === null
+          ? null
+          : GenderIdSchema.parse(input.current.genderId),
+      stats: normalizeIdentityStats(input.baseline, input.current),
+      status: normalizeIdentityStatus(input.baseline, input.current),
+    },
+  });
+
+  try {
+    const rawResult = await supabaseRest<unknown>(
+      'rpc/update_player_profile_identity_v1',
       {
-        body: profilePatch,
-        method: 'PATCH',
-        prefer: 'return=minimal',
+        body: { command },
+        method: 'POST',
         session: input.session,
       },
     );
-    profileSaved = true;
-  }
-
-  const genderChanged = input.baseline.genderId !== input.current.genderId;
-  const statusChanged = input.baseline.status !== input.current.status;
-  const statsChanged =
-    stableKey(input.baseline.stats) !== stableKey(input.current.stats);
-  if (!genderChanged && !statusChanged && !statsChanged) return;
-
-  try {
-    await patchProfileMediaSummary(
-      input.session,
-      input.profileId,
-      (summary) => {
-        const next = { ...summary };
-        if (genderChanged) {
-          next.profile_basics = {
-            ...recordValue(summary.profile_basics),
-            gender:
-              input.current.genderId === null
-                ? null
-                : legacyValueForCatalogId(
-                    GENDER_CATALOG,
-                    GenderIdSchema.parse(input.current.genderId),
-                  ),
-          };
-        }
-        if (statusChanged) next.profile_status = input.current.status ?? null;
-        if (statsChanged) {
-          next.profile_stats = mergeStatsSummary(
-            recordValue(summary.profile_stats),
-            input.current.stats,
-          );
-        }
-        return next;
-      },
-    );
+    const result = UpdatePlayerProfileIdentityResultV1Schema.parse(rawResult);
+    if (
+      result.playerId !== input.playerId ||
+      result.profileId !== input.canonicalProfileId ||
+      result.profileVersion !== input.expectedProfileVersion + 1
+    ) {
+      throw new ProfileEditCommandError(
+        'Profile identity response không khớp canonical identity/version.',
+        { code: 'profile_identity_response_mismatch', retryable: false },
+      );
+    }
+    return { profileVersion: result.profileVersion };
   } catch (error) {
-    throw new ProfileEditCommandError(
-      'Thông tin cơ bản đã lưu một phần nhưng trạng thái hiển thị chưa được cập nhật.',
-      { cause: error, partiallySaved: profileSaved },
-    );
+    if (
+      error instanceof SupabaseRestError &&
+      error.code === 'profile_version_conflict'
+    ) {
+      const actualVersion = numericDetail(error.details ?? {}, 'actualVersion');
+      throw new ProfileEditCommandError(
+        actualVersion === null
+          ? 'Hồ sơ đã thay đổi trên phiên khác. Hãy tải lại trước khi lưu.'
+          : `Hồ sơ đã ở phiên bản ${actualVersion}. Hãy tải lại trước khi lưu.`,
+        {
+          cause: error,
+          code: error.code,
+          retryable: false,
+        },
+      );
+    }
+    throw error;
   }
 }
 
-function mergeStatsSummary(
-  current: Record<string, unknown>,
-  stats: Partial<ProfileStats> | undefined,
+function normalizeIdentityStats(
+  baseline: ProfileEditIdentity,
+  current: ProfileEditIdentity,
 ) {
-  if (!stats) return {};
-  return stripUndefined({
-    ...current,
-    matches: normalizeOptionalNumber(stats.matches, 99999),
-    rating: normalizeRating(stats.rating),
-    reputation: normalizeOptionalNumber(stats.reputation, 100),
-    win_rate: normalizeOptionalNumber(stats.winRate, 100),
-  });
+  const stats = { ...baseline.stats, ...current.stats };
+  return {
+    matches: normalizeOptionalNumber(stats.matches, 99_999) ?? 0,
+    rating: normalizeRating(stats.rating) ?? 0,
+    reputation: normalizeOptionalNumber(stats.reputation, 100) ?? 0,
+    winRate: normalizeOptionalNumber(stats.winRate, 100) ?? 0,
+  };
+}
+
+function normalizeIdentityStatus(
+  baseline: ProfileEditIdentity,
+  current: ProfileEditIdentity,
+) {
+  const candidate = current.status ?? baseline.status ?? null;
+  return candidate === null
+    ? null
+    : PlayerProfileStatusV1Schema.parse(candidate);
+}
+
+function numericDetail(
+  details: Readonly<Record<string, unknown>>,
+  key: string,
+) {
+  const value = details[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
