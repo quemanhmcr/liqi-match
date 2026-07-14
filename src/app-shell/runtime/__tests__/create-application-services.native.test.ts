@@ -184,7 +184,7 @@ describe('application service composition', () => {
     ).toBe(false);
   });
 
-  it('does not expose simulation lifecycle or silently replace API services', async () => {
+  it('exposes production services without simulation fallbacks', async () => {
     const services = createApiApplicationServices();
 
     expect(services.mode).toBe('api');
@@ -192,7 +192,11 @@ describe('application service composition', () => {
     expect(services.simulationRuntime).toBeNull();
     await expect(
       services.messageRepository.listConversations(),
-    ).rejects.toBeInstanceOf(ApplicationServiceUnavailableError);
+    ).rejects.toMatchObject({
+      code: 'unauthenticated',
+      name: 'MessagesServiceError',
+      retryable: false,
+    });
     await expect(
       services.notificationRepository.list({
         session: simulationSession(),

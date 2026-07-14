@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(22);
+select plan(24);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at
@@ -80,6 +80,21 @@ insert into public.relationship_decisions_v1 (
 update private.match_authority_config_v1
 set reads_enabled = true;
 
+update public.match_intents_v1
+set expires_at = now() - interval '1 second'
+where player_id = '20000000-0000-4000-8000-000000000306';
+select private.expire_match_intent_v1('20000000-0000-4000-8000-000000000306');
+select private.expire_match_intent_v1('20000000-0000-4000-8000-000000000306');
+select is(
+  (select state::text from public.match_intents_v1 where player_id = '20000000-0000-4000-8000-000000000306'),
+  'expired',
+  'expired Match Intent is transitioned before Discovery reads'
+);
+select is(
+  (select version from public.match_intents_v1 where player_id = '20000000-0000-4000-8000-000000000306'),
+  2,
+  'repeating Match Intent expiry does not advance the version twice'
+);
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000301', true);
@@ -96,6 +111,8 @@ select public.list_discovery_candidates_v1(
   (select (response ->> 'nextCursor')::uuid from discovery_page_one),
   1
 ) as response;
+
+reset role;
 
 select is(
   (select jsonb_array_length(response -> 'items') from discovery_page_one),

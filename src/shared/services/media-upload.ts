@@ -3,8 +3,9 @@ import * as FileSystem from 'expo-file-system/legacy';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
 
-export type MediaSlot = 'avatar' | 'cover' | 'wall';
-export type UploadMediaPurpose = 'personal_avatar' | 'game_profile';
+export type MediaSlot = 'avatar' | 'chat' | 'cover' | 'wall';
+export type UploadMediaPurpose =
+  'personal_avatar' | 'game_profile' | 'chat_attachment';
 
 export type LocalImageAsset = {
   fileName?: string | null;
@@ -55,6 +56,7 @@ type UploadPlanItem = {
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const MAX_BYTES_BY_PURPOSE: Record<UploadMediaPurpose, number> = {
+  chat_attachment: 12 * 1024 * 1024,
   game_profile: 8 * 1024 * 1024,
   personal_avatar: 5 * 1024 * 1024,
 };
@@ -71,6 +73,17 @@ export async function uploadProfileMediaAsset(
     asset: input.asset,
     purpose: input.slot === 'avatar' ? 'personal_avatar' : 'game_profile',
     slot: input.slot,
+  });
+}
+
+export async function uploadChatAttachment(
+  session: AuthSession,
+  asset: LocalImageAsset,
+): Promise<UploadedMediaAsset> {
+  return uploadSingleMedia(session, {
+    asset,
+    purpose: 'chat_attachment',
+    slot: 'chat',
   });
 }
 

@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(11);
+select plan(12);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at
@@ -70,15 +70,34 @@ select jsonb_build_object(
         '20000000-0000-4000-8000-000000000402',
         '20000000-0000-4000-8000-000000000401'
       ),
-      'state', 'active',
+      'state', 'open',
       'lastMessage', null,
       'unreadCount', 0,
       'version', 1
-    )
+    ),
+    'bootstrapEventId', '80000000-0000-4000-8000-000000000400'
   )
 ) as event;
+grant select on table projection_event to service_role;
 
 set local role service_role;
+
+select throws_like(
+  $$select public.apply_conversation_created_to_match_v1(
+    jsonb_set(
+      (select event from projection_event),
+      '{data,conversation,participantIds,1}',
+      '"20000000-0000-4000-8000-000000000403"'::jsonb
+    )
+  )$$,
+  '%validation_failed%',
+  'participant mismatch is rejected'
+);
+select is(
+  (select home_status_v1::text from public.matches where id = '60000000-0000-4000-8000-000000000401'),
+  'conversation_pending',
+  'rejected projection leaves the Match pending'
+);
 
 create temporary table projection_first as
 select public.apply_conversation_created_to_match_v1(
@@ -118,17 +137,6 @@ select is(
   (select receipt ->> 'correlationId' from projection_first),
   '70000000-0000-4000-8000-000000000401',
   'correlationId is preserved across the Match Loop'
-);
-select throws_like(
-  $$select public.apply_conversation_created_to_match_v1(
-    jsonb_set(
-      (select event from projection_event),
-      '{data,conversation,participantIds,1}',
-      '"20000000-0000-4000-8000-000000000403"'::jsonb
-    )
-  )$$,
-  '%validation_failed%',
-  'participant mismatch is rejected'
 );
 select throws_like(
   $$select public.apply_conversation_created_to_match_v1(

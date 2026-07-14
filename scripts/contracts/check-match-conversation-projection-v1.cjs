@@ -70,6 +70,16 @@ const assertionCount = (
 ).length;
 const plannedCount = Number(databaseTest.match(/select plan\((\d+)\)/i)?.[1]);
 requireInvariant(
+  databaseTest.includes("'state', 'open'") &&
+    databaseTest.includes("'bootstrapEventId'"),
+  'provider tests must use the exact canonical conversation.created.v1 payload',
+);
+requireInvariant(
+  databaseTest.includes('rejected projection leaves the Match pending'),
+  'projection mismatch coverage must prove the Match remains pending',
+);
+
+requireInvariant(
   assertionCount === plannedCount,
   `pgTAP plan=${plannedCount} but found ${assertionCount} assertions`,
 );

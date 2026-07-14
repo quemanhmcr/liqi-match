@@ -50,8 +50,10 @@ export type ChatMediaAttachment = {
 };
 
 type TimestampedMessage = {
+  clientMessageId?: string;
   createdAt: string;
   senderId?: string;
+  sequence?: number;
 };
 
 type OutgoingMessageState = TimestampedMessage & {
@@ -130,7 +132,7 @@ export type ChatThread = {
   firstUnreadMessageId?: string;
   id: string;
   isOnline?: boolean;
-  kind: 'Bạn bè' | 'Hệ thống' | 'Team' | 'Tri kỉ';
+  kind: 'Bạn bè' | 'Ghép đôi' | 'Hệ thống' | 'Team' | 'Tri kỉ';
   messages: readonly ChatMessage[];
   name: string;
   status: string;

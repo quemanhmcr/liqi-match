@@ -27,7 +27,10 @@ import {
   createLocalChatRepository,
   type ChatRepository,
 } from '@/features/messages/services/chat-repository';
-import { renderWithProviders } from '@/test/render-with-providers';
+import {
+  renderWithProviders,
+  testAuthSession,
+} from '@/test/render-with-providers';
 
 const inboxReferenceDate = new Date();
 inboxReferenceDate.setHours(23, 59, 0, 0);
@@ -180,7 +183,7 @@ describe('MessagesScreen', () => {
     await waitFor(() =>
       expect(listConversations).toHaveBeenLastCalledWith(
         expect.objectContaining({ filter: 'all', query: 'Khoa' }),
-        expect.objectContaining({ viewerId: 'preview-viewer' }),
+        expect.objectContaining({ viewerId: testAuthSession.user.id }),
       ),
     );
     await waitFor(() => {
@@ -200,7 +203,7 @@ describe('MessagesScreen', () => {
     await waitFor(() =>
       expect(listConversations).toHaveBeenLastCalledWith(
         expect.objectContaining({ filter: 'teams', query: '' }),
-        expect.objectContaining({ viewerId: 'preview-viewer' }),
+        expect.objectContaining({ viewerId: testAuthSession.user.id }),
       ),
     );
     await waitFor(() => {
