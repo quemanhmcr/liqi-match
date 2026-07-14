@@ -319,6 +319,53 @@ export const ReportMessageCommandV2Schema = ReportCommandBaseV2Schema.extend({
   messageId: z.string().uuid(),
 });
 
+export const BlockedPlayerSummaryV2Schema = z
+  .object({
+    avatarAssetId: z.string().uuid().nullable(),
+    displayName: z.string().min(1).max(80).nullable(),
+    playerId: PlayerIdSchema,
+    profileId: ProfileIdSchema.nullable(),
+  })
+  .strict();
+
+export const BlockedPlayerListItemV2Schema = z
+  .object({
+    blockedAt: z.string().datetime({ offset: true }),
+    player: BlockedPlayerSummaryV2Schema,
+    reasonCode: z.string().min(1).max(120).nullable(),
+    relationship: SocialRelationshipSnapshotV2Schema,
+  })
+  .strict()
+  .superRefine((item, context) => {
+    if (item.player.playerId !== item.relationship.targetPlayerId) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Blocked player identity must match the relationship target.',
+        path: ['player', 'playerId'],
+      });
+    }
+    if (
+      !item.relationship.block.viewerBlocksTarget ||
+      !item.relationship.capabilities.blocked ||
+      !item.relationship.capabilities.canUnblock
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Blocked-player rows require an active viewer-owned block.',
+        path: ['relationship', 'block'],
+      });
+    }
+  });
+
+export const BlockedPlayerListPageV2Schema = z
+  .object({
+    contractVersion: CoreV2ContractVersionSchema,
+    items: z.array(BlockedPlayerListItemV2Schema).max(100),
+    nextCursor: PlayerIdSchema.nullable(),
+    totalCount: z.number().int().nonnegative(),
+  })
+  .strict();
+
 export const FriendshipListPageV2Schema = z
   .object({
     contractVersion: CoreV2ContractVersionSchema,
@@ -431,6 +478,15 @@ export const TrustVisibilityDecisionV2Schema = z
     }
   });
 
+export type BlockedPlayerSummaryV2 = z.infer<
+  typeof BlockedPlayerSummaryV2Schema
+>;
+export type BlockedPlayerListItemV2 = z.infer<
+  typeof BlockedPlayerListItemV2Schema
+>;
+export type BlockedPlayerListPageV2 = z.infer<
+  typeof BlockedPlayerListPageV2Schema
+>;
 export type FriendshipListPageV2 = z.infer<typeof FriendshipListPageV2Schema>;
 export type TrustVisibilityV2 = z.infer<typeof TrustVisibilityV2Schema>;
 export type TrustVisibilityDecisionV2 = z.infer<

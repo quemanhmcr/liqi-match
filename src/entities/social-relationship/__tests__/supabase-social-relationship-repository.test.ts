@@ -58,6 +58,32 @@ describe('SupabaseSocialRelationshipRepository', () => {
     );
   });
 
+  it('lists viewer-owned blocks with canonical pagination', async () => {
+    const page = read('blocked-player-page.json');
+    const rpc = jest.fn(async () => page);
+    const repository = new SupabaseSocialRelationshipRepository(rpc);
+
+    await expect(
+      repository.listBlockedPlayers(testAuthSession, {
+        afterPlayerId: targetPlayerId,
+        limit: 500,
+      }),
+    ).resolves.toMatchObject({
+      items: [
+        {
+          player: { playerId: targetPlayerId },
+          relationship: { capabilities: { canUnblock: true } },
+        },
+      ],
+      totalCount: 1,
+    });
+    expect(rpc).toHaveBeenCalledWith(
+      'list_blocked_players_v2',
+      testAuthSession,
+      { p_after_player_id: targetPlayerId, p_limit: 100 },
+    );
+  });
+
   it('normalizes friendship pagination and rejects contract drift', async () => {
     const friend = read('relationship-friend.json');
     const rpc = jest

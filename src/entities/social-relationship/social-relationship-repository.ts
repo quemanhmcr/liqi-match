@@ -1,5 +1,6 @@
 import type {
   AcceptFriendshipCommandV2,
+  BlockedPlayerListPageV2,
   BlockPlayerCommandV2,
   CancelFriendshipCommandV2,
   DeclineFriendshipCommandV2,
@@ -94,6 +95,10 @@ export interface PlayerPrivacyProvider {
 }
 
 export interface SocialRelationshipRepository extends RelationshipCapabilitiesProvider {
+  listBlockedPlayers(
+    session: AuthSession,
+    input?: Readonly<{ afterPlayerId?: string | null; limit?: number }>,
+  ): Promise<BlockedPlayerListPageV2>;
   listFriendships(
     session: AuthSession,
     input?: Readonly<{ afterPlayerId?: string | null; limit?: number }>,

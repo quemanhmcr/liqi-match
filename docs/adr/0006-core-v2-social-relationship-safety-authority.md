@@ -70,6 +70,8 @@ The temporary `PlayerId -> ProfileId -> legacy_profile_id` bridge is exposed onl
 
 Profile relationship actions consume the exact `SocialRelationshipSnapshotV2` returned by the provider, send the server versions back with each command and update UI state only from an authoritative receipt. Discover and Home prefer `PlayerId` routes; simulation-only identity fallback remains a compatibility adapter, not a second semantic authority.
 
+Blocked-user settings read `list_blocked_players_v2`, which returns viewer-owned directional blocks plus the exact relationship version required by `unblock_player_v2`. Mobile settings no longer query or delete legacy `blocks` rows directly; the legacy table remains rollback/shadow data only.
+
 ## Conversation consumer agreement (S1/S3)
 
 The relationship aggregate is the conversation source for friendship-derived direct conversations. Consumers use `aggregateId` as `sourceId` and `aggregateVersion` as the monotonic `sourceVersion`. `friendship.accepted.v2` supplies the complete two-player active member set. Replay of the same event/source must return the existing direct conversation rather than create another.

@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 
 import { useAssetResolver } from '@/entities/media-asset';
+import { useSocialRelationshipRepository } from '@/entities/social-relationship/RelationshipCapabilitiesProvider';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
   AccountDeletionClientError,
@@ -58,6 +59,7 @@ type SettingsMutationKey =
 export function ProfileSettingsScreen() {
   const { session, setSession, signOut } = useAuth();
   const profileRepository = useProfileReadRepository();
+  const relationshipRepository = useSocialRelationshipRepository();
   const assetResolver = useAssetResolver();
   const queryClient = useQueryClient();
   const [pendingKey, setPendingKey] = useState<SettingsMutationKey | null>(
@@ -80,6 +82,14 @@ export function ProfileSettingsScreen() {
       return fetchProfileSettings(session);
     },
     queryKey: ['profile-settings', session?.user.id],
+  });
+  const blockedSummaryQuery = useQuery({
+    enabled: Boolean(session),
+    queryFn: () => {
+      if (!session) throw new Error('Missing auth session');
+      return relationshipRepository.listBlockedPlayers(session, { limit: 1 });
+    },
+    queryKey: ['profile-blocked-users-summary', session?.principal?.playerId],
   });
 
   const profile = profileQuery.data;
@@ -363,7 +373,7 @@ export function ProfileSettingsScreen() {
           title="Hiển thị tỷ lệ thắng"
         />
         <SettingsRow
-          badge={`${settings.blockedCount}`}
+          badge={`${blockedSummaryQuery.data?.totalCount ?? 0}`}
           icon="ban-outline"
           onPress={openBlockedUsers}
           subtitle="Xem và gỡ chặn người chơi đã chặn."
@@ -425,7 +435,6 @@ export function ProfileSettingsScreen() {
 
 const defaultSettingsState: ProfileSettingsState = {
   allowProfileShare: true,
-  blockedCount: 0,
   isDiscoverable: true,
   showWinRate: true,
 };

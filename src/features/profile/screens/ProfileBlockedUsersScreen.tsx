@@ -5,8 +5,13 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Image, Pressable, StyleSheet, View } from 'react-native';
 
+import {
+  useSocialCommandCoordinator,
+  useSocialRelationshipRepository,
+} from '@/entities/social-relationship/RelationshipCapabilitiesProvider';
 import { useAuth } from '@/shared/auth/auth-context';
 import { LiquidCard, LiquidOrbButton } from '@/shared/components/liquid';
+import type { BlockedPlayerListItemV2 } from '@/shared/contracts/core-v2';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
   liquidColors,
@@ -14,57 +19,70 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 
 import { ProfileText } from '../components/ProfileShared';
-import {
-  type BlockedProfile,
-  fetchBlockedProfiles,
-  unblockProfile,
-} from '../services/profile-settings-service';
+import { profileMediaUrl } from '../services/profile-service';
 
 export function ProfileBlockedUsersScreen() {
   const { session } = useAuth();
+  const relationshipRepository = useSocialRelationshipRepository();
+  const socialCoordinator = useSocialCommandCoordinator();
   const queryClient = useQueryClient();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const queryKey = [
+    'profile-blocked-users',
+    session?.principal?.playerId,
+  ] as const;
   const blockedQuery = useQuery({
     enabled: Boolean(session),
     queryFn: () => {
       if (!session) throw new Error('Missing auth session');
-      return fetchBlockedProfiles(session);
+      return relationshipRepository.listBlockedPlayers(session, { limit: 100 });
     },
-    queryKey: ['profile-blocked-users', session?.user.id],
+    queryKey,
   });
 
-  const blockedUsers = blockedQuery.data ?? [];
+  const blockedUsers = blockedQuery.data?.items ?? [];
 
-  const confirmUnblock = (profile: BlockedProfile) => {
+  const confirmUnblock = (item: BlockedPlayerListItemV2) => {
     selectionImpact();
+    const name = blockedPlayerName(item);
     Alert.alert(
       'Gỡ chặn người chơi này?',
-      `${profile.displayName} có thể xuất hiện lại trong các khu vực phù hợp nếu hai bên đủ điều kiện.`,
+      `${name} có thể xuất hiện lại trong các khu vực phù hợp nếu hai bên đủ điều kiện. Friendship cũ sẽ không tự phục hồi.`,
       [
         { style: 'cancel', text: 'Huỷ' },
         {
-          onPress: () => void handleUnblock(profile.blockedId),
+          onPress: () => void handleUnblock(item),
           text: 'Gỡ chặn',
         },
       ],
     );
   };
 
-  const handleUnblock = async (blockedId: string) => {
-    if (!session || pendingId) return;
-    setPendingId(blockedId);
+  const handleUnblock = async (item: BlockedPlayerListItemV2) => {
+    if (!session || !socialCoordinator || pendingId) return;
+    const targetPlayerId = item.player.playerId;
+    setPendingId(targetPlayerId);
     try {
-      await unblockProfile(session, blockedId);
+      await socialCoordinator.unblockPlayer({
+        expectedRelationshipVersion: item.relationship.version,
+        session,
+        targetPlayerId,
+      });
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey }),
         queryClient.invalidateQueries({
-          queryKey: ['profile-blocked-users', session.user.id],
+          queryKey: [
+            'profile-blocked-users-summary',
+            session.principal?.playerId,
+          ],
         }),
-        queryClient.invalidateQueries({
-          queryKey: ['profile-settings', session.user.id],
-        }),
+        queryClient.invalidateQueries({ queryKey: ['discover'] }),
       ]);
     } catch {
-      Alert.alert('Chưa gỡ chặn được', 'Vui lòng kiểm tra kết nối và thử lại.');
+      Alert.alert(
+        'Chưa gỡ chặn được',
+        'Quan hệ có thể đã thay đổi ở phiên khác. Hãy tải lại và thử lại.',
+      );
     } finally {
       setPendingId(null);
     }
@@ -101,7 +119,7 @@ export function ProfileBlockedUsersScreen() {
         <View aria-hidden style={styles.headerSpacer} />
       </View>
       <ProfileText style={styles.headerSubtitle}>
-        Quản lý những người bạn đã chặn khỏi khám phá, match và tương tác.
+        Danh sách này đến từ Social V2 authority và dùng PlayerId canonical.
       </ProfileText>
 
       {blockedQuery.isLoading ? (
@@ -109,10 +127,10 @@ export function ProfileBlockedUsersScreen() {
           icon="hourglass-outline"
           text="Đang tải danh sách đã chặn..."
         />
-      ) : blockedQuery.isError ? (
+      ) : blockedQuery.isError || !socialCoordinator ? (
         <EmptyCard
           icon="warning-outline"
-          text="Chưa đọc được danh sách đã chặn. Vui lòng thử lại sau."
+          text="Chưa xác minh được quyền quản lý block. Hành động đang bị khoá an toàn."
         />
       ) : blockedUsers.length === 0 ? (
         <EmptyCard
@@ -121,12 +139,12 @@ export function ProfileBlockedUsersScreen() {
         />
       ) : (
         <View style={styles.list}>
-          {blockedUsers.map((profile) => (
+          {blockedUsers.map((item) => (
             <BlockedRow
-              disabled={pendingId === profile.blockedId}
-              key={profile.blockedId}
-              onUnblock={() => confirmUnblock(profile)}
-              profile={profile}
+              disabled={pendingId === item.player.playerId}
+              item={item}
+              key={item.player.playerId}
+              onUnblock={() => confirmUnblock(item)}
             />
           ))}
         </View>
@@ -137,13 +155,15 @@ export function ProfileBlockedUsersScreen() {
 
 function BlockedRow({
   disabled,
+  item,
   onUnblock,
-  profile,
-}: {
+}: Readonly<{
   disabled: boolean;
+  item: BlockedPlayerListItemV2;
   onUnblock: () => void;
-  profile: BlockedProfile;
-}) {
+}>) {
+  const displayName = blockedPlayerName(item);
+  const avatarUrl = profileMediaUrl(item.player.avatarAssetId);
   return (
     <LiquidCard
       density="list"
@@ -153,27 +173,22 @@ function BlockedRow({
     >
       <View style={[styles.rowContent, disabled && styles.disabledRow]}>
         <View style={styles.avatarShell}>
-          {profile.avatarUrl ? (
-            <Image
-              source={{ uri: profile.avatarUrl }}
-              style={styles.avatarImage}
-            />
+          {avatarUrl ? (
+            <Image source={{ uri: avatarUrl }} style={styles.avatarImage} />
           ) : (
             <ProfileText style={styles.avatarInitials}>
-              {initialsFromName(profile.displayName)}
+              {initialsFromName(displayName)}
             </ProfileText>
           )}
         </View>
         <View style={styles.rowCopy}>
-          <ProfileText style={styles.rowTitle}>
-            {profile.displayName}
-          </ProfileText>
+          <ProfileText style={styles.rowTitle}>{displayName}</ProfileText>
           <ProfileText style={styles.rowSubtitle}>
-            Đã chặn · {formatDate(profile.createdAt)}
+            Đã chặn · {formatDate(item.blockedAt)}
           </ProfileText>
         </View>
         <Pressable
-          accessibilityLabel={`Gỡ chặn ${profile.displayName}`}
+          accessibilityLabel={`Gỡ chặn ${displayName}`}
           accessibilityRole="button"
           android_ripple={null}
           disabled={disabled}
@@ -195,15 +210,21 @@ function BlockedRow({
 function EmptyCard({
   icon,
   text,
-}: {
+}: Readonly<{
   icon: keyof typeof Ionicons.glyphMap;
   text: string;
-}) {
+}>) {
   return (
     <LiquidCard density="regular" glowIntensity="low" style={styles.emptyCard}>
       <Ionicons color="rgba(178,235,255,0.78)" name={icon} size={22} />
       <ProfileText style={styles.emptyText}>{text}</ProfileText>
     </LiquidCard>
+  );
+}
+
+function blockedPlayerName(item: BlockedPlayerListItemV2) {
+  return (
+    item.player.displayName ?? `Người chơi ${item.player.playerId.slice(0, 8)}`
   );
 }
 

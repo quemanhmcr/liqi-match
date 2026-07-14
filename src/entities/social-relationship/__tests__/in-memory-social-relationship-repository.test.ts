@@ -72,6 +72,27 @@ describe('InMemorySocialRelationshipRepository', () => {
     });
   });
 
+  it('lists only viewer-owned blocks with authoritative versions', async () => {
+    const blocked = SocialRelationshipSnapshotV2Schema.parse(
+      read('relationship-blocked.json'),
+    );
+    const repository = new InMemorySocialRelationshipRepository({
+      relationships: [blocked],
+    });
+
+    await expect(
+      repository.listBlockedPlayers(testAuthSession),
+    ).resolves.toMatchObject({
+      items: [
+        {
+          player: { playerId: blocked.targetPlayerId },
+          relationship: { version: blocked.version },
+        },
+      ],
+      totalCount: 1,
+    });
+  });
+
   it('filters blocked relationships from friendship listing', async () => {
     const repository = new InMemorySocialRelationshipRepository({
       relationships: [
