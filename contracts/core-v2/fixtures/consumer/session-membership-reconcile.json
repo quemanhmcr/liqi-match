@@ -1,0 +1,35 @@
+{
+  "conversationId": "30000000-0000-4000-8000-000000000001",
+  "source": {
+    "sourceType": "play_session",
+    "sourceId": "20000000-0000-4000-8000-000000000001",
+    "sourceVersion": 2
+  },
+  "members": [
+    {
+      "playerId": "10000000-0000-4000-8000-000000000001",
+      "role": "owner"
+    },
+    {
+      "playerId": "10000000-0000-4000-8000-000000000002",
+      "role": "member"
+    },
+    {
+      "playerId": "10000000-0000-4000-8000-000000000003",
+      "role": "member"
+    }
+  ],
+  "revocationReason": "source_membership_revoked",
+  "metadata": {
+    "idempotencyKey": "session-membership:30000000-0000-4000-8000-000000000011",
+    "correlationId": "30000000-0000-4000-8000-000000000012",
+    "causationId": "30000000-0000-4000-8000-000000000013",
+    "expectedAggregateVersion": 3,
+    "audit": {
+      "requestId": "session-membership-2",
+      "clientCreatedAt": "2026-07-14T12:04:00.000Z",
+      "clientPlatform": "service",
+      "clientVersion": "session-authority-v2"
+    }
+  }
+}

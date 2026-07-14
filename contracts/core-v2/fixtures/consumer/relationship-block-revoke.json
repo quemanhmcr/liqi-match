@@ -1,0 +1,22 @@
+{
+  "conversationId": "30000000-0000-4000-8000-000000000020",
+  "source": {
+    "sourceType": "friendship",
+    "sourceId": "40000000-0000-4000-8000-000000000001",
+    "sourceVersion": 8
+  },
+  "members": [],
+  "revocationReason": "blocked",
+  "metadata": {
+    "idempotencyKey": "relationship-block:30000000-0000-4000-8000-000000000021",
+    "correlationId": "30000000-0000-4000-8000-000000000022",
+    "causationId": "30000000-0000-4000-8000-000000000023",
+    "expectedAggregateVersion": 6,
+    "audit": {
+      "requestId": "relationship-block-8",
+      "clientCreatedAt": "2026-07-14T12:06:00.000Z",
+      "clientPlatform": "service",
+      "clientVersion": "relationship-authority-v2"
+    }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "eventId": "30000000-0000-4000-8000-000000000007",
+  "eventType": "message.sent.v2",
+  "eventVersion": 2,
+  "aggregateType": "conversation",
+  "aggregateId": "30000000-0000-4000-8000-000000000001",
+  "aggregateVersion": 2,
+  "actorPlayerId": "10000000-0000-4000-8000-000000000001",
+  "correlationId": "30000000-0000-4000-8000-000000000008",
+  "causationId": null,
+  "occurredAt": "2026-07-14T12:01:00.000Z",
+  "payload": {
+    "message": {
+      "messageId": "30000000-0000-4000-8000-000000000009",
+      "conversationId": "30000000-0000-4000-8000-000000000001",
+      "senderPlayerId": "10000000-0000-4000-8000-000000000001",
+      "clientMessageId": "client-message:30000000-0000-4000-8000-000000000010",
+      "sequence": 1,
+      "content": {
+        "kind": "text",
+        "text": "Sẵn sàng lúc 20:00 nhé."
+      },
+      "createdAt": "2026-07-14T12:01:00.000Z",
+      "tombstonedAt": null
+    },
+    "recipientPlayerIds": ["10000000-0000-4000-8000-000000000002"]
+  }
+}

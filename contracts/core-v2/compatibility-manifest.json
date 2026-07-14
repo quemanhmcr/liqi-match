@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "status": "additive",
+  "owner": "senior-3",
+  "checkpoint": "S3.1",
+  "providerFixtures": [
+    "session-conversation-provisioned.json",
+    "conversation-access-revoked.json",
+    "message-sent.json"
+  ],
+  "consumerFixtures": [
+    "session-membership-reconcile.json",
+    "relationship-block-revoke.json",
+    "session-ready-system-activity.json"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "conversationId": "30000000-0000-4000-8000-000000000001",
+  "source": {
+    "sourceType": "play_session",
+    "sourceId": "20000000-0000-4000-8000-000000000001",
+    "sourceVersion": 3
+  },
+  "sourceEventId": "30000000-0000-4000-8000-000000000030",
+  "sourceEventType": "session.ready_check_opened.v2",
+  "sourceEventVersion": 2,
+  "correlationId": "30000000-0000-4000-8000-000000000031",
+  "causationId": "30000000-0000-4000-8000-000000000032",
+  "payload": {
+    "deadlineAt": "2026-07-14T12:15:00.000Z"
+  }
+}

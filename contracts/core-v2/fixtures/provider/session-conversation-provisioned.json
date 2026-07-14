@@ -1,0 +1,11 @@
+{
+  "commandName": "provision_session_conversation_v2",
+  "conversationId": "30000000-0000-4000-8000-000000000001",
+  "actorPlayerId": "10000000-0000-4000-8000-000000000001",
+  "aggregateVersion": 1,
+  "idempotencyKey": "session-conversation:30000000-0000-4000-8000-000000000001",
+  "correlationId": "30000000-0000-4000-8000-000000000002",
+  "eventId": "30000000-0000-4000-8000-000000000003",
+  "acceptedAt": "2026-07-14T12:00:00.000Z",
+  "repeated": false
+}

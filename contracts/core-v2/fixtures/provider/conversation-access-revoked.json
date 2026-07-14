@@ -1,0 +1,17 @@
+{
+  "eventId": "30000000-0000-4000-8000-000000000004",
+  "eventType": "conversation.access_revoked.v2",
+  "eventVersion": 2,
+  "aggregateType": "conversation",
+  "aggregateId": "30000000-0000-4000-8000-000000000001",
+  "aggregateVersion": 4,
+  "actorPlayerId": null,
+  "correlationId": "30000000-0000-4000-8000-000000000005",
+  "causationId": "30000000-0000-4000-8000-000000000006",
+  "occurredAt": "2026-07-14T12:05:00.000Z",
+  "payload": {
+    "conversationId": "30000000-0000-4000-8000-000000000001",
+    "playerId": "10000000-0000-4000-8000-000000000003",
+    "reason": "source_membership_revoked"
+  }
+}
