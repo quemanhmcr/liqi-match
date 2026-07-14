@@ -112,6 +112,8 @@ select public.list_discovery_candidates_v1(
   1
 ) as response;
 
+reset role;
+
 select is(
   (select jsonb_array_length(response -> 'items') from discovery_page_one),
   1,
