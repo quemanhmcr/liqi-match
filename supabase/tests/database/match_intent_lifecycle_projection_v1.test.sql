@@ -6,6 +6,7 @@ select plan(41);
 grant execute on function private.is_match_intent_lifecycle_projection_ready_v1(uuid, bigint)
   to service_role;
 grant select, update on table public.match_intents_v1 to service_role;
+grant select on table private.outbox_events to service_role;
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at

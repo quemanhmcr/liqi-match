@@ -30,7 +30,8 @@ select isnt(
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
   ('01000000-0000-4000-8000-000000000101', 'authenticated', 'authenticated', 'identity-a@example.test', 'x', now(), now(), now()),
-  ('01000000-0000-4000-8000-000000000102', 'authenticated', 'authenticated', 'identity-b@example.test', 'x', now(), now(), now());
+  ('01000000-0000-4000-8000-000000000102', 'authenticated', 'authenticated', 'identity-b@example.test', 'x', now(), now(), now()),
+  ('01000000-0000-4000-8000-000000000104', 'authenticated', 'authenticated', 'discoverable-b@example.test', 'x', now(), now(), now());
 
 
 select ok(
@@ -55,6 +56,32 @@ select ok(
     'EXECUTE'
   ),
   'suspension lifecycle commands are service-only'
+);
+
+insert into public.players (
+  id,
+  account_id,
+  auth_user_id,
+  lifecycle_state,
+  lifecycle_version,
+  discoverable,
+  messaging_allowed,
+  updated_at
+) values (
+  '20000000-0000-4000-8000-000000000104',
+  '01000000-0000-4000-8000-000000000104',
+  '01000000-0000-4000-8000-000000000104',
+  'active',
+  3,
+  true,
+  true,
+  '2026-07-14T08:04:00Z'
+);
+
+insert into public.player_profiles_v1 (id, player_id)
+values (
+  '30000000-0000-4000-8000-000000000104',
+  '20000000-0000-4000-8000-000000000104'
 );
 
 set local role service_role;
@@ -1127,7 +1154,6 @@ insert into auth.users (
 )
 values
   ('01000000-0000-4000-8000-000000000103', 'authenticated', 'authenticated', 'discoverable-a@example.test', 'x', now(), now(), now()),
-  ('01000000-0000-4000-8000-000000000104', 'authenticated', 'authenticated', 'discoverable-b@example.test', 'x', now(), now(), now()),
   ('01000000-0000-4000-8000-000000000105', 'authenticated', 'authenticated', 'hidden@example.test', 'x', now(), now(), now());
 
 insert into public.players (
@@ -1142,13 +1168,11 @@ insert into public.players (
 )
 values
   ('20000000-0000-4000-8000-000000000103', '01000000-0000-4000-8000-000000000103', '01000000-0000-4000-8000-000000000103', 'active', 2, true, true, '2026-07-14T08:03:00Z'),
-  ('20000000-0000-4000-8000-000000000104', '01000000-0000-4000-8000-000000000104', '01000000-0000-4000-8000-000000000104', 'active', 3, true, true, '2026-07-14T08:04:00Z'),
   ('20000000-0000-4000-8000-000000000105', '01000000-0000-4000-8000-000000000105', '01000000-0000-4000-8000-000000000105', 'active', 2, false, true, '2026-07-14T08:05:00Z');
 
 insert into public.player_profiles_v1 (id, player_id)
 values
   ('30000000-0000-4000-8000-000000000103', '20000000-0000-4000-8000-000000000103'),
-  ('30000000-0000-4000-8000-000000000104', '20000000-0000-4000-8000-000000000104'),
   ('30000000-0000-4000-8000-000000000105', '20000000-0000-4000-8000-000000000105');
 
 select is(

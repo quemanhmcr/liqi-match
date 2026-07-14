@@ -7,7 +7,11 @@ const funnelGuardMigration = fs.readFileSync(
   'supabase/migrations/202607140040_return_loop_match_funnel_guard_v1.sql',
   'utf8',
 );
-const migration = `${baseMigration}\n${funnelGuardMigration}`;
+const deterministicE2eMigration = fs.readFileSync(
+  'supabase/migrations/202607140046_deterministic_return_loop_e2e_order_v1.sql',
+  'utf8',
+);
+const migration = `${baseMigration}\n${funnelGuardMigration}\n${deterministicE2eMigration}`;
 const test = fs.readFileSync(
   'supabase/tests/database/return_loop_release_readiness_v1.test.sql',
   'utf8',
@@ -69,6 +73,14 @@ requireInvariant(
   /record_return_loop_api_e2e_result_v1/i.test(migration) &&
     /on conflict \(run_id\) do update/i.test(migration),
   'API-mode E2E evidence must be durable and idempotent by run id.',
+);
+requireInvariant(
+  /add column recorded_at timestamptz/i.test(deterministicE2eMigration) &&
+    /recorded_at = clock_timestamp\(\)/i.test(deterministicE2eMigration) &&
+    /order by run\.completed_at desc,\s*run\.recorded_at desc,\s*run\.run_id desc/i.test(
+      deterministicE2eMigration,
+    ),
+  'Latest API-mode E2E evidence must use a deterministic authority-write tie-breaker.',
 );
 requireInvariant(
   /deviceA\.rpc\(\s*'send_message_v1'/m.test(e2eRunner) &&

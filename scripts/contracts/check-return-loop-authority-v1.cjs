@@ -4,6 +4,12 @@ const migrationPath =
   'supabase/migrations/202607140036_return_loop_authority_v1.sql';
 const testPath = 'supabase/tests/database/return_loop_authority_v1.test.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8');
+const variableConflictMigrationPath =
+  'supabase/migrations/202607140044_fix_return_loop_event_variable_conflict_v1.sql';
+const variableConflictMigration = fs.readFileSync(
+  variableConflictMigrationPath,
+  'utf8',
+);
 const databaseTest = fs.readFileSync(testPath, 'utf8');
 const homeApiRepository = fs.readFileSync(
   'src/features/home/services/api-home-repository.ts',
@@ -164,6 +170,19 @@ requireInvariant(
     eventConsumer,
   ) && /return_loop_processed_events_v1/i.test(eventConsumer),
   'Event consumption must serialize and persist idempotency by EventId.',
+);
+requireInvariant(
+  /create or replace function private\.consume_return_loop_event_without_suspension_v1\(p_event jsonb\)/i.test(
+    variableConflictMigration,
+  ) &&
+    /event_id_value uuid :=/i.test(variableConflictMigration) &&
+    /where processed\.event_id = event_id_value/i.test(
+      variableConflictMigration,
+    ) &&
+    !/where processed\.event_id = event_id(?:\s|;)/i.test(
+      variableConflictMigration,
+    ),
+  'Forward Return Loop correction must eliminate EventId variable/column ambiguity.',
 );
 requireInvariant(
   /process_pending_return_loop_events_v1/i.test(migration) &&

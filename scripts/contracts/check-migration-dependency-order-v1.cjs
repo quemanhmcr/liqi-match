@@ -228,6 +228,40 @@ async function main() {
     }
   }
 
+  const eligibilityCompatibilityPath =
+    '202607140045_restore_discovery_eligibility_authority_v1.sql';
+  const eligibilityCompatibilitySql = fs.readFileSync(
+    path.join(migrationDirectory, eligibilityCompatibilityPath),
+    'utf8',
+  );
+  if (
+    !/function\s+private\.assert_discovery_eligible_v1\s*\(\s*p_snapshot\s+jsonb\s*\)/i.test(
+      eligibilityCompatibilitySql,
+    ) ||
+    !/private\.is_player_discovery_eligible_v1\s*\(\s*player_id_value\s*\)/i.test(
+      eligibilityCompatibilitySql,
+    ) ||
+    !/private\.is_match_intent_lifecycle_projection_ready_v1\s*\(\s*player_id_value\s*,\s*lifecycle_version_value\s*\)/i.test(
+      eligibilityCompatibilitySql,
+    ) ||
+    !/function\s+private\.assert_discovery_eligible_v1\s*\(\s*p_snapshot\s+private\.player_lifecycle_snapshot_v1\s*\)/i.test(
+      eligibilityCompatibilitySql,
+    ) ||
+    !/perform\s+private\.assert_discovery_eligible_v1\s*\(\s*jsonb_build_object\s*\(/i.test(
+      eligibilityCompatibilitySql,
+    ) ||
+    !/'playerId',\s*p_snapshot\.player_id[\s\S]*'version',\s*p_snapshot\.lifecycle_version/i.test(
+      eligibilityCompatibilitySql,
+    ) ||
+    /row\s*\([\s\S]*private\.player_lifecycle_snapshot_v1/i.test(
+      eligibilityCompatibilitySql,
+    )
+  ) {
+    failures.push(
+      `${eligibilityCompatibilityPath}: eligibility repair must restore one JSONB semantic engine plus a non-recursive typed adapter`,
+    );
+  }
+
   const uniqueFailures = [...new Set(failures)];
   if (uniqueFailures.length) {
     console.error(

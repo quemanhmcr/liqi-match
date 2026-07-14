@@ -10,8 +10,8 @@ insert into auth.users (
   ('01000000-0000-4000-8000-000000000811', 'authenticated', 'authenticated', 'push-a@example.test', 'x', now(), now(), now()),
   ('01000000-0000-4000-8000-000000000812', 'authenticated', 'authenticated', 'push-b@example.test', 'x', now(), now(), now());
 insert into public.profiles (id, display_name) values
-  ('11000000-0000-4000-8000-000000000811', 'Push A'),
-  ('11000000-0000-4000-8000-000000000812', 'Push B');
+  ('01000000-0000-4000-8000-000000000811', 'Push A'),
+  ('01000000-0000-4000-8000-000000000812', 'Push B');
 insert into public.players (
   id, account_id, auth_user_id, lifecycle_state, lifecycle_version,
   discoverable, messaging_allowed
@@ -21,8 +21,8 @@ insert into public.players (
 insert into public.player_profiles_v1 (
   id, player_id, legacy_profile_id, version, completed_at
 ) values
-  ('31000000-0000-4000-8000-000000000811', '21000000-0000-4000-8000-000000000811', '11000000-0000-4000-8000-000000000811', 1, now()),
-  ('31000000-0000-4000-8000-000000000812', '21000000-0000-4000-8000-000000000812', '11000000-0000-4000-8000-000000000812', 1, now());
+  ('31000000-0000-4000-8000-000000000811', '21000000-0000-4000-8000-000000000811', '01000000-0000-4000-8000-000000000811', 1, now()),
+  ('31000000-0000-4000-8000-000000000812', '21000000-0000-4000-8000-000000000812', '01000000-0000-4000-8000-000000000812', 1, now());
 
 update private.return_loop_config_v1
 set push_enabled = true,
@@ -33,8 +33,8 @@ insert into public.matches (
   source_v1, correlation_id_v1, home_kind_v1, home_status_v1
 ) values (
   '51000000-0000-4000-8000-000000000811',
-  '11000000-0000-4000-8000-000000000811',
-  '11000000-0000-4000-8000-000000000812',
+  '01000000-0000-4000-8000-000000000811',
+  '01000000-0000-4000-8000-000000000812',
   '21000000-0000-4000-8000-000000000811',
   '21000000-0000-4000-8000-000000000812',
   'mutual_like',

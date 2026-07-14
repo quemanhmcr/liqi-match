@@ -105,7 +105,7 @@ select set_config(
 
 select is(
   public.get_own_player_profile_availability_v1()->'availability',
-  null,
+  'null'::jsonb,
   'Availability starts explicitly absent when no slots are persisted'
 );
 
@@ -373,7 +373,7 @@ select is(
 
 select is(
   (select response->'availability' from availability_results where name = 'clear'),
-  null,
+  'null'::jsonb,
   'clearing Availability returns an explicit null snapshot'
 );
 
