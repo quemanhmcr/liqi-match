@@ -8,6 +8,10 @@ const databaseTest = fs.readFileSync(
   'supabase/tests/database/match_set_authority_v1.test.sql',
   'utf8',
 );
+const receiptMigration = fs.readFileSync(
+  'supabase/migrations/202607140043_match_set_receipt_contract_v1.sql',
+  'utf8',
+);
 const failures = [];
 const requireInvariant = (condition, message) => {
   if (!condition) failures.push(message);
@@ -76,6 +80,23 @@ requireInvariant(
   join.includes("'set.join_requested.v1'") &&
     join.includes("'set_join_requested'"),
   'join event and notification must be transactional',
+);
+requireInvariant(
+  receiptMigration.includes("'createdAt', invite.created_at") &&
+    receiptMigration.includes("'setId', invite.set_id") &&
+    receiptMigration.includes("'targetPlayerId', invite.target_player_id"),
+  'invite receipts must carry canonical Set and target facts',
+);
+requireInvariant(
+  receiptMigration.includes("'createdAt', join_request.created_at") &&
+    receiptMigration.includes("'setId', join_request.set_id"),
+  'join receipts must carry canonical Set facts',
+);
+requireInvariant(
+  receiptMigration.includes('command_state.response || jsonb_build_object') &&
+    receiptMigration.includes("command_state.response ? 'inviteId'") &&
+    receiptMigration.includes("command_state.response ? 'joinRequestId'"),
+  'forward migration must enrich durable receipts created before migration 043',
 );
 requireInvariant(
   migration.includes("where state = 'pending'") &&

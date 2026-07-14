@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(25);
+select plan(31);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at
@@ -133,6 +133,9 @@ select public.create_set_invite_v1(
 ) as receipt;
 
 select is((select receipt ->> 'state' from invite_first), 'pending', 'invite command creates pending invite');
+select is((select receipt ->> 'setId' from invite_first), 'a1000000-0000-4000-8000-000000000801', 'invite receipt carries canonical SetId');
+select is((select receipt ->> 'targetPlayerId' from invite_first), '20000000-0000-4000-8000-000000000804', 'invite receipt carries target PlayerId');
+select ok((select receipt ? 'createdAt' from invite_first), 'invite receipt carries creation time');
 select is((select (receipt ->> 'repeated')::boolean from invite_retry), true, 'idempotency retry replays invite receipt');
 select is((select (receipt ->> 'repeated')::boolean from invite_semantic_duplicate), true, 'new key returns existing pending invite semantic result');
 select is((select count(*)::integer from public.match_set_invites_v1), 1, 'duplicate invite creates one row');
@@ -160,6 +163,9 @@ select public.request_set_join_v1(
 ) as receipt;
 
 select is((select receipt ->> 'state' from join_first), 'pending', 'join command creates pending request');
+select is((select receipt ->> 'setId' from join_first), 'a1000000-0000-4000-8000-000000000801', 'join receipt carries canonical SetId');
+select ok((select receipt ? 'createdAt' from join_first), 'join receipt carries creation time');
+select is((select receipt ->> 'setId' from join_duplicate), 'a1000000-0000-4000-8000-000000000801', 'semantic join replay preserves canonical SetId');
 select is((select (receipt ->> 'repeated')::boolean from join_duplicate), true, 'duplicate join request returns same semantic result');
 select is((select count(*)::integer from public.match_set_join_requests_v1), 1, 'duplicate join request creates one row');
 select is((select count(*)::integer from private.outbox_events where event_type = 'set.join_requested.v1'), 1, 'join emits one transactional event');

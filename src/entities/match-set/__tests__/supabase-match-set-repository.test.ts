@@ -29,14 +29,19 @@ it('maps Set reads and commands to authoritative RPCs', async () => {
       },
     })
     .mockResolvedValueOnce({
+      createdAt: '2026-07-14T08:00:00.000Z',
       joinRequestId: 'a4000000-0000-4000-8000-000000000001',
       repeated: false,
+      setId: 'a1000000-0000-4000-8000-000000000001',
       state: 'pending',
     })
     .mockResolvedValueOnce({
+      createdAt: '2026-07-14T08:00:00.000Z',
       inviteId: 'a3000000-0000-4000-8000-000000000001',
       repeated: false,
+      setId: 'a1000000-0000-4000-8000-000000000001',
       state: 'pending',
+      targetPlayerId: '20000000-0000-4000-8000-000000000002',
     });
   const repository = new SupabaseMatchSetRepository(rpc);
 

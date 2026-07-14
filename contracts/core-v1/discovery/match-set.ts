@@ -59,9 +59,12 @@ export const CreateSetInviteCommandV1Schema = z.object({
 });
 
 export const SetInviteReceiptV1Schema = z.object({
+  createdAt: z.string().datetime({ offset: true }),
   inviteId: SetInviteIdSchema,
   repeated: z.boolean(),
+  setId: MatchSetIdSchema,
   state: z.literal('pending'),
+  targetPlayerId: PlayerIdSchema,
 });
 
 export const RequestSetJoinCommandV1Schema = z.object({
@@ -72,8 +75,10 @@ export const RequestSetJoinCommandV1Schema = z.object({
 });
 
 export const SetJoinRequestReceiptV1Schema = z.object({
+  createdAt: z.string().datetime({ offset: true }),
   joinRequestId: SetJoinRequestIdSchema,
   repeated: z.boolean(),
+  setId: MatchSetIdSchema,
   state: z.literal('pending'),
 });
 
@@ -87,6 +92,7 @@ export type RequestSetJoinCommandV1 = z.infer<
 export type SetDiscoveryCandidateV1 = z.infer<
   typeof SetDiscoveryCandidateV1Schema
 >;
+export type SetDiscoveryItemV1 = z.infer<typeof SetDiscoveryCandidateV1Schema>;
 export type SetDiscoveryPageV1 = z.infer<typeof SetDiscoveryPageV1Schema>;
 export type SetInviteReceiptV1 = z.infer<typeof SetInviteReceiptV1Schema>;
 export type SetJoinRequestReceiptV1 = z.infer<

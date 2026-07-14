@@ -34,9 +34,12 @@ export class InMemoryMatchSetRepository implements MatchSetRepository {
     const replay = this.inviteReceipts.get(input.idempotencyKey);
     if (replay) return { ...replay, repeated: true };
     const receipt: SetInviteReceiptV1 = {
+      createdAt: new Date(0).toISOString(),
       inviteId: 'a3000000-0000-4000-8000-000000000001' as never,
       repeated: false,
+      setId: input.setId,
       state: 'pending',
+      targetPlayerId: input.targetPlayerId,
     };
     this.inviteReceipts.set(input.idempotencyKey, receipt);
     return receipt;
@@ -47,8 +50,10 @@ export class InMemoryMatchSetRepository implements MatchSetRepository {
     const replay = this.joinReceipts.get(input.idempotencyKey);
     if (replay) return { ...replay, repeated: true };
     const receipt: SetJoinRequestReceiptV1 = {
+      createdAt: new Date(0).toISOString(),
       joinRequestId: 'a4000000-0000-4000-8000-000000000001' as never,
       repeated: false,
+      setId: input.setId,
       state: 'pending',
     };
     this.joinReceipts.set(input.idempotencyKey, receipt);
