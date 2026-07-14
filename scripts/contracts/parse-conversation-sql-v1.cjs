@@ -28,6 +28,7 @@ const sqlPaths = [
   'supabase/migrations/202607140034_shared_player_summary_home_facts_v1.sql',
   'supabase/migrations/202607140035_match_intent_lifecycle_dispatch_v1.sql',
   'supabase/tests/database/production_match_authority_v1.test.sql',
+  'supabase/tests/database/production_match_loop_v1.test.sql',
   'supabase/tests/database/home_match_facts_v1.test.sql',
   'supabase/tests/database/conversation_reliability_v1.test.sql',
   'supabase/tests/database/conversation_bootstrap_dispatch_v1.test.sql',
