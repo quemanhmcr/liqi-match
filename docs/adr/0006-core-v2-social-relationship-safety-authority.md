@@ -49,3 +49,9 @@ Privacy never overrides block or Core V1 lifecycle.
 ## Rollback
 
 Rollback disables Core V2 reads and mutations through feature flags while preserving canonical rows, receipts, events and audit history. It may temporarily restore legacy block reads. It must not drop Core V2 relationship history.
+
+## Session consumer agreement (S1/S2)
+
+- Before play starts, `player.blocked.v2` invalidates pending invites, join eligibility, member visibility and ready-check participation.
+- During `in_progress` or `completion_pending`, block does not erase membership or historical session evidence. The session consumer transitions to `disputed` and retains authoritative history for outcome/safety review.
+- Event replay must be idempotent and must not repeat the state transition.
