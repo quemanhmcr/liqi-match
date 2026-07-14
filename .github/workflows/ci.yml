@@ -166,18 +166,27 @@ jobs:
               errors="replace",
           )
           text = re.sub(r"\x1b\[[0-9;]*[A-Za-z]", "", text)
-          markers = [
-              text.rfind("not ok"),
-              text.rfind("Bail out!"),
-              text.rfind("Failed test"),
-              text.rfind("ERROR:"),
-          ]
-          error_index = max(markers)
-          excerpt = (
-              text[max(0, error_index - 2000) : error_index + 12000]
-              if error_index >= 0
-              else text[-14000:]
+          lines = text.splitlines()
+          patterns = (
+              "psql:",
+              "ERROR:",
+              "not ok",
+              "Bail out!",
+              "Failed test",
+              "Failed tests:",
+              "Parse errors:",
+              "You planned",
           )
+          selected = set()
+          for index, line in enumerate(lines):
+              if any(pattern in line for pattern in patterns):
+                  selected.update(
+                      range(max(0, index - 8), min(len(lines), index + 14))
+                  )
+          excerpt = "\n".join(lines[index] for index in sorted(selected))
+          if not excerpt:
+              excerpt = text[-18000:]
+          excerpt = excerpt[-50000:]
           escaped = (
               excerpt.replace("%", "%25")
               .replace("\r", "%0D")
