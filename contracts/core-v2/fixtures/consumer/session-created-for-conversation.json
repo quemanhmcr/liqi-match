@@ -1,0 +1,53 @@
+{
+  "actorPlayerId": "82000000-0000-4000-8000-000000000001",
+  "aggregateId": "82000000-0000-4000-8000-000000000101",
+  "aggregateType": "play_session",
+  "aggregateVersion": 1,
+  "causationId": null,
+  "correlationId": "82000000-0000-4000-8000-000000000201",
+  "eventId": "82000000-0000-4000-8000-000000000301",
+  "eventType": "session.created.v2",
+  "eventVersion": 2,
+  "occurredAt": "2026-07-14T12:00:00.000Z",
+  "payload": {
+    "communicationProvisioningRequired": true,
+    "participantPlayerIds": ["82000000-0000-4000-8000-000000000001"],
+    "session": {
+      "cancellationReason": null,
+      "cancelledAt": null,
+      "capacity": 2,
+      "communication": {
+        "conversationId": null,
+        "membershipVersion": 1,
+        "status": "pending"
+      },
+      "completedAt": null,
+      "completionClaims": [],
+      "createdAt": "2026-07-14T12:00:00.000Z",
+      "members": [
+        {
+          "joinedAt": "2026-07-14T12:00:00.000Z",
+          "leftAt": null,
+          "playerId": "82000000-0000-4000-8000-000000000001",
+          "role": "owner",
+          "state": "active"
+        }
+      ],
+      "ownerPlayerId": "82000000-0000-4000-8000-000000000001",
+      "readyCheck": null,
+      "roleAssignments": [],
+      "scheduledFor": "2026-07-14T12:30:00.000Z",
+      "sessionId": "82000000-0000-4000-8000-000000000101",
+      "source": {
+        "kind": "match",
+        "matchId": "82000000-0000-4000-8000-000000000401"
+      },
+      "startedAt": null,
+      "state": "recruiting",
+      "timezone": "Asia/Bangkok",
+      "title": "Ranked duo",
+      "updatedAt": "2026-07-14T12:00:00.000Z",
+      "version": 1
+    }
+  }
+}
