@@ -1,5 +1,6 @@
 export {
   RelationshipCapabilitiesProvider,
+  usePlayerPrivacyProvider,
   useSocialCommandCoordinator,
   useSocialRelationshipRepository,
 } from './RelationshipCapabilitiesProvider';

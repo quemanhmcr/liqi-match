@@ -72,6 +72,8 @@ Profile relationship actions consume the exact `SocialRelationshipSnapshotV2` re
 
 Blocked-user settings read `list_blocked_players_v2`, which returns viewer-owned directional blocks plus the exact relationship version required by `unblock_player_v2`. Mobile settings no longer query or delete legacy `blocks` rows directly; the legacy table remains rollback/shadow data only.
 
+Profile Settings reads and writes the five canonical Social V2 policies through `PlayerPrivacyProvider`: profile visibility, presence visibility, friendship-request policy, session-invite policy and trust visibility. The mobile client sends the full current policy plus `expectedPrivacyVersion`, renders only the authoritative receipt and refetches after a version conflict. Core V1 discoverability remains a separate availability concern. `allowProfileShare` and `showWinRate` remain presentation preferences and must not be consumed as privacy, friendship, session or trust authority.
+
 ## Friendship notification integration agreement
 
 `friendship.requested.v2` and `friendship.accepted.v2` remain Social-owned source events. A supplier-owned outbox projection creates the existing `notification.requested.v1` envelope with the friendship event as `causationId`; Return Loop continues to own notification persistence, inbox read state, push delivery, replay receipts and deep-link resolution.

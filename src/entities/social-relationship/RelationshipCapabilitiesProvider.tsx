@@ -15,6 +15,7 @@ import type {
 
 type SocialRelationshipContextValue = Readonly<{
   coordinator: SocialCommandCoordinator | null;
+  privacyProvider: PlayerPrivacyProvider | null;
   repository: SocialRelationshipRepository;
 }>;
 
@@ -38,6 +39,7 @@ export function RelationshipCapabilitiesProvider({
             safety: repository,
           })
         : null,
+      privacyProvider: isPlayerPrivacyProvider(repository) ? repository : null,
       repository,
     }),
     [repository],
@@ -58,6 +60,10 @@ export function useSocialCommandCoordinator() {
   return useSocialRelationshipContext().coordinator;
 }
 
+export function usePlayerPrivacyProvider() {
+  return useSocialRelationshipContext().privacyProvider;
+}
+
 function useSocialRelationshipContext() {
   const value = useContext(SocialRelationshipContext);
   if (!value) {
@@ -66,6 +72,17 @@ function useSocialRelationshipContext() {
     );
   }
   return value;
+}
+
+function isPlayerPrivacyProvider(
+  repository: SocialRelationshipRepository,
+): repository is SocialRelationshipRepository & PlayerPrivacyProvider {
+  const candidate = repository as Partial<PlayerPrivacyProvider>;
+  return [
+    candidate.getPrivacy,
+    candidate.updatePrivacy,
+    candidate.getTrustVisibility,
+  ].every((method) => typeof method === 'function');
 }
 
 type SocialCommandRuntime = SocialRelationshipRepository &
