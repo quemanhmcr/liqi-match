@@ -10,6 +10,8 @@ const sqlPaths = [
   'supabase/migrations/202607141220_core_v2_match_set_membership.sql',
   'supabase/migrations/202607141230_core_v2_play_session_commands.sql',
   'supabase/migrations/202607141300_core_v2_party_session_transport_alignment.sql',
+  'supabase/migrations/202607141450_repeat_play_session_source_v2.sql',
+  'supabase/migrations/202607141451_repeat_play_session_consumer_v2.sql',
 ];
 
 function fail(message) {

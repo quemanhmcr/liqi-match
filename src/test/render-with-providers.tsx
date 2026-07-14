@@ -23,7 +23,12 @@ type ApplicationServiceOverrides = Partial<
     | 'messageRepository'
     | 'messageTransport'
     | 'notificationRepository'
+    | 'endorsementCommandService'
+    | 'playerTrustProjectionProvider'
+    | 'playSessionCommandService'
     | 'profileRepository'
+    | 'repeatPlayRecommendationProvider'
+    | 'sessionOutcomeRepository'
     | 'relationshipRepository'
   >
 >;

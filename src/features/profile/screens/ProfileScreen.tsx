@@ -10,6 +10,7 @@ import {
   useSocialRelationshipRepository,
 } from '@/entities/social-relationship/RelationshipCapabilitiesProvider';
 import { usePreloadAssetSurface } from '@/entities/media-asset';
+import { usePlayerTrustProjection } from '@/entities/trust-outcomes';
 import { LiquidButton, LiquidOrbButton } from '@/shared/components/liquid';
 import { classifyApplicationError } from '@/shared/errors/application-error';
 import { useAuth } from '@/shared/auth/auth-context';
@@ -70,6 +71,10 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
   const profileFailure = classifyApplicationError(profileQuery.error);
   const viewerPlayerId = session?.principal?.playerId;
   const targetPlayerId = profile?.playerId;
+  const trustProjectionQuery = usePlayerTrustProjection(
+    session,
+    targetPlayerId,
+  );
   const hasCanonicalSocialIdentity = Boolean(
     mode === 'other' &&
     socialCoordinator &&
@@ -157,8 +162,6 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
     );
   }
 
-  const vibe = Math.max(0, Math.min(100, Math.round(profile.stats.reputation)));
-
   return (
     <LiquidScreen
       contentContainerStyle={styles.scrollContent}
@@ -195,7 +198,7 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
         }}
         onShare={openProfileShare}
         profile={profile}
-        vibe={vibe}
+        trustProjection={trustProjectionQuery.data}
       />
       {mode === 'other' && socialCoordinator ? (
         relationship ? (

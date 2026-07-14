@@ -11,3 +11,5 @@ export * from './PlaySessionServicesProvider';
 export * from './runtime-uuid';
 export * from './core-v2-command-metadata';
 export * from './play-session-query-keys';
+export * from './in-memory-repeat-play-session-service';
+export * from './repeat-play-session-bridge';

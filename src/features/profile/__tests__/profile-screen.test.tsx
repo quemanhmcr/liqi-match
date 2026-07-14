@@ -3,6 +3,7 @@ import { act, fireEvent, waitFor } from '@testing-library/react-native';
 
 import { createAssetKey, type AssetResolver } from '@/entities/media-asset';
 import {
+  PlayerTrustProjectionV2Schema,
   SocialRelationshipCommandReceiptV2Schema,
   SocialRelationshipSnapshotV2Schema,
   type SocialRelationshipSnapshotV2,
@@ -71,6 +72,48 @@ const canonicalProfile: ProfileViewModel = {
 };
 
 describe('ProfileScreen repository consumer', () => {
+  it('renders only authoritative explainable trust dimensions and never legacy editable stats', async () => {
+    const getForPlayer = jest.fn(async () =>
+      PlayerTrustProjectionV2Schema.parse({
+        completedSessions: 7,
+        completionReliabilityBps: 8750,
+        confirmedModerationActions: 0,
+        noShowCount: 1,
+        playerId: canonicalProfile.playerId,
+        positiveEndorsements: 12,
+        projectionVersion: 20,
+        rebuiltAt: null,
+        repeatTeammateCount: 3,
+        updatedAt: '2026-07-14T16:00:00.000Z',
+      }),
+    );
+    const screen = await renderWithProviders(
+      <ProfileScreen identityId="player-canonical-1" mode="other" />,
+      {
+        serviceOverrides: {
+          playerTrustProjectionProvider: { getForPlayer },
+          profileRepository: { getProfile: async () => canonicalProfile },
+        },
+      },
+    );
+
+    expect(await screen.findByText('7')).toBeTruthy();
+    expect(screen.getByText('88%')).toBeTruthy();
+    expect(screen.getByText('12')).toBeTruthy();
+    expect(screen.getByText('3')).toBeTruthy();
+    expect(screen.getByText('Buổi đã chơi')).toBeTruthy();
+    expect(screen.getByText('Hoàn tất')).toBeTruthy();
+    expect(screen.getByText('Lời khen')).toBeTruthy();
+    expect(screen.getByText('Đồng đội quen')).toBeTruthy();
+    expect(screen.queryByText('128')).toBeNull();
+    expect(screen.queryByText('4.8')).toBeNull();
+    expect(screen.queryByText('92')).toBeNull();
+    expect(getForPlayer).toHaveBeenCalledWith(
+      testAuthSession,
+      canonicalProfile.playerId,
+    );
+  });
+
   it('uses the canonical route userId and renders the repository projection', async () => {
     const getProfile = jest.fn(async () => canonicalProfile);
     const screen = await renderWithProviders(

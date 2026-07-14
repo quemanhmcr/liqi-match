@@ -6,7 +6,10 @@ import {
   PlayerIdSchema,
   SetIdSchema,
 } from '../../core-v1';
-import { PlaySessionIdSchema } from '../identity/semantic-ids';
+import {
+  PlaySessionIdSchema,
+  RepeatPlayRequestIdSchema,
+} from '../identity/semantic-ids';
 import {
   CoreV2CreateCommandMetadataSchema,
   CoreV2MutationCommandMetadataSchema,
@@ -72,6 +75,12 @@ export const PlaySessionSourceV2Schema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('manual') }).strict(),
   z.object({ kind: z.literal('match'), matchId: MatchIdSchema }).strict(),
   z.object({ kind: z.literal('set'), setId: SetIdSchema }).strict(),
+  z
+    .object({
+      kind: z.literal('repeat_play'),
+      requestId: RepeatPlayRequestIdSchema,
+    })
+    .strict(),
 ]);
 
 export const PlaySessionMemberV2Schema = z
@@ -389,6 +398,7 @@ export const PlaySessionCommandNameV2Schema = z.enum([
   'create_play_session_v2',
   'create_session_from_match_v2',
   'create_session_from_set_v2',
+  'create_session_from_repeat_play_v2',
   'invite_to_session_v2',
   'accept_session_invite_v2',
   'leave_session_v2',

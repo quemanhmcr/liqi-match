@@ -11,6 +11,7 @@ import {
 import { NotificationRepositoryProvider } from '@/entities/notifications';
 import { PlaySessionServicesProvider } from '@/entities/play-session';
 import { RelationshipCapabilitiesProvider } from '@/entities/social-relationship';
+import { TrustOutcomesServicesProvider } from '@/entities/trust-outcomes';
 import { DiscoverRepositoryProvider } from '@/features/discover';
 import { HomeRepositoryProvider } from '@/features/home';
 import { MessagesServicesProvider } from '@/features/messages';
@@ -66,7 +67,9 @@ export function ApplicationServiceProviders({
                               services.conversationV2MessageTransport
                             }
                           >
-                            {children}
+                            <TrustOutcomesServicesProvider services={services}>
+                              {children}
+                            </TrustOutcomesServicesProvider>
                           </PlaySessionServicesProvider>
                         </ProfileReadRepositoryProvider>
                       </RelationshipCapabilitiesProvider>

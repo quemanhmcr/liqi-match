@@ -17,6 +17,7 @@ import type {
   PlaySessionId,
   ProposeSessionCompletionCommandV2,
   RemoveSessionMemberCommandV2,
+  RepeatPlayRequestedEventV2,
   RespondReadyCheckCommandV2,
   ScheduleSessionCommandV2,
   StartSessionCommandV2,
@@ -103,6 +104,12 @@ export interface PlaySessionCommandService {
   cancel(
     actor: PlaySessionActorContext,
     command: CancelSessionCommandV2,
+  ): Promise<PlaySessionCommandReceiptV2>;
+}
+
+export interface RepeatPlaySessionEventConsumer {
+  consumeRepeatPlayRequested(
+    event: RepeatPlayRequestedEventV2,
   ): Promise<PlaySessionCommandReceiptV2>;
 }
 

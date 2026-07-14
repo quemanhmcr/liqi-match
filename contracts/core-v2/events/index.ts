@@ -26,9 +26,11 @@ import {
   SetUpdatedEventV2Schema,
 } from './events';
 import { CoreV2SocialEventSchema } from './social-events';
+import { CoreV2TrustOutcomeEventSchema } from './trust-events';
 
 export * from './events';
 export * from './social-events';
+export * from './trust-events';
 
 export const CoreV2PartySessionEventSchema = z.discriminatedUnion('eventType', [
   SetCreatedEventV2Schema,
@@ -59,6 +61,7 @@ export const CoreV2PartySessionEventSchema = z.discriminatedUnion('eventType', [
 export const CoreV2EventSchema = z.union([
   CoreV2PartySessionEventSchema,
   CoreV2SocialEventSchema,
+  CoreV2TrustOutcomeEventSchema,
 ]);
 
 export type CoreV2Event = z.infer<typeof CoreV2EventSchema>;

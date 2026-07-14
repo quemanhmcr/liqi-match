@@ -6,3 +6,7 @@ export * from './identity/semantic-ids';
 export * from './party/match-set';
 export * from './party/play-session';
 export * from './social';
+export * from './activity/activity';
+export * from './notification';
+export * from './outcomes/session-outcomes';
+export * from './trust/reputation';

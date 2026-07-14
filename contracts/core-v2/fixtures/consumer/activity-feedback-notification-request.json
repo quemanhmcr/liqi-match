@@ -1,0 +1,35 @@
+{
+  "activityItem": {
+    "activityItemId": "47000000-0000-4000-8000-000000000010",
+    "playerId": "20000000-0000-4000-8000-000000000001",
+    "kind": "feedback_prompt",
+    "payload": {
+      "sessionId": "45000000-0000-4000-8000-000000000001",
+      "outcomeId": "44000000-0000-4000-8000-000000000001"
+    },
+    "priority": 1000,
+    "deduplicationKey": "feedback:45000000-0000-4000-8000-000000000001:20000000-0000-4000-8000-000000000001",
+    "version": 1,
+    "createdAt": "2026-07-14T12:10:00.000Z",
+    "dismissedAt": null
+  },
+  "sourceEventId": "43000000-0000-4000-8000-000000000010",
+  "causationId": "43000000-0000-4000-8000-000000000001",
+  "correlationId": "43000000-0000-4000-8000-000000000002",
+  "target": {
+    "target": "session_feedback",
+    "sessionId": "45000000-0000-4000-8000-000000000001",
+    "outcomeId": "44000000-0000-4000-8000-000000000001"
+  },
+  "deliveryDecision": {
+    "decisionId": "48000000-0000-4000-8000-000000000001",
+    "engagementPreferencesVersion": 3,
+    "evaluatedAt": "2026-07-14T12:10:00.000Z",
+    "frequencyWindowKey": "2026-07-14:Asia/Bangkok",
+    "inboxAllowed": true,
+    "maxReactivationNotificationsPerDay": 2,
+    "pushAllowed": true,
+    "reactivationNotificationsUsed": 0,
+    "reason": "eligible"
+  }
+}

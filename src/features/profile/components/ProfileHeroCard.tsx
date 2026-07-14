@@ -3,6 +3,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Image, StyleSheet, View } from 'react-native';
 
 import { useAssetResolver } from '@/entities/media-asset';
+import type { PlayerTrustProjectionV2 } from '@/shared/contracts/core-v2';
 import {
   LiquidBadge,
   LiquidButton,
@@ -31,7 +32,7 @@ export type ProfileHeroCardProps = {
   onMessage?: () => void;
   onShare?: () => void;
   profile: ProfileViewModel;
-  vibe?: number;
+  trustProjection?: PlayerTrustProjectionV2;
 };
 
 export function ProfileHeroCard({
@@ -43,7 +44,7 @@ export function ProfileHeroCard({
   onMessage,
   onShare,
   profile,
-  vibe,
+  trustProjection,
 }: ProfileHeroCardProps) {
   const assetResolver = useAssetResolver();
   const avatarMedia = resolveProfileMedia(assetResolver, {
@@ -298,23 +299,6 @@ export function ProfileHeroCard({
               >
                 {profile.statusLabel}
               </LiquidChip>
-              {!isSelf && vibe ? (
-                <LiquidChip
-                  contentStyle={styles.statusChip}
-                  density="compact"
-                  icon={
-                    <Ionicons
-                      color="rgba(224,170,255,0.92)"
-                      name="heart"
-                      size={12}
-                    />
-                  }
-                  textStyle={styles.statusText}
-                  variant="purple"
-                >
-                  Hợp vibe {vibe}%
-                </LiquidChip>
-              ) : null}
             </View>
           </View>
         </View>
@@ -375,11 +359,7 @@ export function ProfileHeroCard({
           </LiquidButton>
         </View>
 
-        <ProfileStatsBar
-          embedded
-          showWinRate={profile.showWinRate}
-          stats={profile.stats}
-        />
+        <ProfileStatsBar embedded projection={trustProjection} />
       </View>
     </LiquidGlassSurface>
   );

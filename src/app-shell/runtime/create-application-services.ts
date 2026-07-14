@@ -25,8 +25,9 @@ import {
 import { createProductionSimulationRuntime } from '@/entities/simulation';
 import { InMemoryConversationV2Authority } from '@/entities/conversation-v2';
 import {
-  InMemoryPlaySessionService,
+  InMemoryRepeatPlaySessionService,
   createConversationV2SessionProvisioner,
+  createRepeatAwareRecommendationProvider,
   createSimulationParticipantLifecycleProvider,
   createSimulationPlaySessionSourceProvider,
   createSimulationRelationshipEligibilityProvider,
@@ -38,6 +39,11 @@ import {
   InMemorySocialRelationshipRepository,
   SupabaseSocialRelationshipRepository,
 } from '@/entities/social-relationship';
+import {
+  InMemoryTrustOutcomesEngine,
+  SupabaseTrustOutcomesEngine,
+  createTrustAwarePlaySessionCommandService,
+} from '@/entities/trust-outcomes';
 import {
   ApiDiscoverRepository,
   createSimulationDiscoverRepository,
@@ -99,10 +105,15 @@ export function createSimulationApplicationServices(
   const messages = createCanonicalSimulationMessagesAdapter({
     runtime: simulationRuntime,
   });
+  const relationshipRepository = new InMemorySocialRelationshipRepository();
+  const trustOutcomesEngine = new InMemoryTrustOutcomesEngine(
+    () => simulationRuntime.clock.now(),
+    relationshipRepository,
+  );
   const conversationV2Authority = new InMemoryConversationV2Authority({
     clock: () => simulationRuntime.clock.now(),
   });
-  const playSessionService = new InMemoryPlaySessionService({
+  const playSessionService = new InMemoryRepeatPlaySessionService({
     clock: () => simulationRuntime.clock.now(),
     conversationProvisioner: createConversationV2SessionProvisioner({
       authority: conversationV2Authority,
@@ -115,6 +126,18 @@ export function createSimulationApplicationServices(
     sourceProvider:
       createSimulationPlaySessionSourceProvider(simulationRuntime),
   });
+  const trustAwarePlaySessionCommandService =
+    createTrustAwarePlaySessionCommandService({
+      delegate: playSessionService,
+      eventLog: playSessionService,
+      sessionOutcomeRepository: trustOutcomesEngine,
+    });
+  const repeatAwareRecommendationProvider =
+    createRepeatAwareRecommendationProvider({
+      consumer: playSessionService,
+      delegate: trustOutcomesEngine,
+      eventLog: trustOutcomesEngine,
+    });
   simulationRuntime.registerResetParticipant(
     createMessagesSimulationResetParticipant(),
   );
@@ -130,6 +153,7 @@ export function createSimulationApplicationServices(
   }
 
   return {
+    activityFeedRepository: trustOutcomesEngine,
     assetResolver: createGoldenWorldSimulationAssetResolver({
       cacheDriver: passiveAssetCacheDriver,
       runtime: simulationRuntime,
@@ -148,17 +172,25 @@ export function createSimulationApplicationServices(
         runtime: simulationRuntime,
       }),
     profileRepository: createSimulationProfileReadRepository(simulationRuntime),
-    playSessionCommandService: playSessionService,
+    playSessionCommandService: trustAwarePlaySessionCommandService,
     playSessionRepository: playSessionService,
     conversationV2Repository: conversationV2Authority,
     conversationV2MessageTransport: conversationV2Authority,
-    relationshipRepository: new InMemorySocialRelationshipRepository(),
+    relationshipRepository,
+    endorsementCommandService: trustOutcomesEngine,
+    engagementPolicyProvider: trustOutcomesEngine,
+    playerTrustProjectionProvider: trustOutcomesEngine,
+    reputationLedgerProvider: trustOutcomesEngine,
+    repeatPlayRecommendationProvider: repeatAwareRecommendationProvider,
+    sessionOutcomeRepository: trustOutcomesEngine,
     scenarioControl: simulationRuntime,
     simulationRuntime,
   };
 }
 
 export function createApiApplicationServices(): ApiApplicationServices {
+  const relationshipRepository = new SupabaseSocialRelationshipRepository();
+  const trustOutcomesEngine = new SupabaseTrustOutcomesEngine();
   const messages = createSupabaseConversationAdapter({
     accessTokenProvider: getValidAccessToken,
     accessTokenSubscriber: subscribeAccessToken,
@@ -178,6 +210,7 @@ export function createApiApplicationServices(): ApiApplicationServices {
     transport: coreV2Transport,
   });
   return {
+    activityFeedRepository: trustOutcomesEngine,
     assetResolver: createGoldenWorldAssetResolver({
       cacheDriver: passiveAssetCacheDriver,
     }),
@@ -196,7 +229,13 @@ export function createApiApplicationServices(): ApiApplicationServices {
     playSessionRepository,
     conversationV2Repository: null,
     conversationV2MessageTransport: null,
-    relationshipRepository: new SupabaseSocialRelationshipRepository(),
+    relationshipRepository,
+    endorsementCommandService: trustOutcomesEngine,
+    engagementPolicyProvider: trustOutcomesEngine,
+    playerTrustProjectionProvider: trustOutcomesEngine,
+    reputationLedgerProvider: trustOutcomesEngine,
+    repeatPlayRecommendationProvider: trustOutcomesEngine,
+    sessionOutcomeRepository: trustOutcomesEngine,
     scenarioControl: null,
     simulationRuntime: null,
   };

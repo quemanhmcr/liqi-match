@@ -1,0 +1,14 @@
+{
+  "activityItemId": "47000000-0000-4000-8000-000000000001",
+  "playerId": "20000000-0000-4000-8000-000000000001",
+  "kind": "repeat_play_recommendation",
+  "payload": {
+    "completedSessionCount": 2,
+    "teammatePlayerIds": ["20000000-0000-4000-8000-000000000002"]
+  },
+  "priority": 800,
+  "deduplicationKey": "repeat:20000000-0000-4000-8000-000000000001:20000000-0000-4000-8000-000000000002:2",
+  "version": 1,
+  "createdAt": "2026-07-14T12:08:00.000Z",
+  "dismissedAt": null
+}

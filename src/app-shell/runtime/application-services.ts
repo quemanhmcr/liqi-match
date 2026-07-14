@@ -13,6 +13,7 @@ import type {
 } from '@/entities/conversation-v2';
 import type { NotificationInboxRepository } from '@/entities/notifications';
 import type { SocialRelationshipRepository } from '@/entities/social-relationship';
+import type { TrustOutcomesServices } from '@/entities/trust-outcomes';
 import type {
   ProductionSimulationRuntime,
   SimulationWorldSnapshot,
@@ -25,7 +26,7 @@ import type { ProfileReadRepository } from '@/features/profile';
 
 import type { ApplicationRuntimeMode } from './application-runtime-mode';
 
-type ApplicationFeatureServices = {
+type ApplicationFeatureServices = TrustOutcomesServices & {
   assetResolver: AssetResolver;
   discoverRepository: DiscoverRepository;
   homeMatchFactsRepository: HomeMatchFactsRepository;
