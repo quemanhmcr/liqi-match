@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(35);
+select plan(40);
 
 select has_table('public', 'players', 'canonical players table exists');
 select has_table('public', 'player_profiles_v1', 'canonical player profile mapping exists');
@@ -571,6 +571,100 @@ select is(
   ),
   null,
   'profile version provider returns null for an unknown profile'
+);
+
+
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  created_at,
+  updated_at
+)
+values
+  ('01000000-0000-4000-8000-000000000103', 'authenticated', 'authenticated', 'discoverable-a@example.test', 'x', now(), now(), now()),
+  ('01000000-0000-4000-8000-000000000104', 'authenticated', 'authenticated', 'discoverable-b@example.test', 'x', now(), now(), now()),
+  ('01000000-0000-4000-8000-000000000105', 'authenticated', 'authenticated', 'hidden@example.test', 'x', now(), now(), now());
+
+insert into public.players (
+  id,
+  account_id,
+  auth_user_id,
+  lifecycle_state,
+  lifecycle_version,
+  discoverable,
+  messaging_allowed,
+  updated_at
+)
+values
+  ('20000000-0000-4000-8000-000000000103', '01000000-0000-4000-8000-000000000103', '01000000-0000-4000-8000-000000000103', 'active', 2, true, true, '2026-07-14T08:03:00Z'),
+  ('20000000-0000-4000-8000-000000000104', '01000000-0000-4000-8000-000000000104', '01000000-0000-4000-8000-000000000104', 'active', 3, true, true, '2026-07-14T08:04:00Z'),
+  ('20000000-0000-4000-8000-000000000105', '01000000-0000-4000-8000-000000000105', '01000000-0000-4000-8000-000000000105', 'active', 2, false, true, '2026-07-14T08:05:00Z');
+
+insert into public.player_profiles_v1 (id, player_id)
+values
+  ('30000000-0000-4000-8000-000000000103', '20000000-0000-4000-8000-000000000103'),
+  ('30000000-0000-4000-8000-000000000104', '20000000-0000-4000-8000-000000000104'),
+  ('30000000-0000-4000-8000-000000000105', '20000000-0000-4000-8000-000000000105');
+
+select is(
+  (
+    select count(*)::integer
+    from public.list_discoverable_player_lifecycle_v1(null)
+  ),
+  2,
+  'discoverable lifecycle list includes only live active discoverable players'
+);
+
+select ok(
+  not exists (
+    select 1
+    from public.list_discoverable_player_lifecycle_v1(null) snapshots
+    where jsonb_object_length(snapshots) <> 7
+      or snapshots->>'state' <> 'active'
+      or snapshots->>'discoverable' <> 'true'
+  ),
+  'discoverable lifecycle list returns exact PlayerLifecycleSnapshotV1 rows'
+);
+
+select is(
+  (
+    select array_agg(snapshots->>'playerId')
+    from public.list_discoverable_player_lifecycle_v1(null) snapshots
+  ),
+  array[
+    '20000000-0000-4000-8000-000000000103',
+    '20000000-0000-4000-8000-000000000104'
+  ]::text[],
+  'discoverable lifecycle list is deterministically ordered by PlayerId'
+);
+
+select is(
+  (
+    select array_agg(snapshots->>'playerId')
+    from public.list_discoverable_player_lifecycle_v1(
+      '20000000-0000-4000-8000-000000000103'
+    ) snapshots
+  ),
+  array['20000000-0000-4000-8000-000000000104']::text[],
+  'discoverable lifecycle list excludes the requesting PlayerId'
+);
+
+select ok(
+  has_function_privilege(
+    'service_role',
+    'public.list_discoverable_player_lifecycle_v1(uuid)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated',
+    'public.list_discoverable_player_lifecycle_v1(uuid)',
+    'EXECUTE'
+  ),
+  'discoverable lifecycle enumeration is service-only'
 );
 
 select * from finish();
