@@ -48,7 +48,7 @@ select is(
   'bootstrap dispatcher runs every five seconds'
 );
 
-select like(
+select alike(
   (
     select command
     from cron.job
