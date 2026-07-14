@@ -27,7 +27,8 @@
         "canInvite": false
       },
       "recommendationContext": {
-        "reasonCodes": ["active_now", "mode_overlap", "party_format_overlap"]
+        "reasonCodes": ["active_now", "mode_overlap", "party_format_overlap"],
+        "score": 90
       }
     }
   ],

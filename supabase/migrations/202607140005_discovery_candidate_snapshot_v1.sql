@@ -101,16 +101,16 @@ begin
       primary_role.name as role_name,
       candidate_intent.filters as candidate_filters,
       relationship.decision,
-      100
+      40
         + case
             when coalesce(candidate_intent.filters ->> 'intentKind', 'normal')
               = coalesce(p_viewer_filters ->> 'intentKind', 'normal')
-            then 80 else 0
+            then 30 else 0
           end
         + case
             when candidate_intent.filters ->> 'mode'
               = p_viewer_filters ->> 'mode'
-            then 40 else 0
+            then 10 else 0
           end
         + case
             when candidate_intent.filters ->> 'partyFormat'
@@ -211,6 +211,7 @@ begin
         'canInvite', false
       ),
       'recommendationContext', jsonb_build_object(
+        'score', ranked.recommendation_score,
         'reasonCodes', to_jsonb(array_remove(array[
           'active_now'::text,
           case

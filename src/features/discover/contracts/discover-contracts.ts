@@ -147,6 +147,8 @@ export const DiscoverPlayerRecommendationSchema = z
   .object({
     avatar: DiscoverMediaSchema,
     capabilities: z.object({
+      canLike: z.boolean().optional(),
+      canPass: z.boolean().optional(),
       canMessage: z.boolean(),
       canViewProfile: z.boolean(),
       invite: z.object({
@@ -168,9 +170,13 @@ export const DiscoverPlayerRecommendationSchema = z
       z.object({ code: z.string().min(1), label: z.string().min(1) }),
     ),
     matchScore: z.number().int().min(0).max(100),
+    intentVersion: z.number().int().positive().optional(),
     onlineStatus: z.enum(['hidden', 'offline', 'online', 'recently_online']),
     primaryRole: DiscoverRoleReferenceSchema.optional(),
+    playerId: z.string().uuid().optional(),
     profileId: z.string().min(1),
+    profileVersion: z.number().int().nonnegative().optional(),
+    relationshipState: z.enum(['none', 'liked', 'passed']).optional(),
     rank: DiscoverRoleReferenceSchema.optional(),
   })
   .superRefine((value, context) => {

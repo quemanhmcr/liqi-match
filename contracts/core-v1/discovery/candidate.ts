@@ -21,6 +21,7 @@ export const DiscoveryCandidateV1Schema = z.object({
   }),
   recommendationContext: z.object({
     reasonCodes: z.array(z.string().min(1)).max(20),
+    score: z.number().int().min(0).max(100).optional(),
   }),
 });
 
