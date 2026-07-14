@@ -31,10 +31,13 @@ export type MutableSession = PlaySessionSnapshotV2;
 
 type SessionInvite = {
   createdAt: string;
+  expiresAt: string | null;
   id: string;
+  inviterPlayerId: PlayerId;
   sessionId: PlaySessionId;
   state: 'pending' | 'accepted' | 'declined' | 'cancelled' | 'expired';
   targetPlayerId: PlayerId;
+  version: number;
 };
 
 type StoredReceipt = {
@@ -91,7 +94,7 @@ export class InMemoryPlaySessionKernel {
     );
   }
 
-  listInvites(sessionId: PlaySessionId) {
+  listSessionInvites(sessionId: PlaySessionId) {
     return [...this.invites.values()].filter(
       (invite) => invite.sessionId === sessionId,
     );

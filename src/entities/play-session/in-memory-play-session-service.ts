@@ -2,6 +2,7 @@ import {
   AcceptSessionInviteCommandV2Schema,
   AssignSessionRoleCommandV2Schema,
   CancelSessionCommandV2Schema,
+  CreatePlaySessionCommandV2Schema,
   CreateSessionFromMatchCommandV2Schema,
   CreateSessionFromSetCommandV2Schema,
   InviteToSessionCommandV2Schema,
@@ -9,6 +10,7 @@ import {
   OpenReadyCheckCommandV2Schema,
   PlaySessionCapabilitiesV2Schema,
   PlaySessionIdSchema,
+  PlaySessionInviteProjectionV2Schema,
   ProposeSessionCompletionCommandV2Schema,
   RemoveSessionMemberCommandV2Schema,
   RespondReadyCheckCommandV2Schema,
@@ -68,6 +70,168 @@ export class InMemoryPlaySessionService
       )
       .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
       .map(snapshotSession);
+  }
+
+  async listInvites(actor: PlaySessionActorContext, limit = 20) {
+    const actorPlayerId = this.requireActor(actor);
+    if (!Number.isInteger(limit) || limit < 1 || limit > 50) {
+      throw new PlaySessionDomainError(
+        'validation_failed',
+        'Session invite list limit must be between 1 and 50.',
+      );
+    }
+    const now = this.clock().getTime();
+    return [...this.invites.values()]
+      .filter((invite) => {
+        const session = this.sessions.get(invite.sessionId);
+        return (
+          invite.targetPlayerId === actorPlayerId &&
+          invite.state === 'pending' &&
+          (invite.expiresAt === null || Date.parse(invite.expiresAt) > now) &&
+          session?.state === 'recruiting'
+        );
+      })
+      .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+      .slice(0, limit)
+      .map((invite) =>
+        PlaySessionInviteProjectionV2Schema.parse({
+          createdAt: invite.createdAt,
+          expiresAt: invite.expiresAt,
+          inviteId: invite.id,
+          inviterPlayerId: invite.inviterPlayerId,
+          session: snapshotSession(this.requireSession(invite.sessionId)),
+          sessionId: invite.sessionId,
+          state: invite.state,
+          targetPlayerId: invite.targetPlayerId,
+          version: invite.version,
+        }),
+      );
+  }
+
+  async create(
+    actor: PlaySessionActorContext,
+    rawCommand: unknown,
+  ): Promise<PlaySessionCommandReceiptV2> {
+    const command = CreatePlaySessionCommandV2Schema.parse(rawCommand);
+    const actorPlayerId = this.requireActor(actor);
+    return await this.execute(
+      actorPlayerId,
+      command.idempotencyKey,
+      'create_play_session_v2',
+      command,
+      `manual:${actorPlayerId}:${command.idempotencyKey}`,
+      async () => {
+        const inviteePlayerIds = uniquePlayers(command.initialInviteePlayerIds);
+        if (inviteePlayerIds.includes(actorPlayerId)) {
+          throw new PlaySessionDomainError(
+            'validation_failed',
+            'The Session owner cannot be an initial invitee.',
+          );
+        }
+        if (inviteePlayerIds.length > command.capacity - 1) {
+          throw new PlaySessionDomainError(
+            'capacity_exceeded',
+            'Initial invitees exceed Session capacity.',
+          );
+        }
+        await this.lifecycleProvider.assertActive([
+          actorPlayerId,
+          ...inviteePlayerIds,
+        ]);
+        for (const targetPlayerId of inviteePlayerIds) {
+          await this.assertInviteAllowed(actorPlayerId, targetPlayerId);
+        }
+        const now = this.now();
+        const sessionId = PlaySessionIdSchema.parse(this.createUuid());
+        const session: MutableSession = {
+          cancellationReason: null,
+          cancelledAt: null,
+          capacity: command.capacity,
+          communication: {
+            conversationId: null,
+            membershipVersion: 0,
+            status: 'pending',
+          },
+          completedAt: null,
+          completionClaims: [],
+          createdAt: now,
+          members: [
+            {
+              joinedAt: now,
+              leftAt: null,
+              playerId: actorPlayerId,
+              role: 'owner',
+              state: 'active',
+            },
+          ],
+          membershipVersion: 1,
+          ownerPlayerId: actorPlayerId,
+          readyCheck: null,
+          roleAssignments: [],
+          scheduledFor: command.scheduledFor,
+          sessionId,
+          source: { kind: 'manual' },
+          startedAt: null,
+          state: 'recruiting',
+          timezone: command.timezone,
+          title: command.title,
+          updatedAt: now,
+          version: 1,
+        };
+        this.sessions.set(sessionId, session);
+        const createdEvent = this.emit(
+          session,
+          actorPlayerId,
+          command.correlationId,
+          null,
+          {
+            eventType: 'session.created.v2',
+            payload: {
+              communicationProvisioningRequired: false,
+              membership: projectSessionMembership(session),
+              session: snapshotSession(session),
+            },
+          },
+        );
+        const eventIds = [createdEvent.eventId];
+        for (const targetPlayerId of inviteePlayerIds) {
+          const inviteId = SessionInviteV2IdSchema.parse(this.createUuid());
+          this.invites.set(inviteId, {
+            createdAt: now,
+            expiresAt: null,
+            id: inviteId,
+            inviterPlayerId: actorPlayerId,
+            sessionId,
+            state: 'pending',
+            targetPlayerId,
+            version: 1,
+          });
+          const event = this.emit(
+            session,
+            actorPlayerId,
+            command.correlationId,
+            createdEvent.eventId,
+            {
+              eventType: 'session.invite_created.v2',
+              payload: {
+                actorPlayerId,
+                inviteId,
+                sessionId,
+                targetPlayerId,
+              },
+            },
+          );
+          eventIds.push(event.eventId);
+        }
+        return this.receipt(
+          session,
+          command.correlationId,
+          'create_play_session_v2',
+          'created',
+          eventIds,
+        );
+      },
+    );
   }
 
   async createFromMatch(
@@ -158,10 +322,13 @@ export class InMemoryPlaySessionService
         this.sourceSessions.set(sourceKey, sessionId);
         this.invites.set(inviteId, {
           createdAt: now,
+          expiresAt: null,
           id: inviteId,
+          inviterPlayerId: actorPlayerId,
           sessionId,
           state: 'pending',
           targetPlayerId: otherPlayerId,
+          version: 1,
         });
         const createdEvent = this.emit(
           session,
@@ -349,10 +516,13 @@ export class InMemoryPlaySessionService
         const inviteId = SessionInviteV2IdSchema.parse(this.createUuid());
         this.invites.set(inviteId, {
           createdAt: this.now(),
+          expiresAt: null,
           id: inviteId,
+          inviterPlayerId: actorPlayerId,
           sessionId: session.sessionId,
           state: 'pending',
           targetPlayerId: command.targetPlayerId,
+          version: 1,
         });
         this.touch(session);
         const event = this.emit(
@@ -412,6 +582,7 @@ export class InMemoryPlaySessionService
           actorPlayerId,
         ]);
         invite.state = 'accepted';
+        invite.version += 1;
         const now = this.now();
         session.members.push({
           joinedAt: now,

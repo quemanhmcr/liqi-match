@@ -140,7 +140,7 @@ function inviteFor(
   target: PlayerId,
 ) {
   const invite = service
-    .listInvites(sessionId)
+    .listSessionInvites(sessionId)
     .find((candidate) => candidate.targetPlayerId === target);
   if (!invite) throw new Error(`missing invite for ${target}`);
   return SessionInviteV2IdSchema.parse(invite.id);
@@ -158,6 +158,67 @@ function acceptCommand(
     sessionId,
   };
 }
+
+describe('InMemoryPlaySessionService manual creation', () => {
+  it('creates initial invites atomically and replays without duplicates', async () => {
+    const service = createService();
+    const command = {
+      ...metadata(80, 0),
+      capacity: 3,
+      initialInviteePlayerIds: [PLAYER_B, PLAYER_C],
+      scheduledFor: null,
+      timezone: 'Asia/Bangkok',
+      title: 'Flex party',
+    };
+
+    const first = await service.create(actor(PLAYER_A), command);
+    const replay = await service.create(actor(PLAYER_A), command);
+    const sessionId = PlaySessionIdSchema.parse(first.aggregateId);
+
+    expect(first.eventIds).toHaveLength(3);
+    expect(replay.repeated).toBe(true);
+    expect(service.listSessionInvites(sessionId)).toHaveLength(2);
+    await expect(service.listInvites(actor(PLAYER_B))).resolves.toEqual([
+      expect.objectContaining({
+        inviterPlayerId: PLAYER_A,
+        sessionId,
+        state: 'pending',
+        targetPlayerId: PLAYER_B,
+      }),
+    ]);
+    expect(
+      service.listEvents(sessionId).map((event) => event.eventType),
+    ).toEqual([
+      'session.created.v2',
+      'session.invite_created.v2',
+      'session.invite_created.v2',
+    ]);
+  });
+
+  it('fails the whole create when any initial invitee is blocked', async () => {
+    const service = createService({
+      relationshipProvider: {
+        async getInviteEligibility(_actorPlayerId, targetPlayerId) {
+          return targetPlayerId === PLAYER_C
+            ? { allowed: false, blocked: true, reasonCodes: ['blocked'] }
+            : { allowed: true, blocked: false, reasonCodes: [] };
+        },
+      },
+    });
+
+    await expect(
+      service.create(actor(PLAYER_A), {
+        ...metadata(81, 0),
+        capacity: 3,
+        initialInviteePlayerIds: [PLAYER_B, PLAYER_C],
+        scheduledFor: null,
+        timezone: 'Asia/Bangkok',
+        title: 'Blocked party',
+      }),
+    ).rejects.toMatchObject({ code: 'relationship_blocked' });
+    await expect(service.listCurrent(actor(PLAYER_A))).resolves.toEqual([]);
+  });
+});
 
 describe('InMemoryPlaySessionService walking skeleton', () => {
   it('runs match -> accept -> conversation -> ready -> start -> quorum completion', async () => {
@@ -387,7 +448,7 @@ describe('InMemoryPlaySessionService provider invariants', () => {
     expect(replay.repeated).toBe(true);
     expect(
       service
-        .listInvites(sessionId)
+        .listSessionInvites(sessionId)
         .filter((invite) => invite.targetPlayerId === PLAYER_C),
     ).toHaveLength(1);
 

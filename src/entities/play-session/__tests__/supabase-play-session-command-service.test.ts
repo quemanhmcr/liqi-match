@@ -29,6 +29,44 @@ describe('Supabase Play Session command service', () => {
     });
   });
 
+  it('maps manual create initial invitees to the exact PostgREST argument', async () => {
+    const receipt = { aggregateId: 'receipt' };
+    const invoke = jest.fn(async () => receipt);
+    const service = createSupabasePlaySessionCommandService({
+      accessTokenProvider: { getAccessToken: async () => 'access-token' },
+      receiptParser: { parse: (value) => value },
+      transport: { invoke },
+    });
+
+    await (service.create as (...args: unknown[]) => Promise<unknown>)(
+      {},
+      {
+        audit: {
+          appVersion: '2',
+          clientCreatedAt: '2026-07-14T12:00:00.000Z',
+          clientRequestId: '97000000-0000-4000-8000-000000000010',
+          platform: 'android',
+        },
+        capacity: 3,
+        correlationId: '97000000-0000-4000-8000-000000000011',
+        expectedVersion: 0,
+        idempotencyKey: 'manual-create-key-0001',
+        initialInviteePlayerIds: ['97000000-0000-4000-8000-000000000012'],
+        scheduledFor: null,
+        timezone: 'Asia/Bangkok',
+        title: 'Manual party',
+      },
+    );
+
+    expect(invoke).toHaveBeenCalledWith({
+      accessToken: 'access-token',
+      args: expect.objectContaining({
+        p_initial_invitee_player_ids: ['97000000-0000-4000-8000-000000000012'],
+      }),
+      rpcName: 'create_play_session_v2',
+    });
+  });
+
   it('fails closed before transport when no access token exists', async () => {
     const invoke = jest.fn(async () => undefined);
     const service = createSupabasePlaySessionCommandService({

@@ -22,6 +22,10 @@ const sessionCommandMigrationPath = path.join(
   root,
   'supabase/migrations/202607141230_core_v2_play_session_commands.sql',
 );
+const transportAlignmentMigrationPath = path.join(
+  root,
+  'supabase/migrations/202607141300_core_v2_party_session_transport_alignment.sql',
+);
 const contractPath = path.join(root, 'contracts/core-v2/party/play-session.ts');
 const eventPath = path.join(root, 'contracts/core-v2/events/events.ts');
 const adrPath = path.join(
@@ -56,6 +60,7 @@ const walkingMigration = read(walkingMigrationPath);
 const setCommandMigration = read(setCommandMigrationPath);
 const setMembershipMigration = read(setMembershipMigrationPath);
 const sessionCommandMigration = read(sessionCommandMigrationPath);
+const transportAlignmentMigration = read(transportAlignmentMigrationPath);
 const contract = read(contractPath);
 const events = read(eventPath);
 const adr = read(adrPath);
@@ -787,6 +792,49 @@ expect(
 expect(
   !/membership_version = membership_version/i.test(scheduleSql),
   'Scheduling must not advance membershipVersion.',
+);
+
+const alignedCreateSessionSql = functionSql(
+  transportAlignmentMigration,
+  'public.create_play_session_v2',
+);
+expect(
+  /p_initial_invitee_player_ids\s+uuid\[\]/i.test(alignedCreateSessionSql),
+  'Manual Session create must accept the contract initialInviteePlayerIds field.',
+);
+expect(
+  /drop function if exists public\.create_play_session_v2/i.test(
+    transportAlignmentMigration,
+  ),
+  'Manual Session create must remove the obsolete PostgREST overload.',
+);
+expect(
+  /cardinality\(normalized_invitee_player_ids\)\s*>\s*p_capacity\s*-\s*1/i.test(
+    alignedCreateSessionSql,
+  ) &&
+    /actor_player_id\s*=\s*any\(normalized_invitee_player_ids\)/i.test(
+      alignedCreateSessionSql,
+    ),
+  'Manual Session create must validate initial invite capacity and self-invites.',
+);
+expect(
+  /foreach target_player_id in array normalized_invitee_player_ids/i.test(
+    alignedCreateSessionSql,
+  ) &&
+    /private\.assert_session_invite_eligible_v2/i.test(alignedCreateSessionSql),
+  'Manual Session create must re-check lifecycle/privacy for every initial invitee.',
+);
+expect(
+  /session\.created\.v2/i.test(alignedCreateSessionSql) &&
+    /session\.invite_created\.v2/i.test(alignedCreateSessionSql) &&
+    /created_event_id/i.test(alignedCreateSessionSql),
+  'Manual Session create must publish created plus causally linked invite events.',
+);
+expect(
+  /grant execute on function public\.create_play_session_v2[\s\S]*to authenticated, service_role/i.test(
+    transportAlignmentMigration,
+  ),
+  'Aligned manual Session create RPC must remain authenticated/service callable.',
 );
 
 expect(

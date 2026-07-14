@@ -3,12 +3,14 @@ import type {
   AssignSessionRoleCommandV2,
   CancelSessionCommandV2,
   CoreV2Event,
+  CreatePlaySessionCommandV2,
   CreateSessionFromMatchCommandV2,
   CreateSessionFromSetCommandV2,
   InviteToSessionCommandV2,
   LeaveSessionCommandV2,
   OpenReadyCheckCommandV2,
   PlaySessionCapabilitiesV2,
+  PlaySessionInviteProjectionV2,
   PlaySessionMembershipProjectionV2,
   PlaySessionCommandReceiptV2,
   PlaySessionSnapshotV2,
@@ -39,9 +41,17 @@ export interface PlaySessionRepository {
     sessionId: PlaySessionId,
   ): Promise<PlaySessionSnapshotV2>;
   listCurrent(actor: PlaySessionActorContext): Promise<PlaySessionSnapshotV2[]>;
+  listInvites(
+    actor: PlaySessionActorContext,
+    limit?: number,
+  ): Promise<PlaySessionInviteProjectionV2[]>;
 }
 
 export interface PlaySessionCommandService {
+  create(
+    actor: PlaySessionActorContext,
+    command: CreatePlaySessionCommandV2,
+  ): Promise<PlaySessionCommandReceiptV2>;
   createFromMatch(
     actor: PlaySessionActorContext,
     command: CreateSessionFromMatchCommandV2,

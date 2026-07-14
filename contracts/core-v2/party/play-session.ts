@@ -255,6 +255,20 @@ export const PlaySessionSnapshotV2Schema = z
     }
   });
 
+export const PlaySessionInviteProjectionV2Schema = z
+  .object({
+    createdAt: z.string().datetime({ offset: true }),
+    expiresAt: z.string().datetime({ offset: true }).nullable(),
+    inviteId: SessionInviteV2IdSchema,
+    inviterPlayerId: PlayerIdSchema,
+    session: PlaySessionSnapshotV2Schema,
+    sessionId: PlaySessionIdSchema,
+    state: PlaySessionInviteStateV2Schema,
+    targetPlayerId: PlayerIdSchema,
+    version: z.number().int().positive(),
+  })
+  .strict();
+
 const SessionCreateFieldsSchema = z
   .object({
     capacity: z.number().int().min(2).max(5),
@@ -433,6 +447,9 @@ export type PlaySessionMembershipProjectionV2 = z.infer<
   typeof PlaySessionMembershipProjectionV2Schema
 >;
 export type PlaySessionSnapshotV2 = z.infer<typeof PlaySessionSnapshotV2Schema>;
+export type PlaySessionInviteProjectionV2 = z.infer<
+  typeof PlaySessionInviteProjectionV2Schema
+>;
 export type PlaySessionCommandReceiptV2 = z.infer<
   typeof PlaySessionCommandReceiptV2Schema
 >;

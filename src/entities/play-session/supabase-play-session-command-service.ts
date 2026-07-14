@@ -167,6 +167,7 @@ export function createSupabasePlaySessionCommandService(input: {
   };
 
   return {
+    create: (...args) => execute('create', 'create_play_session_v2', args),
     createFromMatch: (...args) =>
       execute('createFromMatch', 'create_session_from_match_v2', args),
     createFromSet: (...args) =>
