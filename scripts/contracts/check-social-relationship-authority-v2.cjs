@@ -45,6 +45,10 @@ const files = {
     root,
     'supabase/tests/database/social_blocked_players_read_v2.test.sql',
   ),
+  rollbackTest: path.join(
+    root,
+    'supabase/tests/database/social_release_rollback_v2.test.sql',
+  ),
 };
 const source = Object.fromEntries(
   Object.entries(files).map(([name, filename]) => [
@@ -146,6 +150,20 @@ if (
   );
 }
 
+for (const assertion of [
+  'rollback disables Core V2 relationship reads with a stable error',
+  'rollback disables new Social mutations with a stable error',
+  'rollback preserves canonical relationship history',
+  'rollback preserves the completed command receipt',
+  'rollback preserves replayable outbox history',
+  're-enable replay preserves the original event identity',
+  'rollback and replay never duplicate the friendship request',
+]) {
+  if (!source.rollbackTest.includes(assertion)) {
+    throw new Error(`Social rollback pgTAP coverage is missing: ${assertion}`);
+  }
+}
+
 if (/auth\.uid\(\).*player/i.test(source.foundationMigration)) {
   throw new Error('Core V2 must not treat auth.uid() as canonical PlayerId.');
 }
@@ -187,7 +205,8 @@ const assertionCount =
   countAssertions(source.trustTest, 'Trust visibility') +
   countAssertions(source.consumerBridgeTest, 'Consumer bridge') +
   countAssertions(source.profileVisibilityTest, 'Profile visibility') +
-  countAssertions(source.blockedPlayersTest, 'Blocked players');
+  countAssertions(source.blockedPlayersTest, 'Blocked players') +
+  countAssertions(source.rollbackTest, 'Rollback drill');
 
 (async () => {
   const parser = await new PgQueryModule();
@@ -197,6 +216,7 @@ const assertionCount =
     ['consumer bridge', source.consumerBridgeMigration],
     ['profile visibility', source.profileVisibilityMigration],
     ['blocked players', source.blockedPlayersMigration],
+    ['rollback pgTAP', source.rollbackTest],
   ]) {
     const parsed = parser.parse(sql);
     if (parsed.error) {

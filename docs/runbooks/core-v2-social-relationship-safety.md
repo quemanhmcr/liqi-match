@@ -48,8 +48,10 @@ npm run social-release:check
 npm run task:check
 ```
 
-`task:check` is source-level evidence only. It does not replace executing the
-migrations, database lint or pgTAP against a real Postgres instance.
+`task:check` parses the migrations and the automated rollback drill in
+`social_release_rollback_v2.test.sql`. This is source-level evidence only. It
+does not replace executing the migrations, database lint or pgTAP against a
+real Postgres instance.
 
 ## Live database verification
 
