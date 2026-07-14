@@ -9,7 +9,7 @@ import type {
   ConversationSourceBindingV2,
   ConversationSourceV2,
   ConversationSystemActivityInputV2,
-  MessageReportEvidenceIdV2,
+  MessageReportEvidenceV2,
   MessageV2,
   ProvisionDirectConversationCommandV2,
   ProvisionSessionConversationCommandV2,
@@ -135,15 +135,7 @@ export interface ConversationModerationProvider {
     conversationId: string;
     messageId: string;
     reportId: string;
-  }): Promise<
-    Readonly<{
-      evidenceId: MessageReportEvidenceIdV2;
-      conversationId: string;
-      message: MessageV2;
-      reporterPlayerId: PlayerId;
-      capturedAt: string;
-    }>
-  >;
+  }): Promise<MessageReportEvidenceV2>;
 }
 
 export interface ConversationLifecycleProvider {

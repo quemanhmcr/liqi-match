@@ -15,6 +15,7 @@ import {
   SessionIdSchema,
 } from '@/shared/contracts/core-v1';
 import {
+  FriendshipAcceptedEventV2Schema,
   PlayerBlockedEventV2Schema,
   PlayerMutedEventV2Schema,
   PlayerUnblockedEventV2Schema,
@@ -525,6 +526,84 @@ describe('Core V2 conversation provider contract', () => {
       expect((error as ConversationV2ProviderError).retryable).toBe(true);
     }
   });
+  it('consumes friendship.accepted.v2 by binding the existing direct thread once', async () => {
+    const { authority } = createHarness();
+    const requester = playerA;
+    const recipient = playerB;
+    const requesterActor = actor(requester, 715);
+    const direct = await authority.provisionDirect(requesterActor, {
+      source: {
+        sourceType: 'direct_match',
+        sourceId: MatchIdSchema.parse(uuid(716)),
+        sourceAggregateVersion: 1,
+      },
+      participantPlayerIds: [requester, recipient],
+      metadata: metadata(0, 717, 'friendship-direct'),
+    });
+    const event = FriendshipAcceptedEventV2Schema.parse({
+      eventId: uuid(718),
+      eventType: 'friendship.accepted.v2',
+      eventVersion: 2,
+      aggregateType: 'social_relationship',
+      aggregateId: uuid(719),
+      aggregateVersion: 4,
+      actorPlayerId: recipient,
+      correlationId: uuid(720),
+      causationId: uuid(721),
+      occurredAt: '2026-07-14T12:20:00.000Z',
+      payload: {
+        friendshipLabel: 'friend',
+        friendshipRequestId: uuid(722),
+        recipientPlayerId: recipient,
+        requestState: 'accepted',
+        requesterPlayerId: requester,
+      },
+    });
+
+    const receipt = await authority.applyRelationshipEvent(event);
+    const replay = await authority.applyRelationshipEvent(event);
+    expect(receipt).toMatchObject({
+      action: 'bound_existing',
+      conversationId: direct.conversationId,
+      relationshipId: event.aggregateId,
+      relationshipVersion: event.aggregateVersion,
+      repeated: false,
+    });
+    expect(replay).toMatchObject({
+      conversationId: direct.conversationId,
+      repeated: true,
+    });
+    expect(await authority.getSources(direct.conversationId)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          source: {
+            sourceType: 'direct_match',
+            sourceId: MatchIdSchema.parse(uuid(716)),
+            sourceAggregateVersion: 1,
+          },
+        }),
+        expect.objectContaining({
+          source: {
+            sourceType: 'friendship',
+            sourceId: event.aggregateId,
+            sourceAggregateVersion: event.aggregateVersion,
+          },
+        }),
+      ]),
+    );
+    const timeline = await authority.getTimeline(
+      requesterActor,
+      direct.conversationId,
+    );
+    expect(
+      timeline.filter(
+        (message) =>
+          message.content.kind === 'system' &&
+          message.content.sourceEventId === event.eventId,
+      ),
+    ).toHaveLength(1);
+  });
+
   it('consumes player.blocked.v2 to revoke API, realtime, and push before a snapshot refresh', async () => {
     const { authority, notificationFacts } = createHarness();
     const event = PlayerBlockedEventV2Schema.parse(
