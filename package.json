@@ -133,7 +133,8 @@
     "match-authority:check": "node scripts/contracts/check-match-authority-v1.cjs",
     "discovery-authority:check": "node scripts/contracts/check-discovery-authority-v1.cjs",
     "match-conversation-projection:check": "node scripts/contracts/check-match-conversation-projection-v1.cjs",
-    "match-authority-rollout:check": "node scripts/contracts/check-match-authority-rollout-v1.cjs"
+    "match-authority-rollout:check": "node scripts/contracts/check-match-authority-rollout-v1.cjs",
+    "match-funnel-telemetry:check": "node scripts/contracts/check-match-funnel-telemetry-v1.cjs"
   },
   "overrides": {
     "xcode": {

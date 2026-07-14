@@ -40,3 +40,17 @@ the service role. Before enabling decisions, verify:
 - `conversation.bootstrap_requested.v1` has an active consumer;
 - `conversation.created.v1` advances Home to `conversation_ready`;
 - pending outbox age is within the agreed SLO.
+
+## Operational metrics
+
+Call `get_match_funnel_metrics_v1(window_minutes)` with the service role. The
+result includes funnel transition counts, p95 duration for
+`record_player_decision_v1` from durable command receipts, and pending
+`match.created.v1` / `conversation.bootstrap_requested.v1` outbox age.
+
+Alert before decision cutover when:
+
+- pending bootstrap age exceeds the agreed event-lag SLO;
+- match-created and conversation-ready counts diverge unexpectedly;
+- like command p95 exceeds the command SLO;
+- duplicate telemetry constraints or authoritative match uniqueness fail.
