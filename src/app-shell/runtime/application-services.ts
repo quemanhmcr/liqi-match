@@ -3,6 +3,14 @@ import type { MatchDecisionRepository } from '@/entities/match-decision';
 import type { MatchIntentRepository } from '@/entities/match-intent';
 import type { MatchSetRepository } from '@/entities/match-set';
 import type { AssetResolver } from '@/entities/media-asset';
+import type {
+  PlaySessionCommandService,
+  PlaySessionRepository,
+} from '@/entities/play-session';
+import type {
+  ConversationRepository as ConversationV2Repository,
+  MessageTransport as ConversationV2MessageTransport,
+} from '@/entities/conversation-v2';
 import type { NotificationInboxRepository } from '@/entities/notifications';
 import type { SocialRelationshipRepository } from '@/entities/social-relationship';
 import type {
@@ -29,6 +37,10 @@ type ApplicationFeatureServices = {
   messageTransport: ChatMessageTransport;
   notificationRepository: NotificationInboxRepository;
   profileRepository: ProfileReadRepository;
+  playSessionCommandService: PlaySessionCommandService;
+  playSessionRepository: PlaySessionRepository;
+  conversationV2Repository: ConversationV2Repository | null;
+  conversationV2MessageTransport: ConversationV2MessageTransport | null;
   relationshipRepository: SocialRelationshipRepository;
 };
 

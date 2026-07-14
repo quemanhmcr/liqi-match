@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemo } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   ActivityIndicator,
   FlatList,
@@ -11,16 +12,49 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { appRoutes } from '@/app-shell/navigation/routes';
+
 import {
   useMatchSetDiscoveryQuery,
   useRequestSetJoinV1Mutation,
 } from '@/entities/match-set';
+import {
+  playSessionQueryKeys,
+  prepareCoreV2CommandMetadata,
+  resolvePlaySessionActor,
+  usePlaySessionServices,
+} from '@/entities/play-session';
+import { useAuth } from '@/shared/auth/auth-context';
+import { SetIdSchema } from '@/shared/contracts/core-v1';
 import type { SetDiscoveryCandidateV1 } from '@/shared/contracts/core-v1';
 
 export function MatchSetDiscoveryScreen() {
   const router = useRouter();
+  const { session } = useAuth();
+  const { commandService } = usePlaySessionServices();
+  const queryClient = useQueryClient();
   const query = useMatchSetDiscoveryQuery(20);
   const joinMutation = useRequestSetJoinV1Mutation();
+  const createSessionMutation = useMutation({
+    mutationFn: async (candidate: SetDiscoveryCandidateV1) => {
+      if (!session) throw new Error('Authentication is required.');
+      return commandService.createFromSet(resolvePlaySessionActor(session), {
+        ...prepareCoreV2CommandMetadata(0),
+        expectedSourceVersion: candidate.set.version,
+        scheduledFor: null,
+        setId: SetIdSchema.parse(candidate.set.setId),
+        timezone: resolvedTimezone(),
+        title: candidate.set.title,
+      });
+    },
+    onSuccess: async (receipt) => {
+      await queryClient.invalidateQueries({
+        queryKey: playSessionQueryKeys.current(),
+      });
+      router.push(appRoutes.sessions.detail(receipt.aggregateId));
+    },
+    retry: false,
+  });
   const items = useMemo(
     () => query.data?.pages.flatMap((page) => page.items) ?? [],
     [query.data],
@@ -86,16 +120,22 @@ export function MatchSetDiscoveryScreen() {
           renderItem={({ item }) => (
             <MatchSetCard
               candidate={item}
+              creatingSession={
+                createSessionMutation.isPending &&
+                createSessionMutation.variables?.set.setId === item.set.setId
+              }
               isPending={
                 joinMutation.isPending &&
                 joinMutation.variables?.setId === item.set.setId
               }
+              onCreateSession={() => createSessionMutation.mutate(item)}
               onJoin={() =>
                 joinMutation.mutate({
                   expectedSetVersion: item.set.version,
                   setId: item.set.setId,
                 })
               }
+              viewerPlayerId={session?.principal?.playerId ?? null}
             />
           )}
         />
@@ -106,15 +146,25 @@ export function MatchSetDiscoveryScreen() {
 
 function MatchSetCard({
   candidate,
+  creatingSession,
   isPending,
+  onCreateSession,
   onJoin,
+  viewerPlayerId,
 }: {
   candidate: SetDiscoveryCandidateV1;
+  creatingSession: boolean;
   isPending: boolean;
+  onCreateSession: () => void;
   onJoin: () => void;
+  viewerPlayerId: string | null;
 }) {
   const set = candidate.set;
   const canJoin = candidate.capabilities.canRequestJoin && !isPending;
+  const canCreateSession =
+    viewerPlayerId === set.ownerPlayerId &&
+    set.memberPlayerIds.length >= 2 &&
+    ['open', 'full'].includes(set.state);
   return (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
@@ -140,23 +190,47 @@ function MatchSetCard({
         ))}
       </View>
 
-      <Pressable
-        accessibilityLabel={`Xin vào ${set.title}`}
-        accessibilityRole="button"
-        disabled={!canJoin}
-        onPress={onJoin}
-        style={[styles.primaryButton, !canJoin && styles.disabledButton]}
-      >
-        <Text style={styles.primaryButtonText}>
-          {isPending
-            ? 'Đang gửi…'
-            : candidate.capabilities.canRequestJoin
-              ? 'Xin vào đội'
-              : 'Đã gửi yêu cầu'}
-        </Text>
-      </Pressable>
+      <View style={styles.actionRow}>
+        {canCreateSession ? (
+          <Pressable
+            accessibilityLabel={`Tạo Session từ ${set.title}`}
+            accessibilityRole="button"
+            disabled={creatingSession}
+            onPress={onCreateSession}
+            style={[
+              styles.primaryButton,
+              creatingSession && styles.disabledButton,
+            ]}
+          >
+            <Text style={styles.primaryButtonText}>
+              {creatingSession ? 'Đang chuyển…' : 'Tạo Session'}
+            </Text>
+          </Pressable>
+        ) : null}
+        {!canCreateSession ? (
+          <Pressable
+            accessibilityLabel={`Xin vào ${set.title}`}
+            accessibilityRole="button"
+            disabled={!canJoin}
+            onPress={onJoin}
+            style={[styles.primaryButton, !canJoin && styles.disabledButton]}
+          >
+            <Text style={styles.primaryButtonText}>
+              {isPending
+                ? 'Đang gửi…'
+                : candidate.capabilities.canRequestJoin
+                  ? 'Xin vào đội'
+                  : 'Đã gửi yêu cầu'}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
     </View>
   );
+}
+
+function resolvedTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
 }
 
 function intentLabel(value: string) {
@@ -187,6 +261,7 @@ function reasonLabel(value: string) {
 }
 
 const styles = StyleSheet.create({
+  actionRow: { gap: 10 },
   card: {
     backgroundColor: 'rgba(23, 28, 48, 0.96)',
     borderColor: 'rgba(163, 176, 255, 0.16)',

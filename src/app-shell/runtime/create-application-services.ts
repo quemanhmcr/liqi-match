@@ -23,6 +23,17 @@ import {
   createCanonicalSimulationNotificationInboxRepository,
 } from '@/entities/notifications';
 import { createProductionSimulationRuntime } from '@/entities/simulation';
+import { InMemoryConversationV2Authority } from '@/entities/conversation-v2';
+import {
+  InMemoryPlaySessionService,
+  createConversationV2SessionProvisioner,
+  createSimulationParticipantLifecycleProvider,
+  createSimulationPlaySessionSourceProvider,
+  createSimulationRelationshipEligibilityProvider,
+  createSupabaseCoreV2RpcTransport,
+  createSupabasePlaySessionCommandService,
+  createSupabasePlaySessionRepository,
+} from '@/entities/play-session';
 import {
   InMemorySocialRelationshipRepository,
   SupabaseSocialRelationshipRepository,
@@ -53,6 +64,7 @@ import {
   subscribeAccessToken,
 } from '@/shared/auth/auth-service';
 import { supabaseAuthClient } from '@/shared/auth/supabase-auth-client';
+import { env } from '@/shared/config/env';
 
 import type {
   ApiApplicationServices,
@@ -87,6 +99,22 @@ export function createSimulationApplicationServices(
   const messages = createCanonicalSimulationMessagesAdapter({
     runtime: simulationRuntime,
   });
+  const conversationV2Authority = new InMemoryConversationV2Authority({
+    clock: () => simulationRuntime.clock.now(),
+  });
+  const playSessionService = new InMemoryPlaySessionService({
+    clock: () => simulationRuntime.clock.now(),
+    conversationProvisioner: createConversationV2SessionProvisioner({
+      authority: conversationV2Authority,
+      clock: () => simulationRuntime.clock.now(),
+    }),
+    lifecycleProvider:
+      createSimulationParticipantLifecycleProvider(simulationRuntime),
+    relationshipProvider:
+      createSimulationRelationshipEligibilityProvider(simulationRuntime),
+    sourceProvider:
+      createSimulationPlaySessionSourceProvider(simulationRuntime),
+  });
   simulationRuntime.registerResetParticipant(
     createMessagesSimulationResetParticipant(),
   );
@@ -120,6 +148,10 @@ export function createSimulationApplicationServices(
         runtime: simulationRuntime,
       }),
     profileRepository: createSimulationProfileReadRepository(simulationRuntime),
+    playSessionCommandService: playSessionService,
+    playSessionRepository: playSessionService,
+    conversationV2Repository: conversationV2Authority,
+    conversationV2MessageTransport: conversationV2Authority,
     relationshipRepository: new InMemorySocialRelationshipRepository(),
     scenarioControl: simulationRuntime,
     simulationRuntime,
@@ -131,6 +163,19 @@ export function createApiApplicationServices(): ApiApplicationServices {
     accessTokenProvider: getValidAccessToken,
     accessTokenSubscriber: subscribeAccessToken,
     realtimeClient: supabaseAuthClient,
+  });
+  const coreV2Transport = createSupabaseCoreV2RpcTransport({
+    anonKey: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    supabaseUrl: env.EXPO_PUBLIC_SUPABASE_URL,
+  });
+  const coreV2AccessTokenProvider = { getAccessToken: getValidAccessToken };
+  const playSessionCommandService = createSupabasePlaySessionCommandService({
+    accessTokenProvider: coreV2AccessTokenProvider,
+    transport: coreV2Transport,
+  });
+  const playSessionRepository = createSupabasePlaySessionRepository({
+    accessTokenProvider: coreV2AccessTokenProvider,
+    transport: coreV2Transport,
   });
   return {
     assetResolver: createGoldenWorldAssetResolver({
@@ -147,6 +192,10 @@ export function createApiApplicationServices(): ApiApplicationServices {
     mode: 'api',
     notificationRepository: createApiNotificationInboxRepository(),
     profileRepository: createApiProfileRepository(),
+    playSessionCommandService,
+    playSessionRepository,
+    conversationV2Repository: null,
+    conversationV2MessageTransport: null,
     relationshipRepository: new SupabaseSocialRelationshipRepository(),
     scenarioControl: null,
     simulationRuntime: null,

@@ -37,6 +37,49 @@ describe('SocialSessionRelationshipEligibilityAdapter', () => {
     ).resolves.toEqual({ allowed: true, blocked: false, reasonCodes: [] });
   });
 
+  it('denies Session invites from current privacy capability and does not infer presence', async () => {
+    const friend = readRelationship('relationship-friend.json');
+    const privacyDenied = SocialRelationshipSnapshotV2Schema.parse({
+      ...friend,
+      capabilities: {
+        ...friend.capabilities,
+        canInviteToSession: false,
+        canViewPresence: false,
+      },
+      targetPrivacy: {
+        ...friend.targetPrivacy,
+        presenceVisibility: 'hidden',
+        sessionInvites: 'nobody',
+        version: friend.targetPrivacy.version + 1,
+      },
+      version: friend.version + 1,
+    });
+    const repository = new InMemorySocialRelationshipRepository({
+      relationships: [privacyDenied],
+    });
+    const adapter = new SocialSessionRelationshipEligibilityAdapter(
+      repository,
+      () => socialTestSession(),
+    );
+
+    await expect(
+      adapter.getInviteEligibility(viewerPlayerId, targetPlayerId),
+    ).resolves.toEqual({
+      allowed: false,
+      blocked: false,
+      reasonCodes: ['session_invite_policy_denied'],
+    });
+    await expect(
+      repository.getRelationship(socialTestSession(), targetPlayerId),
+    ).resolves.toMatchObject({
+      capabilities: { canViewPresence: false },
+      targetPrivacy: {
+        presenceVisibility: 'hidden',
+        sessionInvites: 'nobody',
+      },
+    });
+  });
+
   it('fails closed when either directional block is authoritative', async () => {
     const repository = new InMemorySocialRelationshipRepository({
       relationships: [readRelationship('relationship-blocked.json')],
