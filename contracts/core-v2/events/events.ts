@@ -7,6 +7,8 @@ import {
   SetIdSchema,
 } from '../../core-v1';
 import {
+  MatchSetInviteV2IdSchema,
+  MatchSetJoinRequestV2IdSchema,
   PlaySessionIdSchema,
   SessionInviteV2IdSchema,
 } from '../identity/semantic-ids';
@@ -50,6 +52,55 @@ export const SetCreatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
   aggregateId: SetIdSchema,
   eventType: z.literal('set.created.v2'),
   payload: z.object({ set: MatchSetSnapshotV2Schema }).strict(),
+}).strict();
+
+export const SetUpdatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
+  ...setEventBase,
+  aggregateId: MatchSetIdSchema,
+  eventType: z.literal('set.updated.v2'),
+  payload: z
+    .object({
+      changeType: z.enum([
+        'details_updated',
+        'reopened',
+        'invite_declined',
+        'invite_cancelled',
+        'join_request_rejected',
+        'join_request_cancelled',
+        'owner_transferred',
+      ]),
+      recordId: z.string().uuid().nullable(),
+      set: MatchSetSnapshotV2Schema,
+      subjectPlayerId: PlayerIdSchema.nullable(),
+    })
+    .strict(),
+}).strict();
+
+export const SetInviteCreatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
+  ...setEventBase,
+  aggregateId: MatchSetIdSchema,
+  eventType: z.literal('set.invite_created.v2'),
+  payload: z
+    .object({
+      inviteId: MatchSetInviteV2IdSchema,
+      inviterPlayerId: PlayerIdSchema,
+      setId: MatchSetIdSchema,
+      targetPlayerId: PlayerIdSchema,
+    })
+    .strict(),
+}).strict();
+
+export const SetJoinRequestedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
+  ...setEventBase,
+  aggregateId: MatchSetIdSchema,
+  eventType: z.literal('set.join_requested.v2'),
+  payload: z
+    .object({
+      joinRequestId: MatchSetJoinRequestV2IdSchema,
+      requesterPlayerId: PlayerIdSchema,
+      setId: MatchSetIdSchema,
+    })
+    .strict(),
 }).strict();
 
 export const SetMemberJoinedEventV2Schema = CoreV2EventEnvelopeSchema.extend({

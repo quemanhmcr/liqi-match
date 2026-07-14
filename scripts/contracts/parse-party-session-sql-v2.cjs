@@ -5,6 +5,8 @@ const PgQueryModule = require('pg-query-emscripten').default;
 const repositoryRoot = path.resolve(__dirname, '..', '..');
 const sqlPaths = [
   'supabase/migrations/202607140054_core_v2_party_play_session_foundation.sql',
+  'supabase/migrations/202607141200_core_v2_play_session_walking_skeleton.sql',
+  'supabase/migrations/202607141210_core_v2_match_set_commands.sql',
 ];
 
 function fail(message) {
@@ -25,24 +27,48 @@ function functionStatements(sql) {
     const delimiter = bodyMatch[1];
     const bodyStart = bodyMatch.index + bodyMatch[0].length;
     const closing = candidate.indexOf(delimiter, bodyStart);
-    if (closing < 0)
+    if (closing < 0) {
       throw new Error(`Unclosed function body near byte ${start}.`);
+    }
     const semicolon = candidate.indexOf(';', closing + delimiter.length);
     if (semicolon < 0) {
       throw new Error(
         `Function lacks terminating semicolon near byte ${start}.`,
       );
     }
+    const statement = candidate.slice(0, semicolon + 1);
     return {
       body: candidate.slice(bodyStart, closing),
-      sql: candidate.slice(0, semicolon + 1),
-      language: /\blanguage\s+plpgsql\b/i.test(candidate)
+      end: start + semicolon + 1,
+      language: /\blanguage\s+plpgsql\b/i.test(statement)
         ? 'plpgsql'
-        : /\blanguage\s+sql\b/i.test(candidate)
+        : /\blanguage\s+sql\b/i.test(statement)
           ? 'sql'
           : 'other',
+      name: /function\s+([^\s(]+)/i.exec(statement)?.[1] ?? `function@${start}`,
+      sql: statement,
+      start,
     };
   });
+}
+
+function nonFunctionSql(sql, functions) {
+  let cursor = 0;
+  let remainder = '';
+  for (const fn of functions) {
+    remainder += sql.slice(cursor, fn.start);
+    cursor = fn.end;
+  }
+  return remainder + sql.slice(cursor);
+}
+
+async function parseSql(sql, label) {
+  const parser = await PgQueryModule();
+  const result = parser.parse(sql);
+  if (result.error?.message) {
+    throw new Error(`${label}: ${result.error.message}`);
+  }
+  return result.parse_tree?.stmts?.length ?? 0;
 }
 
 (async () => {
@@ -52,35 +78,37 @@ function functionStatements(sql) {
       fail(`${relativePath} is missing.`);
       continue;
     }
-    const sql = fs.readFileSync(absolutePath, 'utf8');
-    const parser = await PgQueryModule();
-    const outer = parser.parse(sql);
-    if (outer.error?.message) {
-      fail(`${relativePath}: ${outer.error.message}`);
-      continue;
-    }
 
+    const sql = fs.readFileSync(absolutePath, 'utf8');
+    const functions = functionStatements(sql);
+    const remainder = nonFunctionSql(sql, functions);
+    let statementCount = await parseSql(
+      remainder,
+      `${relativePath}: non-function statements`,
+    );
     let sqlFunctions = 0;
     let plpgsqlFunctions = 0;
-    for (const fn of functionStatements(sql)) {
-      const fnParser = await new PgQueryModule();
+
+    for (const fn of functions) {
+      statementCount += await parseSql(
+        fn.sql,
+        `${relativePath}: ${fn.name} declaration`,
+      );
       if (fn.language === 'plpgsql') {
-        const result = fnParser.parsePlpgsql(fn.sql);
+        const parser = await PgQueryModule();
+        const result = parser.parsePlpgsql(fn.sql);
         if (result.error?.message) {
-          fail(`${relativePath}: ${result.error.message}`);
+          fail(`${relativePath}: ${fn.name}: ${result.error.message}`);
         }
         plpgsqlFunctions += 1;
       } else if (fn.language === 'sql') {
-        const result = fnParser.parse(fn.body);
-        if (result.error?.message) {
-          fail(`${relativePath}: SQL function body: ${result.error.message}`);
-        }
+        await parseSql(fn.body, `${relativePath}: ${fn.name} SQL body`);
         sqlFunctions += 1;
       }
     }
 
     console.log(
-      `${relativePath}: ${outer.parse_tree?.stmts?.length ?? 0} statements, ${sqlFunctions} SQL functions, ${plpgsqlFunctions} PL/pgSQL functions parsed.`,
+      `${relativePath}: ${statementCount} statements, ${sqlFunctions} SQL functions, ${plpgsqlFunctions} PL/pgSQL functions parsed in isolated segments.`,
     );
   }
   if (!process.exitCode) {

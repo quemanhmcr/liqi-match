@@ -19,6 +19,12 @@ import {
   SessionStartedEventV2Schema,
   SetClosedEventV2Schema,
   SetCreatedEventV2Schema,
+  SetUpdatedEventV2Schema,
+  SetInviteCreatedEventV2Schema,
+  SetJoinRequestedEventV2Schema,
+  SetInviteCreatedEventV2Schema,
+  SetJoinRequestedEventV2Schema,
+  SetUpdatedEventV2Schema,
   SetMemberJoinedEventV2Schema,
   SetMemberRemovedEventV2Schema,
 } from './events';
