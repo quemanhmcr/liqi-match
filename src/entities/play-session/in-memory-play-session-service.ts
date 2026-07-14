@@ -721,19 +721,20 @@ export class InMemoryPlaySessionService
         this.touch(session);
 
         const eventIds: string[] = [];
-        if (command.response === 'ready') {
-          eventIds.push(
-            this.emit(session, actorPlayerId, command.correlationId, null, {
-              eventType: 'session.member_ready.v2',
-              payload: {
-                checkId: check.checkId,
-                memberPlayerId: actorPlayerId,
-                response: 'ready',
-                sessionId: session.sessionId,
-              },
-            }).eventId,
-          );
-        }
+        eventIds.push(
+          this.emit(session, actorPlayerId, command.correlationId, null, {
+            eventType:
+              command.response === 'ready'
+                ? 'session.member_ready.v2'
+                : 'session.member_not_ready.v2',
+            payload: {
+              checkId: check.checkId,
+              memberPlayerId: actorPlayerId,
+              response: command.response,
+              sessionId: session.sessionId,
+            },
+          }).eventId,
+        );
         if (allReady) {
           const passedEvent = this.emit(
             session,

@@ -630,6 +630,49 @@ describe('InMemoryPlaySessionService provider invariants', () => {
     });
   });
 
+  it('emits a versioned outbox fact for an explicit not-ready response', async () => {
+    const sync = async (
+      input: Parameters<SessionConversationProvisioner['provision']>[0],
+    ) => ({
+      conversationId: CONVERSATION_ID as never,
+      membership: input.membership,
+      sourceAggregateVersion: input.sourceAggregateVersion,
+    });
+    const service = createService({
+      conversationProvisioner: { provision: sync, reconcile: sync },
+    });
+    const created = await service.createFromMatch(
+      actor(PLAYER_A),
+      createCommand(),
+    );
+    const sessionId = PlaySessionIdSchema.parse(created.aggregateId);
+    await service.acceptInvite(
+      actor(PLAYER_B),
+      acceptCommand(31, 1, sessionId, inviteFor(service, sessionId, PLAYER_B)),
+    );
+    const opened = await service.openReadyCheck(actor(PLAYER_A), {
+      ...metadata(32, 2),
+      deadlineAt: '2026-07-14T12:05:00.000Z',
+      sessionId,
+    });
+    const checkId = opened.session.readyCheck?.checkId;
+    if (!checkId) throw new Error('ready check missing');
+
+    const response = await service.respondReadyCheck(actor(PLAYER_B), {
+      ...metadata(33, 3),
+      checkId,
+      response: 'not_ready',
+      sessionId,
+    });
+
+    expect(response.eventIds).toHaveLength(1);
+    expect(service.listEvents(sessionId).at(-1)).toMatchObject({
+      aggregateVersion: 4,
+      eventType: 'session.member_not_ready.v2',
+      payload: { memberPlayerId: PLAYER_B, response: 'not_ready' },
+    });
+  });
+
   it('does not let a nonmember answer a ready check', async () => {
     const sync = async (
       input: Parameters<SessionConversationProvisioner['provision']>[0],

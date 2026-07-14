@@ -189,6 +189,21 @@ export const SessionReadyCheckExpiredEventV2Schema =
       .strict(),
   }).strict();
 
+export const SessionMemberNotReadyEventV2Schema =
+  CoreV2EventEnvelopeSchema.extend({
+    ...sessionEventBase,
+    aggregateId: PlaySessionIdSchema,
+    eventType: z.literal('session.member_not_ready.v2'),
+    payload: z
+      .object({
+        checkId: z.string().uuid(),
+        memberPlayerId: PlayerIdSchema,
+        response: z.literal('not_ready'),
+        sessionId: PlaySessionIdSchema,
+      })
+      .strict(),
+  }).strict();
+
 export const SessionMemberReadyEventV2Schema = CoreV2EventEnvelopeSchema.extend(
   {
     ...sessionEventBase,
