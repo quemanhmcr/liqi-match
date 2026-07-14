@@ -30,6 +30,10 @@ const profileScreenPath = path.join(
   root,
   'src/features/profile/screens/ProfileScreen.tsx',
 );
+const profileShareScreenPath = path.join(
+  root,
+  'src/features/profile/screens/ProfileShareScreen.tsx',
+);
 
 for (const file of [
   migrationPath,
@@ -39,6 +43,7 @@ for (const file of [
   legacySavePath,
   statsBarPath,
   profileScreenPath,
+  profileShareScreenPath,
 ]) {
   if (!fs.existsSync(file))
     throw new Error(`Missing trusted-stat file: ${file}`);
@@ -51,6 +56,7 @@ const command = fs.readFileSync(commandPath, 'utf8');
 const legacySave = fs.readFileSync(legacySavePath, 'utf8');
 const statsBar = fs.readFileSync(statsBarPath, 'utf8');
 const profileScreen = fs.readFileSync(profileScreenPath, 'utf8');
+const profileShareScreen = fs.readFileSync(profileShareScreenPath, 'utf8');
 
 function requireInvariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -111,6 +117,20 @@ requireInvariant(
     !profileScreen.includes('profile.stats.reputation') &&
     !profileScreen.includes('Hợp vibe'),
   'Profile must consume the trust projection provider and never derive a score from legacy stats',
+);
+requireInvariant(
+  profileShareScreen.includes('usePlayerTrustProjection') &&
+    profileShareScreen.includes(
+      'trustProjection={trustProjectionQuery.data}',
+    ) &&
+    profileShareScreen.includes('label="Buổi chơi"') &&
+    profileShareScreen.includes('completionReliabilityBps') &&
+    profileShareScreen.includes('positiveEndorsements') &&
+    !profileShareScreen.includes('profile.stats.matches') &&
+    !profileShareScreen.includes('profile.stats.winRate') &&
+    !profileShareScreen.includes('profile.stats.rating') &&
+    profileShareScreen.includes('Chưa tải được số liệu xác minh'),
+  'Profile share poster must use authoritative trust projection data and fail closed without legacy fallbacks',
 );
 
 const plan = Number(test.match(/select plan\((\d+)\)/i)?.[1] ?? 0);
