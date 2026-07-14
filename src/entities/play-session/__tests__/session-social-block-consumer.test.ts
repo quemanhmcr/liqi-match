@@ -13,6 +13,7 @@ import {
 import {
   PlayerBlockedEventV2Schema,
   PlaySessionIdSchema,
+  SocialRelationshipSnapshotV2Schema,
   type PlaySessionId,
 } from '@/shared/contracts/core-v2';
 import { InMemoryConversationV2Authority } from '@/entities/conversation-v2';
@@ -21,9 +22,26 @@ import { createConversationV2SessionProvisioner } from '../conversation-v2-sessi
 import { InMemoryRepeatPlaySessionService } from '../in-memory-repeat-play-session-service';
 import type { PlaySessionActorContext } from '../play-session-repository';
 
-const A = PlayerIdSchema.parse('a6000000-0000-4000-8000-000000000001');
-const B = PlayerIdSchema.parse('a6000000-0000-4000-8000-000000000002');
-const NOW = '2026-07-14T12:00:00.000Z';
+const supplierFixture = JSON.parse(
+  fs.readFileSync(
+    path.join(
+      process.cwd(),
+      'contracts/core-v2/fixtures/consumer/session-block-enforcement.json',
+    ),
+    'utf8',
+  ),
+) as {
+  event: unknown;
+  policy: Record<string, unknown>;
+  relationship: unknown;
+};
+const supplierEvent = PlayerBlockedEventV2Schema.parse(supplierFixture.event);
+const supplierRelationship = SocialRelationshipSnapshotV2Schema.parse(
+  supplierFixture.relationship,
+);
+const A = PlayerIdSchema.parse(supplierEvent.payload.blockerPlayerId);
+const B = PlayerIdSchema.parse(supplierEvent.payload.blockedPlayerId);
+const NOW = '2026-07-14T10:00:00.000Z';
 
 function actor(playerId: PlayerId): PlaySessionActorContext {
   const suffix = playerId.slice(-12);
@@ -73,21 +91,13 @@ function metadata(sequence: number, expectedVersion: number) {
   };
 }
 
-function blockEvent(reasonCode: string | null = 'user_safety') {
+function blockEvent(
+  reasonCode: string | null = supplierEvent.payload.reasonCode,
+) {
   return PlayerBlockedEventV2Schema.parse({
-    actorPlayerId: A,
-    aggregateId: 'a6600000-0000-4000-8000-000000000001',
-    aggregateType: 'social_relationship',
-    aggregateVersion: 5,
-    causationId: null,
-    correlationId: 'a6700000-0000-4000-8000-000000000001',
-    eventId: 'a6800000-0000-4000-8000-000000000001',
-    eventType: 'player.blocked.v2',
-    eventVersion: 2,
-    occurredAt: '2026-07-14T12:30:00.000Z',
+    ...supplierEvent,
     payload: {
-      blockedPlayerId: B,
-      blockerPlayerId: A,
+      ...supplierEvent.payload,
       reasonCode,
     },
   });
@@ -157,18 +167,18 @@ async function createAcceptedDuo(
 
 describe('Session player.blocked.v2 policy consumer', () => {
   it('consumes the exact Senior 1 supplier fixture and policy', () => {
-    const fixture = JSON.parse(
-      fs.readFileSync(
-        path.join(
-          process.cwd(),
-          'contracts/core-v2/fixtures/consumer/session-block-enforcement.json',
-        ),
-        'utf8',
-      ),
-    ) as { event: unknown; policy: Record<string, unknown> };
-
-    expect(PlayerBlockedEventV2Schema.parse(fixture.event)).toBeTruthy();
-    expect(fixture.policy).toMatchObject({
+    expect(supplierEvent.aggregateId).toBe(supplierRelationship.relationshipId);
+    expect(supplierEvent.aggregateVersion).toBe(supplierRelationship.version);
+    expect(supplierEvent.payload).toMatchObject({
+      blockerPlayerId: supplierRelationship.viewerPlayerId,
+      blockedPlayerId: supplierRelationship.targetPlayerId,
+    });
+    expect(supplierRelationship.capabilities).toMatchObject({
+      blocked: true,
+      canInviteToSession: false,
+      canViewConversation: false,
+    });
+    expect(supplierFixture.policy).toMatchObject({
       activePlay: {
         preserveHistoricalMembership: true,
         transition: 'disputed',

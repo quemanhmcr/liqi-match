@@ -6,6 +6,7 @@ import {
   CancelSessionCommandV2Schema,
   CoreV2EventSchema,
   PlaySessionSnapshotV2Schema,
+  PlayerBlockedEventV2Schema,
   SessionCompletedEventV2Schema,
   SessionCreatedEventV2Schema,
   SessionMemberJoinedEventV2Schema,
@@ -43,6 +44,23 @@ describe('Core V2 party and play-session contracts', () => {
     );
 
     expect(relationship.capabilities.blocked).toBe(true);
+    expect(relationship.capabilities.canInviteToSession).toBe(false);
+  });
+
+  it('binds Session safety enforcement to the exact Social event version and direction', () => {
+    const fixture = read('consumer', 'session-block-enforcement.json') as {
+      event: unknown;
+      relationship: unknown;
+    };
+    const event = PlayerBlockedEventV2Schema.parse(fixture.event);
+    const relationship = SocialRelationshipSnapshotV2Schema.parse(
+      fixture.relationship,
+    );
+
+    expect(event.aggregateId).toBe(relationship.relationshipId);
+    expect(event.aggregateVersion).toBe(relationship.version);
+    expect(event.payload.blockerPlayerId).toBe(relationship.viewerPlayerId);
+    expect(event.payload.blockedPlayerId).toBe(relationship.targetPlayerId);
     expect(relationship.capabilities.canInviteToSession).toBe(false);
   });
 

@@ -1,5 +1,1 @@
-import { randomUUID } from 'expo-crypto';
-
-export function createRuntimeUuid() {
-  return randomUUID();
-}
+export { createRuntimeUuid } from '@/shared/core-v2/runtime-uuid';

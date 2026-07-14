@@ -7,7 +7,57 @@ const testPath =
   'supabase/tests/database/session_social_safety_consumer_v2.test.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const databaseTest = fs.readFileSync(testPath, 'utf8');
+const fixturePath =
+  'contracts/core-v2/fixtures/consumer/session-block-enforcement.json';
+const fixture = JSON.parse(fs.readFileSync(fixturePath, 'utf8'));
+const providerTest = fs.readFileSync(
+  'src/entities/play-session/__tests__/session-social-block-consumer.test.ts',
+  'utf8',
+);
 const failures = [];
+
+requireSupplierFixture();
+
+function requireSupplierFixture() {
+  const event = fixture.event;
+  const relationship = fixture.relationship;
+  const policy = fixture.policy;
+  requireInvariant(
+    event.eventType === 'player.blocked.v2' &&
+      event.eventVersion === 2 &&
+      event.aggregateType === 'social_relationship',
+    'supplier fixture must use canonical player.blocked.v2 envelope',
+  );
+  requireInvariant(
+    event.aggregateId === relationship.relationshipId &&
+      event.aggregateVersion === relationship.version &&
+      event.payload.blockerPlayerId === relationship.viewerPlayerId &&
+      event.payload.blockedPlayerId === relationship.targetPlayerId,
+    'supplier fixture relationship/version/direction must match event facts',
+  );
+  requireInvariant(
+    relationship.capabilities.blocked === true &&
+      relationship.capabilities.canInviteToSession === false &&
+      relationship.capabilities.canViewConversation === false,
+    'supplier fixture must fail invitation and visibility capabilities closed',
+  );
+  requireInvariant(
+    policy.preStart.cancelPendingInvites === true &&
+      policy.preStart.revokeActiveMembership === true &&
+      policy.preStart.deny.includes('ready_response') &&
+      policy.preStart.deny.includes('member_visibility') &&
+      policy.activePlay.transition === 'disputed' &&
+      policy.replay === 'idempotent' &&
+      policy.unblock.restoreSessionMembership === false,
+    'supplier fixture must lock the complete Session block policy',
+  );
+  requireInvariant(
+    providerTest.includes('session-block-enforcement.json') &&
+      providerTest.includes('supplierEvent.aggregateId') &&
+      providerTest.includes('supplierRelationship.version'),
+    'provider tests must execute the exact supplier fixture',
+  );
+}
 
 function requireInvariant(condition, message) {
   if (!condition) failures.push(message);

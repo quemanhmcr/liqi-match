@@ -58,7 +58,7 @@ jest.mock('@/shared/auth/auth-context', () => ({
   useAuth: () => ({ session: mockSession }),
 }));
 
-jest.mock('@/entities/play-session/runtime-uuid', () => {
+jest.mock('@/shared/core-v2/runtime-uuid', () => {
   let sequence = 500;
   return {
     createRuntimeUuid: () =>

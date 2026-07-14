@@ -7,6 +7,7 @@ import {
   SetJoinRequestReceiptV1Schema,
 } from '@/shared/contracts/core-v1';
 import type { AuthSession } from '@/shared/auth/auth-service';
+import { prepareCoreV2CommandMetadata } from '@/shared/core-v2';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
 import type { MatchSetRepository } from './match-set-repository';
@@ -17,8 +18,15 @@ export type MatchSetRpcTransport = (
   body: Record<string, unknown>,
 ) => Promise<unknown>;
 
+export type MatchSetMetadataFactory = (
+  expectedVersion: number,
+) => ReturnType<typeof prepareCoreV2CommandMetadata>;
+
 export class SupabaseMatchSetRepository implements MatchSetRepository {
-  constructor(private readonly rpc: MatchSetRpcTransport = callRpc) {}
+  constructor(
+    private readonly rpc: MatchSetRpcTransport = callRpc,
+    private readonly metadataFactory: MatchSetMetadataFactory = defaultMetadataFactory,
+  ) {}
 
   async list(
     session: AuthSession,
@@ -35,10 +43,12 @@ export class SupabaseMatchSetRepository implements MatchSetRepository {
 
   async invite(session: AuthSession, command: unknown) {
     const input = CreateSetInviteCommandV1Schema.parse(command);
+    const metadata = this.metadataFactory(input.expectedSetVersion);
     return SetInviteReceiptV1Schema.parse(
-      await this.rpc('create_set_invite_v1', session, {
+      await this.rpc('create_set_invite_compat_v2', session, {
+        p_audit: metadata.audit,
         p_correlation_id: input.correlationId,
-        p_expected_set_version: input.expectedSetVersion,
+        p_expected_version: input.expectedSetVersion,
         p_idempotency_key: input.idempotencyKey,
         p_set_id: input.setId,
         p_target_player_id: input.targetPlayerId,
@@ -48,10 +58,12 @@ export class SupabaseMatchSetRepository implements MatchSetRepository {
 
   async requestJoin(session: AuthSession, command: unknown) {
     const input = RequestSetJoinCommandV1Schema.parse(command);
+    const metadata = this.metadataFactory(input.expectedSetVersion);
     return SetJoinRequestReceiptV1Schema.parse(
-      await this.rpc('request_set_join_v1', session, {
+      await this.rpc('request_set_join_compat_v2', session, {
+        p_audit: metadata.audit,
         p_correlation_id: input.correlationId,
-        p_expected_set_version: input.expectedSetVersion,
+        p_expected_version: input.expectedSetVersion,
         p_idempotency_key: input.idempotencyKey,
         p_set_id: input.setId,
       }),
@@ -68,5 +80,11 @@ async function callRpc(
     body,
     method: 'POST',
     session,
+  });
+}
+
+function defaultMetadataFactory(expectedVersion: number) {
+  return prepareCoreV2CommandMetadata(expectedVersion, {
+    idempotencyScope: 'match-set',
   });
 }
