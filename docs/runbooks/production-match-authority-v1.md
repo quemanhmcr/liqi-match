@@ -1,5 +1,7 @@
 # Production Match Authority v1 rollout
 
+> Integrated primary note: use `docs/runbooks/primary-production-integration-v1.md` for the canonical migration boundary, cross-domain deployment order, and release evidence.
+
 ## Expansion
 
 Apply additive migrations through `202607140009`. Keep global and cohort

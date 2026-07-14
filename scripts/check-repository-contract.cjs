@@ -44,6 +44,8 @@ const scripts = packageJson.scripts || {};
 const expectedScripts = {
   'repo:context': 'node scripts/repository-context.cjs',
   'repository:check': 'node scripts/check-repository-contract.cjs',
+  'migration-history:check':
+    'node scripts/contracts/check-migration-history-v1.cjs',
   'task:start': 'node scripts/worktree/worktree-cli.cjs create',
   'task:inspect': 'node scripts/worktree/worktree-cli.cjs doctor',
   'task:list': 'node scripts/worktree/worktree-cli.cjs list',
@@ -57,6 +59,11 @@ for (const [name, expected] of Object.entries(expectedScripts)) {
 
 if (!scripts['task:check']?.includes('repository:check')) {
   failures.push('package.json: task:check must include repository:check');
+}
+if (!scripts['task:check']?.includes('migration-history:check')) {
+  failures.push(
+    'package.json: task:check must include migration-history:check',
+  );
 }
 if (!scripts['task:check']?.includes('test:ci')) {
   failures.push('package.json: task:check must include test:ci');
