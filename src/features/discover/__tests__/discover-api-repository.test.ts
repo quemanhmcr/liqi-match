@@ -2,14 +2,12 @@ import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 import {
   ApiDiscoverRepository,
-  type DiscoverApiTransport,
   type DiscoverRpcTransport,
 } from '../services/discover-api-repository';
 import type { DiscoverRequestContext } from '../services/discover-repository';
 
-const request = jest.fn<DiscoverApiTransport['request']>();
 const rpc = jest.fn<DiscoverRpcTransport>();
-const repository = new ApiDiscoverRepository({ request }, rpc);
+const repository = new ApiDiscoverRepository(rpc);
 const context: DiscoverRequestContext = {
   locale: 'vi',
   session: null,
@@ -18,7 +16,6 @@ const context: DiscoverRequestContext = {
 };
 
 beforeEach(() => {
-  request.mockReset();
   rpc.mockReset();
 });
 
@@ -76,7 +73,6 @@ describe('ApiDiscoverRepository transport contract', () => {
       p_cursor: null,
       p_limit: 20,
     });
-    expect(request).not.toHaveBeenCalled();
     expect(response.data.items[0]).toMatchObject({
       intentVersion: 3,
       matchScore: 70,
@@ -109,42 +105,20 @@ describe('ApiDiscoverRepository transport contract', () => {
     expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('sends join commands to the Set-scoped route with an idempotency header', async () => {
-    request.mockResolvedValueOnce({
-      createdAt: '2026-07-11T08:00:00.000Z',
-      repeated: false,
-      requestId: 'join-1',
-      setId: 'set/encoded',
-      setVersion: 4,
-      status: 'pending',
-    });
-
-    await repository.requestSetJoin(context, {
-      clientMutationId: 'client-1',
-      expectedSetVersion: 4,
-      idempotencyKey: 'idem-1',
-      setId: 'set/encoded',
-      source: 'discover',
-    });
-
-    expect(request).toHaveBeenCalledWith({
-      body: {
+  it('rejects the legacy Set join boundary before any transport call', async () => {
+    await expect(
+      repository.requestSetJoin(context, {
         clientMutationId: 'client-1',
         expectedSetVersion: 4,
         idempotencyKey: 'idem-1',
         setId: 'set/encoded',
         source: 'discover',
-      },
-      headers: { 'idempotency-key': 'idem-1' },
-      method: 'POST',
-      path: '/v1/discover/sets/set%2Fencoded/join-requests',
-      session: null,
-    });
+      }),
+    ).rejects.toMatchObject({ code: 'validation_failed' });
+    expect(rpc).not.toHaveBeenCalled();
   });
 
-  it('rejects transport payloads that violate the runtime contract', async () => {
-    request.mockResolvedValueOnce({ data: { items: 'not-an-array' } });
-
+  it('rejects legacy Set and Vibe reads before network access', async () => {
     await expect(
       repository.listSets(context, {
         facetIds: [],
@@ -152,8 +126,31 @@ describe('ApiDiscoverRepository transport contract', () => {
         query: '',
         sort: 'best_match',
       }),
-    ).rejects.toMatchObject({ code: 'contract_violation' });
+    ).rejects.toMatchObject({ code: 'validation_failed' });
+    await expect(
+      repository.listVibes(context, {
+        facetIds: [],
+        limit: 20,
+        query: '',
+        sort: 'popular',
+      }),
+    ).rejects.toMatchObject({ code: 'validation_failed' });
+    expect(rpc).not.toHaveBeenCalled();
   });
+
+  it('rejects the legacy profile-based Set invite boundary', async () => {
+    await expect(
+      repository.invitePlayerToSet(context, {
+        clientMutationId: 'client-1',
+        idempotencyKey: 'idem-1',
+        profileId: 'legacy-profile-id',
+        setId: 'legacy-set-id',
+        source: 'discover',
+      }),
+    ).rejects.toMatchObject({ code: 'validation_failed' });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('builds the production overview from authoritative candidate snapshots only', async () => {
     const session = {
       accessToken: 'access',
@@ -198,7 +195,6 @@ describe('ApiDiscoverRepository transport contract', () => {
       { facetIds: [], previewLimit: 6, query: '' },
     );
 
-    expect(request).not.toHaveBeenCalled();
     expect(rpc).toHaveBeenCalledWith('list_discovery_candidates_v1', session, {
       p_cursor: null,
       p_limit: 6,

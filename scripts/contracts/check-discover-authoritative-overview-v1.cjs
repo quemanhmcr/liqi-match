@@ -39,8 +39,12 @@ requireInvariant(
   'overview template must identify at least one authoritative player collection',
 );
 requireInvariant(
-  testSource.includes('expect(request).not.toHaveBeenCalled()'),
-  'provider test must prove overview does not use legacy BFF transport',
+  !repository.includes('DiscoverApiTransport') &&
+    !repository.includes('createDiscoverHttpTransport') &&
+    testSource.includes(
+      'rejects legacy Set and Vibe reads before network access',
+    ),
+  'provider code and tests must prove the legacy BFF transport seam is removed',
 );
 requireInvariant(
   testSource.includes("'list_discovery_candidates_v1'"),

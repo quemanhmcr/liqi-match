@@ -11,12 +11,6 @@ import {
   DiscoverOverviewResponseSchema,
   DiscoverPlayersResponseSchema,
   DiscoverServiceError,
-  DiscoverSetsResponseSchema,
-  DiscoverVibesResponseSchema,
-  InvitePlayerToSetCommandSchema,
-  PlayerInviteReceiptSchema,
-  RequestSetJoinCommandSchema,
-  SetJoinRequestReceiptSchema,
   type CanonicalDiscoverOverviewParams,
   type CanonicalDiscoverPlayerListParams,
   type CanonicalDiscoverSetListParams,
@@ -30,28 +24,6 @@ import type {
   DiscoverRequestContext,
 } from './discover-repository';
 
-export const discoverApiRoutes = {
-  invitePlayer: (setId: string) =>
-    `/v1/discover/sets/${encodeURIComponent(setId)}/invites`,
-  joinSet: (setId: string) =>
-    `/v1/discover/sets/${encodeURIComponent(setId)}/join-requests`,
-  sets: '/v1/discover/sets',
-  vibes: '/v1/discover/vibes',
-} as const;
-
-export type DiscoverApiRequest = {
-  body?: unknown;
-  headers?: Record<string, string>;
-  method: 'GET' | 'POST';
-  path: string;
-  query?: Record<string, string | string[] | undefined>;
-  session: AuthSession | null;
-};
-
-export interface DiscoverApiTransport {
-  request(request: DiscoverApiRequest): Promise<unknown>;
-}
-
 export type DiscoverRpcTransport = (
   functionName: string,
   session: AuthSession,
@@ -59,10 +31,7 @@ export type DiscoverRpcTransport = (
 ) => Promise<unknown>;
 
 export class ApiDiscoverRepository implements DiscoverRepository {
-  constructor(
-    private readonly transport: DiscoverApiTransport,
-    private readonly rpc: DiscoverRpcTransport = callRpc,
-  ) {}
+  constructor(private readonly rpc: DiscoverRpcTransport = callRpc) {}
 
   async getOverview(
     context: DiscoverRequestContext,
@@ -86,32 +55,20 @@ export class ApiDiscoverRepository implements DiscoverRepository {
   }
 
   async listVibes(
-    context: DiscoverRequestContext,
-    params: CanonicalDiscoverVibeListParams,
-  ) {
-    return parseResponse(
-      DiscoverVibesResponseSchema,
-      await this.transport.request({
-        method: 'GET',
-        path: discoverApiRoutes.vibes,
-        query: listQuery(context, params),
-        session: context.session,
-      }),
+    _context: DiscoverRequestContext,
+    _params: CanonicalDiscoverVibeListParams,
+  ): Promise<never> {
+    throw legacyCapabilityError(
+      'Vibe discovery is deferred beyond Production Match Loop v1.',
     );
   }
 
   async listSets(
-    context: DiscoverRequestContext,
-    params: CanonicalDiscoverSetListParams,
-  ) {
-    return parseResponse(
-      DiscoverSetsResponseSchema,
-      await this.transport.request({
-        method: 'GET',
-        path: discoverApiRoutes.sets,
-        query: listQuery(context, params),
-        session: context.session,
-      }),
+    _context: DiscoverRequestContext,
+    _params: CanonicalDiscoverSetListParams,
+  ): Promise<never> {
+    throw legacyCapabilityError(
+      'Use the authoritative MatchSetRepository for Set discovery.',
     );
   }
 
@@ -163,57 +120,26 @@ export class ApiDiscoverRepository implements DiscoverRepository {
   }
 
   async requestSetJoin(
-    context: DiscoverRequestContext,
-    command: RequestSetJoinCommand,
-  ) {
-    const canonical = RequestSetJoinCommandSchema.parse(command);
-    return parseResponse(
-      SetJoinRequestReceiptSchema,
-      await this.transport.request({
-        body: canonical,
-        headers: { 'idempotency-key': canonical.idempotencyKey },
-        method: 'POST',
-        path: discoverApiRoutes.joinSet(canonical.setId),
-        session: context.session,
-      }),
+    _context: DiscoverRequestContext,
+    _command: RequestSetJoinCommand,
+  ): Promise<never> {
+    throw legacyCapabilityError(
+      'Use the authoritative MatchSetRepository join command.',
     );
   }
 
   async invitePlayerToSet(
-    context: DiscoverRequestContext,
-    command: InvitePlayerToSetCommand,
-  ) {
-    const canonical = InvitePlayerToSetCommandSchema.parse(command);
-    return parseResponse(
-      PlayerInviteReceiptSchema,
-      await this.transport.request({
-        body: canonical,
-        headers: { 'idempotency-key': canonical.idempotencyKey },
-        method: 'POST',
-        path: discoverApiRoutes.invitePlayer(canonical.setId),
-        session: context.session,
-      }),
+    _context: DiscoverRequestContext,
+    _command: InvitePlayerToSetCommand,
+  ): Promise<never> {
+    throw legacyCapabilityError(
+      'Use the authoritative MatchSetRepository invite command.',
     );
   }
 }
 
-function listQuery(
-  context: DiscoverRequestContext,
-  params: CanonicalDiscoverSetListParams | CanonicalDiscoverVibeListParams,
-) {
-  return {
-    cursor: params.cursor,
-    facetId: params.facetIds,
-    limit: String(params.limit),
-    locale: context.locale,
-    query: optional(params.query),
-    sort: params.sort,
-    timezone: context.timezone,
-  };
-}
-
-function optional(value: string) {
-  return value ? value : undefined;
+function legacyCapabilityError(message: string) {
+  return new DiscoverServiceError('validation_failed', message);
 }
 
 function parseResponse<T>(
