@@ -7,7 +7,7 @@ const migrationPath = path.join(
   'supabase/migrations/202607140054_core_v2_party_play_session_foundation.sql',
 );
 const contractPath = path.join(root, 'contracts/core-v2/party/play-session.ts');
-const eventPath = path.join(root, 'contracts/core-v2/events/events.ts');
+const eventPath = path.join(root, 'contracts/core-v2/events/session-events.ts');
 const adrPath = path.join(
   root,
   'docs/adr/0005-core-v2-party-play-session-authority.md',
