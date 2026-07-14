@@ -67,3 +67,5 @@ Repeat-play recommendation remains a Senior 4 semantic, but candidates must be r
 The relationship aggregate is the conversation source for friendship-derived direct conversations. Consumers use `aggregateId` as `sourceId` and `aggregateVersion` as the monotonic `sourceVersion`. `friendship.accepted.v2` supplies the complete two-player active member set. Replay of the same event/source must return the existing direct conversation rather than create another.
 
 `player.blocked.v2` supplies the same relationship source at a newer version. Its complete active member set is empty and the revocation reason is `blocked`. Conversation remains the owner of API, realtime and notification-delivery revocation and emits `conversation.access_revoked.v2`; Social does not define conversation state.
+
+Historical conversation content is not deleted by block. Public conversation access remains revoked, while `canReport` stays available through a privileged report-evidence seam owned jointly by Social initiation and Conversation evidence resolution.

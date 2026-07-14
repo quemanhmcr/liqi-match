@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   FriendshipAcceptedEventV2Schema,
   PlayerBlockedEventV2Schema,
+  SocialRelationshipSnapshotV2Schema,
   type CoreV2SocialEvent,
 } from '../../../contracts/core-v2';
 
@@ -208,6 +209,26 @@ describe('Senior 1 -> Senior 3 relationship conversation consumer contract', () 
         },
       },
     ]);
+  });
+
+  it('revokes public conversation access without removing report capability', () => {
+    const blockedRelationship = SocialRelationshipSnapshotV2Schema.parse(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(
+            process.cwd(),
+            'contracts/core-v2/fixtures/provider/relationship-blocked.json',
+          ),
+          'utf8',
+        ),
+      ),
+    );
+
+    expect(blockedRelationship.capabilities).toMatchObject({
+      blocked: true,
+      canReport: true,
+      canViewConversation: false,
+    });
   });
 
   it('rejects out-of-order relationship source delivery', () => {
