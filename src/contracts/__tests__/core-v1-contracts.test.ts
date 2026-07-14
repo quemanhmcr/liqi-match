@@ -6,10 +6,14 @@ import {
   ConversationBootstrapRequestedEventV1Schema,
   DiscoveryCandidatePageV1Schema,
   DiscoveryCandidateV1Schema,
+  HomeMatchFactsV1Schema,
   MatchCreatedEventV1Schema,
   MatchIntentSnapshotV1Schema,
   NotificationRequestedEventV1Schema,
   PlayerDecisionReceiptV1Schema,
+  SetDiscoveryPageV1Schema,
+  SetInviteCreatedEventV1Schema,
+  SetJoinRequestedEventV1Schema,
 } from '../../../contracts/core-v1';
 
 const root = path.join(process.cwd(), 'contracts/core-v1/fixtures');
@@ -51,6 +55,31 @@ describe('core-v1 executable contracts', () => {
     expect(
       PlayerDecisionReceiptV1Schema.parse(read('provider', name)),
     ).toBeTruthy();
+  });
+
+  it('validates authoritative Home Match facts', () => {
+    const facts = HomeMatchFactsV1Schema.parse(
+      read('provider', 'home-match-facts.json'),
+    );
+    expect(facts.items[0]?.canMessage).toBe(true);
+  });
+
+  it('validates the immutable Match Set page provider fixture', () => {
+    const page = SetDiscoveryPageV1Schema.parse(
+      read('provider', 'set-discovery-page.json'),
+    );
+    expect(page.items).toHaveLength(1);
+  });
+
+  it('validates canonical Match Set event provider fixtures', () => {
+    const invite = SetInviteCreatedEventV1Schema.parse(
+      read('provider', 'set-invite-created-event.json'),
+    );
+    const join = SetJoinRequestedEventV1Schema.parse(
+      read('provider', 'set-join-requested-event.json'),
+    );
+    expect(invite.data.inviteId).toBe(invite.aggregateId);
+    expect(join.data.joinRequestId).toBe(join.aggregateId);
   });
 
   it('publishes the Mission 3 bootstrap consumer fixture', () => {

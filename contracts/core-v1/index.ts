@@ -11,3 +11,5 @@ export * from './match/match-created';
 export * from './conversation/conversation';
 export * from './events/events';
 export * from './errors/errors';
+export * from './match/home-match-facts';
+export * from './discovery/match-set';

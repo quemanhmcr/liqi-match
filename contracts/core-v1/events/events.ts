@@ -11,10 +11,13 @@ import {
   EventIdSchema,
   MatchIdSchema,
   MatchIntentIdSchema,
+  MatchSetIdSchema,
   AccountIdSchema,
   PlayerIdSchema,
   ProfileIdSchema,
   SetIdSchema,
+  SetInviteIdSchema,
+  SetJoinRequestIdSchema,
 } from '../identity/semantic-ids';
 import { MatchCreatedV1Schema } from '../match/match-created';
 import { MatchIntentSnapshotV1Schema } from '../discovery/match-intent';
@@ -65,18 +68,23 @@ export const ConversationBootstrapRequestedEventV1Schema =
 
 export const SetJoinRequestedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
   eventType: z.literal('set.join_requested.v1'),
-  aggregateType: z.literal('set'),
-  aggregateId: SetIdSchema,
-  data: z.object({ setId: SetIdSchema, actorPlayerId: PlayerIdSchema }),
+  aggregateType: z.literal('set_join_request'),
+  aggregateId: SetJoinRequestIdSchema,
+  data: z.object({
+    joinRequestId: SetJoinRequestIdSchema,
+    requesterPlayerId: PlayerIdSchema,
+    setId: MatchSetIdSchema,
+  }),
 });
 
 export const SetInviteCreatedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
   eventType: z.literal('set.invite_created.v1'),
-  aggregateType: z.literal('set'),
-  aggregateId: SetIdSchema,
+  aggregateType: z.literal('set_invite'),
+  aggregateId: SetInviteIdSchema,
   data: z.object({
-    setId: SetIdSchema,
     actorPlayerId: PlayerIdSchema,
+    inviteId: SetInviteIdSchema,
+    setId: MatchSetIdSchema,
     targetPlayerId: PlayerIdSchema,
   }),
 });
@@ -92,11 +100,22 @@ export const NotificationRequestedEventV1Schema =
         'match_created',
         'message_received',
         'set_invite',
+        'set_invite_created',
         'set_join_requested',
       ]),
       target: z.discriminatedUnion('kind', [
         z.object({ kind: z.literal('match'), matchId: MatchIdSchema }),
         z.object({ kind: z.literal('set'), setId: SetIdSchema }),
+        z.object({
+          kind: z.literal('set_invite'),
+          inviteId: SetInviteIdSchema,
+          setId: MatchSetIdSchema,
+        }),
+        z.object({
+          kind: z.literal('set_join_request'),
+          joinRequestId: SetJoinRequestIdSchema,
+          setId: MatchSetIdSchema,
+        }),
         z.object({
           kind: z.literal('conversation'),
           conversationId: ConversationIdSchema,
