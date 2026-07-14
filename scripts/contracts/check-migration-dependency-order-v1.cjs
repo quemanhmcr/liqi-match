@@ -144,6 +144,7 @@ void main();
 
 async function main() {
   const definedPrivateFunctions = new Map();
+  const enabledExtensions = new Map();
   const failures = [];
 
   for (const file of migrationFiles) {
@@ -170,6 +171,9 @@ async function main() {
         continue;
       }
 
+      const extension = extensionDefinition(statement);
+      if (extension) enabledExtensions.set(extension, file);
+
       const definition = privateFunctionDefinition(statement);
       if (definition) {
         definedPrivateFunctions.set(definition, file);
@@ -180,6 +184,15 @@ async function main() {
         if (!definedPrivateFunctions.has(call)) {
           failures.push(`${file}: calls private.${call} before it is defined`);
         }
+      }
+
+      if (
+        schemaFunctionCalls(statement, 'cron').length > 0 &&
+        !enabledExtensions.has('pg_cron')
+      ) {
+        failures.push(
+          `${file}: calls cron functions before pg_cron is enabled`,
+        );
       }
     }
   }
@@ -213,8 +226,23 @@ async function main() {
   }
 
   console.log(
-    `Migration dependency order check passed (${migrationFiles.length} migrations, ${definedPrivateFunctions.size} private functions).`,
+    `Migration dependency order check passed (${migrationFiles.length} migrations, ${definedPrivateFunctions.size} private functions, ${enabledExtensions.size} extensions).`,
   );
+}
+
+function extensionDefinition(statement) {
+  const node = statement?.CreateExtensionStmt;
+  return typeof node?.extname === 'string' ? node.extname.toLowerCase() : null;
+}
+
+function schemaFunctionCalls(statement, schema) {
+  const calls = [];
+  visit(statement, (key, value) => {
+    if (key !== 'FuncCall') return;
+    const name = qualifiedName(value?.funcname);
+    if (name?.schema === schema) calls.push(name.object);
+  });
+  return calls;
 }
 
 function privateFunctionDefinition(statement) {

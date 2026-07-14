@@ -7,6 +7,8 @@ const mobileSurfacePath =
   'supabase/migrations/202607140022_conversation_mobile_surface_v1.sql';
 const dispatchMigrationPath =
   'supabase/migrations/202607140023_conversation_bootstrap_dispatch_v1.sql';
+const cronProviderMigrationPath =
+  'supabase/migrations/202607140016_enable_pg_cron_v1.sql';
 const accountDeletePath = 'supabase/functions/account-delete/handler.ts';
 const messageTombstonePath =
   'supabase/functions/account-delete/message-tombstone.ts';
@@ -16,6 +18,9 @@ const mobileSurface = fs.existsSync(mobileSurfacePath)
   : '';
 const dispatchMigration = fs.existsSync(dispatchMigrationPath)
   ? fs.readFileSync(dispatchMigrationPath, 'utf8')
+  : '';
+const cronProviderMigration = fs.existsSync(cronProviderMigrationPath)
+  ? fs.readFileSync(cronProviderMigrationPath, 'utf8')
   : '';
 const databaseTest = fs.existsSync(testPath)
   ? fs.readFileSync(testPath, 'utf8')
@@ -225,6 +230,12 @@ requireInvariant(
   !/foregroundPolicy/i.test(migration) &&
     /authoritativeUnreadCount/i.test(migration),
   'notification requests must provide authoritative unread without deciding foreground suppression',
+);
+requireInvariant(
+  /create extension if not exists pg_cron with schema pg_catalog/i.test(
+    cronProviderMigration,
+  ),
+  'Supabase Cron must be enabled by an ordered migration before Conversation cutover',
 );
 requireInvariant(
   /pg_cron_required/i.test(dispatchMigration) &&

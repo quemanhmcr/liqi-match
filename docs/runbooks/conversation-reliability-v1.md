@@ -2,10 +2,13 @@
 
 ## Deployment prerequisite
 
-Enable the Supabase Cron Postgres Module (`pg_cron`) before applying migration
-`202607140011_conversation_bootstrap_dispatch_v1.sql`. The migration fails with
-`detail=pg_cron_required` when the module is absent; it must never silently
-complete without a production bootstrap dispatcher.
+Migration `202607140016_enable_pg_cron_v1.sql` enables the Supabase Cron
+Postgres Module (`pg_cron`) before the Conversation cutover migration
+`202607140023_conversation_bootstrap_dispatch_v1.sql`. Do not rely on a manual
+Dashboard toggle: clean local, CI, staging, and production databases must derive
+identical extension state from migration history. The cutover still fails with
+`detail=pg_cron_required` if the managed Postgres image does not provide the
+module; it must never silently complete without a production dispatcher.
 
 ## Dispatcher
 
@@ -23,7 +26,7 @@ bootstrap count, retry count, and oldest pending age.
 
 ## Cutover flags
 
-Migration `011` enables bootstrap, reads, writes, private Realtime, and image
+Migration `023` enables bootstrap, reads, writes, private Realtime, and image
 messages. Direct message inserts remain revoked. Authoritative message writes
 must never roll back to the simulation/local store.
 
