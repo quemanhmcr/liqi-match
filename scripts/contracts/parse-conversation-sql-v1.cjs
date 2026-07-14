@@ -17,6 +17,7 @@ const sqlPaths = [
   'supabase/migrations/202607140011_conversation_bootstrap_dispatch_v1.sql',
   'supabase/migrations/202607140012_restore_versioned_outbox_events_v1.sql',
   'supabase/migrations/202607140013_match_split_provider_consumer_v1.sql',
+  'supabase/migrations/202607140014_match_command_variable_conflict_v1.sql',
   'supabase/tests/database/production_match_authority_v1.test.sql',
   'supabase/tests/database/conversation_reliability_v1.test.sql',
   'supabase/tests/database/conversation_bootstrap_dispatch_v1.test.sql',
