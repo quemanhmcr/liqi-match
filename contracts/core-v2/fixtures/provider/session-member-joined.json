@@ -1,0 +1,31 @@
+{
+  "actorPlayerId": "82000000-0000-4000-8000-000000000002",
+  "aggregateId": "82000000-0000-4000-8000-000000000101",
+  "aggregateType": "play_session",
+  "aggregateVersion": 2,
+  "causationId": "82000000-0000-4000-8000-000000000301",
+  "correlationId": "82000000-0000-4000-8000-000000000202",
+  "eventId": "82000000-0000-4000-8000-000000000302",
+  "eventType": "session.member_joined.v2",
+  "eventVersion": 2,
+  "occurredAt": "2026-07-14T12:05:00.000Z",
+  "payload": {
+    "communicationProvisioningRequired": true,
+    "memberPlayerId": "82000000-0000-4000-8000-000000000002",
+    "membership": {
+      "members": [
+        {
+          "playerId": "82000000-0000-4000-8000-000000000001",
+          "role": "owner"
+        },
+        {
+          "playerId": "82000000-0000-4000-8000-000000000002",
+          "role": "member"
+        }
+      ],
+      "membershipVersion": 2,
+      "sessionId": "82000000-0000-4000-8000-000000000101"
+    },
+    "sessionId": "82000000-0000-4000-8000-000000000101"
+  }
+}

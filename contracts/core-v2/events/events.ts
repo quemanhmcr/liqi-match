@@ -13,6 +13,7 @@ import {
 import { MatchSetSnapshotV2Schema } from '../party/match-set';
 import {
   PlaySessionCompletionClaimV2Schema,
+  PlaySessionMembershipProjectionV2Schema,
   PlaySessionReadyCheckSnapshotV2Schema,
   PlaySessionRoleAssignmentV2Schema,
   PlaySessionSnapshotV2Schema,
@@ -97,8 +98,8 @@ export const SessionCreatedEventV2Schema = CoreV2EventEnvelopeSchema.extend({
   eventType: z.literal('session.created.v2'),
   payload: z
     .object({
-      communicationProvisioningRequired: z.literal(true),
-      participantPlayerIds: z.array(PlayerIdSchema).min(1).max(5),
+      communicationProvisioningRequired: z.boolean(),
+      membership: PlaySessionMembershipProjectionV2Schema,
       session: PlaySessionSnapshotV2Schema,
     })
     .strict(),
@@ -126,9 +127,9 @@ export const SessionMemberJoinedEventV2Schema =
     eventType: z.literal('session.member_joined.v2'),
     payload: z
       .object({
+        communicationProvisioningRequired: z.boolean(),
         memberPlayerId: PlayerIdSchema,
-        membershipVersion: z.number().int().positive(),
-        participantPlayerIds: z.array(PlayerIdSchema).min(1).max(5),
+        membership: PlaySessionMembershipProjectionV2Schema,
         sessionId: PlaySessionIdSchema,
       })
       .strict(),
@@ -141,8 +142,7 @@ export const SessionMemberLeftEventV2Schema = CoreV2EventEnvelopeSchema.extend({
   payload: z
     .object({
       memberPlayerId: PlayerIdSchema,
-      membershipVersion: z.number().int().positive(),
-      participantPlayerIds: z.array(PlayerIdSchema).min(1).max(5),
+      membership: PlaySessionMembershipProjectionV2Schema,
       reasonCode: z.string().min(1).max(64),
       sessionId: PlaySessionIdSchema,
     })

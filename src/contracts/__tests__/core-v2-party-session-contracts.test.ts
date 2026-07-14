@@ -8,6 +8,7 @@ import {
   PlaySessionSnapshotV2Schema,
   SessionCompletedEventV2Schema,
   SessionCreatedEventV2Schema,
+  SessionMemberJoinedEventV2Schema,
   SocialRelationshipSnapshotV2Schema,
 } from '../../../contracts/core-v2';
 
@@ -22,7 +23,17 @@ describe('Core V2 party and play-session contracts', () => {
     );
 
     expect(event.eventVersion).toBe(2);
-    expect(event.payload.communicationProvisioningRequired).toBe(true);
+    expect(event.payload.communicationProvisioningRequired).toBe(false);
+    expect(event.payload.membership).toEqual({
+      members: [
+        {
+          playerId: '82000000-0000-4000-8000-000000000001',
+          role: 'owner',
+        },
+      ],
+      membershipVersion: 1,
+      sessionId: '82000000-0000-4000-8000-000000000101',
+    });
     expect(event.payload.session.communication.status).toBe('pending');
   });
 
@@ -33,6 +44,25 @@ describe('Core V2 party and play-session contracts', () => {
 
     expect(relationship.capabilities.blocked).toBe(true);
     expect(relationship.capabilities.canInviteToSession).toBe(false);
+  });
+
+  it('publishes full versioned membership for conversation reconciliation', () => {
+    const event = SessionMemberJoinedEventV2Schema.parse(
+      read('provider', 'session-member-joined.json'),
+    );
+
+    expect(event.aggregateVersion).toBe(2);
+    expect(event.payload.membership.membershipVersion).toBe(2);
+    expect(event.payload.membership.members).toEqual([
+      {
+        playerId: '82000000-0000-4000-8000-000000000001',
+        role: 'owner',
+      },
+      {
+        playerId: '82000000-0000-4000-8000-000000000002',
+        role: 'member',
+      },
+    ]);
   });
 
   it('publishes only quorum-completed sessions to the outcome seam', () => {

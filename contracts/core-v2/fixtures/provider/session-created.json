@@ -10,15 +10,14 @@
   "eventVersion": 2,
   "occurredAt": "2026-07-14T12:00:00.000Z",
   "payload": {
-    "communicationProvisioningRequired": true,
-    "participantPlayerIds": ["82000000-0000-4000-8000-000000000001"],
+    "communicationProvisioningRequired": false,
     "session": {
       "cancellationReason": null,
       "cancelledAt": null,
       "capacity": 2,
       "communication": {
         "conversationId": null,
-        "membershipVersion": 1,
+        "membershipVersion": 0,
         "status": "pending"
       },
       "completedAt": null,
@@ -47,7 +46,18 @@
       "timezone": "Asia/Bangkok",
       "title": "Ranked duo",
       "updatedAt": "2026-07-14T12:00:00.000Z",
-      "version": 1
+      "version": 1,
+      "membershipVersion": 1
+    },
+    "membership": {
+      "members": [
+        {
+          "playerId": "82000000-0000-4000-8000-000000000001",
+          "role": "owner"
+        }
+      ],
+      "membershipVersion": 1,
+      "sessionId": "82000000-0000-4000-8000-000000000101"
     }
   }
 }

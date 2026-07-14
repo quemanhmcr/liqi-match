@@ -87,8 +87,12 @@ Senior 3 consumes the event idempotently and publishes/provides a conversation
 receipt. Core V2 stores only a projection (`pending | ready | degraded`) and
 never becomes conversation authority.
 
-Membership events contain a monotonic membership version and full active
-participant IDs so Senior 3 can converge after replay or missed delivery.
+Session event envelopes carry the Session `aggregateVersion`. Membership
+projections separately carry a monotonic `membershipVersion` and the complete
+active `{ playerId, role }` list. These version axes must not be collapsed:
+ready/lifecycle events can advance the aggregate without changing membership.
+Senior 3 can therefore replay system activity and membership reconciliation
+independently without rejecting a valid projection as stale.
 
 ## Outcome handoff
 

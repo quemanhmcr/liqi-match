@@ -84,6 +84,41 @@ export const PlaySessionMemberV2Schema = z
   })
   .strict();
 
+export const PlaySessionMembershipMemberV2Schema = z
+  .object({
+    playerId: PlayerIdSchema,
+    role: PlaySessionMemberRoleV2Schema,
+  })
+  .strict();
+
+export const PlaySessionMembershipProjectionV2Schema = z
+  .object({
+    members: z.array(PlaySessionMembershipMemberV2Schema).min(1).max(5),
+    membershipVersion: z.number().int().positive(),
+    sessionId: PlaySessionIdSchema,
+  })
+  .strict()
+  .superRefine((value, context) => {
+    const playerIds = value.members.map((member) => member.playerId);
+    if (new Set(playerIds).size !== playerIds.length) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Session membership projection must contain unique players.',
+        path: ['members'],
+      });
+    }
+    if (
+      value.members.filter((member) => member.role === 'owner').length !== 1
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Session membership projection must contain exactly one owner.',
+        path: ['members'],
+      });
+    }
+  });
+
 export const PlaySessionRoleAssignmentV2Schema = z
   .object({
     assignmentId: SessionRoleAssignmentV2IdSchema,
@@ -163,6 +198,7 @@ export const PlaySessionSnapshotV2Schema = z
     completionClaims: z.array(PlaySessionCompletionClaimV2Schema).max(20),
     createdAt: z.string().datetime({ offset: true }),
     members: z.array(PlaySessionMemberV2Schema).min(1).max(20),
+    membershipVersion: z.number().int().positive(),
     ownerPlayerId: PlayerIdSchema,
     readyCheck: PlaySessionReadyCheckSnapshotV2Schema.nullable(),
     roleAssignments: z.array(PlaySessionRoleAssignmentV2Schema).max(5),
@@ -393,6 +429,9 @@ export const PlaySessionCapabilitiesV2Schema = z
   })
   .strict();
 
+export type PlaySessionMembershipProjectionV2 = z.infer<
+  typeof PlaySessionMembershipProjectionV2Schema
+>;
 export type PlaySessionSnapshotV2 = z.infer<typeof PlaySessionSnapshotV2Schema>;
 export type PlaySessionCommandReceiptV2 = z.infer<
   typeof PlaySessionCommandReceiptV2Schema

@@ -9,6 +9,7 @@ import type {
   LeaveSessionCommandV2,
   OpenReadyCheckCommandV2,
   PlaySessionCapabilitiesV2,
+  PlaySessionMembershipProjectionV2,
   PlaySessionCommandReceiptV2,
   PlaySessionSnapshotV2,
   PlaySessionId,
@@ -103,10 +104,9 @@ export interface PlaySessionCapabilitiesProvider {
 }
 
 export interface SessionMembershipProvider {
-  getActiveParticipantIds(
+  getMembership(
     sessionId: PlaySessionId,
-  ): Promise<readonly PlayerId[]>;
-  getMembershipVersion(sessionId: PlaySessionId): Promise<number>;
+  ): Promise<PlaySessionMembershipProjectionV2>;
 }
 
 export type SessionSourceSnapshot = Readonly<{
@@ -141,17 +141,17 @@ export interface SessionParticipantLifecycleProvider {
 
 export type SessionConversationProvisioningReceipt = Readonly<{
   conversationId: ConversationId;
-  membershipVersion: number;
-  participantPlayerIds: readonly PlayerId[];
+  membership: PlaySessionMembershipProjectionV2;
+  sourceAggregateVersion: number;
 }>;
 
 /** Consumer seam for Senior 3. Provisioning occurs after the Session commit. */
 export interface SessionConversationProvisioner {
   provision(input: {
     correlationId: string;
-    membershipVersion: number;
-    participantPlayerIds: readonly PlayerId[];
-    sessionId: PlaySessionId;
+    membership: PlaySessionMembershipProjectionV2;
+    sourceAggregateVersion: number;
+    title: string;
   }): Promise<SessionConversationProvisioningReceipt>;
 }
 
