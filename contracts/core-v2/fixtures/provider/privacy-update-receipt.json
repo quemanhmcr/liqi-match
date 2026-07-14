@@ -1,0 +1,16 @@
+{
+  "correlationId": "44000000-0000-4000-8000-000000000101",
+  "eventIds": ["43000000-0000-4000-8000-000000000101"],
+  "privacy": {
+    "contractVersion": 2,
+    "playerId": "20000000-0000-4000-8000-000000000001",
+    "version": 2,
+    "profileVisibility": "friends",
+    "presenceVisibility": "hidden",
+    "friendshipRequests": "matched_only",
+    "sessionInvites": "nobody",
+    "trustVisibility": "private",
+    "updatedAt": "2026-07-14T14:00:00.000Z"
+  },
+  "repeated": false
+}

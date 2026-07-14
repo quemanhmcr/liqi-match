@@ -55,6 +55,12 @@ export const SessionInvitePolicyV2Schema = z.enum([
   'nobody',
 ]);
 
+export const TrustVisibilityV2Schema = z.enum([
+  'everyone',
+  'friends',
+  'private',
+]);
+
 export const RelationshipCapabilitiesV2Schema = z
   .object({
     blocked: z.boolean(),
@@ -137,6 +143,7 @@ export const PlayerPrivacySettingsV2Schema = z
     presenceVisibility: PresenceVisibilityV2Schema,
     profileVisibility: ProfileVisibilityV2Schema,
     sessionInvites: SessionInvitePolicyV2Schema,
+    trustVisibility: TrustVisibilityV2Schema.default('friends'),
     updatedAt: z.string().datetime({ offset: true }),
     version: AggregateVersionV2Schema,
   })
@@ -191,15 +198,32 @@ export const SocialRelationshipErrorCodeV2Schema = z.enum([
   'friendship_request_not_pending',
   'friendship_request_forbidden',
   'friendship_already_exists',
+  'friendship_not_found',
   'relationship_blocked',
+  'block_already_active',
+  'block_not_found',
+  'mute_already_active',
+  'mute_not_found',
   'privacy_forbidden',
+  'privacy_version_conflict',
+  'report_self_forbidden',
   'report_target_not_found',
   'report_evidence_invalid',
   'relationship_unsupported_version',
 ]);
 
+export const SocialCommandAuditMetadataV2Schema = z
+  .object({
+    clientCreatedAt: z.string().datetime({ offset: true }),
+    clientPlatform: z.enum(['ios', 'android', 'web', 'service']),
+    clientVersion: z.string().trim().min(1).max(64),
+    requestId: z.string().trim().min(1).max(128),
+  })
+  .strict();
+
 const RelationshipCommandBaseV2Schema = z
   .object({
+    audit: SocialCommandAuditMetadataV2Schema,
     correlationId: CorrelationIdSchema,
     expectedRelationshipVersion: AggregateVersionV2Schema,
     idempotencyKey: IdempotencyKeySchema,
@@ -227,6 +251,7 @@ export const UnmutePlayerCommandV2Schema =
 
 const FriendshipRequestCommandBaseV2Schema = z
   .object({
+    audit: SocialCommandAuditMetadataV2Schema,
     correlationId: CorrelationIdSchema,
     expectedRelationshipVersion: AggregateVersionV2Schema,
     expectedRequestVersion: AggregateVersionV2Schema,
@@ -244,6 +269,7 @@ export const CancelFriendshipCommandV2Schema =
 
 export const UpdatePlayerPrivacyCommandV2Schema = z
   .object({
+    audit: SocialCommandAuditMetadataV2Schema,
     correlationId: CorrelationIdSchema,
     expectedPrivacyVersion: AggregateVersionV2Schema,
     friendshipRequests: FriendshipRequestPolicyV2Schema,
@@ -251,6 +277,7 @@ export const UpdatePlayerPrivacyCommandV2Schema = z
     presenceVisibility: PresenceVisibilityV2Schema,
     profileVisibility: ProfileVisibilityV2Schema,
     sessionInvites: SessionInvitePolicyV2Schema,
+    trustVisibility: TrustVisibilityV2Schema,
   })
   .strict();
 
@@ -266,6 +293,7 @@ export const ReportCategoryV2Schema = z.enum([
 
 const ReportCommandBaseV2Schema = z
   .object({
+    audit: SocialCommandAuditMetadataV2Schema,
     category: ReportCategoryV2Schema,
     correlationId: CorrelationIdSchema,
     details: z.string().trim().max(2000).nullable(),
@@ -318,6 +346,9 @@ export const ReportReceiptV2Schema = z
   })
   .strict();
 
+export type SocialCommandAuditMetadataV2 = z.infer<
+  typeof SocialCommandAuditMetadataV2Schema
+>;
 export type RelationshipCapabilitiesV2 = z.infer<
   typeof RelationshipCapabilitiesV2Schema
 >;
@@ -351,19 +382,18 @@ export type UnmutePlayerCommandV2 = z.infer<typeof UnmutePlayerCommandV2Schema>;
 export type UpdatePlayerPrivacyCommandV2 = z.infer<
   typeof UpdatePlayerPrivacyCommandV2Schema
 >;
+export type ReportCategoryV2 = z.infer<typeof ReportCategoryV2Schema>;
 export type ReportPlayerCommandV2 = z.infer<typeof ReportPlayerCommandV2Schema>;
 export type ReportMessageCommandV2 = z.infer<
   typeof ReportMessageCommandV2Schema
 >;
+export type PlayerPrivacyCommandReceiptV2 = z.infer<
+  typeof PlayerPrivacyCommandReceiptV2Schema
+>;
+export type ReportReceiptV2 = z.infer<typeof ReportReceiptV2Schema>;
 export type SocialRelationshipCommandReceiptV2 = z.infer<
   typeof SocialRelationshipCommandReceiptV2Schema
 >;
-
-export const TrustVisibilityV2Schema = z.enum([
-  'everyone',
-  'friends',
-  'private',
-]);
 
 export const TrustVisibilityDecisionV2Schema = z
   .object({
