@@ -2,6 +2,9 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import * as Crypto from 'expo-crypto';
 import { z } from 'zod';
 
+import { MessageReportEvidenceV2Schema } from '@/shared/contracts/core-v2';
+import type { ConversationModerationProvider } from '@/entities/conversation-v2';
+
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
 import {
@@ -100,7 +103,7 @@ type ConversationMobileSurfaceV1 = z.infer<
 >;
 type InboxCursorV1 = z.infer<typeof InboxCursorV1Schema>;
 
-type RpcRequest = <T>(input: {
+export type RpcRequest = <T>(input: {
   body: Record<string, unknown>;
   functionName: string;
   session: AuthSession;
@@ -124,7 +127,8 @@ type AccessTokenSubscriber = (
 ) => () => void;
 
 export type SupabaseConversationAdapter = ChatRepository &
-  ChatMessageTransport & {
+  ChatMessageTransport &
+  ConversationModerationProvider & {
     dispose: () => Promise<void>;
     setSession: (session: AuthSession | null) => Promise<void>;
   };
@@ -565,7 +569,29 @@ export function createSupabaseConversationAdapter(
     }
   }
 
-  return Object.assign(repository, transport) as SupabaseConversationAdapter;
+  const moderation: ConversationModerationProvider = {
+    async captureReportEvidence(input) {
+      const activeSession = await requireValidSession();
+      if (activeSession.principal?.playerId !== input.actor.playerId) {
+        throw new MessagesServiceError(
+          'forbidden',
+          'Conversation report actor does not match the authenticated PlayerId.',
+        );
+      }
+      const raw = await request<unknown>({
+        body: { p_report_id: input.reportId },
+        functionName: 'capture_message_report_evidence_v2',
+        session: activeSession,
+      });
+      return MessageReportEvidenceV2Schema.parse(raw);
+    },
+  };
+
+  return Object.assign(
+    repository,
+    transport,
+    moderation,
+  ) as SupabaseConversationAdapter;
 }
 
 async function requestRpc<T>(input: {

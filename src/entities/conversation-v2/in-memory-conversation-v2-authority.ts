@@ -15,6 +15,7 @@ import {
   ConversationSnapshotV2Schema,
   ConversationTombstonedEventV2Schema,
   MessageReportEvidenceIdV2Schema,
+  MessageReportEvidenceV2Schema,
   MessageSentEventV2Schema,
   MessageV2Schema,
   ProvisionDirectConversationCommandV2Schema,
@@ -1116,10 +1117,14 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     const existing = this.systemMessagesByEvent.get(eventId);
     if (existing) return clone(existing);
     const stored = this.requireConversation(activity.conversationId);
-    if (sourceKey(stored.snapshot.source) !== sourceKey(activity.source)) {
+    const activitySourceKey = sourceKey(activity.source);
+    const sourceIsBound = [...stored.sources.values()].some(
+      (binding) => sourceKey(binding.source) === activitySourceKey,
+    );
+    if (!sourceIsBound) {
       throw new ConversationV2ProviderError(
         'conversation_source_conflict',
-        'System activity source does not match the conversation source.',
+        'System activity source is not bound to this conversation.',
         false,
       );
     }
@@ -1320,7 +1325,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
           false,
         );
       }
-      return clone(existing);
+      return MessageReportEvidenceV2Schema.parse(stripStoredEvidence(existing));
     }
     const message = stored.messages.find(
       (item) => item.messageId === input.messageId,
@@ -1341,7 +1346,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
       reportId: key,
     });
     this.reportEvidence.set(key, evidence);
-    return clone(evidence);
+    return MessageReportEvidenceV2Schema.parse(stripStoredEvidence(evidence));
   }
 
   private async provision(
@@ -2067,6 +2072,16 @@ function stableJson(value: unknown): string {
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
+}
+
+function stripStoredEvidence(evidence: StoredEvidence) {
+  return {
+    capturedAt: evidence.capturedAt,
+    conversationId: evidence.conversationId,
+    evidenceId: evidence.evidenceId,
+    message: evidence.message,
+    reporterPlayerId: evidence.reporterPlayerId,
+  };
 }
 
 function createUuid() {

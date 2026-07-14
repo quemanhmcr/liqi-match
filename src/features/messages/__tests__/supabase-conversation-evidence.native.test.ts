@@ -8,7 +8,10 @@ import {
 } from '@/shared/contracts/core-v1';
 import type { VerifiedConversationActorV2 } from '@/entities/conversation-v2';
 
-import { createSupabaseConversationAdapter } from '../services/supabase-conversation-adapter';
+import {
+  createSupabaseConversationAdapter,
+  type RpcRequest,
+} from '../services/supabase-conversation-adapter';
 
 const uuid = (suffix: number) =>
   `00000000-0000-4000-8000-${suffix.toString().padStart(12, '0')}`;
@@ -54,7 +57,7 @@ const evidence = {
 
 describe('Supabase Conversation V2 report evidence', () => {
   it('uses the refreshed session and parses the exact immutable evidence contract', async () => {
-    const request = jest.fn(async () => evidence);
+    const request = jest.fn(async <T>() => evidence as T) as RpcRequest;
     const adapter = createSupabaseConversationAdapter({
       accessTokenProvider: jest.fn(async () => 'refreshed-token'),
       accessTokenSubscriber: jest.fn(() => () => undefined),

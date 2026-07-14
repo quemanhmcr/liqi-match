@@ -573,7 +573,9 @@ describe('Core V2 conversation provider contract', () => {
       conversationId: direct.conversationId,
       repeated: true,
     });
-    expect(await authority.getSources(direct.conversationId)).toEqual(
+    expect(
+      await authority.getSources(requesterActor, direct.conversationId),
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           source: {
