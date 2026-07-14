@@ -56,6 +56,16 @@ export interface ChatRepository {
       pageInfo: { hasNextPage: boolean; nextCursor: string | null };
     }>
   >;
+  getMessagesAfter?(
+    conversationId: string,
+    afterSequence: number,
+    context?: MessagesRequestContext,
+  ): Promise<
+    MessagesResponse<{
+      items: MessageTimelineItem[];
+      pageInfo: { hasNextPage: boolean; nextCursor: string | null };
+    }>
+  >;
   listConversations(
     query?: MessageInboxParams,
     context?: MessagesRequestContext,

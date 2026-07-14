@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { useAuth } from '@/shared/auth/auth-context';
+
 import type { MessageInboxFilter } from '../contracts/messages-contracts';
 import {
   previewMessagesRequestContext,
@@ -17,8 +19,11 @@ export function useMessagesInboxQuery({
   repository: ChatRepository;
 }) {
   const canonicalQuery = query.trim();
+  const { session } = useAuth();
+  const viewerId = session?.user.id ?? 'anonymous';
 
   return useQuery({
+    enabled: Boolean(session),
     queryFn: ({ signal }) =>
       repository.listConversations(
         {
@@ -26,13 +31,13 @@ export function useMessagesInboxQuery({
           limit: 30,
           query: canonicalQuery,
         },
-        { ...previewMessagesRequestContext, signal },
+        { ...previewMessagesRequestContext, signal, viewerId },
       ),
     queryKey: messagesQueryKeys.inbox({
       filter,
       query: canonicalQuery,
       repository,
-      viewerId: previewMessagesRequestContext.viewerId,
+      viewerId,
     }),
     staleTime: 15_000,
   });

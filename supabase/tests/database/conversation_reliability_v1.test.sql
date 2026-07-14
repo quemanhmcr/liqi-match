@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(38);
+select plan(46);
 
 create or replace function public.test_set_conversation_actor_v1(
   p_account_id uuid,
@@ -311,6 +311,25 @@ select is(
   'unread derives from messages after watermark'
 );
 select is(
+  (public.get_conversation_surface_v1((select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401')) #>> '{conversation,unreadCount}')::integer,
+  2,
+  'mobile surface uses the same authoritative unread count'
+);
+select ok(
+  (public.get_conversation_surface_v1((select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401')) #>> '{viewer,firstUnreadMessageId}') is not null,
+  'mobile surface exposes the first unread message from the watermark'
+);
+select is(
+  public.get_conversation_surface_v1((select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401')) #>> '{participants,0,displayName}',
+  'Conversation A',
+  'participant display is a projection of canonical participant mapping'
+);
+select is(
+  (public.get_conversation_inbox_page_v1(30, null, null) ->> 'unreadConversationCount')::integer,
+  1,
+  'mobile inbox unread conversation count matches the authoritative watermark'
+);
+select is(
   (
     select jsonb_agg((message_json ->> 'sequence')::integer order by (message_json ->> 'sequence')::integer)
     from public.get_conversation_timeline_v1(
@@ -350,6 +369,11 @@ select is(
   'restart inbox restores conversation'
 );
 select is((public.get_conversation_unread_summary_v1() ->> 'unreadCount')::integer, 0, 'unread summary matches watermark');
+select is(
+  (public.get_conversation_surface_v1((select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401')) #>> '{conversation,unreadCount}')::integer,
+  0,
+  'mobile surface unread returns to zero after authoritative read advance'
+);
 select ok(not has_table_privilege('authenticated', 'public.messages', 'INSERT'), 'direct message insert is revoked');
 
 reset role;
@@ -376,6 +400,30 @@ select is(
   true,
   'committed retry replays before current lifecycle policy'
 );
+select is(
+  (public.get_conversation_surface_v1((select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401')) #>> '{viewer,canMessage}')::boolean,
+  false,
+  'mobile surface projects suspended messaging capability without inferring profile state'
+);
+
+reset role;
+update private.conversation_authority_config_v1
+set realtime_enabled = true;
+set local role authenticated;
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000401',
+  '09000000-0000-4000-8000-000000000401'
+);
+select ok(
+  not public.can_subscribe_conversation_v1(
+    'conversation:' || (
+      select id::text
+      from public.conversations
+      where match_id = '60000000-0000-4000-8000-000000000401'
+    )
+  ),
+  'suspended participant cannot subscribe to private realtime'
+);
 
 reset role;
 update public.players
@@ -399,6 +447,22 @@ select throws_ok(
   '42501',
   'Suspended players cannot send messages',
   'suspended participant cannot send'
+);
+
+reset role;
+update public.players
+set auth_user_id = null
+where account_id = '01000000-0000-4000-8000-000000000402';
+
+set local role authenticated;
+select public.test_set_conversation_actor_v1(
+  '01000000-0000-4000-8000-000000000401',
+  '09000000-0000-4000-8000-000000000401'
+);
+select is(
+  public.get_conversation_surface_v1((select id from public.conversations where match_id = '60000000-0000-4000-8000-000000000401')) #>> '{participants,1,displayName}',
+  'Người chơi đã xóa',
+  'deleted participant is rendered through the conversation tombstone policy'
 );
 
 select public.test_set_conversation_actor_v1(

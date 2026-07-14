@@ -21,8 +21,7 @@ import {
 import {
   createCanonicalSimulationMessagesAdapter,
   createMessagesSimulationResetParticipant,
-  type ChatMessageTransport,
-  type ChatRepository,
+  createSupabaseConversationAdapter,
 } from '@/features/messages';
 import {
   createSimulationProfileReadRepository,
@@ -32,6 +31,11 @@ import {
 } from '@/features/profile';
 import { createOnboardingSimulationResetParticipant } from '@/features/onboarding';
 import { passiveAssetCacheDriver } from '@/shared/assets/asset-cache-driver';
+import {
+  getValidAccessToken,
+  subscribeAccessToken,
+} from '@/shared/auth/auth-service';
+import { supabaseAuthClient } from '@/shared/auth/supabase-auth-client';
 import { env } from '@/shared/config/env';
 
 import { ApplicationServiceUnavailableError } from './application-service-error';
@@ -103,6 +107,11 @@ export function createSimulationApplicationServices(
 }
 
 export function createApiApplicationServices(): ApiApplicationServices {
+  const messages = createSupabaseConversationAdapter({
+    accessTokenProvider: getValidAccessToken,
+    accessTokenSubscriber: subscribeAccessToken,
+    realtimeClient: supabaseAuthClient,
+  });
   return {
     assetResolver: createGoldenWorldAssetResolver({
       cacheDriver: passiveAssetCacheDriver,
@@ -111,8 +120,8 @@ export function createApiApplicationServices(): ApiApplicationServices {
       createDiscoverHttpTransport(),
     ),
     homeRepository: createApiHomeRepository(),
-    messageRepository: createUnavailableMessageRepository(),
-    messageTransport: createUnavailableMessageTransport(),
+    messageRepository: messages,
+    messageTransport: messages,
     mode: 'api',
     notificationRepository: createUnavailableNotificationRepository(),
     profileRepository: createApiProfileRepository(),
@@ -185,29 +194,6 @@ async function readJsonPayload(response: Response) {
   } catch (error) {
     throw new Error('API response is not valid JSON.', { cause: error });
   }
-}
-
-function createUnavailableMessageRepository(): ChatRepository {
-  return {
-    async getConversation() {
-      throw unavailable('Messages repository');
-    },
-    async getMessagePage() {
-      throw unavailable('Messages repository');
-    },
-    async listConversations() {
-      throw unavailable('Messages repository');
-    },
-  };
-}
-
-function createUnavailableMessageTransport(): ChatMessageTransport {
-  return {
-    getNetworkState: () => 'online',
-    async sendText() {
-      throw unavailable('Messages transport');
-    },
-  };
 }
 
 function createUnavailableNotificationRepository(): NotificationInboxRepository {

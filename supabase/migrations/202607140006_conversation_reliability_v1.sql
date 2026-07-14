@@ -1701,7 +1701,8 @@ begin
   begin
     conversation_id := substring(p_topic from 14)::uuid;
     actor_snapshot := private.require_authenticated_messaging_snapshot_v1(false);
-    exception
+    perform private.assert_messaging_allowed_v1(actor_snapshot);
+  exception
     when others then return false;
   end;
 

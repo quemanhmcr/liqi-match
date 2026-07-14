@@ -14,6 +14,7 @@ export class SupabaseRestError extends Error {
 
 type RestOptions = {
   body?: unknown;
+  signal?: AbortSignal;
   headers?: Record<string, string>;
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   prefer?: string;
@@ -33,6 +34,7 @@ export async function supabaseRest<T>(path: string, options: RestOptions) {
       ...options.headers,
     },
     method: options.method ?? 'GET',
+    signal: options.signal,
   });
 
   if (!response.ok) {

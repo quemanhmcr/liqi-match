@@ -1,3 +1,5 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { z } from 'zod';
 import { create } from 'zustand';
 
 import type { ChatDraftIndex } from './chat-draft-store';
@@ -8,8 +10,140 @@ import type {
   OutgoingMediaMessage,
   OutgoingTextMessage,
 } from './chat-message';
+import { createClientMessageId } from './client-message-id';
 
 export const EMPTY_RUNTIME_MESSAGES: readonly OutgoingChatMessage[] = [];
+
+const PENDING_MESSAGE_STORAGE_PREFIX = 'liqi:messages:pending:v1';
+
+const PendingAttachmentSchema = z.object({
+  altText: z.string().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
+  fileName: z.string().optional(),
+  fileSize: z.number().int().nonnegative().optional(),
+  height: z.number().int().positive().optional(),
+  mediaType: z.enum(['image', 'video']),
+  mimeType: z.string().optional(),
+  thumbnailUri: z.string().optional(),
+  uri: z.string().min(1),
+  width: z.number().int().positive().optional(),
+});
+
+const PendingMessageBaseSchema = z.object({
+  canonicalId: z.string().optional(),
+  clientMessageId: z.string().optional(),
+  createdAt: z.string().datetime({ offset: true }),
+  deliveryStatus: z.enum(['queued', 'sending', 'failed']),
+  direction: z.literal('outgoing'),
+  id: z.string().min(1),
+  senderId: z.string().optional(),
+  sequence: z.number().int().positive().optional(),
+});
+
+const PendingOutgoingMessageSchema = z.discriminatedUnion('kind', [
+  PendingMessageBaseSchema.extend({
+    kind: z.literal('text'),
+    text: z.string(),
+  }),
+  PendingMessageBaseSchema.extend({
+    attachment: PendingAttachmentSchema,
+    caption: z.string().optional(),
+    kind: z.literal('media'),
+    mediaFailureReason: z.enum(['cancelled', 'send-failed']).optional(),
+  }),
+]);
+
+const PendingMessageIndexSchema = z.object({
+  messagesByConversation: z.record(
+    z.string(),
+    z.array(PendingOutgoingMessageSchema),
+  ),
+  version: z.literal(1),
+});
+
+type PendingMessageIndex = z.infer<typeof PendingMessageIndexSchema>;
+
+let pendingPersistenceScope: string | null = null;
+let pendingPersistenceGeneration = 0;
+let pendingPersistenceReady = false;
+let pendingWriteChain: Promise<void> = Promise.resolve();
+
+export function chatPendingMessageStorageKey(accountId: string) {
+  return `${PENDING_MESSAGE_STORAGE_PREFIX}:${accountId}`;
+}
+
+function pendingMessagesSnapshot(
+  messagesByConversation: Record<string, OutgoingChatMessage[]>,
+): PendingMessageIndex {
+  const pending: PendingMessageIndex['messagesByConversation'] = {};
+  for (const [conversationId, messages] of Object.entries(
+    messagesByConversation,
+  )) {
+    const retained = messages
+      .filter((message) =>
+        ['queued', 'sending', 'failed'].includes(message.deliveryStatus),
+      )
+      .map((message) => PendingOutgoingMessageSchema.parse(message));
+    if (retained.length > 0) pending[conversationId] = retained;
+  }
+  return { messagesByConversation: pending, version: 1 };
+}
+
+function schedulePendingMessagesPersistence(
+  messagesByConversation: Record<string, OutgoingChatMessage[]>,
+) {
+  const accountId = pendingPersistenceScope;
+  if (!accountId || !pendingPersistenceReady) return;
+  const snapshot = pendingMessagesSnapshot(messagesByConversation);
+  const key = chatPendingMessageStorageKey(accountId);
+  pendingWriteChain = pendingWriteChain
+    .catch(() => undefined)
+    .then(async () => {
+      if (Object.keys(snapshot.messagesByConversation).length === 0) {
+        await AsyncStorage.removeItem(key);
+      } else {
+        await AsyncStorage.setItem(key, JSON.stringify(snapshot));
+      }
+    });
+}
+
+function restorePendingMessageIndex(raw: string | null) {
+  if (!raw) return {} as Record<string, OutgoingChatMessage[]>;
+  try {
+    const parsed = PendingMessageIndexSchema.parse(JSON.parse(raw));
+    return Object.fromEntries(
+      Object.entries(parsed.messagesByConversation).map(
+        ([conversationId, messages]) => [
+          conversationId,
+          messages.map((message) => ({
+            ...message,
+            deliveryStatus:
+              message.deliveryStatus === 'sending'
+                ? ('queued' as const)
+                : message.deliveryStatus,
+          })) as OutgoingChatMessage[],
+        ],
+      ),
+    );
+  } catch {
+    return {} as Record<string, OutgoingChatMessage[]>;
+  }
+}
+
+function mergePendingMessages(
+  persisted: Record<string, OutgoingChatMessage[]>,
+  current: Record<string, OutgoingChatMessage[]>,
+) {
+  const merged: Record<string, OutgoingChatMessage[]> = { ...persisted };
+  for (const [conversationId, messages] of Object.entries(current)) {
+    const byId = new Map(
+      (merged[conversationId] ?? []).map((message) => [message.id, message]),
+    );
+    for (const message of messages) byId.set(message.id, message);
+    merged[conversationId] = [...byId.values()];
+  }
+  return merged;
+}
 
 type EnqueueOutgoingTextInput = {
   createdAt: string;
@@ -67,11 +201,11 @@ function initialRuntimeState() {
 }
 
 function nextMessageIdentity(
-  conversationId: string,
-  sequence: number,
+  _conversationId: string,
+  _sequence: number,
   kind: 'media' | 'text',
 ) {
-  return `local-${conversationId}-${kind}-${sequence}`;
+  return createClientMessageId(kind);
 }
 
 export const useChatRuntimeStore = create<ChatRuntimeState>((set, get) => ({
@@ -234,6 +368,58 @@ export const useChatRuntimeStore = create<ChatRuntimeState>((set, get) => ({
       },
     })),
 }));
+
+useChatRuntimeStore.subscribe((state, previous) => {
+  if (state.messagesByConversation !== previous.messagesByConversation) {
+    schedulePendingMessagesPersistence(state.messagesByConversation);
+  }
+});
+
+export async function setChatPendingMessagePersistenceScope(
+  accountId: string | null,
+) {
+  const generation = ++pendingPersistenceGeneration;
+  pendingPersistenceScope = accountId;
+  pendingPersistenceReady = false;
+  useChatRuntimeStore.setState({
+    messagesByConversation: {},
+    readConversationIds: {},
+  });
+
+  if (!accountId) return;
+  const raw = await AsyncStorage.getItem(
+    chatPendingMessageStorageKey(accountId),
+  );
+  if (
+    generation !== pendingPersistenceGeneration ||
+    pendingPersistenceScope !== accountId
+  ) {
+    return;
+  }
+
+  const persisted = restorePendingMessageIndex(raw);
+  const current = useChatRuntimeStore.getState().messagesByConversation;
+  const merged = mergePendingMessages(persisted, current);
+  useChatRuntimeStore.setState({ messagesByConversation: merged });
+  pendingPersistenceReady = true;
+  schedulePendingMessagesPersistence(merged);
+}
+
+export async function flushChatPendingMessagePersistence() {
+  await pendingWriteChain;
+}
+
+export async function resetChatPendingMessagePersistenceForTests() {
+  await pendingWriteChain.catch(() => undefined);
+  pendingPersistenceGeneration += 1;
+  pendingPersistenceScope = null;
+  pendingPersistenceReady = false;
+  pendingWriteChain = Promise.resolve();
+  useChatRuntimeStore.setState({
+    messagesByConversation: {},
+    readConversationIds: {},
+  });
+}
 
 export function enqueueRuntimeOutgoingMedia(input: EnqueueOutgoingMediaInput) {
   return useChatRuntimeStore.getState().enqueueOutgoingMedia(input);

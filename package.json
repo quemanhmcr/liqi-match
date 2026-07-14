@@ -133,7 +133,7 @@
     "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
     "contracts:check": "node scripts/contracts/check-core-v1-contracts.cjs && node scripts/run-jest.cjs --config jest.unit.config.js --runTestsByPath src/contracts/__tests__/core-v1-contracts.test.ts src/contracts/__tests__/mission1-provider-contracts.test.ts src/contracts/__tests__/conversation-v1-contracts.test.ts",
     "match-authority:check": "node scripts/contracts/check-match-authority-v1.cjs",
-    "conversation-authority:check": "node scripts/contracts/check-conversation-authority-v1.cjs",
+    "conversation-authority:check": "node scripts/contracts/check-conversation-authority-v1.cjs && node scripts/contracts/parse-conversation-sql-v1.cjs",
     "match-conversation-projection:check": "node scripts/contracts/check-match-conversation-projection-v1.cjs",
     "discovery-authority:check": "node scripts/contracts/check-discovery-authority-v1.cjs",
     "match-funnel-telemetry:check": "node scripts/contracts/check-match-funnel-telemetry-v1.cjs"

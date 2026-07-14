@@ -3,8 +3,13 @@ const fs = require('node:fs');
 const migrationPath =
   'supabase/migrations/202607140006_conversation_reliability_v1.sql';
 const testPath = 'supabase/tests/database/conversation_reliability_v1.test.sql';
+const mobileSurfacePath =
+  'supabase/migrations/202607140008_conversation_mobile_surface_v1.sql';
 const accountDeletePath = 'supabase/functions/account-delete/handler.ts';
 const migration = fs.readFileSync(migrationPath, 'utf8');
+const mobileSurface = fs.existsSync(mobileSurfacePath)
+  ? fs.readFileSync(mobileSurfacePath, 'utf8')
+  : '';
 const databaseTest = fs.existsSync(testPath)
   ? fs.readFileSync(testPath, 'utf8')
   : '';
@@ -160,8 +165,11 @@ requireInvariant(
   /realtime\.broadcast_changes/i.test(migration) &&
     /public\.can_subscribe_conversation_v1\(realtime\.topic\(\)\)/i.test(
       migration,
+    ) &&
+    /can_subscribe_conversation_v1[\s\S]*assert_messaging_allowed_v1/i.test(
+      migration,
     ),
-  'realtime must use private Broadcast authorization backed by membership',
+  'realtime must use private Broadcast authorization backed by active messaging capability and membership',
 );
 requireInvariant(
   /drop policy if exists "Conversation members can insert own messages"/i.test(
@@ -201,6 +209,12 @@ requireInvariant(
   !/foregroundPolicy/i.test(migration) &&
     /authoritativeUnreadCount/i.test(migration),
   'notification requests must provide authoritative unread without deciding foreground suppression',
+);
+requireInvariant(
+  /conversation_participants_v1/i.test(mobileSurface) &&
+    /conversation_unread_count_v1/i.test(mobileSurface) &&
+    /get_conversation_inbox_page_v1/i.test(mobileSurface),
+  'mobile surfaces must project canonical participants and authoritative unread watermarks',
 );
 requireInvariant(
   /security definer[\s\S]*set search_path = ''/i.test(migration),
