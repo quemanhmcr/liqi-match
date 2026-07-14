@@ -6,6 +6,7 @@ import {
   FriendshipRequestedEventV2Schema,
   PlayerBlockedEventV2Schema,
   SocialRelationshipSnapshotV2Schema,
+  TrustVisibilityDecisionV2Schema,
 } from '../../../contracts/core-v2';
 
 const root = path.join(process.cwd(), 'contracts/core-v2/fixtures');
@@ -61,6 +62,28 @@ describe('Core V2 social relationship provider contracts', () => {
     expect(event.eventVersion).toBe(2);
     expect(event.aggregateVersion).toBe(1);
     expect(event.payload.requestState).toBe('pending');
+  });
+
+  it('publishes an explicit trust visibility decision for trust consumers', () => {
+    const friend = TrustVisibilityDecisionV2Schema.parse(
+      read('provider', 'trust-visibility-friend.json'),
+    );
+    const blocked = TrustVisibilityDecisionV2Schema.parse(
+      read('provider', 'trust-visibility-blocked.json'),
+    );
+
+    expect(friend.canViewTrust).toBe(true);
+    expect(blocked).toMatchObject({ blocked: true, canViewTrust: false });
+  });
+
+  it('rejects trust visibility elevation while block override is active', () => {
+    const fixture = read('provider', 'trust-visibility-blocked.json') as object;
+    expect(() =>
+      TrustVisibilityDecisionV2Schema.parse({
+        ...fixture,
+        canViewTrust: true,
+      }),
+    ).toThrow();
   });
 
   it('publishes a private block event without reputation semantics', () => {
