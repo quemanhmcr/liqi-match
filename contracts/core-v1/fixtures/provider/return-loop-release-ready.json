@@ -1,0 +1,40 @@
+{
+  "windowStartedAt": "2026-07-13T08:00:00.000Z",
+  "generatedAt": "2026-07-14T08:00:00.000Z",
+  "flags": {
+    "coreLoopEnabled": true,
+    "homeEnabled": true,
+    "inboxEnabled": true,
+    "pushEnabled": true,
+    "deepLinkEnabled": true
+  },
+  "metrics": {
+    "duplicateNotificationCount": 0,
+    "deepLinkAttemptCount": 100,
+    "deepLinkAvailableCount": 100,
+    "deepLinkSuccessRate": 1,
+    "pushDeliveryCount": 2,
+    "pushProviderErrorCount": 0,
+    "stalePushJobCount": 0,
+    "conversationReadyCount": 1,
+    "matchConversationDivergenceCount": 0,
+    "matchConversationReadyRate": 1,
+    "matchCreatedCount": 1,
+    "oldestMatchConversationPendingSeconds": 0,
+    "unexplainedMatchConversationDivergenceCount": 0
+  },
+  "apiModeE2e": {
+    "lastRunId": "e0000000-0000-4000-8000-000000000001",
+    "lastStatus": "passed",
+    "lastCompletedAt": "2026-07-14T07:55:00.000Z"
+  },
+  "checks": {
+    "duplicateNotificationsHealthy": true,
+    "deepLinkSloHealthy": true,
+    "pushProviderObserved": true,
+    "pushBacklogHealthy": true,
+    "apiModeE2eFresh": true,
+    "matchConversationFunnelHealthy": true
+  },
+  "ready": true
+}

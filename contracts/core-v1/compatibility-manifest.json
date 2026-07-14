@@ -58,7 +58,18 @@
     "home-match-facts.json",
     "set-discovery-page.json",
     "set-invite-created-event.json",
-    "set-join-requested-event.json"
+    "set-join-requested-event.json",
+    "match-intent-changed-event.json",
+    "push-navigation-data.json",
+    "notification-deep-link-available.json",
+    "notification-deep-link-expired.json",
+    "notification-presence-foreground.json",
+    "push-device-registration.json",
+    "return-loop-api-e2e-passed.json",
+    "return-loop-release-ready.json",
+    "notification-unseen.json",
+    "notification-seen-unread.json",
+    "notification-read.json"
   ],
   "consumerFixtures": [
     "conversation-bootstrap-requested.json",

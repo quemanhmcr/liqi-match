@@ -30,6 +30,7 @@ export type SetId = Brand<string, 'SetId'>;
 export type SessionId = Brand<string, 'SessionId'>;
 export type IdempotencyKey = Brand<string, 'IdempotencyKey'>;
 export type RequestId = Brand<string, 'RequestId'>;
+export type NotificationId = Brand<string, 'NotificationId'>;
 
 export const AccountIdSchema = semanticUuid('AccountId');
 export const PlayerIdSchema = semanticUuid('PlayerId');
@@ -46,6 +47,7 @@ export const IdempotencyKeySchema = semanticString('IdempotencyKey', {
   min: 16,
   pattern: /^[A-Za-z0-9._:-]+$/,
 });
+export const NotificationIdSchema = semanticUuid('NotificationId');
 export const RequestIdSchema = semanticString('RequestId', {
   max: 160,
   min: 8,

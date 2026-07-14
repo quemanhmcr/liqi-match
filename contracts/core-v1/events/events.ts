@@ -20,10 +20,13 @@ import {
   SetJoinRequestIdSchema,
 } from '../identity/semantic-ids';
 import { MatchCreatedV1Schema } from '../match/match-created';
-import { MatchIntentSnapshotV1Schema } from '../discovery/match-intent';
+import {
+  MatchIntentSnapshotV1Schema,
+  MatchIntentStateV1Schema,
+} from '../discovery/match-intent';
 import { PlayerSuspensionReasonCodeV1Schema } from '../lifecycle/player-suspension';
 
-const EventEnvelopeBaseV1Schema = z.object({
+export const EventEnvelopeBaseV1Schema = z.object({
   eventId: EventIdSchema,
   occurredAt: z.string().datetime({ offset: true }),
   correlationId: CorrelationIdSchema,
@@ -37,6 +40,24 @@ export const MatchIntentActivatedEventV1Schema =
     aggregateId: MatchIntentIdSchema,
     data: MatchIntentSnapshotV1Schema,
   });
+
+export const MatchIntentChangedEventV1Schema = EventEnvelopeBaseV1Schema.extend(
+  {
+    eventType: z.literal('match_intent.changed.v1'),
+    aggregateType: z.literal('match_intent'),
+    aggregateId: MatchIntentIdSchema,
+    data: z
+      .object({
+        activatedAt: z.string().datetime({ offset: true }).nullable(),
+        expiresAt: z.string().datetime({ offset: true }).nullable(),
+        matchIntentId: MatchIntentIdSchema,
+        mode: z.string().min(1).max(64),
+        playerId: PlayerIdSchema,
+        state: MatchIntentStateV1Schema,
+      })
+      .strict(),
+  },
+);
 
 export const PlayerLikedEventV1Schema = EventEnvelopeBaseV1Schema.extend({
   eventType: z.literal('player.liked.v1'),

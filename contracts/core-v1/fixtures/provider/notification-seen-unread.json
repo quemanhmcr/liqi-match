@@ -1,0 +1,13 @@
+{
+  "notificationId": "90000000-0000-4000-8000-000000000002",
+  "recipientPlayerId": "20000000-0000-4000-8000-000000000002",
+  "kind": "message_received",
+  "sourceEventId": "80000000-0000-4000-8000-000000000002",
+  "occurredAt": "2026-07-14T00:01:00.000Z",
+  "seenAt": "2026-07-14T00:02:00.000Z",
+  "readAt": null,
+  "deepLink": {
+    "target": "conversation",
+    "conversationId": "60000000-0000-4000-8000-000000000001"
+  }
+}

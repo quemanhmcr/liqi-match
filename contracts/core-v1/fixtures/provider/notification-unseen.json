@@ -1,0 +1,13 @@
+{
+  "notificationId": "90000000-0000-4000-8000-000000000001",
+  "recipientPlayerId": "20000000-0000-4000-8000-000000000002",
+  "kind": "match_created",
+  "sourceEventId": "80000000-0000-4000-8000-000000000001",
+  "occurredAt": "2026-07-14T00:00:00.000Z",
+  "seenAt": null,
+  "readAt": null,
+  "deepLink": {
+    "target": "match",
+    "matchId": "50000000-0000-4000-8000-000000000001"
+  }
+}

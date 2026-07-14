@@ -1,0 +1,17 @@
+{
+  "eventId": "80000000-0000-4000-8000-000000000101",
+  "eventType": "match_intent.changed.v1",
+  "aggregateType": "match_intent",
+  "aggregateId": "40000000-0000-4000-8000-000000000101",
+  "occurredAt": "2026-07-14T08:00:00.000Z",
+  "correlationId": "b0000000-0000-4000-8000-000000000101",
+  "causationId": null,
+  "data": {
+    "activatedAt": "2026-07-14T08:00:00.000Z",
+    "expiresAt": "2026-07-14T09:00:00.000Z",
+    "matchIntentId": "40000000-0000-4000-8000-000000000101",
+    "mode": "ranked",
+    "playerId": "20000000-0000-4000-8000-000000000101",
+    "state": "active"
+  }
+}
