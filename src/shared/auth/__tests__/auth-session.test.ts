@@ -91,7 +91,11 @@ describe('authoritative auth session mapping', () => {
       { principal, lifecycle },
       accountId,
     );
-    const session = toAuthoritativeAuthSession(supabaseSession, context);
+    const session = toAuthoritativeAuthSession(
+      supabaseSession,
+      context,
+      1_784_016_001,
+    );
 
     expect(session.accessToken).toBe('access-token');
     expect(session.user.id).toBe(accountId);
