@@ -22,6 +22,7 @@
       "matchId": "82000000-0000-4000-8000-000000000401"
     },
     "startedAt": "2026-07-14T12:35:00.000Z",
-    "verification": "participant_quorum"
+    "verification": "participant_quorum",
+    "scheduledFor": "2026-07-14T12:30:00.000Z"
   }
 }

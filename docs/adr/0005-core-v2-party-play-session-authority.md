@@ -15,6 +15,10 @@ Core V2 keeps recruitment and actual play as separate aggregates.
   and dispute state.
 - Every foreign identity is a Core V1 `player_id`. No Core V2 aggregate stores
   `auth.uid()` or legacy profile IDs as player identity.
+- `PlaySessionId` is owned by this contract and is intentionally distinct from
+  Core V1 `AuthenticatedPrincipal.sessionId`, which identifies an auth session.
+  Consumers must import the Core V2 semantic ID instead of rebranding either
+  identifier locally.
 
 ## Session lifecycle
 
@@ -87,6 +91,11 @@ Membership events contain a monotonic membership version and full active
 participant IDs so Senior 3 can converge after replay or missed delivery.
 
 ## Outcome handoff
+
+`session.completed.v2` uses the event envelope `aggregateVersion` as the
+session version. It does not duplicate that fact inside the payload. The payload
+contains canonical `participantPlayerIds`, scheduling/start/completion times,
+role assignments, source and `verification = participant_quorum`.
 
 Only `session.completed.v2` is a positive outcome input for Senior 4. Cancelled,
 expired, abandoned and disputed states never emit that event. The completed

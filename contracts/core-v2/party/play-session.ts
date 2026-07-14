@@ -4,9 +4,9 @@ import {
   ConversationIdSchema,
   MatchIdSchema,
   PlayerIdSchema,
-  SessionIdSchema,
   SetIdSchema,
 } from '../../core-v1';
+import { PlaySessionIdSchema } from '../identity/semantic-ids';
 import {
   CoreV2CreateCommandMetadataSchema,
   CoreV2MutationCommandMetadataSchema,
@@ -167,7 +167,7 @@ export const PlaySessionSnapshotV2Schema = z
     readyCheck: PlaySessionReadyCheckSnapshotV2Schema.nullable(),
     roleAssignments: z.array(PlaySessionRoleAssignmentV2Schema).max(5),
     scheduledFor: z.string().datetime({ offset: true }).nullable(),
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
     source: PlaySessionSourceV2Schema,
     startedAt: z.string().datetime({ offset: true }).nullable(),
     state: PlaySessionStateV2Schema,
@@ -236,9 +236,11 @@ export const CreatePlaySessionCommandV2Schema =
 
 export const CreateSessionFromMatchCommandV2Schema =
   CoreV2CreateCommandMetadataSchema.extend({
-    ...SessionCreateFieldsSchema.shape,
     capacity: z.literal(2),
     matchId: MatchIdSchema,
+    scheduledFor: z.string().datetime({ offset: true }).nullable(),
+    timezone: z.string().trim().min(1).max(64),
+    title: z.string().trim().min(1).max(80),
   }).strict();
 
 export const CreateSessionFromSetCommandV2Schema =
@@ -252,26 +254,26 @@ export const CreateSessionFromSetCommandV2Schema =
 
 export const InviteToSessionCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
     targetPlayerId: PlayerIdSchema,
   }).strict();
 
 export const AcceptSessionInviteCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
     inviteId: SessionInviteV2IdSchema,
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   }).strict();
 
 export const LeaveSessionCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   }).strict();
 
 export const RemoveSessionMemberCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
     memberPlayerId: PlayerIdSchema,
     reasonCode: z.string().trim().min(1).max(64),
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   }).strict();
 
 export const AssignSessionRoleCommandV2Schema =
@@ -282,39 +284,39 @@ export const AssignSessionRoleCommandV2Schema =
       .regex(/^[a-z0-9_]+$/)
       .min(1)
       .max(32),
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   }).strict();
 
 export const OpenReadyCheckCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
     deadlineAt: z.string().datetime({ offset: true }),
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   }).strict();
 
 export const RespondReadyCheckCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
     checkId: SessionReadyCheckV2IdSchema,
     response: PlaySessionReadyResponseV2Schema,
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   }).strict();
 
 export const ScheduleSessionCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
     scheduledFor: z.string().datetime({ offset: true }),
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
     timezone: z.string().trim().min(1).max(64),
   }).strict();
 
 export const StartSessionCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   }).strict();
 
 export const ProposeSessionCompletionCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
     claim: PlaySessionCompletionClaimKindV2Schema,
     reasonCode: z.string().trim().min(1).max(64).nullable(),
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   })
     .strict()
     .superRefine((value, context) => {
@@ -330,7 +332,7 @@ export const ProposeSessionCompletionCommandV2Schema =
 export const CancelSessionCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
     reason: PlaySessionCancellationReasonV2Schema,
-    sessionId: SessionIdSchema,
+    sessionId: PlaySessionIdSchema,
   }).strict();
 
 export const PlaySessionCommandNameV2Schema = z.enum([
@@ -425,4 +427,14 @@ export type ProposeSessionCompletionCommandV2 = z.infer<
 >;
 export type CancelSessionCommandV2 = z.infer<
   typeof CancelSessionCommandV2Schema
+>;
+export type CreateSessionFromSetCommandV2 = z.infer<
+  typeof CreateSessionFromSetCommandV2Schema
+>;
+export type LeaveSessionCommandV2 = z.infer<typeof LeaveSessionCommandV2Schema>;
+export type RemoveSessionMemberCommandV2 = z.infer<
+  typeof RemoveSessionMemberCommandV2Schema
+>;
+export type AssignSessionRoleCommandV2 = z.infer<
+  typeof AssignSessionRoleCommandV2Schema
 >;

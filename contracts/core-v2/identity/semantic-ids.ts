@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const PlaySessionIdSchema = z.string().uuid().brand<'PlaySessionId'>();
+export type PlaySessionId = z.infer<typeof PlaySessionIdSchema>;
+
 export const SetInviteV2IdSchema = z.string().uuid().brand<'SetInviteV2Id'>();
 export type SetInviteV2Id = z.infer<typeof SetInviteV2IdSchema>;
 
