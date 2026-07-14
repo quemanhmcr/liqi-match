@@ -45,7 +45,7 @@ insert into public.match_intents_v1 (
 ) values
   ('10000000-0000-4000-8000-000000000801', '20000000-0000-4000-8000-000000000801', 'active', '{"intentKind":"normal","mode":"normal","partyFormat":"duo","sessionPlan":"quick","roleSlugs":[],"timezone":"Asia/Bangkok"}', 1, now(), now() + interval '1 hour'),
   ('10000000-0000-4000-8000-000000000802', '20000000-0000-4000-8000-000000000802', 'active', '{"intentKind":"normal","mode":"normal","partyFormat":"duo","sessionPlan":"quick","roleSlugs":[],"timezone":"Asia/Bangkok"}', 1, now(), now() + interval '1 hour'),
-  ('10000000-0000-4000-8000-000000000803', '20000000-0000-4000-8000-000000000803', 'active', '{"intentKind":"rank","mode":"ranked","partyFormat":"squad","sessionPlan":"long","roleSlugs":[],"timezone":"Asia/Bangkok"}', 1, now(), now() + interval '1 hour'),
+  ('10000000-0000-4000-8000-000000000803', '20000000-0000-4000-8000-000000000803', 'active', '{"intentKind":"rank","mode":"ranked","partyFormat":"full_team","sessionPlan":"long","roleSlugs":[],"timezone":"Asia/Bangkok"}', 1, now(), now() + interval '1 hour'),
   ('10000000-0000-4000-8000-000000000804', '20000000-0000-4000-8000-000000000804', 'active', '{"intentKind":"normal","mode":"normal","partyFormat":"duo","sessionPlan":"quick","roleSlugs":[],"timezone":"Asia/Bangkok"}', 1, now(), now() + interval '1 hour'),
   ('10000000-0000-4000-8000-000000000805', '20000000-0000-4000-8000-000000000805', 'active', '{"intentKind":"normal","mode":"normal","partyFormat":"duo","sessionPlan":"quick","roleSlugs":[],"timezone":"Asia/Bangkok"}', 1, now(), now() + interval '1 hour');
 
@@ -93,6 +93,11 @@ select is((select response #>> '{items,0,set,setId}' from set_page_one), 'a10000
 select is((select response #>> '{items,0,set,intentKind}' from set_page_one), 'normal', 'Set snapshot exposes intent kind');
 select is((select (response #>> '{items,0,capabilities,canRequestJoin}')::boolean from set_page_one), true, 'new candidate can request join');
 select ok((select response ->> 'nextCursor' from set_page_one) is not null, 'first Set page has opaque cursor');
+select is(
+  (select (response #>> '{snapshot,intentVersion}')::integer from set_page_one),
+  1,
+  'Set snapshot binds pagination to the active Match Intent version'
+);
 select is((select response #>> '{items,0,set,setId}' from set_page_two), 'a1000000-0000-4000-8000-000000000803', 'second page contains remaining open Set');
 select is((select response from set_page_two_retry), (select response from set_page_two), 'Set cursor retry is semantically identical');
 select is((select count(*)::integer from private.set_discovery_snapshot_candidates_v1), 2, 'full and blocked Sets are excluded');

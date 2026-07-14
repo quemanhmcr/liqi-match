@@ -22,6 +22,14 @@ const invite = migration.slice(inviteStart, joinStart);
 const join = migration.slice(joinStart);
 
 requireInvariant(
+  !migration.includes('create table private.discovery_snapshots_v1') &&
+    !migration.includes(
+      'create or replace function public.record_player_decision_v1',
+    ),
+  'Set migration must be additive and must not duplicate Match/Discovery authority',
+);
+
+requireInvariant(
   migration.includes('unique (snapshot_id, set_id)') &&
     migration.includes('unique (snapshot_id, next_ordinal)'),
   'Set snapshots and cursors must prevent duplicate pages',
