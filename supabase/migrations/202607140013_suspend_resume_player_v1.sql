@@ -46,6 +46,7 @@ declare
   profile_id_value uuid;
   profile_version_value bigint;
   event_id_value uuid;
+  correlation_id_value uuid;
   occurred_at_value timestamptz;
   response_payload jsonb;
 begin
@@ -165,7 +166,27 @@ begin
   );
 
   occurred_at_value := transitioned_row.updated_at;
-  event_id_value := extensions.gen_random_uuid();
+  correlation_id_value := extensions.gen_random_uuid();
+  event_id_value := private.enqueue_contract_event_v1(
+    'player.suspended.v1',
+    'player',
+    player_row.id,
+    correlation_id_value,
+    null,
+    jsonb_build_object(
+      'accountId', player_row.account_id,
+      'playerId', player_row.id,
+      'profileId', profile_id_value,
+      'lifecycleVersion', transitioned_row.lifecycle_version,
+      'profileVersion', profile_version_value,
+      'reasonCode', reason_code_value
+    ),
+    format(
+      'player.suspended.v1:%s:%s',
+      player_row.id,
+      transitioned_row.lifecycle_version
+    )
+  );
 
   insert into private.player_suspensions_v1 (
     player_id,
@@ -183,36 +204,6 @@ begin
     player_row.messaging_allowed,
     occurred_at_value,
     event_id_value
-  );
-
-  insert into private.outbox_events (
-    id,
-    event_type,
-    aggregate_type,
-    aggregate_id,
-    payload
-  ) values (
-    event_id_value,
-    'player.suspended.v1',
-    'player',
-    player_row.id,
-    jsonb_build_object(
-      'eventId', event_id_value,
-      'eventType', 'player.suspended.v1',
-      'aggregateType', 'player',
-      'aggregateId', player_row.id,
-      'occurredAt', occurred_at_value,
-      'correlationId', event_id_value,
-      'causationId', null,
-      'data', jsonb_build_object(
-        'accountId', player_row.account_id,
-        'playerId', player_row.id,
-        'profileId', profile_id_value,
-        'lifecycleVersion', transitioned_row.lifecycle_version,
-        'profileVersion', profile_version_value,
-        'reasonCode', reason_code_value
-      )
-    )
   );
 
   insert into private.audit_logs (
@@ -269,6 +260,7 @@ declare
   profile_id_value uuid;
   profile_version_value bigint;
   event_id_value uuid;
+  correlation_id_value uuid;
   occurred_at_value timestamptz;
   response_payload jsonb;
 begin
@@ -395,43 +387,33 @@ begin
   );
 
   occurred_at_value := transitioned_row.updated_at;
-  event_id_value := extensions.gen_random_uuid();
+  correlation_id_value := extensions.gen_random_uuid();
+  event_id_value := private.enqueue_contract_event_v1(
+    'player.resumed.v1',
+    'player',
+    player_row.id,
+    correlation_id_value,
+    suspension_row.suspend_event_id,
+    jsonb_build_object(
+      'accountId', player_row.account_id,
+      'playerId', player_row.id,
+      'profileId', profile_id_value,
+      'lifecycleVersion', transitioned_row.lifecycle_version,
+      'profileVersion', profile_version_value,
+      'reasonCode', suspension_row.reason_code
+    ),
+    format(
+      'player.resumed.v1:%s:%s',
+      player_row.id,
+      transitioned_row.lifecycle_version
+    )
+  );
 
   update private.player_suspensions_v1
   set resumed_at = occurred_at_value,
       resumed_lifecycle_version = transitioned_row.lifecycle_version,
       resume_event_id = event_id_value
   where id = suspension_row.id;
-
-  insert into private.outbox_events (
-    id,
-    event_type,
-    aggregate_type,
-    aggregate_id,
-    payload
-  ) values (
-    event_id_value,
-    'player.resumed.v1',
-    'player',
-    player_row.id,
-    jsonb_build_object(
-      'eventId', event_id_value,
-      'eventType', 'player.resumed.v1',
-      'aggregateType', 'player',
-      'aggregateId', player_row.id,
-      'occurredAt', occurred_at_value,
-      'correlationId', event_id_value,
-      'causationId', suspension_row.suspend_event_id,
-      'data', jsonb_build_object(
-        'accountId', player_row.account_id,
-        'playerId', player_row.id,
-        'profileId', profile_id_value,
-        'lifecycleVersion', transitioned_row.lifecycle_version,
-        'profileVersion', profile_version_value,
-        'reasonCode', suspension_row.reason_code
-      )
-    )
-  );
 
   insert into private.audit_logs (
     actor_id,
