@@ -1,7 +1,7 @@
-// Generated from the executable Discover overview schema shape.
-// All product content is intentionally empty; authoritative player items are
-// injected at runtime. This file contains no simulation data.
+import type { DiscoverPlayerRecommendation } from '../contracts/discover-contracts';
 
+// Generated from the executable Discover overview schema shape.
+// Product collections are empty; authoritative player items are injected at runtime.
 const emptyOverviewTemplate = {
   contractVersion: 1,
   data: {
@@ -11,17 +11,17 @@ const emptyOverviewTemplate = {
       players: {
         defaultSort: 'best_match',
         items: [],
-        totalCount: 2,
+        totalCount: 0,
       },
       sets: {
         defaultSort: 'best_match',
         items: [],
-        totalCount: 2,
+        totalCount: 0,
       },
       vibes: {
         defaultSort: 'popular',
         items: [],
-        totalCount: 3,
+        totalCount: 0,
       },
     },
   },
@@ -36,6 +36,7 @@ const playerCollectionPaths = [
 
 export function createAuthoritativePlayerOverview(input: {
   generatedAt: string;
+  players: readonly DiscoverPlayerRecommendation[];
   requestId: string;
 }) {
   const result = structuredClone(emptyOverviewTemplate) as Record<
@@ -46,6 +47,11 @@ export function createAuthoritativePlayerOverview(input: {
   for (const path of playerCollectionPaths) {
     setAtPath(result, path, input.players);
   }
+  setAtPath(
+    result,
+    ['data', 'sections', 'players', 'totalCount'],
+    input.players.length,
+  );
   return result;
 }
 
@@ -62,7 +68,11 @@ function setAtPath(
     }
     cursor = next as Record<string, unknown>;
   }
-  cursor[path[path.length - 1]] = value;
+  const finalSegment = path[path.length - 1];
+  if (!finalSegment) {
+    throw new Error('Invalid empty Discover overview template path.');
+  }
+  cursor[finalSegment] = value;
 }
 
 function setMetadata(value: unknown, generatedAt: string, requestId: string) {

@@ -54,7 +54,7 @@ if (!templateMatch) {
   failures.push('empty overview template JSON was not found');
 } else {
   try {
-    const template = JSON.parse(templateMatch[1]);
+    const template = Function(`"use strict"; return (${templateMatch[1]});`)();
     const nonEmptyArrays = [];
     const inspect = (value, path = '$') => {
       if (Array.isArray(value)) {
@@ -72,7 +72,9 @@ if (!templateMatch) {
       `overview template contains product collection data: ${nonEmptyArrays.join(', ')}`,
     );
   } catch (error) {
-    failures.push(`overview template is not parseable JSON: ${error.message}`);
+    failures.push(
+      `overview template object is not parseable: ${error.message}`,
+    );
   }
 }
 
