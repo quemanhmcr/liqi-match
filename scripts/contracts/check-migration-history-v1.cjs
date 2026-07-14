@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const fs = require('node:fs');
+const { spawnSync } = require('node:child_process');
 const path = require('node:path');
 
 const root = process.cwd();
@@ -211,3 +212,10 @@ const nextVersion = String(Number(latestIntegratedVersion) + 1).padStart(
 console.log(
   `Migration history v1 check passed (${migrationFiles.length} files, latest ${latestIntegratedVersion}, next ${nextVersion}).`,
 );
+
+const dependencyCheck = spawnSync(
+  process.execPath,
+  [path.join(__dirname, 'check-migration-dependency-order-v1.cjs')],
+  { cwd: root, stdio: 'inherit' },
+);
+if (dependencyCheck.status !== 0) process.exit(dependencyCheck.status ?? 1);
