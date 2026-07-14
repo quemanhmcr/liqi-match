@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(39);
+select plan(38);
 
 select has_table('public', 'players', 'canonical players table exists');
 select has_table('public', 'player_profiles_v1', 'canonical player profile mapping exists');

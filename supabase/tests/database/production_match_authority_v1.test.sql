@@ -4,91 +4,6 @@ begin;
 
 select plan(25);
 
-create table public.test_player_lifecycle_snapshots_v1 (
-  account_id uuid primary key,
-  player_id uuid not null unique,
-  profile_id uuid not null unique,
-  state text not null,
-  discoverable boolean not null,
-  profile_version integer not null,
-  version integer not null,
-  updated_at timestamptz not null default now()
-);
-
-create or replace function public.get_player_lifecycle_snapshot_v1(
-  p_account_id uuid,
-  p_lock boolean default false
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  snapshot public.test_player_lifecycle_snapshots_v1%rowtype;
-begin
-  if p_lock then
-    select * into snapshot
-    from public.test_player_lifecycle_snapshots_v1
-    where account_id = p_account_id
-    for update;
-  else
-    select * into snapshot
-    from public.test_player_lifecycle_snapshots_v1
-    where account_id = p_account_id;
-  end if;
-
-  if snapshot.account_id is null then return null; end if;
-  return jsonb_build_object(
-    'accountId', snapshot.account_id,
-    'playerId', snapshot.player_id,
-    'profileId', snapshot.profile_id,
-    'state', snapshot.state,
-    'discoverable', snapshot.discoverable,
-    'profileVersion', snapshot.profile_version,
-    'version', snapshot.version,
-    'updatedAt', snapshot.updated_at
-  );
-end;
-$$;
-
-create or replace function public.get_player_lifecycle_snapshot_by_player_v1(
-  p_player_id uuid,
-  p_lock boolean default false
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = ''
-as $$
-declare
-  snapshot public.test_player_lifecycle_snapshots_v1%rowtype;
-begin
-  if p_lock then
-    select * into snapshot
-    from public.test_player_lifecycle_snapshots_v1
-    where player_id = p_player_id
-    for update;
-  else
-    select * into snapshot
-    from public.test_player_lifecycle_snapshots_v1
-    where player_id = p_player_id;
-  end if;
-
-  if snapshot.account_id is null then return null; end if;
-  return jsonb_build_object(
-    'accountId', snapshot.account_id,
-    'playerId', snapshot.player_id,
-    'profileId', snapshot.profile_id,
-    'state', snapshot.state,
-    'discoverable', snapshot.discoverable,
-    'profileVersion', snapshot.profile_version,
-    'version', snapshot.version,
-    'updatedAt', snapshot.updated_at
-  );
-end;
-$$;
-
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
   ('00000000-0000-0000-0000-000000000201', 'authenticated', 'authenticated', 'authority-a@example.test', 'x', now(), now(), now()),
@@ -101,12 +16,20 @@ values
   ('00000000-0000-0000-0000-000000000202', 'Authority B'),
   ('00000000-0000-0000-0000-000000000203', 'Authority C');
 
-insert into public.test_player_lifecycle_snapshots_v1 (
-  account_id, player_id, profile_id, state, discoverable, profile_version, version
+insert into public.players (
+  id, account_id, auth_user_id, lifecycle_state, lifecycle_version,
+  discoverable, messaging_allowed
 ) values
-  ('00000000-0000-0000-0000-000000000201', '20000000-0000-4000-8000-000000000201', '00000000-0000-0000-0000-000000000201', 'active', true, 4, 2),
-  ('00000000-0000-0000-0000-000000000202', '20000000-0000-4000-8000-000000000202', '00000000-0000-0000-0000-000000000202', 'active', true, 7, 3),
-  ('00000000-0000-0000-0000-000000000203', '20000000-0000-4000-8000-000000000203', '00000000-0000-0000-0000-000000000203', 'suspended', false, 1, 5);
+  ('20000000-0000-4000-8000-000000000201', '00000000-0000-0000-0000-000000000201', '00000000-0000-0000-0000-000000000201', 'active', 2, true, true),
+  ('20000000-0000-4000-8000-000000000202', '00000000-0000-0000-0000-000000000202', '00000000-0000-0000-0000-000000000202', 'active', 3, true, true),
+  ('20000000-0000-4000-8000-000000000203', '00000000-0000-0000-0000-000000000203', '00000000-0000-0000-0000-000000000203', 'suspended', 5, false, false);
+
+insert into public.player_profiles_v1 (
+  id, player_id, legacy_profile_id, version, completed_at
+) values
+  ('00000000-0000-0000-0000-000000000201', '20000000-0000-4000-8000-000000000201', '00000000-0000-0000-0000-000000000201', 4, now()),
+  ('00000000-0000-0000-0000-000000000202', '20000000-0000-4000-8000-000000000202', '00000000-0000-0000-0000-000000000202', 7, now()),
+  ('00000000-0000-0000-0000-000000000203', '20000000-0000-4000-8000-000000000203', '00000000-0000-0000-0000-000000000203', 1, now());
 
 update private.match_authority_config_v1
 set intent_writes_enabled = true, decision_writes_enabled = true;
