@@ -9,3 +9,9 @@ export {
   SupabaseMatchIntentRepository,
   type MatchIntentRpcTransport,
 } from './supabase-match-intent-repository';
+export {
+  matchIntentQueryKey,
+  useActivateMatchIntentMutation,
+  useCurrentMatchIntentQuery,
+  usePauseMatchIntentMutation,
+} from './match-intent-queries';
