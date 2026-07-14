@@ -1,3 +1,5 @@
+import type { MatchDecisionRepository } from '@/entities/match-decision';
+import type { MatchIntentRepository } from '@/entities/match-intent';
 import type { AssetResolver } from '@/entities/media-asset';
 import type { NotificationInboxRepository } from '@/entities/notifications';
 import type {
@@ -16,6 +18,8 @@ type ApplicationFeatureServices = {
   assetResolver: AssetResolver;
   discoverRepository: DiscoverRepository;
   homeRepository: HomeRepository;
+  matchDecisionRepository: MatchDecisionRepository;
+  matchIntentRepository: MatchIntentRepository;
   messageRepository: ChatRepository;
   messageTransport: ChatMessageTransport;
   notificationRepository: NotificationInboxRepository;

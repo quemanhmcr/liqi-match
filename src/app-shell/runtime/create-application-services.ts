@@ -1,4 +1,12 @@
 import {
+  InMemoryMatchDecisionRepository,
+  SupabaseMatchDecisionRepository,
+} from '@/entities/match-decision';
+import {
+  InMemoryMatchIntentRepository,
+  SupabaseMatchIntentRepository,
+} from '@/entities/match-intent';
+import {
   createGoldenWorldAssetResolver,
   createGoldenWorldSimulationAssetResolver,
 } from '@/entities/media-asset';
@@ -89,6 +97,8 @@ export function createSimulationApplicationServices(
     }),
     discoverRepository: createSimulationDiscoverRepository(simulationRuntime),
     homeRepository: createSimulationHomeRepository(simulationRuntime),
+    matchDecisionRepository: new InMemoryMatchDecisionRepository(),
+    matchIntentRepository: new InMemoryMatchIntentRepository(),
     messageRepository: messages,
     messageTransport: messages.transport,
     mode: 'simulation',
@@ -111,6 +121,8 @@ export function createApiApplicationServices(): ApiApplicationServices {
       createDiscoverHttpTransport(),
     ),
     homeRepository: createApiHomeRepository(),
+    matchDecisionRepository: new SupabaseMatchDecisionRepository(),
+    matchIntentRepository: new SupabaseMatchIntentRepository(),
     messageRepository: createUnavailableMessageRepository(),
     messageTransport: createUnavailableMessageTransport(),
     mode: 'api',

@@ -62,17 +62,21 @@ export type DiscoverSetCard = {
 };
 
 export type DiscoverProfileCard = {
-  actionKind: 'invite' | 'view';
+  actionKind: 'invite' | 'like' | 'liked' | 'view';
   actionLabel: string;
   actionState: 'idle' | 'pending';
   actionTone: 'cyan' | 'purple';
   avatar: DiscoverResolvedMedia;
+  canPass?: boolean;
   conversationId?: string;
+  intentVersion?: number;
   filterIds: readonly DiscoverFilterId[];
   id: string;
   match: string;
   name: string;
   online: boolean;
+  playerId?: string;
+  profileVersion?: number;
   subtitle: string;
   tags: readonly string[];
   targetSetId?: string;

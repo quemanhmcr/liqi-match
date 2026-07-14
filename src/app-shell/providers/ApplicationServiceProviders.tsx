@@ -1,5 +1,7 @@
 import type { PropsWithChildren } from 'react';
 
+import { MatchDecisionRepositoryProvider } from '@/entities/match-decision';
+import { MatchIntentRepositoryProvider } from '@/entities/match-intent';
 import {
   AssetResolverProvider,
   usePreloadAssetSurface,
@@ -23,24 +25,32 @@ export function ApplicationServiceProviders({
   return (
     <AssetResolverProvider resolver={services.assetResolver}>
       <ApplicationAssetPreloader />
-      <DiscoverRepositoryProvider repository={services.discoverRepository}>
-        <HomeRepositoryProvider repository={services.homeRepository}>
-          <MessagesServicesProvider
-            messageTransport={services.messageTransport}
-            repository={services.messageRepository}
-          >
-            <NotificationRepositoryProvider
-              repository={services.notificationRepository}
-            >
-              <ProfileReadRepositoryProvider
-                repository={services.profileRepository}
+      <MatchIntentRepositoryProvider
+        repository={services.matchIntentRepository}
+      >
+        <MatchDecisionRepositoryProvider
+          repository={services.matchDecisionRepository}
+        >
+          <DiscoverRepositoryProvider repository={services.discoverRepository}>
+            <HomeRepositoryProvider repository={services.homeRepository}>
+              <MessagesServicesProvider
+                messageTransport={services.messageTransport}
+                repository={services.messageRepository}
               >
-                {children}
-              </ProfileReadRepositoryProvider>
-            </NotificationRepositoryProvider>
-          </MessagesServicesProvider>
-        </HomeRepositoryProvider>
-      </DiscoverRepositoryProvider>
+                <NotificationRepositoryProvider
+                  repository={services.notificationRepository}
+                >
+                  <ProfileReadRepositoryProvider
+                    repository={services.profileRepository}
+                  >
+                    {children}
+                  </ProfileReadRepositoryProvider>
+                </NotificationRepositoryProvider>
+              </MessagesServicesProvider>
+            </HomeRepositoryProvider>
+          </DiscoverRepositoryProvider>
+        </MatchDecisionRepositoryProvider>
+      </MatchIntentRepositoryProvider>
     </AssetResolverProvider>
   );
 }
