@@ -1,7 +1,7 @@
 const fs = require('node:fs');
 
 const migration = fs.readFileSync(
-  'supabase/migrations/202607140011_match_set_authority_v1.sql',
+  'supabase/migrations/202607140020_match_set_authority_v1.sql',
   'utf8',
 );
 const databaseTest = fs.readFileSync(
