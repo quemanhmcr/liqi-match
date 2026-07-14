@@ -5,10 +5,15 @@ const migrationPath =
 const testPath = 'supabase/tests/database/conversation_reliability_v1.test.sql';
 const mobileSurfacePath =
   'supabase/migrations/202607140008_conversation_mobile_surface_v1.sql';
+const dispatchMigrationPath =
+  'supabase/migrations/202607140011_conversation_bootstrap_dispatch_v1.sql';
 const accountDeletePath = 'supabase/functions/account-delete/handler.ts';
 const migration = fs.readFileSync(migrationPath, 'utf8');
 const mobileSurface = fs.existsSync(mobileSurfacePath)
   ? fs.readFileSync(mobileSurfacePath, 'utf8')
+  : '';
+const dispatchMigration = fs.existsSync(dispatchMigrationPath)
+  ? fs.readFileSync(dispatchMigrationPath, 'utf8')
   : '';
 const databaseTest = fs.existsSync(testPath)
   ? fs.readFileSync(testPath, 'utf8')
@@ -209,6 +214,21 @@ requireInvariant(
   !/foregroundPolicy/i.test(migration) &&
     /authoritativeUnreadCount/i.test(migration),
   'notification requests must provide authoritative unread without deciding foreground suppression',
+);
+requireInvariant(
+  /pg_cron_required/i.test(dispatchMigration) &&
+    /cron\.schedule\([\s\S]*conversation-bootstrap-v1[\s\S]*5 seconds/i.test(
+      dispatchMigration,
+    ) &&
+    /dispatch_conversation_bootstraps_v1\(100\)/i.test(dispatchMigration),
+  'production bootstrap must have a fail-fast five-second Supabase Cron dispatcher',
+);
+requireInvariant(
+  /bootstrap_enabled = true/i.test(dispatchMigration) &&
+    /reads_enabled = true/i.test(dispatchMigration) &&
+    /writes_enabled = true/i.test(dispatchMigration) &&
+    /realtime_enabled = true/i.test(dispatchMigration),
+  'Conversation v1 production cutover flags must be explicitly enabled',
 );
 requireInvariant(
   /conversation_participants_v1/i.test(mobileSurface) &&
