@@ -1,3 +1,5 @@
+import { createRetryableLazyModuleLoader } from '@/shared/runtime/retryable-lazy-module';
+
 import type { AuthSession, OAuthProvider } from './auth-session';
 
 export { AuthError } from './auth-errors';
@@ -11,15 +13,9 @@ export type {
 const REFRESH_SKEW_SECONDS = 60;
 
 type AuthRuntime = typeof import('./supabase-auth-runtime');
-let runtimePromise: Promise<AuthRuntime> | null = null;
-
-function loadRuntime(): Promise<AuthRuntime> {
-  runtimePromise ??= import('./supabase-auth-runtime').catch((error) => {
-    runtimePromise = null;
-    throw error;
-  });
-  return runtimePromise;
-}
+const loadRuntime = createRetryableLazyModuleLoader<AuthRuntime>(
+  () => import('./supabase-auth-runtime'),
+);
 
 export async function signInWithOAuthProvider(
   provider: OAuthProvider,
