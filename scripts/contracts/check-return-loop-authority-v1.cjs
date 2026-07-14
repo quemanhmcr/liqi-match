@@ -23,6 +23,12 @@ const conversationProjectionRepair = fs.readFileSync(
   conversationProjectionRepairPath,
   'utf8',
 );
+const attentionOrderingRepairPath =
+  'supabase/migrations/202607140051_protect_return_loop_attention_ordering_v1.sql';
+const attentionOrderingRepair = fs.readFileSync(
+  attentionOrderingRepairPath,
+  'utf8',
+);
 const homeApiRepository = fs.readFileSync(
   'src/features/home/services/api-home-repository.ts',
   'utf8',
@@ -213,6 +219,24 @@ requireInvariant(
       conversationProjectionRepair,
     ),
   'Forward conversation projection repair must separate PL/pgSQL values from ON CONFLICT columns.',
+);
+requireInvariant(
+  /last_attention_priority smallint not null default 0/i.test(
+    attentionOrderingRepair,
+  ) &&
+    /returning true into attention_projection_applied/i.test(
+      attentionOrderingRepair,
+    ) &&
+    /if not coalesce\(attention_projection_applied, false\) then[\s\S]*foreground_policy_value := 'suppress_push'/i.test(
+      attentionOrderingRepair,
+    ) &&
+    /last_attention_priority[\s\S]*2,[\s\S]*on conflict \(player_id, conversation_id\)/i.test(
+      attentionOrderingRepair,
+    ) &&
+    /out-of-order attention persists history without waking the user through stale push/i.test(
+      databaseTest,
+    ),
+  'Attention ordering must atomically preserve read precedence and suppress stale push callbacks.',
 );
 requireInvariant(
   /create or replace function private\.consume_return_loop_event_without_suspension_v1\(p_event jsonb\)/i.test(

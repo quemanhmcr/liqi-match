@@ -45,6 +45,7 @@ const sqlPaths = [
   'supabase/migrations/202607140048_repair_canonical_match_decision_v1.sql',
   'supabase/migrations/202607140049_repair_push_device_registration_v1.sql',
   'supabase/migrations/202607140050_repair_return_loop_conversation_projection_v1.sql',
+  'supabase/migrations/202607140051_protect_return_loop_attention_ordering_v1.sql',
   'supabase/tests/database/production_match_authority_v1.test.sql',
   'supabase/tests/database/production_match_loop_v1.test.sql',
   'supabase/tests/database/home_match_facts_v1.test.sql',

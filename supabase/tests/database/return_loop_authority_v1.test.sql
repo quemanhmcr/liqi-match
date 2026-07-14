@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(47);
+select plan(48);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -213,6 +213,16 @@ select is((select profile_version::integer from private.home_profile_projection_
 select is((select source_event_id::text from private.home_profile_projection_watermarks_v1 where player_id = '20000000-0000-4000-8000-000000000401'), '80000000-0000-4000-8000-000000000411', 'profile invalidation records source EventId');
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'delayed_message_notification')) ->> 'processed')::boolean, 'delayed attention event is persisted');
 select is((select unread_count from private.home_conversation_projection_v1 where player_id = '20000000-0000-4000-8000-000000000402'), 0, 'out-of-order attention cannot regress unread');
+select is(
+  (
+    select job.status::text
+    from private.notification_push_jobs_v1 as job
+    join public.notifications_v1 as notification on notification.id = job.notification_id
+    where notification.source_event_id = '80000000-0000-4000-8000-000000000406'
+  ),
+  'suppressed',
+  'out-of-order attention persists history without waking the user through stale push'
+);
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
