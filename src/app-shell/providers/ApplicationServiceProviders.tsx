@@ -9,6 +9,7 @@ import {
   usePreloadAssetSurface,
 } from '@/entities/media-asset';
 import { NotificationRepositoryProvider } from '@/entities/notifications';
+import { RelationshipCapabilitiesProvider } from '@/entities/social-relationship';
 import { DiscoverRepositoryProvider } from '@/features/discover';
 import { HomeRepositoryProvider } from '@/features/home';
 import { MessagesServicesProvider } from '@/features/messages';
@@ -42,17 +43,22 @@ export function ApplicationServiceProviders({
               >
                 <HomeRepositoryProvider repository={services.homeRepository}>
                   <MessagesServicesProvider
+                    evidenceProvider={services.messageReportEvidenceProvider}
                     messageTransport={services.messageTransport}
                     repository={services.messageRepository}
                   >
                     <NotificationRepositoryProvider
                       repository={services.notificationRepository}
                     >
-                      <ProfileReadRepositoryProvider
-                        repository={services.profileRepository}
+                      <RelationshipCapabilitiesProvider
+                        repository={services.relationshipRepository}
                       >
-                        {children}
-                      </ProfileReadRepositoryProvider>
+                        <ProfileReadRepositoryProvider
+                          repository={services.profileRepository}
+                        >
+                          {children}
+                        </ProfileReadRepositoryProvider>
+                      </RelationshipCapabilitiesProvider>
                     </NotificationRepositoryProvider>
                   </MessagesServicesProvider>
                 </HomeRepositoryProvider>

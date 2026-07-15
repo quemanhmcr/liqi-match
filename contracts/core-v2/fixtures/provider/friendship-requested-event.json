@@ -1,0 +1,20 @@
+{
+  "eventId": "43000000-0000-4000-8000-000000000001",
+  "eventType": "friendship.requested.v2",
+  "eventVersion": 2,
+  "aggregateType": "social_relationship",
+  "aggregateId": "41000000-0000-4000-8000-000000000001",
+  "aggregateVersion": 1,
+  "actorPlayerId": "20000000-0000-4000-8000-000000000001",
+  "correlationId": "44000000-0000-4000-8000-000000000001",
+  "causationId": null,
+  "occurredAt": "2026-07-14T09:30:00.000Z",
+  "payload": {
+    "friendshipRequestId": "42000000-0000-4000-8000-000000000001",
+    "requesterPlayerId": "20000000-0000-4000-8000-000000000001",
+    "recipientPlayerId": "20000000-0000-4000-8000-000000000002",
+    "requestState": "pending",
+    "friendshipLabel": "pending_outgoing",
+    "expiresAt": "2026-08-13T09:30:00.000Z"
+  }
+}

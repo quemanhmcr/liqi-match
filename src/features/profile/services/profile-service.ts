@@ -5,6 +5,7 @@ import {
 } from '@/shared/services/media-upload';
 import type { AssetKey } from '@/entities/media-asset';
 import type { AuthSession } from '@/shared/auth/auth-service';
+import { VisibleProfileIdentityV2Schema } from '@/shared/contracts/core-v2';
 import { env } from '@/shared/config/env';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
@@ -155,6 +156,7 @@ export type ProfileViewModel = {
   favoriteHeroes: ProfileFavoriteHero[];
   gender: ProfileGender;
   id: string;
+  playerId: string;
   playStyleTags: string[];
   rankName?: string;
   region?: string;
@@ -447,13 +449,22 @@ export async function uploadEditableProfileMedia(
 }
 
 export async function fetchProfileView(input: {
+  identityId?: string;
   session: AuthSession;
-  userId?: string;
 }): Promise<ProfileViewModel | null> {
-  const targetUserId = input.userId ?? input.session.user.id;
+  const mapping = VisibleProfileIdentityV2Schema.parse(
+    await supabaseRest<unknown>('rpc/resolve_visible_profile_identity_v2', {
+      body: {
+        p_target_player_id:
+          input.identityId ?? input.session.principal?.playerId ?? null,
+      },
+      method: 'POST',
+      session: input.session,
+    }),
+  );
 
   const rows = await supabaseRest<ProfileRow[]>(
-    `profiles?id=eq.${encodeURIComponent(targetUserId)}&select=${profileSelect}&limit=1`,
+    `profiles?id=eq.${encodeURIComponent(mapping.legacyProfileId)}&select=${profileSelect}&limit=1`,
     { session: input.session },
   );
 
@@ -467,7 +478,7 @@ export async function fetchProfileView(input: {
     row.profile_roles?.map((item) => first(item.roles)?.name) ?? [],
   );
   const heroRows = await fetchProfileHeroRows(input.session, row.id);
-  const isSelf = targetUserId === input.session.user.id;
+  const isSelf = mapping.playerId === input.session.principal?.playerId;
   const avatarFallbackUrl = isSelf
     ? avatarUrlFromSession(input.session)
     : undefined;
@@ -499,6 +510,7 @@ export async function fetchProfileView(input: {
     favoriteHeroes: buildFavoriteHeroes(heroRows, false, mediaSummary),
     gender,
     id: row.id,
+    playerId: mapping.playerId,
     playStyleTags: buildPlayStyleTags(habits),
     rankName: first(gameProfile?.ranks)?.name ?? undefined,
     region: formatRegion(gameProfile?.server_region),
@@ -534,6 +546,7 @@ export function buildPreviewProfile(
     })),
     gender: 'male',
     id: userId,
+    playerId: inputPlayerId(session, userId),
     playStyleTags: [...profileMockPlayStyleTags],
     rankName: 'Cao Thủ',
     region: 'Global',
@@ -560,6 +573,7 @@ function buildMinhAnhPreviewProfile(): ProfileViewModel {
     })),
     gender: 'female',
     id: profileMockMinhAnhUserId,
+    playerId: inputPlayerId(null, profileMockMinhAnhUserId),
     playStyleTags: [...profileMockPlayStyleTags],
     rankName: 'Cao Thủ',
     region: 'Global',
@@ -570,6 +584,26 @@ function buildMinhAnhPreviewProfile(): ProfileViewModel {
     statusValue: 'ready',
     verified: true,
   };
+}
+
+function inputPlayerId(session: AuthSession | null, identity: string) {
+  return session?.principal?.playerId ?? deterministicProfilePlayerId(identity);
+}
+
+function deterministicProfilePlayerId(identity: string) {
+  const hex = [0, 1, 2, 3]
+    .map((salt) => fnv1a32(`${salt}:${identity}`).toString(16).padStart(8, '0'))
+    .join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
+}
+
+function fnv1a32(value: string) {
+  let hash = 0x811c9dc5;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 0x01000193);
+  }
+  return hash >>> 0;
 }
 
 function isMinhAnhMockProfile(userId: string | undefined) {

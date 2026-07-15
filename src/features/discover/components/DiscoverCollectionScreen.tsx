@@ -861,7 +861,11 @@ function CollectionProfileCard({
       return;
     }
     openProfile(card.id);
-    router.push(appRoutes.profile.detail(card.id));
+    router.push(
+      card.playerId
+        ? appRoutes.profile.playerDetail(card.playerId)
+        : appRoutes.profile.detail(card.id),
+    );
   };
   return (
     <LiquidCard

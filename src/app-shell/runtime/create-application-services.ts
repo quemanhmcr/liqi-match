@@ -24,6 +24,10 @@ import {
 } from '@/entities/notifications';
 import { createProductionSimulationRuntime } from '@/entities/simulation';
 import {
+  InMemorySocialRelationshipRepository,
+  SupabaseSocialRelationshipRepository,
+} from '@/entities/social-relationship';
+import {
   ApiDiscoverRepository,
   createSimulationDiscoverRepository,
 } from '@/features/discover';
@@ -108,6 +112,7 @@ export function createSimulationApplicationServices(
     matchDecisionRepository: new InMemoryMatchDecisionRepository(),
     matchIntentRepository: new InMemoryMatchIntentRepository(),
     matchSetRepository: new InMemoryMatchSetRepository(),
+    messageReportEvidenceProvider: null,
     messageRepository: messages,
     messageTransport: messages.transport,
     mode: 'simulation',
@@ -116,6 +121,7 @@ export function createSimulationApplicationServices(
         runtime: simulationRuntime,
       }),
     profileRepository: createSimulationProfileReadRepository(simulationRuntime),
+    relationshipRepository: new InMemorySocialRelationshipRepository(),
     scenarioControl: simulationRuntime,
     simulationRuntime,
   };
@@ -137,11 +143,13 @@ export function createApiApplicationServices(): ApiApplicationServices {
     matchDecisionRepository: new SupabaseMatchDecisionRepository(),
     matchIntentRepository: new SupabaseMatchIntentRepository(),
     matchSetRepository: new SupabaseMatchSetRepository(),
+    messageReportEvidenceProvider: messages,
     messageRepository: messages,
     messageTransport: messages,
     mode: 'api',
     notificationRepository: createApiNotificationInboxRepository(),
     profileRepository: createApiProfileRepository(),
+    relationshipRepository: new SupabaseSocialRelationshipRepository(),
     scenarioControl: null,
     simulationRuntime: null,
   };

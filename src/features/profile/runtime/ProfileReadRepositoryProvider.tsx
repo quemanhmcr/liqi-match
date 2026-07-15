@@ -5,8 +5,9 @@ import type { AuthSession } from '@/shared/auth/auth-service';
 import type { ProfileViewModel } from '../services/profile-service';
 
 export type GetProfileInput = {
+  /** Canonical PlayerId or a temporary legacy/simulation route identity. */
+  identityId?: string;
   session: AuthSession;
-  userId?: string;
 };
 
 export interface ProfileReadRepository {

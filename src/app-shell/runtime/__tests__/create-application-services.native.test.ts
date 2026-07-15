@@ -8,6 +8,10 @@ import {
 
 import { ApiNotificationInboxRepository } from '@/entities/notifications';
 import {
+  InMemorySocialRelationshipRepository,
+  SupabaseSocialRelationshipRepository,
+} from '@/entities/social-relationship';
+import {
   createApiApplicationServices,
   createSimulationApplicationServices,
 } from '../create-application-services';
@@ -45,8 +49,16 @@ describe('application service composition', () => {
     );
     expect(first.discoverRepository).not.toBe(second.discoverRepository);
     expect(first.messageRepository).not.toBe(second.messageRepository);
+    expect(first.messageReportEvidenceProvider).toBeNull();
+    expect(second.messageReportEvidenceProvider).toBeNull();
     expect(first.notificationRepository).not.toBe(
       second.notificationRepository,
+    );
+    expect(first.relationshipRepository).toBeInstanceOf(
+      InMemorySocialRelationshipRepository,
+    );
+    expect(first.relationshipRepository).not.toBe(
+      second.relationshipRepository,
     );
 
     const participantKeys = first.simulationRuntime.resetRegistry
@@ -107,7 +119,7 @@ describe('application service composition', () => {
 
     const profile = await services.profileRepository.getProfile({
       session: simulationSession(),
-      userId: discoverPlayer.profileId,
+      identityId: discoverPlayer.profileId,
     });
 
     expect(profile).not.toBeNull();
@@ -190,6 +202,9 @@ describe('application service composition', () => {
     expect(services.mode).toBe('api');
     expect(services.scenarioControl).toBeNull();
     expect(services.simulationRuntime).toBeNull();
+    expect(services.messageReportEvidenceProvider).toBe(
+      services.messageRepository,
+    );
     await expect(
       services.messageRepository.listConversations(),
     ).rejects.toMatchObject({
@@ -199,6 +214,9 @@ describe('application service composition', () => {
     });
     expect(services.notificationRepository).toBeInstanceOf(
       ApiNotificationInboxRepository,
+    );
+    expect(services.relationshipRepository).toBeInstanceOf(
+      SupabaseSocialRelationshipRepository,
     );
   });
 });

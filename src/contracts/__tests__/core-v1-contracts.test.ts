@@ -11,6 +11,7 @@ import {
   MatchIntentLifecycleProjectionReceiptV1Schema,
   MatchIntentSnapshotV1Schema,
   NotificationRequestedEventV1Schema,
+  NotificationV1Schema,
   PlayerDecisionReceiptV1Schema,
   SetDiscoveryPageV1Schema,
   SetInviteCreatedEventV1Schema,
@@ -96,6 +97,44 @@ describe('core-v1 executable contracts', () => {
       read('consumer', 'conversation-bootstrap-requested.json'),
     );
     expect(event.data.matchId).toBe(event.aggregateId);
+  });
+
+  it('publishes friendship notification profile deep links without stale action payloads', () => {
+    const requested = NotificationV1Schema.parse(
+      read('provider', 'friendship-requested-notification.json'),
+    );
+    const accepted = NotificationV1Schema.parse(
+      read('provider', 'friendship-accepted-notification.json'),
+    );
+    const projected = NotificationRequestedEventV1Schema.parse(
+      read('consumer', 'friendship-notification-requested.json'),
+    );
+
+    expect(requested.deepLink.target).toBe('profile');
+    expect(accepted.deepLink.target).toBe('profile');
+    expect(projected.data.reasonCode).toBe('friendship_requested');
+    expect(projected.data.target).not.toHaveProperty('friendshipRequestId');
+  });
+
+  it('rejects a friendship notification projected to a non-profile target', () => {
+    const event = read(
+      'consumer',
+      'friendship-notification-requested.json',
+    ) as {
+      data: Record<string, unknown>;
+    };
+    expect(() =>
+      NotificationRequestedEventV1Schema.parse({
+        ...event,
+        data: {
+          ...event.data,
+          target: {
+            kind: 'match',
+            matchId: '50000000-0000-4000-8000-000000000001',
+          },
+        },
+      }),
+    ).toThrow('friendship_requested requires a profile target');
   });
 
   it('publishes the Mission 4 match and notification consumer fixtures', () => {

@@ -14,6 +14,8 @@ export const NotificationKindV1Schema = z.enum([
   'message_received',
   'set_invite',
   'join_request',
+  'friendship_requested',
+  'friendship_accepted',
   'system',
 ]);
 
@@ -108,6 +110,8 @@ export const NotificationV1Schema = z
     }
 
     const expectedTarget = {
+      friendship_accepted: 'profile',
+      friendship_requested: 'profile',
       join_request: 'set',
       match_created: 'match',
       message_received: 'conversation',

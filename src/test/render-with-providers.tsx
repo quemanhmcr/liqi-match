@@ -20,10 +20,12 @@ type ApplicationServiceOverrides = Partial<
     | 'assetResolver'
     | 'discoverRepository'
     | 'homeRepository'
+    | 'messageReportEvidenceProvider'
     | 'messageRepository'
     | 'messageTransport'
     | 'notificationRepository'
     | 'profileRepository'
+    | 'relationshipRepository'
   >
 >;
 

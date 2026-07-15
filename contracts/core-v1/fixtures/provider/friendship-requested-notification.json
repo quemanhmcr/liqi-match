@@ -1,0 +1,13 @@
+{
+  "notificationId": "90000000-0000-4000-8000-000000001310",
+  "recipientPlayerId": "20000000-0000-4000-8000-000000000002",
+  "kind": "friendship_requested",
+  "sourceEventId": "80000000-0000-4000-8000-000000001310",
+  "occurredAt": "2026-07-14T13:10:00.000Z",
+  "seenAt": null,
+  "readAt": null,
+  "deepLink": {
+    "target": "profile",
+    "playerId": "20000000-0000-4000-8000-000000000001"
+  }
+}

@@ -39,7 +39,7 @@ describe('Production Simulation cross-feature acceptance', () => {
 
     const profile = await harness.services.profileRepository.getProfile({
       session: harness.session,
-      userId: actor.profileId,
+      identityId: actor.profileId,
     });
     const conversation =
       await harness.services.messageRepository.getConversation(

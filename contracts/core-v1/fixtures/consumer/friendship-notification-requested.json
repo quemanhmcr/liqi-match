@@ -1,0 +1,17 @@
+{
+  "eventId": "80000000-0000-4000-8000-000000001312",
+  "eventType": "notification.requested.v1",
+  "aggregateType": "player",
+  "aggregateId": "20000000-0000-4000-8000-000000000002",
+  "occurredAt": "2026-07-14T13:12:00.000Z",
+  "correlationId": "70000000-0000-4000-8000-000000001312",
+  "causationId": "80000000-0000-4000-8000-000000001310",
+  "data": {
+    "recipientPlayerId": "20000000-0000-4000-8000-000000000002",
+    "reasonCode": "friendship_requested",
+    "target": {
+      "kind": "profile",
+      "playerId": "20000000-0000-4000-8000-000000000001"
+    }
+  }
+}

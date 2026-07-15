@@ -1,0 +1,72 @@
+{
+  "contractVersion": 2,
+  "items": [
+    {
+      "blockedAt": "2026-07-14T16:00:00.000Z",
+      "player": {
+        "avatarAssetId": null,
+        "displayName": "Blocked Player",
+        "playerId": "20000000-0000-4000-8000-000000000002",
+        "profileId": "30000000-0000-4000-8000-000000000002"
+      },
+      "reasonCode": "user_safety",
+      "relationship": {
+        "block": {
+          "targetBlocksViewer": false,
+          "viewerBlocksTarget": true
+        },
+        "capabilities": {
+          "blocked": true,
+          "canAcceptFriendship": false,
+          "canBlock": false,
+          "canCancelFriendship": false,
+          "canDeclineFriendship": false,
+          "canDiscover": false,
+          "canInviteToSession": false,
+          "canMessage": false,
+          "canMute": false,
+          "canRemoveFriendship": false,
+          "canReport": true,
+          "canRequestFriendship": false,
+          "canUnblock": true,
+          "canUnmute": false,
+          "canViewConversation": false,
+          "canViewPresence": false,
+          "canViewProfile": false,
+          "friendshipLabel": "none",
+          "muted": false
+        },
+        "contractVersion": 2,
+        "friendship": {
+          "acceptedAt": null,
+          "label": "none",
+          "requestId": null,
+          "requestState": null,
+          "requestVersion": null,
+          "state": "none"
+        },
+        "mute": {
+          "viewerMutedTarget": false
+        },
+        "relationshipId": "40000000-0000-4000-8000-000000000001",
+        "targetPlayerId": "20000000-0000-4000-8000-000000000002",
+        "targetPrivacy": {
+          "contractVersion": 2,
+          "friendshipRequests": "everyone",
+          "playerId": "20000000-0000-4000-8000-000000000002",
+          "presenceVisibility": "friends",
+          "profileVisibility": "everyone",
+          "sessionInvites": "friends",
+          "trustVisibility": "friends",
+          "updatedAt": "2026-07-14T16:00:00.000Z",
+          "version": 1
+        },
+        "updatedAt": "2026-07-14T16:00:00.000Z",
+        "version": 3,
+        "viewerPlayerId": "20000000-0000-4000-8000-000000000001"
+      }
+    }
+  ],
+  "nextCursor": null,
+  "totalCount": 1
+}

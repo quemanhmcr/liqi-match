@@ -139,6 +139,7 @@ function mapMatch(
     kind,
     meta: matchMeta(match.status),
     name: match.matchedPlayer.displayName,
+    playerId: match.matchedPlayer.playerId,
     profileId: match.matchedPlayer.profileId,
     roleNames: [],
     status,

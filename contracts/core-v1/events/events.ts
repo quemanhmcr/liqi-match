@@ -128,38 +128,62 @@ export const NotificationRequestedEventV1Schema =
     eventType: z.literal('notification.requested.v1'),
     aggregateType: z.literal('player'),
     aggregateId: PlayerIdSchema,
-    data: z.object({
-      recipientPlayerId: PlayerIdSchema,
-      reasonCode: z.enum([
-        'match_created',
-        'message_received',
-        'set_invite',
-        'set_invite_created',
-        'set_join_requested',
-      ]),
-      target: z.discriminatedUnion('kind', [
-        z.object({ kind: z.literal('match'), matchId: MatchIdSchema }),
-        z.object({ kind: z.literal('set'), setId: SetIdSchema }),
-        z.object({
-          kind: z.literal('set_invite'),
-          inviteId: SetInviteIdSchema,
-          setId: MatchSetIdSchema,
-        }),
-        z.object({
-          kind: z.literal('set_join_request'),
-          joinRequestId: SetJoinRequestIdSchema,
-          setId: MatchSetIdSchema,
-        }),
-        z.object({
-          kind: z.literal('conversation'),
-          conversationId: ConversationIdSchema,
-          messageId: z.string().uuid(),
-          senderPlayerId: PlayerIdSchema,
-          authoritativeUnreadCount: z.number().int().positive(),
-          foregroundPolicy: z.enum(['suppress_push', 'allow_push']).optional(),
-        }),
-      ]),
-    }),
+    data: z
+      .object({
+        recipientPlayerId: PlayerIdSchema,
+        reasonCode: z.enum([
+          'match_created',
+          'message_received',
+          'set_invite',
+          'set_invite_created',
+          'set_join_requested',
+          'friendship_requested',
+          'friendship_accepted',
+        ]),
+        target: z.discriminatedUnion('kind', [
+          z.object({ kind: z.literal('match'), matchId: MatchIdSchema }),
+          z.object({ kind: z.literal('profile'), playerId: PlayerIdSchema }),
+          z.object({ kind: z.literal('set'), setId: SetIdSchema }),
+          z.object({
+            kind: z.literal('set_invite'),
+            inviteId: SetInviteIdSchema,
+            setId: MatchSetIdSchema,
+          }),
+          z.object({
+            kind: z.literal('set_join_request'),
+            joinRequestId: SetJoinRequestIdSchema,
+            setId: MatchSetIdSchema,
+          }),
+          z.object({
+            kind: z.literal('conversation'),
+            conversationId: ConversationIdSchema,
+            messageId: z.string().uuid(),
+            senderPlayerId: PlayerIdSchema,
+            authoritativeUnreadCount: z.number().int().positive(),
+            foregroundPolicy: z
+              .enum(['suppress_push', 'allow_push'])
+              .optional(),
+          }),
+        ]),
+      })
+      .superRefine((data, context) => {
+        const expectedTarget = {
+          friendship_accepted: 'profile',
+          friendship_requested: 'profile',
+          match_created: 'match',
+          message_received: 'conversation',
+          set_invite: 'set',
+          set_invite_created: 'set_invite',
+          set_join_requested: 'set_join_request',
+        }[data.reasonCode];
+        if (data.target.kind !== expectedTarget) {
+          context.addIssue({
+            code: 'custom',
+            message: `${data.reasonCode} requires a ${expectedTarget} target`,
+            path: ['target'],
+          });
+        }
+      }),
   });
 
 export const ConversationCreatedEventV1Schema =

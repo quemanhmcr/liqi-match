@@ -161,6 +161,22 @@ function mapNotification(notification: NotificationV1): NotificationRecord {
         kind: 'join-request',
         payload: { setId: notification.deepLink.setId },
       };
+    case 'friendship_requested':
+      if (notification.deepLink.target !== 'profile')
+        return neverNotification();
+      return {
+        ...base,
+        kind: 'friendship-requested',
+        payload: { requesterPlayerId: notification.deepLink.playerId },
+      };
+    case 'friendship_accepted':
+      if (notification.deepLink.target !== 'profile')
+        return neverNotification();
+      return {
+        ...base,
+        kind: 'friendship-accepted',
+        payload: { friendPlayerId: notification.deepLink.playerId },
+      };
     case 'system':
       return {
         ...base,

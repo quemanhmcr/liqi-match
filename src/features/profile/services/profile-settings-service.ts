@@ -1,8 +1,6 @@
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
-import { profileMediaUrl } from './profile-service';
-
 type ProfileSettingsProfileRow = {
   id: string;
   is_discoverable: boolean;
@@ -12,28 +10,10 @@ type ProfileSettingsHabitRow = {
   media_summary: unknown | null;
 };
 
-type BlockedProfileRow = {
-  avatar_media_id: string | null;
-  blocked_id: string;
-  created_at: string;
-  deleted_at: string | null;
-  display_name: string | null;
-  reason: string | null;
-};
-
 export type ProfileSettingsState = {
   allowProfileShare: boolean;
-  blockedCount: number;
   isDiscoverable: boolean;
   showWinRate: boolean;
-};
-
-export type BlockedProfile = {
-  avatarUrl?: string;
-  blockedId: string;
-  createdAt: string;
-  displayName: string;
-  reason?: string;
 };
 
 const settingsDefaults = {
@@ -45,7 +25,7 @@ export async function fetchProfileSettings(
   session: AuthSession,
 ): Promise<ProfileSettingsState> {
   const profileId = session.user.id;
-  const [profiles, habits, blocks] = await Promise.all([
+  const [profiles, habits] = await Promise.all([
     supabaseRest<ProfileSettingsProfileRow[]>(
       `profiles?select=id,is_discoverable&id=eq.${encodeURIComponent(profileId)}&limit=1`,
       { session },
@@ -54,17 +34,12 @@ export async function fetchProfileSettings(
       `profile_habits?select=media_summary&profile_id=eq.${encodeURIComponent(profileId)}&limit=1`,
       { session },
     ).catch(() => [] as ProfileSettingsHabitRow[]),
-    supabaseRest<{ blocked_id: string }[]>(
-      `blocks?select=blocked_id&blocker_id=eq.${encodeURIComponent(profileId)}`,
-      { session },
-    ).catch(() => [] as { blocked_id: string }[]),
   ]);
 
   const settings = settingsFromMediaSummary(habits[0]?.media_summary);
 
   return {
     allowProfileShare: settings.allow_profile_share,
-    blockedCount: blocks.length,
     isDiscoverable: profiles[0]?.is_discoverable ?? true,
     showWinRate: settings.show_win_rate,
   };
@@ -124,37 +99,6 @@ export async function updateProfileSoftSettings(
       prefer: 'return=minimal',
       session,
     },
-  );
-}
-
-export async function fetchBlockedProfiles(
-  session: AuthSession,
-): Promise<BlockedProfile[]> {
-  const rows = await supabaseRest<BlockedProfileRow[]>(
-    'rpc/list_blocked_profiles',
-    { body: {}, method: 'POST', session },
-  );
-
-  return rows.map((row) => ({
-    avatarUrl: profileMediaUrl(row.avatar_media_id),
-    blockedId: row.blocked_id,
-    createdAt: row.created_at,
-    displayName:
-      row.deleted_at || !row.display_name
-        ? `Người chơi ${row.blocked_id.slice(0, 8)}`
-        : row.display_name,
-    reason: row.reason ?? undefined,
-  }));
-}
-
-export async function unblockProfile(session: AuthSession, blockedId: string) {
-  await supabaseRest(
-    [
-      'blocks?',
-      `blocker_id=eq.${encodeURIComponent(session.user.id)}`,
-      `blocked_id=eq.${encodeURIComponent(blockedId)}`,
-    ].join('&'),
-    { method: 'DELETE', prefer: 'return=minimal', session },
   );
 }
 
