@@ -31,20 +31,39 @@ insert into auth.users (
 );
 insert into public.profiles (id, display_name)
 values ('01000000-0000-4000-8000-000000000951', 'Trust Cutover');
-insert into public.profile_habits (profile_id, media_summary)
+insert into public.profile_habits (
+  profile_id,
+  decision_style,
+  session_length,
+  seriousness,
+  feedback_style,
+  loss_response,
+  comeback_response,
+  media_summary
+)
 values (
   '01000000-0000-4000-8000-000000000951',
+  'team_consensus',
+  'medium',
+  'balanced',
+  'direct',
+  'review',
+  'reset',
   '{"profile_stats":{"matches":99,"rating":4.9,"reputation":99,"win_rate":88},"profile_status":"ready"}'::jsonb
 );
 
 -- Simulate the migration backfill for a row inserted after migration execution.
 update public.profile_habits
-set media_summary = jsonb_set(
-  media_summary,
-  '{unverified_legacy,profile_stats}',
-  media_summary -> 'profile_stats',
-  true
-)
+set media_summary = coalesce(media_summary, '{}'::jsonb)
+  || jsonb_build_object(
+    'unverified_legacy',
+    case
+      when jsonb_typeof(media_summary -> 'unverified_legacy') = 'object'
+        then media_summary -> 'unverified_legacy'
+      else '{}'::jsonb
+    end
+    || jsonb_build_object('profile_stats', media_summary -> 'profile_stats')
+  )
 where profile_id = '01000000-0000-4000-8000-000000000951';
 
 select is(

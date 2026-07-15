@@ -249,9 +249,9 @@ select is(
   'participant B projection includes the verified session'
 );
 select is(
-  (select jsonb_array_length(receipt -> 'eventIds')
+  (select jsonb_array_length(response -> 'eventIds')
     from private.command_receipts_v1
-    where player_id = '20000000-0000-4000-8000-000000000922'
+    where account_id = '01000000-0000-4000-8000-000000000922'
       and command_name = 'confirm_session_participation_v2'
       and idempotency_key = '49000000-0000-4000-8000-000000000003'),
   7,
@@ -305,9 +305,9 @@ select is(
   'endorsement kinds create two immutable ledger facts'
 );
 select is(
-  (select jsonb_array_length(receipt -> 'eventIds')
+  (select jsonb_array_length(response -> 'eventIds')
     from private.command_receipts_v1
-    where player_id = '20000000-0000-4000-8000-000000000921'
+    where account_id = '01000000-0000-4000-8000-000000000921'
       and command_name = 'submit_player_endorsement_v2'
       and idempotency_key = '49000000-0000-4000-8000-000000000004'),
   4,
@@ -474,7 +474,9 @@ reset role;
 
 update public.players
 set lifecycle_state = 'suspended',
-    lifecycle_version = lifecycle_version + 1
+    lifecycle_version = lifecycle_version + 1,
+    discoverable = false,
+    messaging_allowed = false
 where id = '20000000-0000-4000-8000-000000000923';
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);

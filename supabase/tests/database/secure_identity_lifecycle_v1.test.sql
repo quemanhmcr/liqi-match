@@ -728,15 +728,14 @@ select is(
       'bio', profiles.bio,
       'genderId', habits.media_summary #>> '{profile_basics,gender}',
       'status', habits.media_summary->>'profile_status',
-      'matches', (habits.media_summary #>> '{profile_stats,matches}')::integer,
-      'winRate', (habits.media_summary #>> '{profile_stats,win_rate}')::integer
+      'hasEditableStats', habits.media_summary ? 'profile_stats'
     )
     from public.profiles profiles
     join public.profile_habits habits on habits.profile_id = profiles.id
     where profiles.id = '01000000-0000-4000-8000-000000000101'
   ),
-  '{"displayName":"Versioned Player","bio":"Atomic profile identity","genderId":"hidden","status":"ready","matches":320,"winRate":61}'::jsonb,
-  'profile identity command updates the legacy projection atomically'
+  '{"displayName":"Versioned Player","bio":"Atomic profile identity","genderId":"hidden","status":"ready","hasEditableStats":false}'::jsonb,
+  'profile identity command updates editable projection fields without recreating trusted stats'
 );
 
 select is(
