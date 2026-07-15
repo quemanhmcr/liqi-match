@@ -2,7 +2,7 @@
 
 Date: 2026-07-15 (Asia/Bangkok)
 Owner: Senior 3 — Conversation and Live Coordination
-Branch: `ready/senior-3`
+Branch: `ready/senior-3-conversation-v2`
 
 ## Test project
 
@@ -40,9 +40,18 @@ The cloud run found issues that the static SQL parser could not detect:
    uses deterministic `array_agg(player_id order by player_id)` and verifies
    exactly two distinct PlayerIds.
 
-Every failed migration attempt rolled back transactionally. After the fixes,
-all 79 repository migrations applied to the dedicated cloud database and a
-subsequent dry run reported the remote database up to date.
+Every failed migration attempt rolled back transactionally. At the initial
+fresh-project checkpoint, all 79 repository migrations applied to the dedicated
+cloud database and a subsequent dry run reported the remote database up to date.
+
+After Senior 1 and Senior 2 merged, this PR was rebuilt on `main` and the same
+six suites were run again successfully. The local release gate now validates
+107 migrations. The shared cloud project currently also contains four later
+remote-only migration versions (`202607150135`, `202607150200`, `202607150201`,
+and `202607150300`), so the latest dry run correctly refuses to claim migration
+parity. No migration-history repair was attempted: this PR adds no migration
+files, and changing shared remote history would risk interfering with the next
+workstream.
 
 ## Cloud database proof
 
