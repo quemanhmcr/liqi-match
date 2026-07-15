@@ -181,7 +181,8 @@
     "e2e:party-session:cloud-db": "node scripts/e2e/party-session-cloud-db-v2.cjs",
     "party-session-cloud-db:check": "node scripts/contracts/check-party-session-cloud-db-v2.cjs",
     "conversation-mobile-v2:check": "node scripts/contracts/parse-conversation-sql-v2.cjs supabase/migrations/202607141330_conversation_mobile_surface_v2.sql && node scripts/contracts/parse-conversation-sql-v2.cjs supabase/migrations/202607141331_conversation_access_realtime_v2.sql && node scripts/contracts/check-conversation-mobile-v2.cjs",
-    "conversation-session-saga-v2:check": "node scripts/contracts/check-conversation-session-saga-v2.cjs"
+    "conversation-session-saga-v2:check": "node scripts/contracts/check-conversation-session-saga-v2.cjs",
+    "e2e:conversation:cloud-db": "node scripts/e2e/conversation-cloud-db-v2.cjs"
   },
   "overrides": {
     "xcode": {

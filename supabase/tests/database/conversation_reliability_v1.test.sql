@@ -1,6 +1,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
+set local search_path = extensions, public, pg_catalog;
 
 select plan(46);
 
@@ -506,5 +507,5 @@ select is(
   'bootstrap delivery is marked processed'
 );
 
-select * from finish();
+select * from finish(true);
 rollback;

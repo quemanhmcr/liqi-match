@@ -1,6 +1,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
+set local search_path = extensions, public, pg_catalog;
 select plan(4);
 
 select has_function(
@@ -36,5 +37,5 @@ select ok(
   'strict evidence DTO omits transport-only replay fields'
 );
 
-select * from finish();
+select * from finish(true);
 rollback;

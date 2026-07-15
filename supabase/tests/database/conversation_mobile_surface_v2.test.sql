@@ -1,6 +1,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
+set local search_path = extensions, public, pg_catalog;
 select plan(26);
 
 select has_function(
@@ -175,12 +176,16 @@ select has_trigger(
   'players_conversation_access_broadcast_v2',
   'player lifecycle and messaging changes broadcast to own conversation topics'
 );
-select has_policy(
-  'realtime',
-  'messages',
-  'Conversation V2 members receive own access changes',
+select ok(
+  exists (
+    select 1
+    from pg_catalog.pg_policies
+    where schemaname = 'realtime'
+      and tablename = 'messages'
+      and policyname = 'Conversation V2 members receive own access changes'
+  ),
   'targeted access messages use a private player-scoped RLS policy'
 );
 
-select * from finish();
+select * from finish(true);
 rollback;
