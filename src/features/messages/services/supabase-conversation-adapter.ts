@@ -133,6 +133,7 @@ export type SupabaseConversationAdapter = ChatRepository &
   ChatMessageTransport &
   MessageReportEvidenceProvider &
   ConversationModerationProvider & {
+    readonly authorityVersion: 1;
     dispose: () => Promise<void>;
     setSession: (session: AuthSession | null) => Promise<void>;
   };
@@ -664,6 +665,7 @@ export function createSupabaseConversationAdapter(
   }
 
   return Object.assign(
+    { authorityVersion: 1 as const },
     repository,
     transport,
     moderation,

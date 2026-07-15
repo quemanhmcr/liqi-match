@@ -4,6 +4,7 @@ const PgQueryModule = require('pg-query-emscripten').default;
 
 const repositoryRoot = path.resolve(__dirname, '..', '..');
 const relativePath =
+  process.argv[2] ??
   'supabase/migrations/202607140058_core_v2_conversation_authority.sql';
 
 function fail(message) {

@@ -1,4 +1,7 @@
+create extension if not exists pgtap with schema extensions;
+
 begin;
+set local search_path = extensions, public, pg_catalog;
 select plan(60);
 
 -- Canonical public authority tables.
@@ -112,5 +115,5 @@ select ok(
   'service provisioning and authenticated messaging privileges are separated'
 );
 
-select * from finish();
+select * from finish(true);
 rollback;

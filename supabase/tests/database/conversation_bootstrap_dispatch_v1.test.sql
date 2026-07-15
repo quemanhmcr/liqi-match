@@ -1,6 +1,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
+set local search_path = extensions, public, pg_catalog;
 
 select plan(7);
 
@@ -78,5 +79,5 @@ select is(
   'manual dispatcher uses the enabled production path'
 );
 
-select * from finish();
+select * from finish(true);
 rollback;

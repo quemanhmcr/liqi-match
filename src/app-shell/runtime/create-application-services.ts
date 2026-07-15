@@ -56,6 +56,7 @@ import {
   createCanonicalSimulationMessagesAdapter,
   createMessagesSimulationResetParticipant,
   createSupabaseConversationAdapter,
+  createSupabaseConversationV2Adapter,
 } from '@/features/messages';
 import {
   createSimulationProfileReadRepository,
@@ -65,6 +66,7 @@ import {
 } from '@/features/profile';
 import { createOnboardingSimulationResetParticipant } from '@/features/onboarding';
 import { passiveAssetCacheDriver } from '@/shared/assets/asset-cache-driver';
+import { isConversationV2Enabled } from '@/shared/config/conversation-v2-rollout';
 import {
   getValidAccessToken,
   subscribeAccessToken,
@@ -189,14 +191,24 @@ export function createSimulationApplicationServices(
   };
 }
 
-export function createApiApplicationServices(): ApiApplicationServices {
+export function createApiApplicationServices(
+  options: Readonly<{ conversationV2Enabled?: boolean }> = {},
+): ApiApplicationServices {
   const relationshipRepository = new SupabaseSocialRelationshipRepository();
   const trustOutcomesEngine = new SupabaseTrustOutcomesEngine();
-  const messages = createSupabaseConversationAdapter({
-    accessTokenProvider: getValidAccessToken,
-    accessTokenSubscriber: subscribeAccessToken,
-    realtimeClient: supabaseAuthClient,
-  });
+  const conversationV2Enabled =
+    options.conversationV2Enabled ?? isConversationV2Enabled();
+  const messages = conversationV2Enabled
+    ? createSupabaseConversationV2Adapter({
+        accessTokenProvider: getValidAccessToken,
+        accessTokenSubscriber: subscribeAccessToken,
+        realtimeClient: supabaseAuthClient,
+      })
+    : createSupabaseConversationAdapter({
+        accessTokenProvider: getValidAccessToken,
+        accessTokenSubscriber: subscribeAccessToken,
+        realtimeClient: supabaseAuthClient,
+      });
   const coreV2Transport = createSupabaseCoreV2RpcTransport({
     anonKey: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     supabaseUrl: env.EXPO_PUBLIC_SUPABASE_URL,

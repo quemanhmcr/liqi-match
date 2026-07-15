@@ -4,6 +4,22 @@ type AppVariant = 'development' | 'preview' | 'production';
 
 type ApplicationRuntimeMode = 'simulation' | 'api';
 
+function resolveBooleanFlag(value: string | undefined, name: string) {
+  const normalized = value?.trim().toLowerCase() ?? '';
+  if (
+    normalized === '' ||
+    normalized === '0' ||
+    normalized === 'false' ||
+    normalized === 'no'
+  )
+    return false;
+  if (normalized === '1' || normalized === 'true' || normalized === 'yes')
+    return true;
+  throw new Error(
+    `Invalid ${name} "${value}". Expected true/false, 1/0, or yes/no.`,
+  );
+}
+
 function resolveApplicationRuntimeMode(
   value: string | undefined,
   variant: AppVariant,
@@ -61,6 +77,10 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const applicationRuntimeMode = resolveApplicationRuntimeMode(
     process.env.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE,
     variant,
+  );
+  const conversationV2Enabled = resolveBooleanFlag(
+    process.env.EXPO_PUBLIC_CONVERSATION_V2_ENABLED,
+    'EXPO_PUBLIC_CONVERSATION_V2_ENABLED',
   );
 
   const resolvedConfig: ExpoConfig = {
@@ -135,6 +155,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       appVariant: variant,
       publicEnv: {
         applicationRuntimeMode,
+        conversationV2Enabled,
         apiUrl: process.env.EXPO_PUBLIC_API_URL,
         mediaBaseUrl: process.env.EXPO_PUBLIC_MEDIA_BASE_URL,
         supabasePublishableKey:
