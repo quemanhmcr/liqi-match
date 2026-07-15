@@ -24,6 +24,23 @@ Migration 058 is additive. It maps V1 direct conversations by the same UUID and
 projects V1 timeline rows at read time. It does not copy or rewrite legacy
 messages or cursors.
 
+Before applying migration 021 or later to a fresh Supabase project, verify the
+Realtime tenant has finished bootstrapping:
+
+```sql
+select
+  to_regclass('realtime.messages') as messages,
+  to_regprocedure('realtime.topic()') as topic_function,
+  to_regprocedure(
+    'realtime.broadcast_changes(text,text,text,text,text,record,record,text)'
+  ) as broadcast_function;
+```
+
+All three values must be non-null. A project may report Postgres/Auth/REST
+healthy before the Realtime tenant schema is ready. Do not work around this by
+creating or changing ownership of objects in the `realtime` schema. Bootstrap
+the official Realtime service, then retry the migration push.
+
 ## Rollout controls
 
 The Expo client gate `EXPO_PUBLIC_CONVERSATION_V2_ENABLED` defaults to `false`.
@@ -69,6 +86,17 @@ Track `private.conversation_authority_metrics_v2` and outbox processing for:
 - session provisioning eventual success;
 - report evidence capture failures;
 - account-switch/session authorization failures.
+
+The cloud database gate is reproducible on an explicitly linked test project:
+
+```bash
+npm run e2e:conversation:cloud-db -- --project-ref <test-project-ref>
+```
+
+The runner is intentionally excluded from `task:check` because it mutates a
+remote test database inside rollback transactions and requires an explicit
+project-ref safety acknowledgement. See
+`docs/handoffs/senior-3-conversation-cloud-database-evidence.md`.
 
 A release gate must verify:
 

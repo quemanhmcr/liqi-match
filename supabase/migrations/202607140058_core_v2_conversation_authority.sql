@@ -2815,7 +2815,10 @@ begin
           conversation.id,
           player_id_value,
           'member',
-          case when desired_active then 'active' else 'revoked' end,
+          case
+            when desired_active then 'active'::public.conversation_member_state_v2
+            else 'revoked'::public.conversation_member_state_v2
+          end,
           desired_active,
           desired_active,
           greatest(relationship_version_value, 1),
@@ -2836,7 +2839,10 @@ begin
           or member.revocation_reason is distinct from case when desired_active then null else desired_reason end;
         if member_changed then
           update public.conversation_members_v2
-          set state = case when desired_active then 'active' else 'revoked' end,
+          set state = case
+                when desired_active then 'active'::public.conversation_member_state_v2
+                else 'revoked'::public.conversation_member_state_v2
+              end,
               can_message = desired_active,
               can_view_conversation = desired_active,
               membership_version = greatest(member.membership_version, greatest(relationship_version_value, 1)),
@@ -4135,8 +4141,11 @@ insert into public.conversations_v2 (
 )
 select
   conversations.id,
-  'direct',
-  case when conversations.state_v1 = 'closed' then 'tombstoned' else 'open' end,
+  'direct'::public.conversation_kind_v2,
+  case
+    when conversations.state_v1 = 'closed' then 'tombstoned'::public.conversation_state_v2
+    else 'open'::public.conversation_state_v2
+  end,
   null,
   greatest(conversations.version_v1, 1),
   conversations.last_sequence_v1,
@@ -4220,15 +4229,21 @@ insert into private.conversation_direct_pairs_v2 (
   created_at
 )
 select
-  min(participants.player_id),
-  max(participants.player_id),
-  participants.conversation_id,
-  min(participants.created_at)
-from public.conversation_participants_v1 participants
-join public.conversations conversations on conversations.id = participants.conversation_id
-where conversations.match_id is not null
-group by participants.conversation_id
-having count(*) = 2 and min(participants.player_id) < max(participants.player_id)
+  pair.player_ids[1],
+  pair.player_ids[2],
+  pair.conversation_id,
+  pair.created_at
+from (
+  select
+    participants.conversation_id,
+    array_agg(participants.player_id order by participants.player_id) as player_ids,
+    min(participants.created_at) as created_at
+  from public.conversation_participants_v1 participants
+  join public.conversations conversations on conversations.id = participants.conversation_id
+  where conversations.match_id is not null
+  group by participants.conversation_id
+  having count(*) = 2 and count(distinct participants.player_id) = 2
+) pair
 on conflict (player_low_id, player_high_id) do nothing;
 
 revoke execute on function public.provision_direct_conversation_v2(jsonb) from public, anon, authenticated;
