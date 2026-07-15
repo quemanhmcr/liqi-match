@@ -6,6 +6,28 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 
 export const profileEditStyles = StyleSheet.create({
+  trustedStatsNotice: {
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(44, 162, 190, 0.10)',
+    borderColor: 'rgba(103, 232, 255, 0.18)',
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+    padding: 12,
+  },
+  trustedStatsNoticeBody: {
+    color: 'rgba(215, 224, 255, 0.64)',
+    fontSize: 12,
+    lineHeight: 17,
+  },
+  trustedStatsNoticeCopy: { flex: 1, gap: 3 },
+  trustedStatsNoticeTitle: {
+    color: 'rgba(238, 252, 255, 0.94)',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   avatarImage: { height: '100%', width: '100%' },
   avatarInitial: { color: '#FFFFFF', fontWeight: '900' },
   avatarInner: {

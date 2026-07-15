@@ -1,5 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -33,6 +33,14 @@ import {
 } from '@/shared/theme/liquid-glass.tokens';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { useNotificationInboxSummary } from '@/entities/notifications';
+import {
+  playSessionQueryKeys,
+  prepareCoreV2CommandMetadata,
+  resolvePlaySessionActor,
+  simulationMatchIdToMatchId,
+  usePlaySessionServices,
+} from '@/entities/play-session';
+import { MatchIdSchema } from '@/shared/contracts/core-v1';
 import {
   useAssetResolver,
   usePreloadAssetSurface,
@@ -234,6 +242,39 @@ export default function HomeDashboardScreen() {
   usePreloadAssetSurface('home');
   const { session } = useAuth();
   const homeRepository = useHomeRepository();
+  const {
+    commandService: playSessionCommandService,
+    repository: playSessionRepository,
+  } = usePlaySessionServices();
+  const queryClient = useQueryClient();
+  const currentPlaySessionsQuery = useQuery({
+    enabled: Boolean(session?.principal?.playerId && session.lifecycle),
+    queryFn: async () =>
+      playSessionRepository.listCurrent(resolvePlaySessionActor(session)),
+    queryKey: playSessionQueryKeys.current(
+      session?.lifecycle?.playerId ?? 'anonymous',
+    ),
+  });
+  const createSessionFromMatch = useMutation({
+    mutationFn: async ({
+      command,
+    }: {
+      command: Parameters<typeof playSessionCommandService.createFromMatch>[1];
+    }) =>
+      playSessionCommandService.createFromMatch(
+        resolvePlaySessionActor(session),
+        command,
+      ),
+    onSuccess: async (receipt) => {
+      await queryClient.invalidateQueries({
+        queryKey: playSessionQueryKeys.current(
+          session?.lifecycle?.playerId ?? 'anonymous',
+        ),
+      });
+      router.push(appRoutes.sessions.detail(receipt.aggregateId));
+    },
+    retry: false,
+  });
   const notificationSummaryQuery = useNotificationInboxSummary(session);
   const hasUnreadNotifications =
     (notificationSummaryQuery.data?.unseenCount ?? 0) > 0;
@@ -254,6 +295,7 @@ export default function HomeDashboardScreen() {
   const dashboardFailure = classifyApplicationError(dashboardQuery.error);
   const matchedSetsToRender = dashboard?.matchedSets ?? [];
   const activeMatchCount = matchedSetsToRender.length;
+  const currentPlaySession = currentPlaySessionsQuery.data?.[0] ?? null;
   const selectedMode = useMemo(
     () =>
       homeReadyModes.find((mode) => mode.id === selectedModeId) ?? defaultMode,
@@ -380,6 +422,54 @@ export default function HomeDashboardScreen() {
           </HomeText>
         </View>
       ) : null}
+
+      <LiquidCard
+        contentStyle={styles.currentSessionCard}
+        density="compact"
+        glowIntensity="low"
+        style={styles.currentSessionCardHost}
+        variant="cyan"
+        withShadow={false}
+      >
+        <View style={styles.currentSessionHeader}>
+          <View style={styles.currentSessionCopy}>
+            <HomeText style={styles.eyebrow}>HOẠT ĐỘNG HIỆN TẠI</HomeText>
+            <HomeText numberOfLines={1} style={styles.currentSessionTitle}>
+              {currentPlaySession?.title ?? 'Chưa có Session đang hoạt động'}
+            </HomeText>
+            <HomeText numberOfLines={2} style={styles.currentSessionMeta}>
+              {currentPlaySession
+                ? `${currentPlaySession.state.replaceAll('_', ' ')} · ${currentPlaySession.members.length}/${currentPlaySession.capacity} thành viên · v${currentPlaySession.version}`
+                : 'Tạo buổi chơi từ một Match hoặc Set để bắt đầu điều phối.'}
+            </HomeText>
+          </View>
+          {currentPlaySessionsQuery.isFetching ? (
+            <ActivityIndicator color="#75E8FF" />
+          ) : null}
+        </View>
+        <View style={styles.currentSessionActions}>
+          {currentPlaySession ? (
+            <LiquidButton
+              onPress={() =>
+                router.push(
+                  appRoutes.sessions.detail(currentPlaySession.sessionId),
+                )
+              }
+              variant="rank"
+              withShadow={false}
+            >
+              Tiếp tục Session
+            </LiquidButton>
+          ) : null}
+          <LiquidButton
+            onPress={() => router.push(appRoutes.sessions.list)}
+            variant="ghost"
+            withShadow={false}
+          >
+            Tất cả Session
+          </LiquidButton>
+        </View>
+      </LiquidCard>
 
       <LiquidGlassSurface
         backgroundSlot={
@@ -561,7 +651,27 @@ export default function HomeDashboardScreen() {
       {matchedSetsToRender.length ? (
         <View style={styles.matchList}>
           {matchedSetsToRender.map((set) => (
-            <MatchedSetCard key={set.id} set={set} />
+            <MatchedSetCard
+              creating={
+                createSessionFromMatch.isPending &&
+                createSessionFromMatch.variables?.command.matchId ===
+                  canonicalMatchId(set.id)
+              }
+              key={set.id}
+              onCreateSession={() =>
+                createSessionFromMatch.mutate({
+                  command: {
+                    ...prepareCoreV2CommandMetadata(0),
+                    capacity: 2,
+                    matchId: canonicalMatchId(set.id),
+                    scheduledFor: null,
+                    timezone: resolvedTimezone(),
+                    title: `Party với ${set.name}`,
+                  },
+                })
+              }
+              set={set}
+            />
           ))}
         </View>
       ) : (
@@ -602,7 +712,15 @@ function HomeDashboardQueryState({
   );
 }
 
-function MatchedSetCard({ set }: { set: MatchedSet }) {
+function MatchedSetCard({
+  creating,
+  onCreateSession,
+  set,
+}: {
+  creating: boolean;
+  onCreateSession: () => void;
+  set: MatchedSet;
+}) {
   const statusStyle = statusStyles[set.status];
   const tone = matchTones[set.kind];
   const matchGlowPreset = matchGlowPresets[set.kind];
@@ -807,6 +925,11 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
               onPress={(event) => {
                 event.stopPropagation();
                 selectionImpact();
+                router.push(
+                  set.conversationId
+                    ? appRoutes.messages.detail(set.conversationId)
+                    : appRoutes.main.messages,
+                );
               }}
               size={31}
               style={[
@@ -826,9 +949,11 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
               contentStyle={styles.cardPrimaryActionGradient}
               glowPreset={actionGlowPreset}
               gradientColors={tone.actionGradient}
+              disabled={creating}
               onPress={(event) => {
                 event.stopPropagation();
                 impactLight();
+                onCreateSession();
               }}
               radius={19}
               style={[styles.cardPrimaryAction, { shadowColor: tone.text }]}
@@ -836,7 +961,7 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
               withShadow={false}
             >
               <HomeText style={styles.cardPrimaryActionText}>
-                {set.actionLabel}
+                {creating ? 'Đang tạo…' : 'Tạo Session'}
               </HomeText>
             </LiquidButton>
           </View>
@@ -844,6 +969,15 @@ function MatchedSetCard({ set }: { set: MatchedSet }) {
       </LiquidCard>
     </Pressable>
   );
+}
+
+function canonicalMatchId(value: string) {
+  const parsed = MatchIdSchema.safeParse(value);
+  return parsed.success ? parsed.data : simulationMatchIdToMatchId(value);
+}
+
+function resolvedTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
 }
 
 function EmptyMatchedSets() {
@@ -985,6 +1119,22 @@ const statusStyles: Record<MatchedSetStatus, { dot: string; text: string }> = {
 };
 
 const styles = StyleSheet.create({
+  currentSessionActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 12,
+  },
+  currentSessionCard: { padding: 16 },
+  currentSessionCardHost: { marginBottom: 16 },
+  currentSessionCopy: { flex: 1 },
+  currentSessionHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 12,
+  },
+  currentSessionMeta: { ...liquidTypography.body, marginTop: 5 },
+  currentSessionTitle: { ...liquidTypography.cardTitle, marginTop: 4 },
   queryStateDescription: {
     color: 'rgba(224,230,248,0.72)',
     fontSize: 14,

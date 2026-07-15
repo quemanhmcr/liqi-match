@@ -38,6 +38,20 @@ export const appRoutes = {
     rank: '/rank',
   },
   notifications: '/notifications',
+  sessions: {
+    conversation: (conversationId: string) =>
+      ({
+        pathname: '/sessions/conversations/[conversationId]',
+        params: { conversationId },
+      }) as const,
+    create: '/sessions/new',
+    detail: (sessionId: string) =>
+      ({
+        pathname: '/sessions/[sessionId]',
+        params: { sessionId },
+      }) as const,
+    list: '/sessions',
+  },
   profile: {
     blocked: '/profile/settings/blocked',
     detail: (identityId: string) =>

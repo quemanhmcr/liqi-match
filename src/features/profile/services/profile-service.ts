@@ -373,8 +373,16 @@ export async function saveProfileEdit(
   const bio = normalizeBio(input.bio);
   const region = normalizeRegion(input.region);
   const habits = normalizeEditHabits(input.habits);
+  const existingMediaSummary = mediaSummaryRecord(habits.media_summary);
+  const legacyProfileStats = existingMediaSummary.profile_stats;
   const mediaSummary = {
-    ...mediaSummaryRecord(habits.media_summary),
+    ...existingMediaSummary,
+    unverified_legacy: {
+      ...mediaSummaryRecord(existingMediaSummary.unverified_legacy),
+      ...(legacyProfileStats && typeof legacyProfileStats === 'object'
+        ? { profile_stats: legacyProfileStats }
+        : {}),
+    },
     cover_media_id: input.coverMediaId ?? null,
     favorite_hero_stats: buildFavoriteHeroStatsSummary(input.favoriteHeroes),
     profile_basics: {
@@ -383,7 +391,8 @@ export async function saveProfileEdit(
       ),
       gender: normalizeProfileGender(input.gender),
     },
-    profile_stats: normalizeProfileStats(input.stats),
+    profile_stats:
+      mediaSummaryRecord(habits.media_summary).profile_stats ?? null,
     profile_status: normalizeStatus(input.status),
   };
 

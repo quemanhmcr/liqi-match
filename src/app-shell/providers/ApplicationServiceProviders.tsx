@@ -9,7 +9,9 @@ import {
   usePreloadAssetSurface,
 } from '@/entities/media-asset';
 import { NotificationRepositoryProvider } from '@/entities/notifications';
+import { PlaySessionServicesProvider } from '@/entities/play-session';
 import { RelationshipCapabilitiesProvider } from '@/entities/social-relationship';
+import { TrustOutcomesServicesProvider } from '@/entities/trust-outcomes';
 import { DiscoverRepositoryProvider } from '@/features/discover';
 import { HomeRepositoryProvider } from '@/features/home';
 import { MessagesServicesProvider } from '@/features/messages';
@@ -56,7 +58,20 @@ export function ApplicationServiceProviders({
                         <ProfileReadRepositoryProvider
                           repository={services.profileRepository}
                         >
-                          {children}
+                          <PlaySessionServicesProvider
+                            commandService={services.playSessionCommandService}
+                            repository={services.playSessionRepository}
+                            conversationRepository={
+                              services.conversationV2Repository
+                            }
+                            conversationMessageTransport={
+                              services.conversationV2MessageTransport
+                            }
+                          >
+                            <TrustOutcomesServicesProvider services={services}>
+                              {children}
+                            </TrustOutcomesServicesProvider>
+                          </PlaySessionServicesProvider>
                         </ProfileReadRepositoryProvider>
                       </RelationshipCapabilitiesProvider>
                     </NotificationRepositoryProvider>

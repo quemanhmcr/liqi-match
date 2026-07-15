@@ -2,13 +2,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, View } from 'react-native';
 
+import type { PlayerTrustProjectionV2 } from '@/shared/contracts/core-v2';
 import { LiquidCard } from '@/shared/components/liquid';
 import {
   liquidColors,
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 
-import type { ProfileStats } from '../services/profile-service';
 import { ProfileText } from './ProfileShared';
 
 type StatItem = {
@@ -18,47 +18,45 @@ type StatItem = {
   value: string;
 };
 
-function buildStats(stats: ProfileStats): StatItem[] {
+function buildStats(projection?: PlayerTrustProjectionV2): StatItem[] {
   return [
     {
       color: 'rgba(142,118,255,0.78)',
-      icon: 'sparkles-outline',
-      label: 'Trận',
-      value: `${stats.matches}`,
-    },
-    {
-      color: 'rgba(170,190,255,0.72)',
-      icon: 'trophy-outline',
-      label: 'Tỷ lệ thắng',
-      value: `${stats.winRate}%`,
-    },
-    {
-      color: 'rgba(255,205,74,0.88)',
-      icon: 'star-outline',
-      label: 'Đánh giá',
-      value: `${stats.rating}`,
+      icon: 'game-controller-outline',
+      label: 'Buổi đã chơi',
+      value: projection ? String(projection.completedSessions) : '—',
     },
     {
       color: 'rgba(103,232,255,0.88)',
       icon: 'shield-checkmark-outline',
-      label: 'Uy tín',
-      value: `${stats.reputation}`,
+      label: 'Hoàn tất',
+      value: projection
+        ? `${Math.round(projection.completionReliabilityBps / 100)}%`
+        : '—',
+    },
+    {
+      color: 'rgba(255,205,74,0.88)',
+      icon: 'heart-outline',
+      label: 'Lời khen',
+      value: projection ? String(projection.positiveEndorsements) : '—',
+    },
+    {
+      color: 'rgba(170,190,255,0.72)',
+      icon: 'people-outline',
+      label: 'Đồng đội quen',
+      value: projection ? String(projection.repeatTeammateCount) : '—',
     },
   ];
 }
 
 export function ProfileStatsBar({
   embedded = false,
-  showWinRate = true,
-  stats,
+  projection,
 }: {
   embedded?: boolean;
-  showWinRate?: boolean;
-  stats: ProfileStats;
+  projection?: PlayerTrustProjectionV2;
 }) {
-  const items = showWinRate
-    ? buildStats(stats)
-    : buildStats(stats).filter((item) => item.label !== 'Tỷ lệ thắng');
+  const items = buildStats(projection);
 
   return (
     <LiquidCard

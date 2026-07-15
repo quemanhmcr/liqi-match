@@ -10,6 +10,7 @@ select has_column('public', 'media_assets', 'object_key', 'media object_key exis
 select set_eq(
   $$select policyname from pg_policies where schemaname = 'public' and tablename = 'media_assets' order by policyname$$,
   $$values
+    ('Conversation V2 members read ready message media'),
     ('Conversation members can read ready conversation media metadata'),
     ('Users can read own media'),
     ('Users can read ready public media metadata')$$,

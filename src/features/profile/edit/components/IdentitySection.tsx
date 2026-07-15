@@ -50,8 +50,6 @@ export function IdentitySection({
   const [focusedField, setFocusedField] = useState<
     'bio' | 'displayName' | null
   >(null);
-  const stats = identity.stats ?? {};
-
   return (
     <ProfileEditSection
       icon="person-outline"
@@ -179,99 +177,24 @@ export function IdentitySection({
         value={identity.bio}
       />
 
-      <ProfileEditFieldLabel
-        label="Thông số hiển thị"
-        meta="để trống nếu chưa có"
-      />
-      <View style={styles.statsGrid}>
-        <StatInput
-          label="Số trận"
-          max={99999}
-          suffix="trận"
-          value={stats.matches}
-          onChange={(matches) =>
-            onChange({ ...identity, stats: { ...stats, matches } })
-          }
+      <View style={styles.trustedStatsNotice}>
+        <Ionicons
+          color="rgba(103,232,255,0.88)"
+          name="shield-checkmark-outline"
+          size={17}
         />
-        <StatInput
-          label="Tỷ lệ thắng"
-          max={100}
-          suffix="%"
-          value={stats.winRate}
-          onChange={(winRate) =>
-            onChange({ ...identity, stats: { ...stats, winRate } })
-          }
-        />
-        <StatInput
-          decimal
-          label="Đánh giá"
-          max={5}
-          suffix="★"
-          value={stats.rating}
-          onChange={(rating) =>
-            onChange({ ...identity, stats: { ...stats, rating } })
-          }
-        />
-        <StatInput
-          label="Uy tín"
-          max={100}
-          suffix="điểm"
-          value={stats.reputation}
-          onChange={(reputation) =>
-            onChange({ ...identity, stats: { ...stats, reputation } })
-          }
-        />
+        <View style={styles.trustedStatsNoticeCopy}>
+          <ProfileText style={styles.trustedStatsNoticeTitle}>
+            Thành tích đã được xác minh tự động
+          </ProfileText>
+          <ProfileText style={styles.trustedStatsNoticeBody}>
+            Số buổi chơi, độ tin cậy và lời khen được tính từ session hoàn tất
+            nên không thể tự chỉnh sửa.
+          </ProfileText>
+        </View>
       </View>
     </ProfileEditSection>
   );
-}
-
-function StatInput({
-  decimal = false,
-  label,
-  max,
-  onChange,
-  suffix,
-  value,
-}: {
-  decimal?: boolean;
-  label: string;
-  max: number;
-  onChange: (value: number | undefined) => void;
-  suffix: string;
-  value?: number;
-}) {
-  return (
-    <View style={styles.statInputCard}>
-      <ProfileText style={styles.statInputLabel}>{label}</ProfileText>
-      <View style={styles.statInputRow}>
-        <TextInput
-          accessibilityLabel={label}
-          keyboardType={decimal ? 'decimal-pad' : 'number-pad'}
-          maxLength={decimal ? 3 : 5}
-          onChangeText={(text) =>
-            onChange(parseOptionalNumber(text, max, decimal))
-          }
-          placeholder="—"
-          placeholderTextColor="rgba(205,216,245,0.34)"
-          style={styles.statInput}
-          value={value === undefined ? '' : String(value)}
-        />
-        <ProfileText style={styles.statInputSuffix}>{suffix}</ProfileText>
-      </View>
-    </View>
-  );
-}
-
-function parseOptionalNumber(value: string, max: number, decimal: boolean) {
-  const normalized = decimal
-    ? value.replace(/[^0-9.]/g, '')
-    : value.replace(/[^0-9]/g, '');
-  if (!normalized) return undefined;
-  const number = Number(normalized);
-  if (!Number.isFinite(number)) return undefined;
-  const rounded = decimal ? Math.round(number * 10) / 10 : Math.round(number);
-  return Math.max(0, Math.min(max, rounded));
 }
 
 export const identitySectionId = 'identity' satisfies ProfileEditSectionId;

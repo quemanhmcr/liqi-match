@@ -23,10 +23,27 @@ import {
   createCanonicalSimulationNotificationInboxRepository,
 } from '@/entities/notifications';
 import { createProductionSimulationRuntime } from '@/entities/simulation';
+import { InMemoryConversationV2Authority } from '@/entities/conversation-v2';
+import {
+  InMemoryRepeatPlaySessionService,
+  createConversationV2SessionProvisioner,
+  createRepeatAwareRecommendationProvider,
+  createSimulationParticipantLifecycleProvider,
+  createSimulationPlaySessionSourceProvider,
+  createSimulationRelationshipEligibilityProvider,
+  createSupabaseCoreV2RpcTransport,
+  createSupabasePlaySessionCommandService,
+  createSupabasePlaySessionRepository,
+} from '@/entities/play-session';
 import {
   InMemorySocialRelationshipRepository,
   SupabaseSocialRelationshipRepository,
 } from '@/entities/social-relationship';
+import {
+  InMemoryTrustOutcomesEngine,
+  SupabaseTrustOutcomesEngine,
+  createTrustAwarePlaySessionCommandService,
+} from '@/entities/trust-outcomes';
 import {
   ApiDiscoverRepository,
   createSimulationDiscoverRepository,
@@ -53,6 +70,7 @@ import {
   subscribeAccessToken,
 } from '@/shared/auth/auth-service';
 import { supabaseAuthClient } from '@/shared/auth/supabase-auth-client';
+import { env } from '@/shared/config/env';
 
 import type {
   ApiApplicationServices,
@@ -87,6 +105,39 @@ export function createSimulationApplicationServices(
   const messages = createCanonicalSimulationMessagesAdapter({
     runtime: simulationRuntime,
   });
+  const relationshipRepository = new InMemorySocialRelationshipRepository();
+  const trustOutcomesEngine = new InMemoryTrustOutcomesEngine(
+    () => simulationRuntime.clock.now(),
+    relationshipRepository,
+  );
+  const conversationV2Authority = new InMemoryConversationV2Authority({
+    clock: () => simulationRuntime.clock.now(),
+  });
+  const playSessionService = new InMemoryRepeatPlaySessionService({
+    clock: () => simulationRuntime.clock.now(),
+    conversationProvisioner: createConversationV2SessionProvisioner({
+      authority: conversationV2Authority,
+      clock: () => simulationRuntime.clock.now(),
+    }),
+    lifecycleProvider:
+      createSimulationParticipantLifecycleProvider(simulationRuntime),
+    relationshipProvider:
+      createSimulationRelationshipEligibilityProvider(simulationRuntime),
+    sourceProvider:
+      createSimulationPlaySessionSourceProvider(simulationRuntime),
+  });
+  const trustAwarePlaySessionCommandService =
+    createTrustAwarePlaySessionCommandService({
+      delegate: playSessionService,
+      eventLog: playSessionService,
+      sessionOutcomeRepository: trustOutcomesEngine,
+    });
+  const repeatAwareRecommendationProvider =
+    createRepeatAwareRecommendationProvider({
+      consumer: playSessionService,
+      delegate: trustOutcomesEngine,
+      eventLog: trustOutcomesEngine,
+    });
   simulationRuntime.registerResetParticipant(
     createMessagesSimulationResetParticipant(),
   );
@@ -102,6 +153,7 @@ export function createSimulationApplicationServices(
   }
 
   return {
+    activityFeedRepository: trustOutcomesEngine,
     assetResolver: createGoldenWorldSimulationAssetResolver({
       cacheDriver: passiveAssetCacheDriver,
       runtime: simulationRuntime,
@@ -121,19 +173,45 @@ export function createSimulationApplicationServices(
         runtime: simulationRuntime,
       }),
     profileRepository: createSimulationProfileReadRepository(simulationRuntime),
-    relationshipRepository: new InMemorySocialRelationshipRepository(),
+    playSessionCommandService: trustAwarePlaySessionCommandService,
+    playSessionRepository: playSessionService,
+    conversationV2Repository: conversationV2Authority,
+    conversationV2MessageTransport: conversationV2Authority,
+    relationshipRepository,
+    endorsementCommandService: trustOutcomesEngine,
+    engagementPolicyProvider: trustOutcomesEngine,
+    playerTrustProjectionProvider: trustOutcomesEngine,
+    reputationLedgerProvider: trustOutcomesEngine,
+    repeatPlayRecommendationProvider: repeatAwareRecommendationProvider,
+    sessionOutcomeRepository: trustOutcomesEngine,
     scenarioControl: simulationRuntime,
     simulationRuntime,
   };
 }
 
 export function createApiApplicationServices(): ApiApplicationServices {
+  const relationshipRepository = new SupabaseSocialRelationshipRepository();
+  const trustOutcomesEngine = new SupabaseTrustOutcomesEngine();
   const messages = createSupabaseConversationAdapter({
     accessTokenProvider: getValidAccessToken,
     accessTokenSubscriber: subscribeAccessToken,
     realtimeClient: supabaseAuthClient,
   });
+  const coreV2Transport = createSupabaseCoreV2RpcTransport({
+    anonKey: env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY,
+    supabaseUrl: env.EXPO_PUBLIC_SUPABASE_URL,
+  });
+  const coreV2AccessTokenProvider = { getAccessToken: getValidAccessToken };
+  const playSessionCommandService = createSupabasePlaySessionCommandService({
+    accessTokenProvider: coreV2AccessTokenProvider,
+    transport: coreV2Transport,
+  });
+  const playSessionRepository = createSupabasePlaySessionRepository({
+    accessTokenProvider: coreV2AccessTokenProvider,
+    transport: coreV2Transport,
+  });
   return {
+    activityFeedRepository: trustOutcomesEngine,
     assetResolver: createGoldenWorldAssetResolver({
       cacheDriver: passiveAssetCacheDriver,
     }),
@@ -149,7 +227,17 @@ export function createApiApplicationServices(): ApiApplicationServices {
     mode: 'api',
     notificationRepository: createApiNotificationInboxRepository(),
     profileRepository: createApiProfileRepository(),
-    relationshipRepository: new SupabaseSocialRelationshipRepository(),
+    playSessionCommandService,
+    playSessionRepository,
+    conversationV2Repository: null,
+    conversationV2MessageTransport: null,
+    relationshipRepository,
+    endorsementCommandService: trustOutcomesEngine,
+    engagementPolicyProvider: trustOutcomesEngine,
+    playerTrustProjectionProvider: trustOutcomesEngine,
+    reputationLedgerProvider: trustOutcomesEngine,
+    repeatPlayRecommendationProvider: trustOutcomesEngine,
+    sessionOutcomeRepository: trustOutcomesEngine,
     scenarioControl: null,
     simulationRuntime: null,
   };

@@ -1,0 +1,35 @@
+{
+  "aggregateId": "44000000-0000-4000-8000-000000000001",
+  "aggregateType": "session_outcome",
+  "aggregateVersion": 2,
+  "commandName": "confirm_session_participation_v2",
+  "correlationId": "43000000-0000-4000-8000-000000000002",
+  "eventIds": ["48000000-0000-4000-8000-000000000001"],
+  "occurredAt": "2026-07-14T12:05:00.000Z",
+  "repeated": false,
+  "resultCode": "participation_confirmed",
+  "outcome": {
+    "outcomeId": "44000000-0000-4000-8000-000000000001",
+    "sessionId": "42000000-0000-4000-8000-000000000001",
+    "sourceSessionVersion": 7,
+    "scheduledFor": "2026-07-14T10:45:00.000Z",
+    "participantPlayerIds": [
+      "20000000-0000-4000-8000-000000000001",
+      "20000000-0000-4000-8000-000000000002"
+    ],
+    "state": "recorded",
+    "version": 2,
+    "startedAt": "2026-07-14T11:00:00.000Z",
+    "completedAt": "2026-07-14T12:00:00.000Z",
+    "confirmationDeadlineAt": "2026-07-17T12:00:00.000Z"
+  },
+  "confirmation": {
+    "confirmationId": "45000000-0000-4000-8000-000000000001",
+    "sessionId": "42000000-0000-4000-8000-000000000001",
+    "playerId": "20000000-0000-4000-8000-000000000001",
+    "status": "confirmed",
+    "reasonCode": null,
+    "version": 1,
+    "confirmedAt": "2026-07-14T12:05:00.000Z"
+  }
+}

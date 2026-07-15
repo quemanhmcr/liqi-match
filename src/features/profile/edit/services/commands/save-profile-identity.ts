@@ -54,7 +54,7 @@ export async function saveProfileIdentity(input: {
         input.current.genderId === null
           ? null
           : GenderIdSchema.parse(input.current.genderId),
-      stats: normalizeIdentityStats(input.baseline, input.current),
+      stats: normalizeIdentityStats(input.baseline),
       status: normalizeIdentityStatus(input.baseline, input.current),
     },
   });
@@ -101,11 +101,8 @@ export async function saveProfileIdentity(input: {
   }
 }
 
-function normalizeIdentityStats(
-  baseline: ProfileEditIdentity,
-  current: ProfileEditIdentity,
-) {
-  const stats = { ...baseline.stats, ...current.stats };
+function normalizeIdentityStats(baseline: ProfileEditIdentity) {
+  const stats = baseline.stats ?? {};
   return {
     matches: normalizeOptionalNumber(stats.matches, 99_999) ?? 0,
     rating: normalizeRating(stats.rating) ?? 0,

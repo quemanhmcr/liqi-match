@@ -2,6 +2,8 @@ import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 import * as Crypto from 'expo-crypto';
 import { z } from 'zod';
 
+import type { ConversationModerationProvider } from '@/entities/conversation-v2';
+import { MessageReportEvidenceV2Schema as ConversationMessageReportEvidenceV2Schema } from '@/shared/contracts/core-v2';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { env } from '@/shared/config/env';
 import {
@@ -104,7 +106,7 @@ type ConversationMobileSurfaceV1 = z.infer<
 >;
 type InboxCursorV1 = z.infer<typeof InboxCursorV1Schema>;
 
-type RpcRequest = <T>(input: {
+export type RpcRequest = <T>(input: {
   body: Record<string, unknown>;
   functionName: string;
   session: AuthSession;
@@ -129,7 +131,8 @@ type AccessTokenSubscriber = (
 
 export type SupabaseConversationAdapter = ChatRepository &
   ChatMessageTransport &
-  MessageReportEvidenceProvider & {
+  MessageReportEvidenceProvider &
+  ConversationModerationProvider & {
     dispose: () => Promise<void>;
     setSession: (session: AuthSession | null) => Promise<void>;
   };
@@ -536,46 +539,94 @@ export function createSupabaseConversationAdapter(
     },
   };
 
-  const moderation: MessageReportEvidenceProvider = {
-    async captureReportEvidence(input) {
-      try {
-        const activeSession = await requireValidSession();
-        if (
-          !activeSession.principal?.playerId ||
-          !input.session.principal?.playerId ||
-          activeSession.user.id !== input.session.user.id ||
-          activeSession.principal.accountId !==
-            input.session.principal.accountId ||
-          activeSession.principal.playerId !== input.session.principal.playerId
-        ) {
-          throw new MessagesServiceError(
-            'forbidden',
-            'Conversation report actor does not match the active session.',
-            false,
+  type SessionEvidenceInput = Parameters<
+    MessageReportEvidenceProvider['captureReportEvidence']
+  >[0];
+  type SessionEvidenceResult = Awaited<
+    ReturnType<MessageReportEvidenceProvider['captureReportEvidence']>
+  >;
+  type ConversationEvidenceInput = Parameters<
+    ConversationModerationProvider['captureReportEvidence']
+  >[0];
+  type ConversationEvidenceResult = Awaited<
+    ReturnType<ConversationModerationProvider['captureReportEvidence']>
+  >;
+
+  async function captureReportEvidence(
+    input: SessionEvidenceInput,
+  ): Promise<SessionEvidenceResult>;
+  async function captureReportEvidence(
+    input: ConversationEvidenceInput,
+  ): Promise<ConversationEvidenceResult>;
+  async function captureReportEvidence(
+    input: SessionEvidenceInput | ConversationEvidenceInput,
+  ): Promise<SessionEvidenceResult | ConversationEvidenceResult> {
+    try {
+      const activeSession = await requireValidSession();
+      const conversationInput = 'actor' in input ? input : null;
+      const sessionInput = 'session' in input ? input : null;
+      const activePrincipal = activeSession.principal;
+      const identityMatches = conversationInput
+        ? Boolean(
+            activePrincipal?.playerId &&
+            activePrincipal.accountId === conversationInput.actor.accountId &&
+            activePrincipal.playerId === conversationInput.actor.playerId,
+          )
+        : Boolean(
+            activePrincipal?.playerId &&
+            sessionInput?.session.principal?.playerId &&
+            activeSession.user.id === sessionInput.session.user.id &&
+            activePrincipal.accountId ===
+              sessionInput.session.principal.accountId &&
+            activePrincipal.playerId ===
+              sessionInput.session.principal.playerId,
           );
-        }
-        const raw = await request<unknown>({
-          body: { p_report_id: input.reportId },
-          functionName: 'capture_message_report_evidence_v2',
-          session: activeSession,
-        });
-        setNetworkState('online');
-        try {
-          return MessageReportEvidenceV2Schema.parse(raw);
-        } catch (error) {
-          throw new MessagesServiceError(
-            'contract_violation',
-            'Bằng chứng báo cáo không đúng contract authoritative.',
-            false,
-            error instanceof Error ? error.message : undefined,
-          );
-        }
-      } catch (error) {
-        if (isNetworkFailure(error)) setNetworkState('offline');
-        throw mapServiceError(error);
+      if (!identityMatches) {
+        throw new MessagesServiceError(
+          'forbidden',
+          'Conversation report actor does not match the active session.',
+          false,
+        );
       }
-    },
-  };
+      const raw = await request<unknown>({
+        body: { p_report_id: input.reportId },
+        functionName: 'capture_message_report_evidence_v2',
+        session: activeSession,
+      });
+      setNetworkState('online');
+      try {
+        if (conversationInput) {
+          const evidence = ConversationMessageReportEvidenceV2Schema.parse(raw);
+          if (
+            evidence.conversationId !== conversationInput.conversationId ||
+            evidence.message.messageId !== conversationInput.messageId
+          ) {
+            throw new MessagesServiceError(
+              'contract_violation',
+              'Bằng chứng báo cáo không khớp Conversation hoặc Message authoritative.',
+              false,
+            );
+          }
+          return evidence;
+        }
+        return MessageReportEvidenceV2Schema.parse(raw);
+      } catch (error) {
+        if (error instanceof MessagesServiceError) throw error;
+        throw new MessagesServiceError(
+          'contract_violation',
+          'Bằng chứng báo cáo không đúng contract authoritative.',
+          false,
+          error instanceof Error ? error.message : undefined,
+        );
+      }
+    } catch (error) {
+      if (isNetworkFailure(error)) setNetworkState('offline');
+      throw mapServiceError(error);
+    }
+  }
+
+  const moderation: MessageReportEvidenceProvider &
+    ConversationModerationProvider = { captureReportEvidence };
 
   async function sendMessage(
     command: SendChatTextCommand | SendChatMediaCommand,

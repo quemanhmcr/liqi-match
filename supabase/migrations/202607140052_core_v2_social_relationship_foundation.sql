@@ -1004,7 +1004,7 @@ set search_path = ''
 as $$
 declare
   event_id_value uuid := extensions.gen_random_uuid();
-  occurred_at_value timestamptz := now();
+  occurred_at_value timestamptz := clock_timestamp();
   persisted_event_id uuid;
 begin
   if p_aggregate_version is null or p_aggregate_version <= 0 then

@@ -7,6 +7,19 @@ import {
   type MatchSetRpcTransport,
 } from '../supabase-match-set-repository';
 
+const metadataFactory = (expectedVersion: number) => ({
+  audit: {
+    appVersion: 'core-v2-test',
+    clientCreatedAt: '2026-07-14T08:00:00.000Z',
+    clientRequestId: 'b1000000-0000-4000-8000-000000000001',
+    deviceInstallationId: 'b1000000-0000-4000-8000-000000000002',
+    platform: 'android' as const,
+  },
+  correlationId: 'b1000000-0000-4000-8000-000000000003' as never,
+  expectedVersion,
+  idempotencyKey: 'match-set.b1000000-0000-4000-8000-000000000004' as never,
+});
+
 const session: AuthSession = {
   accessToken: 'access',
   expiresAt: 9_999_999_999,
@@ -43,7 +56,7 @@ it('maps Set reads and commands to authoritative RPCs', async () => {
       state: 'pending',
       targetPlayerId: '20000000-0000-4000-8000-000000000002',
     });
-  const repository = new SupabaseMatchSetRepository(rpc);
+  const repository = new SupabaseMatchSetRepository(rpc, metadataFactory);
 
   await repository.list(session, { limit: 10 });
   await repository.requestJoin(session, {
@@ -63,21 +76,35 @@ it('maps Set reads and commands to authoritative RPCs', async () => {
   expect(rpc.mock.calls).toEqual([
     ['list_discovery_sets_v1', session, { p_cursor: null, p_limit: 10 }],
     [
-      'request_set_join_v1',
+      'request_set_join_compat_v2',
       session,
       {
         p_correlation_id: '70000000-0000-4000-8000-000000000001',
-        p_expected_set_version: 3,
+        p_audit: {
+          appVersion: 'core-v2-test',
+          clientCreatedAt: '2026-07-14T08:00:00.000Z',
+          clientRequestId: 'b1000000-0000-4000-8000-000000000001',
+          deviceInstallationId: 'b1000000-0000-4000-8000-000000000002',
+          platform: 'android',
+        },
+        p_expected_version: 3,
         p_idempotency_key: 'set-join:70000000-0000-4000-8000-000000000001',
         p_set_id: 'a1000000-0000-4000-8000-000000000001',
       },
     ],
     [
-      'create_set_invite_v1',
+      'create_set_invite_compat_v2',
       session,
       {
         p_correlation_id: '70000000-0000-4000-8000-000000000002',
-        p_expected_set_version: 3,
+        p_audit: {
+          appVersion: 'core-v2-test',
+          clientCreatedAt: '2026-07-14T08:00:00.000Z',
+          clientRequestId: 'b1000000-0000-4000-8000-000000000001',
+          deviceInstallationId: 'b1000000-0000-4000-8000-000000000002',
+          platform: 'android',
+        },
+        p_expected_version: 3,
         p_idempotency_key: 'set-invite:70000000-0000-4000-8000-000000000002',
         p_set_id: 'a1000000-0000-4000-8000-000000000001',
         p_target_player_id: '20000000-0000-4000-8000-000000000002',
