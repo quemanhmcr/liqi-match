@@ -22,7 +22,7 @@ After the proof, `supabase db push --linked --include-all --dry-run` reported:
 Remote database is up to date.
 ```
 
-The linked local and remote migration histories matched through `202607150134` at the final verification checkpoint.
+At the final post-Senior-1 verification checkpoint, the remote included `202607150400_social_cloud_runtime_repairs_v2.sql` plus remote-only migrations `202607150135`, `202607150200`, `202607150201`, and `202607150300` reserved by later workstreams. Exact sibling copies of those four remote-only files were mirrored temporarily only to converge Supabase CLI history, then removed. They are not committed by Senior 2. With that temporary parity mirror present, the linked dry-run reported the remote database up to date.
 
 ## Re-run
 
@@ -99,7 +99,7 @@ Corrections:
 
 The final runtime suite passed after both deployed corrections.
 
-The complete 213-assertion cloud runner was executed again after remote migrations `202607150132` through `202607150134` changed profile identity, Social boolean capabilities, and Trust visibility. All six suites remained green.
+The complete 213-assertion cloud runner was executed again after remote migrations `202607150132` through `202607150134` changed profile identity, Social boolean capabilities, and Trust visibility. It was then executed once more after applying Senior 1 migration `202607150400` on top of the shared remote checkpoint. All six suites remained green on both runs.
 
 ## Scope boundary
 

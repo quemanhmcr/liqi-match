@@ -22,6 +22,16 @@ export {
 } from './runtime/messages-simulation-reset';
 
 export {
+  MessageReportEvidenceJournal,
+  MessageReportEvidenceV2Schema,
+  MessageReportEvidenceWorkflow,
+  type MessageReportEvidenceProvider,
+  type MessageReportEvidenceResultV2,
+  type MessageReportEvidenceV2,
+  type PendingMessageReportEvidenceV2,
+} from './services/message-report-evidence';
+
+export {
   createSupabaseConversationAdapter,
   type SupabaseConversationAdapter,
   type SupabaseConversationAdapterOptions,

@@ -72,6 +72,22 @@ Profile relationship actions consume the exact `SocialRelationshipSnapshotV2` re
 
 Blocked-user settings read `list_blocked_players_v2`, which returns viewer-owned directional blocks plus the exact relationship version required by `unblock_player_v2`. Mobile settings no longer query or delete legacy `blocks` rows directly; the legacy table remains rollback/shadow data only.
 
+Profile Settings reads and writes the five canonical Social V2 policies through `PlayerPrivacyProvider`: profile visibility, presence visibility, friendship-request policy, session-invite policy and trust visibility. The mobile client sends the full current policy plus `expectedPrivacyVersion`, renders only the authoritative receipt and refetches after a version conflict. Core V1 discoverability remains a separate availability concern. `allowProfileShare` and `showWinRate` remain presentation preferences and must not be consumed as privacy, friendship, session or trust authority.
+
+## Friendship notification integration agreement
+
+`friendship.requested.v2` and `friendship.accepted.v2` remain Social-owned source events. A supplier-owned outbox projection creates the existing `notification.requested.v1` envelope with the friendship event as `causationId`; Return Loop continues to own notification persistence, inbox read state, push delivery, replay receipts and deep-link resolution.
+
+Friendship notification navigation contains only the counterpart canonical `PlayerId`. It never contains a friendship request ID or client capability. Tapping opens `/profile/[playerId]`, where the latest relationship snapshot decides whether Accept, Cancel or no friendship action is available.
+
+Block is checked both before notification persistence and during profile deep-link resolution. A block created after an inbox row was persisted therefore makes the old notification destination expire instead of reopening a hidden profile. Rollback disables friendship mutations or the Social read flag; it does not delete source events, projected notification requests or canonical relationship history.
+
+## Message report entry agreement
+
+Conversation exposes an explicit report action only for incoming messages whose `ConversationId`, `MessageId` and sender `PlayerId` all satisfy the canonical Core V1 schemas. Outgoing messages, typing indicators and simulation/local fixture IDs never receive report capability. The client sends only category plus canonical evidence identity through `report_message_v2`; it does not trust displayed sender text or infer message ownership.
+
+The Social report authority rechecks conversation membership, message existence and authoritative sender at command time. The report insert synchronously triggers Conversation's private immutable snapshot capture in the same database transaction, eliminating a receipt-without-evidence crash window. The mobile workflow then verifies that snapshot through `capture_message_report_evidence_v2`; a capture timeout keeps the authoritative report receipt and retries evidence-only without resubmitting the report. Local retry-storage or cleanup failures never turn a successful server receipt into a failed-report screen. `report.submitted.v2` is a private safety signal; an unverified report does not directly alter public reputation or friendship state.
+
 ## Conversation consumer agreement (S1/S3)
 
 The relationship aggregate is the conversation source for friendship-derived direct conversations. Consumers use `aggregateId` as `sourceId` and `aggregateVersion` as the monotonic `sourceVersion`. `friendship.accepted.v2` supplies the complete two-player active member set. Replay of the same event/source must return the existing direct conversation rather than create another.
@@ -86,6 +102,6 @@ Player privacy is a versioned self aggregate. Active players may update profile,
 
 A submitted report is an immutable safety record, not a moderation verdict. `report.submitted.v2` never carries a reputation delta or public recommendation penalty. Any future reputation input requires a separate moderation-confirmed event and explicit policy ownership.
 
-Message reports remain valid after a block because historical conversation membership and messages are retained. Social stores only the authoritative conversation/message reference, sender, sequence, timestamps, content kind and a content fingerprint. It does not copy message text or media payload. Conversation remains responsible for privileged immutable evidence capture through `ConversationModerationProvider.captureReportEvidence` using the canonical `reportId`.
+Message reports remain valid after a block because historical conversation membership and messages are retained. Social stores only the authoritative conversation/message reference and content fingerprint in its generic evidence row. For a Core V1 conversation, the compatibility provider owns the exact privileged snapshot in `private.message_report_evidence_v1`, including canonical sender, client message ID, sequence, content, creation time and tombstone time. The reporter-only `capture_message_report_evidence_v2(reportId)` RPC returns the strict Conversation evidence DTO without duplicating `reportId` in the response; other accounts cannot read it, and even service-role update/delete attempts are rejected by the immutability trigger. When Conversation V2 tables are installed, the same RPC delegates to the Conversation-owned membership, message and `message_report_evidence_v2` authority instead of redefining those semantics.
 
 Rollback disables Core V2 privacy/report writes through the shared social feature gate while preserving privacy versions, reports, evidence references, receipts, events, metrics and audit history. Canonical safety history is never deleted during rollback.

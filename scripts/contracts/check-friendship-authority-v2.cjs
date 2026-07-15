@@ -11,6 +11,13 @@ const migration = fs.readFileSync(
   ),
   'utf8',
 );
+const projectionRepair = fs.readFileSync(
+  path.join(
+    root,
+    'supabase/migrations/202607150400_social_cloud_runtime_repairs_v2.sql',
+  ),
+  'utf8',
+);
 const test = fs.readFileSync(
   path.join(
     root,
@@ -42,6 +49,8 @@ for (const marker of [
 
 for (const requiredAssertion of [
   'reciprocal request does not create duplicate request rows',
+  're-request after decline creates a new request identity',
+  're-request after decline projects the fresh pending request version',
   'same idempotency key returns durable replay',
   'accept rejects stale relationship version',
   'suspended player cannot create relationship mutation',
@@ -49,6 +58,18 @@ for (const requiredAssertion of [
 ]) {
   if (!test.includes(requiredAssertion)) {
     throw new Error(`Missing friendship pgTAP coverage: ${requiredAssertion}`);
+  }
+}
+
+for (const marker of [
+  'alter column created_at set default clock_timestamp()',
+  "(requests.state = 'pending') desc",
+  'coalesce(requests.responded_at, requests.created_at) desc',
+]) {
+  if (!projectionRepair.includes(marker)) {
+    throw new Error(
+      `Missing friendship request projection repair marker: ${marker}`,
+    );
   }
 }
 
@@ -63,11 +84,12 @@ if (plan !== assertions) {
 }
 
 (async () => {
-  const parser = await new PgQueryModule();
   for (const [label, sql] of [
     ['migration', migration],
+    ['projection repair', projectionRepair],
     ['pgTAP', test],
   ]) {
+    const parser = await new PgQueryModule();
     const parsed = parser.parse(sql);
     if (parsed.error) {
       throw new Error(

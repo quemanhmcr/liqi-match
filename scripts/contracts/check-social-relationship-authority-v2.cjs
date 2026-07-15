@@ -13,9 +13,17 @@ const files = {
     root,
     'supabase/tests/database/social_relationship_foundation_v2.test.sql',
   ),
+  booleanRepairMigration: path.join(
+    root,
+    'supabase/migrations/202607150400_social_cloud_runtime_repairs_v2.sql',
+  ),
   trustMigration: path.join(
     root,
     'supabase/migrations/202607140053_social_trust_visibility_v2.sql',
+  ),
+  trustBooleanRepairMigration: path.join(
+    root,
+    'supabase/migrations/202607150400_social_cloud_runtime_repairs_v2.sql',
   ),
   trustTest: path.join(
     root,
@@ -44,6 +52,10 @@ const files = {
   blockedPlayersTest: path.join(
     root,
     'supabase/tests/database/social_blocked_players_read_v2.test.sql',
+  ),
+  rollbackTest: path.join(
+    root,
+    'supabase/tests/database/social_release_rollback_v2.test.sql',
   ),
 };
 const source = Object.fromEntries(
@@ -77,6 +89,34 @@ for (const marker of [
 }
 
 for (const marker of [
+  'create or replace function public.list_friendships_v2(',
+  'create or replace function public.list_blocked_players_v2(',
+  'select visible_page.target_player_id',
+  'order by visible_page.target_player_id desc',
+]) {
+  if (!source.booleanRepairMigration.includes(marker)) {
+    throw new Error(`Missing Social cloud pagination repair marker: ${marker}`);
+  }
+}
+if (/max\s*\(\s*target_player_id\s*\)/i.test(source.booleanRepairMigration)) {
+  throw new Error('Social cloud pagination repair must not use max(uuid).');
+}
+
+for (const marker of [
+  "friend := coalesce(relationship_row.friendship_state = 'accepted', false)",
+  'can_message := coalesce(',
+  'can_invite := coalesce(',
+  'can_view_presence := coalesce(',
+  'can_request_friendship := coalesce(',
+]) {
+  if (!source.booleanRepairMigration.includes(marker)) {
+    throw new Error(
+      `Missing Social boolean capability repair marker: ${marker}`,
+    );
+  }
+}
+
+for (const marker of [
   'public.trust_visibility_v2',
   'private.social_trust_visibility_decision_v2',
   'public.get_trust_visibility_v2',
@@ -85,6 +125,17 @@ for (const marker of [
 ]) {
   if (!source.trustMigration.includes(marker)) {
     throw new Error(`Missing Core V2 trust visibility marker: ${marker}`);
+  }
+}
+
+for (const marker of [
+  "friend_value := coalesce(relationship_row.friendship_state = 'accepted', false)",
+  'can_view_trust_value := coalesce(',
+]) {
+  if (!source.trustBooleanRepairMigration.includes(marker)) {
+    throw new Error(
+      `Missing Trust visibility boolean repair marker: ${marker}`,
+    );
   }
 }
 
@@ -146,6 +197,20 @@ if (
   );
 }
 
+for (const assertion of [
+  'rollback disables Core V2 relationship reads with a stable error',
+  'rollback disables new Social mutations with a stable error',
+  'rollback preserves canonical relationship history',
+  'rollback preserves the completed command receipt',
+  'rollback preserves replayable outbox history',
+  're-enable replay preserves the original event identity',
+  'rollback and replay never duplicate the friendship request',
+]) {
+  if (!source.rollbackTest.includes(assertion)) {
+    throw new Error(`Social rollback pgTAP coverage is missing: ${assertion}`);
+  }
+}
+
 if (/auth\.uid\(\).*player/i.test(source.foundationMigration)) {
   throw new Error('Core V2 must not treat auth.uid() as canonical PlayerId.');
 }
@@ -187,17 +252,21 @@ const assertionCount =
   countAssertions(source.trustTest, 'Trust visibility') +
   countAssertions(source.consumerBridgeTest, 'Consumer bridge') +
   countAssertions(source.profileVisibilityTest, 'Profile visibility') +
-  countAssertions(source.blockedPlayersTest, 'Blocked players');
+  countAssertions(source.blockedPlayersTest, 'Blocked players') +
+  countAssertions(source.rollbackTest, 'Rollback drill');
 
 (async () => {
-  const parser = await new PgQueryModule();
   for (const [label, sql] of [
     ['foundation', source.foundationMigration],
+    ['boolean capability repair', source.booleanRepairMigration],
     ['trust visibility', source.trustMigration],
+    ['trust visibility boolean repair', source.trustBooleanRepairMigration],
     ['consumer bridge', source.consumerBridgeMigration],
     ['profile visibility', source.profileVisibilityMigration],
     ['blocked players', source.blockedPlayersMigration],
+    ['rollback pgTAP', source.rollbackTest],
   ]) {
+    const parser = await new PgQueryModule();
     const parsed = parser.parse(sql);
     if (parsed.error) {
       throw new Error(

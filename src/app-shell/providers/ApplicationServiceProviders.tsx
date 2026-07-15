@@ -45,6 +45,7 @@ export function ApplicationServiceProviders({
               >
                 <HomeRepositoryProvider repository={services.homeRepository}>
                   <MessagesServicesProvider
+                    evidenceProvider={services.messageReportEvidenceProvider}
                     messageTransport={services.messageTransport}
                     repository={services.messageRepository}
                   >

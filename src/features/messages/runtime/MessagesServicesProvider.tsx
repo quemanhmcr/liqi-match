@@ -11,8 +11,10 @@ import { setChatPendingMessagePersistenceScope } from '../model/chat-runtime-sto
 
 import type { ChatMessageTransport } from '../services/chat-message-transport';
 import type { ChatRepository } from '../services/chat-repository';
+import type { MessageReportEvidenceProvider } from '../services/message-report-evidence';
 
 export type MessagesServices = {
+  evidenceProvider: MessageReportEvidenceProvider | null;
   messageTransport: ChatMessageTransport;
   repository: ChatRepository;
 };
@@ -39,6 +41,7 @@ export function conversationTransportSession(
 
 export function MessagesServicesProvider({
   children,
+  evidenceProvider,
   messageTransport,
   repository,
 }: MessagesServicesProviderProps) {
@@ -56,7 +59,9 @@ export function MessagesServicesProvider({
   }, [messageTransport, session?.principal?.accountId, session?.user.id]);
 
   return (
-    <MessagesServicesContext.Provider value={{ messageTransport, repository }}>
+    <MessagesServicesContext.Provider
+      value={{ evidenceProvider, messageTransport, repository }}
+    >
       {children}
     </MessagesServicesContext.Provider>
   );

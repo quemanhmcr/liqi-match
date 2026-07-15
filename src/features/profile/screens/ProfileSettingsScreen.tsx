@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useMemo, useState, type ReactNode } from 'react';
@@ -16,7 +16,11 @@ import {
 } from 'react-native';
 
 import { useAssetResolver } from '@/entities/media-asset';
-import { useSocialRelationshipRepository } from '@/entities/social-relationship/RelationshipCapabilitiesProvider';
+import {
+  usePlayerPrivacyProvider,
+  useSocialCommandCoordinator,
+  useSocialRelationshipRepository,
+} from '@/entities/social-relationship/RelationshipCapabilitiesProvider';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
   AccountDeletionClientError,
@@ -36,6 +40,11 @@ import {
   liquidTypography,
 } from '@/shared/theme/liquid-glass.tokens';
 
+import {
+  ProfilePrivacySettingsSection,
+  type PrivacySettingKey,
+  type PrivacySettingValue,
+} from '../components/ProfilePrivacySettingsSection';
 import { ProfileText } from '../components/ProfileShared';
 import { resolveProfileMedia } from '../model/profile-media';
 import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
@@ -60,6 +69,8 @@ export function ProfileSettingsScreen() {
   const { session, setSession, signOut } = useAuth();
   const profileRepository = useProfileReadRepository();
   const relationshipRepository = useSocialRelationshipRepository();
+  const socialCoordinator = useSocialCommandCoordinator();
+  const privacyProvider = usePlayerPrivacyProvider();
   const assetResolver = useAssetResolver();
   const queryClient = useQueryClient();
   const [pendingKey, setPendingKey] = useState<SettingsMutationKey | null>(
@@ -90,6 +101,64 @@ export function ProfileSettingsScreen() {
       return relationshipRepository.listBlockedPlayers(session, { limit: 1 });
     },
     queryKey: ['profile-blocked-users-summary', session?.principal?.playerId],
+  });
+  const privacyQueryKey = [
+    'player-privacy-v2',
+    session?.principal?.playerId,
+  ] as const;
+  const privacyQuery = useQuery({
+    enabled: Boolean(session && privacyProvider),
+    queryFn: () => {
+      if (!session || !privacyProvider) {
+        throw new Error('Missing auth session or privacy provider');
+      }
+      return privacyProvider.getPrivacy(session);
+    },
+    queryKey: privacyQueryKey,
+  });
+  const privacyMutation = useMutation({
+    mutationFn: async ({
+      key,
+      value,
+    }: {
+      key: PrivacySettingKey;
+      value: PrivacySettingValue;
+    }) => {
+      const privacy = privacyQuery.data;
+      if (!session || !socialCoordinator || !privacy) {
+        throw Object.assign(
+          new Error('Quyền riêng tư authoritative chưa sẵn sàng.'),
+          { code: 'privacy_forbidden', retryable: false },
+        );
+      }
+      const nextPrivacy = { ...privacy, [key]: value };
+      return socialCoordinator.updatePrivacy({
+        expectedPrivacyVersion: privacy.version,
+        privacy: {
+          friendshipRequests: nextPrivacy.friendshipRequests,
+          presenceVisibility: nextPrivacy.presenceVisibility,
+          profileVisibility: nextPrivacy.profileVisibility,
+          sessionInvites: nextPrivacy.sessionInvites,
+          trustVisibility: nextPrivacy.trustVisibility,
+        },
+        session,
+      });
+    },
+    onError: async (error) => {
+      if (privacyErrorCode(error) === 'privacy_version_conflict') {
+        await privacyQuery.refetch();
+      }
+      Alert.alert('Chưa lưu được quyền riêng tư', privacyErrorMessage(error));
+    },
+    onSuccess: async (receipt) => {
+      queryClient.setQueryData(privacyQueryKey, receipt.privacy);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['social-relationship'] }),
+        queryClient.invalidateQueries({ queryKey: ['discover'] }),
+        queryClient.invalidateQueries({ queryKey: ['profile-view'] }),
+        queryClient.invalidateQueries({ queryKey: ['home-dashboard'] }),
+      ]);
+    },
   });
 
   const profile = profileQuery.data;
@@ -317,6 +386,30 @@ export function ProfileSettingsScreen() {
         />
       </SettingsSection>
 
+      <SettingsSection label="SOCIAL V2" title="Quan hệ & quyền riêng tư">
+        <ProfilePrivacySettingsSection
+          disabled={
+            privacyMutation.isPending ||
+            !socialCoordinator ||
+            !privacyProvider ||
+            !session ||
+            !privacyQuery.data
+          }
+          error={privacyQuery.isError || !socialCoordinator || !privacyProvider}
+          loading={privacyQuery.isPending}
+          onChange={(key, value) => privacyMutation.mutate({ key, value })}
+          onRetry={
+            privacyQuery.isError ? () => void privacyQuery.refetch() : undefined
+          }
+          pendingKey={
+            privacyMutation.isPending
+              ? (privacyMutation.variables?.key ?? null)
+              : null
+          }
+          privacy={privacyQuery.data ?? null}
+        />
+      </SettingsSection>
+
       <SettingsSection label="RIÊNG TƯ" title="Hiển thị & an toàn">
         <SettingsRow
           accessory={
@@ -333,7 +426,7 @@ export function ProfileSettingsScreen() {
           onPress={() =>
             void updateSetting('isDiscoverable', !settings.isDiscoverable)
           }
-          subtitle="Tắt để ẩn khỏi Khám phá và luồng match mới."
+          subtitle="Core V1 discovery availability, tách biệt với quyền xem hồ sơ V2."
           title="Hiển thị trong khám phá"
         />
         <SettingsRow
@@ -351,7 +444,7 @@ export function ProfileSettingsScreen() {
           onPress={() =>
             void updateSetting('allowProfileShare', !settings.allowProfileShare)
           }
-          subtitle="Kiểm soát việc tạo ảnh share social từ hồ sơ."
+          subtitle="Cài đặt trình bày cục bộ; không phải profile visibility authority."
           title="Cho phép tạo ảnh chia sẻ"
         />
         <SettingsRow
@@ -369,7 +462,7 @@ export function ProfileSettingsScreen() {
           onPress={() =>
             void updateSetting('showWinRate', !settings.showWinRate)
           }
-          subtitle="Ẩn/hiện tỷ lệ thắng ở những khu vực có hỗ trợ."
+          subtitle="Tuỳ chọn trình bày; không thay đổi reputation hoặc trust authority."
           title="Hiển thị tỷ lệ thắng"
         />
         <SettingsRow
@@ -770,6 +863,25 @@ function ProfileAvatar({
       ) : null}
     </View>
   );
+}
+
+function privacyErrorCode(error: unknown) {
+  return error && typeof error === 'object' && 'code' in error
+    ? String(error.code)
+    : null;
+}
+
+function privacyErrorMessage(error: unknown) {
+  const code = privacyErrorCode(error);
+  if (code === 'privacy_version_conflict') {
+    return 'Policy đã thay đổi ở phiên khác. Hãy tải lại trước khi lưu.';
+  }
+  if (code === 'privacy_forbidden') {
+    return 'Không thể xác minh privacy authority. Các lựa chọn đang bị khoá an toàn.';
+  }
+  return error instanceof Error && error.message
+    ? error.message
+    : 'Vui lòng kiểm tra kết nối và thử lại.';
 }
 
 function compactUserId(userId: string | undefined) {

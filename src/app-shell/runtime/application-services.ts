@@ -21,7 +21,11 @@ import type {
 import type { ScenarioControlPort } from '@/shared/simulation';
 import type { DiscoverRepository } from '@/features/discover';
 import type { HomeRepository } from '@/features/home';
-import type { ChatMessageTransport, ChatRepository } from '@/features/messages';
+import type {
+  ChatMessageTransport,
+  ChatRepository,
+  MessageReportEvidenceProvider,
+} from '@/features/messages';
 import type { ProfileReadRepository } from '@/features/profile';
 
 import type { ApplicationRuntimeMode } from './application-runtime-mode';
@@ -34,6 +38,7 @@ type ApplicationFeatureServices = TrustOutcomesServices & {
   matchDecisionRepository: MatchDecisionRepository;
   matchIntentRepository: MatchIntentRepository;
   matchSetRepository: MatchSetRepository;
+  messageReportEvidenceProvider: MessageReportEvidenceProvider | null;
   messageRepository: ChatRepository;
   messageTransport: ChatMessageTransport;
   notificationRepository: NotificationInboxRepository;

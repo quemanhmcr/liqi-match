@@ -193,6 +193,36 @@ export function mapNotificationToViewModel(
         title: 'Yêu cầu tham gia',
         visual: { icon: 'person-add-outline', kind: 'symbol', tone: 'purple' },
       };
+    case 'friendship-requested':
+      return {
+        ...shared,
+        action: {
+          destination: {
+            kind: 'profile',
+            playerId: notification.payload.requesterPlayerId,
+          },
+          label: 'Xem lời mời',
+          tone: 'purple',
+        },
+        messageParts: ['Bạn có một lời mời kết bạn mới'],
+        title: 'Lời mời kết bạn',
+        visual: { icon: 'person-add-outline', kind: 'symbol', tone: 'purple' },
+      };
+    case 'friendship-accepted':
+      return {
+        ...shared,
+        action: {
+          destination: {
+            kind: 'profile',
+            playerId: notification.payload.friendPlayerId,
+          },
+          label: 'Xem bạn bè',
+          tone: 'purple',
+        },
+        messageParts: ['Lời mời kết bạn đã được chấp nhận'],
+        title: 'Đã trở thành bạn bè',
+        visual: { icon: 'people-outline', kind: 'symbol', tone: 'purple' },
+      };
     case 'system': {
       const destination = destinationFromDeepLink(
         notification.payload.deepLink,

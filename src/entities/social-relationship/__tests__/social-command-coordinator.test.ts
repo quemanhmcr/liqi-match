@@ -13,6 +13,11 @@ import type {
 } from '../social-relationship-repository';
 import { SocialCommandCoordinator } from '../social-command-coordinator';
 import { SocialCommandJournal } from '../social-command-journal';
+import {
+  setSocialTelemetrySink,
+  type SocialTelemetryAttributes,
+  type SocialTelemetryEvent,
+} from '../social-telemetry';
 
 import {
   socialTestSession,
@@ -164,6 +169,110 @@ describe('SocialCommandCoordinator', () => {
     );
     expect(storage.setItem).toHaveBeenCalledTimes(1);
     expect(storage.removeItem).toHaveBeenCalledTimes(1);
+  });
+
+  it('emits privacy-safe command lifecycle telemetry across timeout and replay', async () => {
+    const { coordinator, services } = createHarness();
+    const events: {
+      attributes?: SocialTelemetryAttributes;
+      event: SocialTelemetryEvent;
+    }[] = [];
+    const restore = setSocialTelemetrySink((event, attributes) => {
+      events.push({ attributes, event });
+    });
+    services.friendship.requestFriendship
+      .mockRejectedValueOnce(
+        Object.assign(new Error('timeout'), {
+          code: 'service_unavailable',
+          retryable: true,
+        }),
+      )
+      .mockImplementationOnce(async (_session, command) =>
+        relationshipReceipt(command),
+      );
+    const input = {
+      expectedRelationshipVersion: 0,
+      session: socialTestSession(),
+      targetPlayerId,
+    };
+
+    try {
+      await expect(coordinator.requestFriendship(input)).rejects.toMatchObject({
+        code: 'service_unavailable',
+      });
+      await expect(coordinator.requestFriendship(input)).resolves.toMatchObject(
+        {
+          relationship: { version: 1 },
+        },
+      );
+    } finally {
+      restore();
+    }
+
+    expect(events).toEqual([
+      {
+        attributes: { operation: 'request_friendship' },
+        event: 'social.command.started',
+      },
+      {
+        attributes: {
+          code: 'service_unavailable',
+          operation: 'request_friendship',
+          retryable: true,
+        },
+        event: 'social.command.failed',
+      },
+      {
+        attributes: { operation: 'request_friendship' },
+        event: 'social.command.started',
+      },
+      {
+        attributes: {
+          aggregateVersion: 1,
+          correlationId: '43000000-0000-4000-8000-000000000010',
+          operation: 'request_friendship',
+          repeated: false,
+        },
+        event: 'social.command.succeeded',
+      },
+    ]);
+    for (const item of events) {
+      expect(Object.keys(item.attributes ?? {})).not.toEqual(
+        expect.arrayContaining([
+          'accountId',
+          'messageId',
+          'playerId',
+          'reportId',
+          'targetPlayerId',
+        ]),
+      );
+    }
+  });
+
+  it('does not let a telemetry sink failure change command authority', async () => {
+    const { coordinator, services } = createHarness();
+    services.friendship.requestFriendship.mockImplementation(
+      async (_session, command) => relationshipReceipt(command),
+    );
+    const errorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const restore = setSocialTelemetrySink(() => {
+      throw new Error('telemetry unavailable');
+    });
+
+    try {
+      await expect(
+        coordinator.requestFriendship({
+          expectedRelationshipVersion: 0,
+          session: socialTestSession(),
+          targetPlayerId,
+        }),
+      ).resolves.toMatchObject({ relationship: { version: 1 } });
+    } finally {
+      restore();
+      errorSpy.mockRestore();
+    }
   });
 
   it('rejects a session without canonical account identity before transport', async () => {

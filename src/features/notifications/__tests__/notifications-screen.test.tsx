@@ -212,6 +212,57 @@ describe('NotificationsScreen', () => {
     expect(screen.getByText('Minh Anh')).toBeTruthy();
   });
 
+  it('opens a friendship request on the canonical PlayerId profile route', async () => {
+    const requesterPlayerId = '20000000-0000-4000-8000-000000001311';
+    const notification = {
+      id: '90000000-0000-4000-8000-000000001311',
+      kind: 'friendship-requested' as const,
+      occurredAt: '2026-07-14T13:11:00.000Z',
+      payload: { requesterPlayerId },
+      readAt: null,
+      recipientId: '20000000-0000-4000-8000-000000000001',
+      seenAt: null,
+    };
+    const repository: NotificationInboxRepository = {
+      getSummary: async () => ({
+        latestWatermark: null,
+        unseenCount: 1,
+        updatedAt: '2026-07-14T13:11:00.000Z',
+      }),
+      list: async () => ({
+        items: [notification],
+        latestWatermark: {
+          id: notification.id,
+          occurredAt: notification.occurredAt,
+        },
+        nextCursor: null,
+        unseenCount: 1,
+      }),
+      markRead: async () => ({
+        notification: { ...notification, readAt: '2026-07-14T13:12:00.000Z' },
+        unseenCount: 0,
+      }),
+      markSeenThrough: async ({ seenThrough }) => ({
+        seenAt: '2026-07-14T13:12:00.000Z',
+        seenThrough,
+        unseenCount: 0,
+      }),
+    };
+    const screen = await renderNotificationWithProviders(
+      <NotificationsScreen />,
+      repository,
+    );
+
+    await fireEvent.press(
+      await screen.findByLabelText('Xem lời mời Lời mời kết bạn'),
+    );
+
+    expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.playerDetail(requesterPlayerId),
+    );
+    await screen.unmount();
+  });
+
   it('opens the canonical set target from a set invite', async () => {
     const screen = await renderWithProviders(<NotificationsScreen />);
     const page = await screen.services.notificationRepository.list({

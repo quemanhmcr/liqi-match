@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import fs from 'node:fs';
 import path from 'node:path';
+import { z } from 'zod';
 
 import {
   FriendshipRequestedEventV2Schema,
@@ -18,6 +19,78 @@ import {
 const root = path.join(process.cwd(), 'contracts/core-v2/fixtures');
 const read = (group: 'provider' | 'consumer', name: string) =>
   JSON.parse(fs.readFileSync(path.join(root, group, name), 'utf8')) as unknown;
+
+const SessionBlockConsumerPolicyV2Schema = z
+  .object({
+    event: PlayerBlockedEventV2Schema,
+    relationship: SocialRelationshipSnapshotV2Schema,
+    policy: z
+      .object({
+        preStart: z
+          .object({
+            cancelPendingInvites: z.literal(true),
+            deny: z
+              .array(
+                z.enum([
+                  'invite',
+                  'join',
+                  'ready_response',
+                  'member_visibility',
+                ]),
+              )
+              .length(4),
+            revokeActiveMembership: z.literal(true),
+          })
+          .strict(),
+        activePlay: z
+          .object({
+            preserveHistoricalMembership: z.literal(true),
+            transition: z.literal('disputed'),
+          })
+          .strict(),
+        replay: z.literal('idempotent'),
+        unblock: z
+          .object({
+            restoreFriendship: z.literal(false),
+            restoreReadiness: z.literal(false),
+            restoreSessionMembership: z.literal(false),
+          })
+          .strict(),
+      })
+      .strict(),
+  })
+  .strict()
+  .superRefine((fixture, context) => {
+    if (fixture.event.aggregateId !== fixture.relationship.relationshipId) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Session block event must target the same Social relationship.',
+        path: ['event', 'aggregateId'],
+      });
+    }
+    if (fixture.event.aggregateVersion !== fixture.relationship.version) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Session consumer must observe the exact Social aggregate version.',
+        path: ['event', 'aggregateVersion'],
+      });
+    }
+    if (
+      fixture.event.payload.blockerPlayerId !==
+        fixture.relationship.viewerPlayerId ||
+      fixture.event.payload.blockedPlayerId !==
+        fixture.relationship.targetPlayerId
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Session block direction must match the relationship snapshot.',
+        path: ['event', 'payload'],
+      });
+    }
+  });
 
 describe('Core V2 social relationship provider contracts', () => {
   it('publishes friendship without inferring it from match or conversation', () => {
@@ -158,6 +231,29 @@ describe('Core V2 social relationship consumer fixtures', () => {
       ).toBeTruthy();
     },
   );
+
+  it('locks the S1.4 Session block precedence without redefining Session state', () => {
+    const fixture = SessionBlockConsumerPolicyV2Schema.parse(
+      read('consumer', 'session-block-enforcement.json'),
+    );
+
+    expect(fixture.relationship.capabilities).toMatchObject({
+      blocked: true,
+      canInviteToSession: false,
+    });
+    expect(new Set(fixture.policy.preStart.deny)).toEqual(
+      new Set(['invite', 'join', 'ready_response', 'member_visibility']),
+    );
+    expect(fixture.policy.activePlay).toEqual({
+      preserveHistoricalMembership: true,
+      transition: 'disputed',
+    });
+    expect(fixture.policy.unblock).toEqual({
+      restoreFriendship: false,
+      restoreReadiness: false,
+      restoreSessionMembership: false,
+    });
+  });
 
   it('fails closed for an unknown contract version', () => {
     const fixture = read('consumer', 'relationship-friend.json') as object;
