@@ -1411,7 +1411,7 @@ begin
 
   update public.play_sessions_v2
   set state = 'in_progress',
-      started_at = now(),
+      started_at = clock_timestamp(),
       version = version + 1
   where id = p_session_id
   returning * into session_row;
@@ -1639,7 +1639,10 @@ begin
     if completed_claim_count = participant_count then
       update public.play_sessions_v2
       set state = 'completed',
-          completed_at = now(),
+          completed_at = greatest(
+            clock_timestamp(),
+            session_row.started_at + interval '1 microsecond'
+          ),
           version = version + 1
       where id = p_session_id
       returning * into session_row;

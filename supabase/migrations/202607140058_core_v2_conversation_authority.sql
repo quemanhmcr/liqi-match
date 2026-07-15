@@ -1663,11 +1663,11 @@ declare
   conversation public.conversations_v2%rowtype;
   source_row public.conversation_sources_v2%rowtype;
   source jsonb := p_activity -> 'source';
-  source_event_id uuid;
-  source_event_version integer;
-  source_event_type text;
-  correlation_id uuid;
-  causation_id uuid;
+  source_event_id_value uuid;
+  source_event_version_value integer;
+  source_event_type_value text;
+  correlation_id_value uuid;
+  causation_id_value uuid;
   existing public.messages_v2%rowtype;
   message public.messages_v2%rowtype;
   next_sequence bigint;
@@ -1681,15 +1681,15 @@ begin
     perform private.raise_core_error_v1('validation_failed', 'System activity is incomplete.');
   end if;
   begin
-    source_event_id := (p_activity ->> 'sourceEventId')::uuid;
-    source_event_version := (p_activity ->> 'sourceEventVersion')::integer;
-    correlation_id := (p_activity ->> 'correlationId')::uuid;
-    causation_id := nullif(p_activity ->> 'causationId', '')::uuid;
+    source_event_id_value := (p_activity ->> 'sourceEventId')::uuid;
+    source_event_version_value := (p_activity ->> 'sourceEventVersion')::integer;
+    correlation_id_value := (p_activity ->> 'correlationId')::uuid;
+    causation_id_value := nullif(p_activity ->> 'causationId', '')::uuid;
   exception when others then
     perform private.raise_core_error_v1('validation_failed', 'System activity identifiers are invalid.');
   end;
-  source_event_type := p_activity ->> 'sourceEventType';
-  if source_event_version <= 0 then
+  source_event_type_value := p_activity ->> 'sourceEventType';
+  if source_event_version_value <= 0 then
     perform private.raise_core_error_v1('unsupported_event_version', 'System event version is unsupported.');
   end if;
 
@@ -1712,7 +1712,7 @@ begin
   select * into existing
   from public.messages_v2 messages
   where messages.conversation_id = conversation.id
-    and messages.source_event_id = source_event_id;
+    and messages.source_event_id = source_event_id_value;
   if existing.id is not null then return private.message_json_v2(existing); end if;
 
   next_sequence := conversation.last_sequence + 1;
@@ -1731,21 +1731,21 @@ begin
   ) values (
     conversation.id,
     null,
-    'system-event:' || source_event_id,
+    'system-event:' || source_event_id_value,
     next_sequence,
     'system',
     jsonb_build_object(
       'kind', 'system',
-      'sourceEventId', source_event_id,
-      'sourceEventType', source_event_type,
-      'sourceEventVersion', source_event_version,
+      'sourceEventId', source_event_id_value,
+      'sourceEventType', source_event_type_value,
+      'sourceEventVersion', source_event_version_value,
       'payload', coalesce(p_activity -> 'payload', '{}'::jsonb)
     ),
     private.command_request_hash_v1(coalesce(p_activity -> 'payload', '{}'::jsonb)),
-    source_event_id,
-    source_event_type,
-    source_event_version,
-    correlation_id
+    source_event_id_value,
+    source_event_type_value,
+    source_event_version_value,
+    correlation_id_value
   ) returning * into message;
   update public.conversations_v2
   set last_sequence = next_sequence,
@@ -1758,8 +1758,8 @@ begin
     conversation.id,
     conversation.version + 1,
     null,
-    correlation_id,
-    causation_id,
+    correlation_id_value,
+    causation_id_value,
     jsonb_build_object(
       'message', private.message_json_v2(message),
       'recipientPlayerIds', coalesce(
@@ -1771,7 +1771,7 @@ begin
         '[]'::jsonb
       )
     ),
-    'message-system-sent:' || source_event_id
+    'message-system-sent:' || source_event_id_value
   );
   return private.message_json_v2(message);
 end;
@@ -2815,7 +2815,10 @@ begin
           conversation.id,
           player_id_value,
           'member',
-          case when desired_active then 'active' else 'revoked' end,
+          case
+            when desired_active then 'active'::public.conversation_member_state_v2
+            else 'revoked'::public.conversation_member_state_v2
+          end,
           desired_active,
           desired_active,
           greatest(relationship_version_value, 1),
@@ -2836,7 +2839,10 @@ begin
           or member.revocation_reason is distinct from case when desired_active then null else desired_reason end;
         if member_changed then
           update public.conversation_members_v2
-          set state = case when desired_active then 'active' else 'revoked' end,
+          set state = case
+                when desired_active then 'active'::public.conversation_member_state_v2
+                else 'revoked'::public.conversation_member_state_v2
+              end,
               can_message = desired_active,
               can_view_conversation = desired_active,
               membership_version = greatest(member.membership_version, greatest(relationship_version_value, 1)),
@@ -4135,8 +4141,11 @@ insert into public.conversations_v2 (
 )
 select
   conversations.id,
-  'direct',
-  case when conversations.state_v1 = 'closed' then 'tombstoned' else 'open' end,
+  'direct'::public.conversation_kind_v2,
+  case
+    when conversations.state_v1 = 'closed' then 'tombstoned'::public.conversation_state_v2
+    else 'open'::public.conversation_state_v2
+  end,
   null,
   greatest(conversations.version_v1, 1),
   conversations.last_sequence_v1,
@@ -4220,15 +4229,21 @@ insert into private.conversation_direct_pairs_v2 (
   created_at
 )
 select
-  min(participants.player_id),
-  max(participants.player_id),
-  participants.conversation_id,
-  min(participants.created_at)
-from public.conversation_participants_v1 participants
-join public.conversations conversations on conversations.id = participants.conversation_id
-where conversations.match_id is not null
-group by participants.conversation_id
-having count(*) = 2 and min(participants.player_id) < max(participants.player_id)
+  pair.player_ids[1],
+  pair.player_ids[2],
+  pair.conversation_id,
+  pair.created_at
+from (
+  select
+    participants.conversation_id,
+    array_agg(participants.player_id order by participants.player_id) as player_ids,
+    min(participants.created_at) as created_at
+  from public.conversation_participants_v1 participants
+  join public.conversations conversations on conversations.id = participants.conversation_id
+  where conversations.match_id is not null
+  group by participants.conversation_id
+  having count(*) = 2 and count(distinct participants.player_id) = 2
+) pair
 on conflict (player_low_id, player_high_id) do nothing;
 
 revoke execute on function public.provision_direct_conversation_v2(jsonb) from public, anon, authenticated;

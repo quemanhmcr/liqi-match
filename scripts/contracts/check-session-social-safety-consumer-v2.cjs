@@ -115,6 +115,14 @@ requireInvariant(
   'consumer must bind event direction and payload to Social-owned outbox facts',
 );
 requireInvariant(
+  migration.includes('event_id_value is null') &&
+    migration.includes('aggregate_id_value is null') &&
+    migration.includes('blocker_player_id_value is null') &&
+    migration.includes('blocked_player_id_value is null') &&
+    migration.includes("'Session social-event envelope is incomplete.'"),
+  'consumer must reject missing required envelope facts before SQL three-valued comparisons',
+);
+requireInvariant(
   migration.includes(
     'payload_fingerprint_value := private.command_request_hash_v1(p_event)',
   ) &&

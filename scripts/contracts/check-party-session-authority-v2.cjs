@@ -33,6 +33,14 @@ const adrPath = path.join(
   'docs/adr/0005-core-v2-party-play-session-authority.md',
 );
 
+const actionTimestampMigration = fs.readFileSync(
+  'supabase/migrations/202607142103_party_session_action_timestamps_v2.sql',
+  'utf8',
+);
+const eventWallClockMigration = fs.readFileSync(
+  'supabase/migrations/202607142104_core_v2_event_wall_clock_v2.sql',
+  'utf8',
+);
 const failures = [];
 const expect = (condition, message) => {
   if (!condition) failures.push(message);
@@ -862,6 +870,31 @@ expect(
 expect(
   /participant-attested|participant quorum/i.test(adr),
   'ADR must state participant-quorum completion semantics.',
+);
+
+expect(
+  /create or replace function private\.enqueue_contract_event_v2/i.test(
+    eventWallClockMigration,
+  ) &&
+    /occurred_at_value timestamptz := clock_timestamp\(\)/i.test(
+      eventWallClockMigration,
+    ) &&
+    /'occurredAt', occurred_at_value/i.test(eventWallClockMigration),
+  'Core V2 event occurredAt must use wall-clock emission time.',
+);
+
+expect(
+  /create or replace function public\.start_session_v2/i.test(
+    actionTimestampMigration,
+  ) &&
+    /started_at = clock_timestamp\(\)/i.test(actionTimestampMigration) &&
+    /create or replace function public\.propose_session_completion_v2/i.test(
+      actionTimestampMigration,
+    ) &&
+    /completed_at = greatest\([\s\S]*clock_timestamp\(\)[\s\S]*session_row\.started_at \+ interval '1 microsecond'/i.test(
+      actionTimestampMigration,
+    ),
+  'Session action timestamps must use wall clock and preserve strict start/completion ordering.',
 );
 
 if (failures.length) {

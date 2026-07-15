@@ -23,13 +23,18 @@ language sql
 immutable
 set search_path = ''
 as $$
-  select jsonb_typeof(p_value) = 'object'
-    and jsonb_object_length(p_value) = cardinality(p_allowed_keys)
-    and not exists (
-      select 1
-      from jsonb_object_keys(p_value) as keys(key_name)
-      where not keys.key_name = any(p_allowed_keys)
-    );
+  select case
+    when p_value is null or jsonb_typeof(p_value) is distinct from 'object' then false
+    else (
+      select count(*) = cardinality(p_allowed_keys)
+        and not exists (
+          select 1
+          from jsonb_object_keys(p_value) as keys(key_name)
+          where not keys.key_name = any(p_allowed_keys)
+        )
+      from jsonb_object_keys(p_value)
+    )
+  end;
 $$;
 
 create or replace function private.require_contract_uuid_v2(

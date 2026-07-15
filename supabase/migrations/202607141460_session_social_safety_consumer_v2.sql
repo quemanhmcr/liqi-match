@@ -198,6 +198,20 @@ begin
     );
   end;
 
+  if event_id_value is null
+    or aggregate_id_value is null
+    or aggregate_version_value is null
+    or actor_player_id_value is null
+    or correlation_id_value is null
+    or blocker_player_id_value is null
+    or blocked_player_id_value is null
+    or occurred_at_value is null then
+    perform private.raise_core_error_v1(
+      'validation_failed',
+      'Session social-event envelope is incomplete.'
+    );
+  end if;
+
   if blocker_player_id_value = blocked_player_id_value
     or aggregate_version_value <= 0
     or actor_player_id_value <> blocker_player_id_value

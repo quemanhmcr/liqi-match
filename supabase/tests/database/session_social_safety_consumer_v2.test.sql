@@ -215,6 +215,12 @@ select private.enqueue_contract_event_v2(
   ),
   'session-social-safety-source-1461'
 ) as event_id;
+grant select on source_block_event to service_role;
+create temporary table source_block_payload as
+select payload
+from private.outbox_events
+where id = (select event_id from source_block_event);
+grant select on source_block_payload to service_role;
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
@@ -345,7 +351,7 @@ set local role service_role;
 select set_config('request.jwt.claim.role', 'service_role', true);
 create temporary table replayed_block as
 select private.consume_play_session_social_event_v2(
-  (select payload from private.outbox_events where id = (select event_id from source_block_event))
+  (select payload from source_block_payload)
 ) as result;
 reset role;
 
@@ -370,7 +376,7 @@ select set_config('request.jwt.claim.role', 'service_role', true);
 select throws_like(
   $$select private.consume_play_session_social_event_v2(
     jsonb_set(
-      (select payload from private.outbox_events where id = (select event_id from source_block_event)),
+      (select payload from source_block_payload),
       '{payload,reasonCode}',
       '"tampered"'::jsonb
     )
@@ -459,6 +465,7 @@ select private.enqueue_contract_event_v2(
   '{}'::jsonb,
   'session-social-safety-malformed-1469'
 ) as event_id;
+grant select on malformed_block_event to service_role;
 
 set local role service_role;
 select set_config('request.jwt.claim.role', 'service_role', true);
@@ -491,5 +498,5 @@ select ok(
   'malformed event receives delayed retry backoff'
 );
 
-select * from finish();
+select * from finish(true);
 rollback;

@@ -41,6 +41,14 @@ const reconcile = section(
   'create or replace function public.reconcile_conversation_membership_v2',
   'create or replace function public.project_conversation_system_activity_v2',
 );
+const systemActivity = section(
+  'create or replace function public.project_conversation_system_activity_v2',
+  'create or replace function private.append_conversation_message_v2',
+);
+const systemActivityHotfix = fs.readFileSync(
+  'supabase/migrations/202607142102_conversation_system_activity_deployed_fix_v2.sql',
+  'utf8',
+);
 const send = section(
   'create or replace function private.append_conversation_message_v2',
   'create or replace function public.send_message_v2',
@@ -210,6 +218,28 @@ requireInvariant(
     /can_subscribe_conversation_v2\(realtime\.topic\(\)\)/i.test(migration) &&
     /assert_conversation_feature_v2\('realtime'\)/i.test(migration),
   'realtime must be private, access-authorized, and rollback-gated',
+);
+requireInvariant(
+  /source_event_id_value uuid/i.test(systemActivity) &&
+    /messages\.source_event_id = source_event_id_value/i.test(systemActivity) &&
+    /source_event_id,\s*source_event_type,\s*source_event_version,\s*correlation_id\s*\) values/i.test(
+      systemActivity,
+    ) &&
+    !/messages\.source_event_id = source_event_id\s*;/i.test(systemActivity) &&
+    !/messages\.source_event_id_value/i.test(systemActivity),
+  'system activity must disambiguate local variables while preserving canonical message columns',
+);
+requireInvariant(
+  /create or replace function public\.project_conversation_system_activity_v2/i.test(
+    systemActivityHotfix,
+  ) &&
+    /messages\.source_event_id = source_event_id_value/i.test(
+      systemActivityHotfix,
+    ) &&
+    !/messages\.source_event_id = source_event_id\s*;/i.test(
+      systemActivityHotfix,
+    ),
+  'deployed Conversation hotfix must reapply the non-ambiguous system activity projector',
 );
 requireInvariant(
   /friendship\.accepted\.v2/i.test(relationshipEvent) &&

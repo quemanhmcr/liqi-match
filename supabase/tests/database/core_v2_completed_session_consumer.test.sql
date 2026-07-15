@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(34);
+select plan(36);
 
 select has_function(
   'private',
@@ -14,6 +14,20 @@ select has_table(
   'private',
   'activity_notification_frequency_v2',
   'notification frequency evidence is durable'
+);
+
+select is(
+  private.jsonb_has_exact_keys_v2(
+    '{"eventType":"session.completed.v2"}'::jsonb,
+    array['eventType']
+  ),
+  true,
+  'exact-key helper accepts an object with the canonical key set'
+);
+select is(
+  private.jsonb_has_exact_keys_v2('[]'::jsonb, array[]::text[]),
+  false,
+  'exact-key helper rejects non-object JSON without raising'
 );
 
 insert into auth.users (
