@@ -22,7 +22,7 @@ After the proof, `supabase db push --linked --include-all --dry-run` reported:
 Remote database is up to date.
 ```
 
-The linked local and remote migration histories matched through `202607150131` at the final verification checkpoint.
+The linked local and remote migration histories matched through `202607150134` at the final verification checkpoint.
 
 ## Re-run
 
@@ -98,6 +98,8 @@ Corrections:
 - `202607142104_core_v2_event_wall_clock_v2.sql` corrects deployed event emission.
 
 The final runtime suite passed after both deployed corrections.
+
+The complete 213-assertion cloud runner was executed again after remote migrations `202607150132` through `202607150134` changed profile identity, Social boolean capabilities, and Trust visibility. All six suites remained green.
 
 ## Scope boundary
 
