@@ -286,6 +286,69 @@ describe('SupabaseConversationV2Adapter', () => {
     await adapter.dispose();
   });
 
+  it('serves both session retry and Conversation moderation evidence callers', async () => {
+    const realtime = createRealtimeHarness();
+    const evidence = {
+      capturedAt: '2026-07-14T12:06:00.000Z',
+      conversationId,
+      evidenceId: uuid(70),
+      message: {
+        clientMessageId: `reported-message:${uuid(71)}`,
+        content: { kind: 'text', text: 'Immutable reported message.' },
+        conversationId,
+        createdAt: '2026-07-14T12:05:00.000Z',
+        messageId: uuid(72),
+        senderPlayerId: peerId,
+        sequence: 4,
+        tombstonedAt: null,
+      },
+      reporterPlayerId: viewerId,
+    };
+    const rpc = rpcHarness(({ functionName }) => {
+      if (functionName === 'capture_message_report_evidence_v2')
+        return evidence;
+      throw new Error(`unexpected ${functionName}`);
+    });
+    const adapter = createSupabaseConversationV2Adapter({
+      accessTokenProvider: async () => 'refreshed-token',
+      accessTokenSubscriber: () => () => undefined,
+      realtimeClient: realtime.realtimeClient as never,
+      request: rpc.request,
+    });
+    const session = authSession();
+    await adapter.setSession(session);
+
+    await expect(
+      adapter.captureReportEvidence({ reportId: uuid(73), session }),
+    ).resolves.toEqual(evidence);
+    await expect(
+      adapter.captureReportEvidence({
+        actor: {
+          accountId,
+          lifecycleVersion: 2,
+          messagingAllowed: true,
+          playerId: viewerId,
+        },
+        conversationId,
+        messageId: evidence.message.messageId,
+        reportId: uuid(74),
+      }),
+    ).resolves.toEqual(evidence);
+    expect(rpc.calls).toEqual([
+      expect.objectContaining({
+        body: { p_report_id: uuid(73) },
+        functionName: 'capture_message_report_evidence_v2',
+        session: expect.objectContaining({ accessToken: 'refreshed-token' }),
+      }),
+      expect.objectContaining({
+        body: { p_report_id: uuid(74) },
+        functionName: 'capture_message_report_evidence_v2',
+        session: expect.objectContaining({ accessToken: 'refreshed-token' }),
+      }),
+    ]);
+    await adapter.dispose();
+  });
+
   it('clears channels and preflights the new account instead of reusing aggregate caches', async () => {
     const realtime = createRealtimeHarness();
     const secondAccountId = AccountIdSchema.parse(uuid(50));

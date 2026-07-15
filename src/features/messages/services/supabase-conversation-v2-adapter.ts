@@ -8,7 +8,7 @@ import {
   ConversationAccessV2Schema,
   ConversationReadCursorV2Schema,
   ConversationSourceV2Schema,
-  MessageReportEvidenceV2Schema,
+  MessageReportEvidenceV2Schema as ConversationMessageReportEvidenceV2Schema,
   MessageV2Schema,
 } from '@/shared/contracts/core-v2';
 import { env } from '@/shared/config/env';
@@ -46,6 +46,10 @@ import type {
 } from './chat-message-transport';
 import type { ChatRepository } from './chat-repository';
 import { emitConversationTelemetry } from './conversation-telemetry';
+import {
+  MessageReportEvidenceV2Schema,
+  type MessageReportEvidenceProvider,
+} from './message-report-evidence';
 
 const ParticipantSurfaceV2Schema = z.object({
   avatarAssetId: z.string().uuid().nullable(),
@@ -186,6 +190,7 @@ type AccessTokenSubscriber = (
 
 export type SupabaseConversationV2Adapter = ChatRepository &
   ChatMessageTransport &
+  MessageReportEvidenceProvider &
   ConversationModerationProvider & {
     readonly authorityVersion: 2;
     dispose: () => Promise<void>;
@@ -714,11 +719,11 @@ export function createSupabaseConversationV2Adapter(
         removed = true;
         await removeChannelSet();
         const mapped = realtimeAccessError(error);
-        listener({
+        emitConversationTelemetry('conversation.realtime.disconnected', {
           code: mapped.code,
-          kind: 'access-revoked',
           retryable: mapped.retryable,
         });
+        listener({ kind: 'disconnected', retryable: mapped.retryable });
       };
 
       const currentSubscription = () =>
@@ -827,41 +832,90 @@ export function createSupabaseConversationV2Adapter(
     },
   };
 
-  const moderation: ConversationModerationProvider = {
-    async captureReportEvidence(input) {
-      const epoch = sessionEpoch;
-      const active = requireSession();
-      if (
-        active.principal?.accountId !== input.actor.accountId ||
-        active.principal.playerId !== input.actor.playerId
-      ) {
-        throw new MessagesServiceError(
-          'unauthenticated',
-          'Report evidence identity không khớp phiên hiện tại.',
-          false,
+  type SessionEvidenceInput = Parameters<
+    MessageReportEvidenceProvider['captureReportEvidence']
+  >[0];
+  type SessionEvidenceResult = Awaited<
+    ReturnType<MessageReportEvidenceProvider['captureReportEvidence']>
+  >;
+  type ConversationEvidenceInput = Parameters<
+    ConversationModerationProvider['captureReportEvidence']
+  >[0];
+  type ConversationEvidenceResult = Awaited<
+    ReturnType<ConversationModerationProvider['captureReportEvidence']>
+  >;
+
+  async function captureReportEvidence(
+    input: SessionEvidenceInput,
+  ): Promise<SessionEvidenceResult>;
+  async function captureReportEvidence(
+    input: ConversationEvidenceInput,
+  ): Promise<ConversationEvidenceResult>;
+  async function captureReportEvidence(
+    input: SessionEvidenceInput | ConversationEvidenceInput,
+  ): Promise<SessionEvidenceResult | ConversationEvidenceResult> {
+    const epoch = sessionEpoch;
+    const active = await requireValidSession(epoch);
+    const activePrincipal = active.principal;
+    const conversationInput = 'actor' in input ? input : null;
+    const sessionInput = 'session' in input ? input : null;
+    const identityMatches = conversationInput
+      ? Boolean(
+          activePrincipal?.playerId &&
+          activePrincipal.accountId === conversationInput.actor.accountId &&
+          activePrincipal.playerId === conversationInput.actor.playerId,
+        )
+      : Boolean(
+          activePrincipal?.playerId &&
+          sessionInput?.session.principal?.playerId &&
+          active.user.id === sessionInput.session.user.id &&
+          activePrincipal.accountId ===
+            sessionInput.session.principal.accountId &&
+          activePrincipal.playerId === sessionInput.session.principal.playerId,
         );
-      }
-      const raw = await call<unknown>(
-        'capture_message_report_evidence_v2',
-        { p_report_id: input.reportId },
-        undefined,
-        epoch,
+    if (!identityMatches) {
+      throw new MessagesServiceError(
+        'forbidden',
+        'Report evidence identity không khớp phiên hiện tại.',
+        false,
       );
-      const evidence = MessageReportEvidenceV2Schema.parse(raw);
-      if (
-        evidence.conversationId !== input.conversationId ||
-        evidence.message.messageId !== input.messageId ||
-        evidence.reporterPlayerId !== input.actor.playerId
-      ) {
-        throw new MessagesServiceError(
-          'contract_violation',
-          'Report evidence API trả về sai report target.',
-          false,
-        );
+    }
+    const raw = await call<unknown>(
+      'capture_message_report_evidence_v2',
+      { p_report_id: input.reportId },
+      undefined,
+      epoch,
+    );
+    try {
+      if (conversationInput) {
+        const evidence = ConversationMessageReportEvidenceV2Schema.parse(raw);
+        if (
+          evidence.conversationId !== conversationInput.conversationId ||
+          evidence.message.messageId !== conversationInput.messageId ||
+          evidence.reporterPlayerId !== conversationInput.actor.playerId
+        ) {
+          throw new MessagesServiceError(
+            'contract_violation',
+            'Report evidence API trả về sai report target.',
+            false,
+          );
+        }
+        return evidence;
       }
-      return evidence;
-    },
-  };
+      return MessageReportEvidenceV2Schema.parse(raw);
+    } catch (error) {
+      if (error instanceof MessagesServiceError) throw error;
+      throw new MessagesServiceError(
+        'contract_violation',
+        'Report evidence API trả dữ liệu không đúng contract.',
+        false,
+        error instanceof Error ? error.message : undefined,
+      );
+    }
+  }
+
+  const moderation: MessageReportEvidenceProvider &
+    ConversationModerationProvider = { captureReportEvidence };
 
   async function sendMessage(
     command: SendChatTextCommand | SendChatMediaCommand,
@@ -1320,30 +1374,26 @@ function conversationSessionIdentity(current: AuthSession | null) {
 
 function staleSessionError() {
   return new MessagesServiceError(
-    'relationship_access_unavailable',
+    'unauthenticated',
     'Conversation authorization thuộc phiên tài khoản cũ.',
-    true,
+    false,
   );
 }
 
 function accessRevokedError() {
   return new MessagesServiceError(
-    'relationship_access_revoked',
+    'forbidden',
     'Conversation authority đã thu hồi quyền truy cập.',
     false,
   );
 }
 
 function realtimeAccessError(error: unknown) {
-  if (
-    error instanceof MessagesServiceError &&
-    (error.code === 'relationship_access_revoked' ||
-      error.code === 'relationship_access_unavailable')
-  ) {
+  if (error instanceof MessagesServiceError) {
     return { code: error.code, retryable: error.retryable } as const;
   }
   return {
-    code: 'relationship_access_unavailable' as const,
+    code: 'network_error' as const,
     retryable: true,
   };
 }
@@ -1392,7 +1442,7 @@ function mapServiceError(error: unknown) {
       code === 'membership_required'
     ) {
       return new MessagesServiceError(
-        'relationship_access_revoked',
+        'forbidden',
         error.message,
         false,
         error.requestId,

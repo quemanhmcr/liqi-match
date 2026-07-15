@@ -844,8 +844,7 @@ describe('Conversation V2 two-device E2E simulation', () => {
     server.revokeMember(playerB);
     await waitFor(() =>
       expect(events).toContainEqual({
-        code: 'relationship_access_revoked',
-        kind: 'access-revoked',
+        kind: 'disconnected',
         retryable: false,
       }),
     );
@@ -859,7 +858,7 @@ describe('Conversation V2 two-device E2E simulation', () => {
         text: 'Không được gửi sau revoke.',
       }),
     ).rejects.toMatchObject({
-      code: 'relationship_access_revoked',
+      code: 'forbidden',
       retryable: false,
     });
     expect(
