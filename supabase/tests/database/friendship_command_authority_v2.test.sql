@@ -1,7 +1,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(34);
+select plan(36);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at
@@ -83,25 +83,25 @@ select is(
 
 reset role;
 select is(
-  (select count(*)::integer from private.outbox_events where event_type = 'friendship.requested.v2' and aggregate_id = private.social_relationship_id_v2(
-    '21000000-0000-4000-8000-000000002301',
-    '21000000-0000-4000-8000-000000002302'
+  (select count(*)::integer from private.outbox_events where event_type = 'friendship.requested.v2' and aggregate_id = (
+    select (receipt #>> '{relationship,relationshipId}')::uuid
+    from request_ab
   )),
   1,
   'request replay does not duplicate outbox event'
 );
 select is(
-  (select count(*)::integer from private.audit_logs where action = 'friendship.requested.v2' and target_id = private.social_relationship_id_v2(
-    '21000000-0000-4000-8000-000000002301',
-    '21000000-0000-4000-8000-000000002302'
+  (select count(*)::integer from private.audit_logs where action = 'friendship.requested.v2' and target_id = (
+    select (receipt #>> '{relationship,relationshipId}')::uuid
+    from request_ab
   )),
   1,
   'request records one server audit row'
 );
 select is(
-  (select payload #>> '{eventVersion}' from private.outbox_events where event_type = 'friendship.requested.v2' and aggregate_id = private.social_relationship_id_v2(
-    '21000000-0000-4000-8000-000000002301',
-    '21000000-0000-4000-8000-000000002302'
+  (select payload #>> '{eventVersion}' from private.outbox_events where event_type = 'friendship.requested.v2' and aggregate_id = (
+    select (receipt #>> '{relationship,relationshipId}')::uuid
+    from request_ab
   )),
   '2',
   'request outbox payload uses Core V2 envelope'
@@ -131,14 +131,16 @@ select public.request_friendship_v2(jsonb_build_object(
 )) as receipt;
 select is((select receipt #>> '{relationship,friendship,label}' from reciprocal_ab), 'friend', 'reciprocal request deterministically accepts older request');
 select is((select (receipt #>> '{relationship,version}')::integer from reciprocal_ab), 2, 'reciprocal acceptance advances relationship version once');
+reset role;
 select is(
-  (select count(*)::integer from public.friendship_requests_v2 where relationship_id = private.social_relationship_id_v2(
-    '21000000-0000-4000-8000-000000002301',
-    '21000000-0000-4000-8000-000000002302'
+  (select count(*)::integer from public.friendship_requests_v2 where relationship_id = (
+    select (receipt #>> '{relationship,relationshipId}')::uuid
+    from request_ab
   )),
   1,
   'reciprocal request does not create duplicate request rows'
 );
+set local role authenticated;
 select is(jsonb_array_length(public.list_friendships_v2() -> 'items'), 1, 'accepted friendship appears in authoritative list');
 
 select set_config('request.jwt.claim.sub', '01000000-0000-4000-8000-000000002301', true);
@@ -225,6 +227,16 @@ select public.request_friendship_v2(jsonb_build_object(
   'idempotencyKey', 'friend.request.ca.0001',
   'targetPlayerId', '21000000-0000-4000-8000-000000002301'
 )) as receipt;
+select isnt(
+  (select receipt #>> '{relationship,friendship,requestId}' from request_ca),
+  (select receipt #>> '{relationship,friendship,requestId}' from request_ac),
+  're-request after decline creates a new request identity'
+);
+select is(
+  (select (receipt #>> '{relationship,friendship,requestVersion}')::integer from request_ca),
+  1,
+  're-request after decline projects the fresh pending request version'
+);
 create temporary table cancel_ca as
 select public.cancel_friendship_request_v2(jsonb_build_object(
   'audit', jsonb_build_object(

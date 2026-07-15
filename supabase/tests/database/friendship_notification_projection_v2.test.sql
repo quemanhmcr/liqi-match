@@ -69,6 +69,7 @@ select event.id as projected_event_id, event.payload
 from private.outbox_events event
 where event.event_type = 'notification.requested.v1'
   and event.causation_id = (select source_event_id from requested_source);
+grant select on requested_projection to authenticated;
 
 select is(
   (select count(*)::integer from requested_projection),
@@ -115,6 +116,12 @@ select is(
   1,
   'existing push lifecycle receives the friendship notification'
 );
+
+create temporary table requested_notification as
+select id
+from public.notifications_v1
+where source_event_id = (select projected_event_id from requested_projection);
+grant select on requested_notification to authenticated;
 
 select private.project_friendship_notification_v2(
   (select payload from private.outbox_events where id = (select source_event_id from requested_source))
@@ -262,7 +269,7 @@ select set_config('request.jwt.claim.iat', extract(epoch from now() - interval '
 select set_config('request.jwt.claim.exp', extract(epoch from now() + interval '1 hour')::bigint::text, true);
 select is(
   public.resolve_notification_deep_link_v1(
-    (select id from public.notifications_v1 where source_event_id = (select projected_event_id from requested_projection)),
+    (select id from requested_notification),
     (select projected_event_id from requested_projection)
   ) ->> 'status',
   'expired',
