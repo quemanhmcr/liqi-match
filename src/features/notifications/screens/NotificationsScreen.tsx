@@ -813,7 +813,7 @@ function navigateNotificationDestination(destination: NotificationDestination) {
       router.push(appRoutes.discover.setDetail(destination.setId));
       return;
     case 'session_feedback':
-      router.push(appRoutes.trust.feedback(destination.sessionId));
+      router.push(appRoutes.sessions.feedback(destination.sessionId));
       return;
     case 'home':
       router.push(appRoutes.main.home);

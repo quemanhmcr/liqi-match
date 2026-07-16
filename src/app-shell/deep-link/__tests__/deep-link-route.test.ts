@@ -15,7 +15,7 @@ describe('routeForDeepLinkV1 activity destinations', () => {
       throw new Error('Expected a session feedback deep link.');
     }
     expect(routeForDeepLinkV1(deepLink)).toEqual(
-      appRoutes.trust.feedback(deepLink.sessionId),
+      appRoutes.sessions.feedback(deepLink.sessionId),
     );
   });
 

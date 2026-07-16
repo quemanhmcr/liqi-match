@@ -163,7 +163,7 @@ describe('HomeTrustActivitySection', () => {
 
     await fireEvent.press(await screen.findByText('Phản hồi'));
     expect(mockPush).toHaveBeenCalledWith(
-      appRoutes.trust.feedback(feedbackActivity.payload.sessionId),
+      appRoutes.sessions.feedback(feedbackActivity.payload.sessionId),
     );
   });
 

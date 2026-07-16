@@ -14,7 +14,7 @@ export function routeForDeepLinkV1(deepLink: DeepLinkV1): Href {
     case 'set':
       return appRoutes.discover.setDetail(deepLink.setId);
     case 'session_feedback':
-      return appRoutes.trust.feedback(deepLink.sessionId);
+      return appRoutes.sessions.feedback(deepLink.sessionId);
     case 'home':
       return appRoutes.main.home;
   }

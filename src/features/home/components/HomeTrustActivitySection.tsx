@@ -38,7 +38,8 @@ export function HomeTrustActivitySection({
   const repeatRecommendationsQuery = useRepeatPlayRecommendations(session);
   const dismissMutation = useDismissTrustActivity(session);
   const trustServices = useTrustOutcomesServices();
-  const { playSessionCommandService } = usePlaySessionServices();
+  const { commandService: playSessionCommandService } =
+    usePlaySessionServices();
   const queryClient = useQueryClient();
   const [createdSession, setCreatedSession] = useState<Readonly<{
     activityDismissed: boolean;
@@ -148,7 +149,7 @@ export function HomeTrustActivitySection({
           onAction={() => {
             void Haptics.selectionAsync().catch(() => undefined);
             if (item.kind === 'feedback_prompt') {
-              router.push(appRoutes.trust.feedback(item.payload.sessionId));
+              router.push(appRoutes.sessions.feedback(item.payload.sessionId));
               return;
             }
             if (item.kind === 'reputation_progress') {

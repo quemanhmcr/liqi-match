@@ -1,7 +1,7 @@
 create extension if not exists pgtap with schema extensions;
 
 begin;
-select plan(16);
+select plan(18);
 
 insert into auth.users (
   id, aud, role, email, encrypted_password,
@@ -50,13 +50,26 @@ insert into public.matches (
   'conversation_pending'
 );
 
+insert into public.match_sets_v1 (
+  id, owner_player_id, title, capacity, intent_kind, state, version
+) values (
+  '52000000-0000-4000-8000-000000000711',
+  '21000000-0000-4000-8000-000000000711',
+  'Deep-link Set',
+  5,
+  'normal',
+  'open',
+  1
+);
+
 insert into public.notifications_v1 (
   id, recipient_player_id, kind, source_event_id, occurred_at,
   deep_link, title, body
 ) values
   ('91000000-0000-4000-8000-000000000711', '21000000-0000-4000-8000-000000000711', 'match_created', '81000000-0000-4000-8000-000000000711', now(), '{"target":"match","matchId":"51000000-0000-4000-8000-000000000711"}', 'Match', 'Match mới'),
   ('91000000-0000-4000-8000-000000000712', '21000000-0000-4000-8000-000000000711', 'message_received', '81000000-0000-4000-8000-000000000712', now(), '{"target":"conversation","conversationId":"61000000-0000-4000-8000-000000000711"}', 'Tin nhắn', 'Tin nhắn mới'),
-  ('91000000-0000-4000-8000-000000000713', '21000000-0000-4000-8000-000000000713', 'match_created', '81000000-0000-4000-8000-000000000713', now(), '{"target":"match","matchId":"51000000-0000-4000-8000-000000000711"}', 'Match', 'Match mới');
+  ('91000000-0000-4000-8000-000000000713', '21000000-0000-4000-8000-000000000713', 'match_created', '81000000-0000-4000-8000-000000000713', now(), '{"target":"match","matchId":"51000000-0000-4000-8000-000000000711"}', 'Match', 'Match mới'),
+  ('91000000-0000-4000-8000-000000000714', '21000000-0000-4000-8000-000000000711', 'set_invite', '81000000-0000-4000-8000-000000000714', now(), '{"target":"set","setId":"52000000-0000-4000-8000-000000000711"}', 'Set', 'Lời mời Set');
 
 set local role authenticated;
 select set_config('request.jwt.claim.role', 'authenticated', true);
@@ -72,6 +85,14 @@ select is((select value ->> 'status' from available_resolution), 'available', 'o
 select is((select value #>> '{deepLink,target}' from available_resolution), 'match', 'resolver returns canonical persisted target');
 select is((select value #>> '{deepLink,matchId}' from available_resolution), '51000000-0000-4000-8000-000000000711', 'resolver returns canonical persisted MatchId');
 select ok((select value ->> 'readAt' is not null from available_resolution), 'tap atomically marks notification read');
+
+create temporary table set_resolution as
+select public.resolve_notification_deep_link_v1(
+  '91000000-0000-4000-8000-000000000714',
+  '81000000-0000-4000-8000-000000000714'
+) as value;
+select is((select value ->> 'status' from set_resolution), 'available', 'canonical Match Set resolves without removed legacy storage');
+select is((select value #>> '{deepLink,setId}' from set_resolution), '52000000-0000-4000-8000-000000000711', 'resolver returns canonical SetId');
 
 select is(
   public.resolve_notification_deep_link_v1(
@@ -165,8 +186,8 @@ select is(
 );
 
 reset role;
-select is((select count(*)::integer from private.notification_deep_link_attempts_v1), 8, 'every authenticated resolution attempt is observable');
-select is((select count(*)::integer from private.notification_deep_link_attempts_v1 where status = 'available'), 2, 'successful resolution count is observable');
+select is((select count(*)::integer from private.notification_deep_link_attempts_v1), 9, 'every authenticated resolution attempt is observable');
+select is((select count(*)::integer from private.notification_deep_link_attempts_v1 where status = 'available'), 3, 'successful resolution count is observable');
 select is((select count(*)::integer from private.notification_deep_link_attempts_v1 where status = 'not_found'), 2, 'authorization-safe misses are observable');
 select is((select count(*)::integer from private.notification_deep_link_attempts_v1 where status = 'defer_target'), 1, 'event-ordering deferral is observable');
 select is((select count(*)::integer from private.notification_deep_link_attempts_v1 where status in ('expired', 'player_unavailable', 'disabled')), 3, 'fallback and kill-switch outcomes are observable');

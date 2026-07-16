@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const m = fs.readFileSync(
-  'supabase/migrations/202607141460_core_v2_activity_notification_delivery.sql',
+  'supabase/migrations/202607141510_core_v2_activity_notification_delivery.sql',
   'utf8',
 );
 const d = fs.readFileSync('contracts/core-v1/deep-link/index.ts', 'utf8');
@@ -29,7 +29,7 @@ need(
 );
 need(
   r.includes("case 'session_feedback'") &&
-    r.includes('appRoutes.trust.feedback(deepLink.sessionId)') &&
+    r.includes('appRoutes.sessions.feedback(deepLink.sessionId)') &&
     r.includes("case 'home'"),
   'Canonical route mapping missing',
 );

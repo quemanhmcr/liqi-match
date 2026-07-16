@@ -374,9 +374,12 @@ export async function saveProfileEdit(
   const region = normalizeRegion(input.region);
   const habits = normalizeEditHabits(input.habits);
   const existingMediaSummary = mediaSummaryRecord(habits.media_summary);
-  const legacyProfileStats = existingMediaSummary.profile_stats;
+  const {
+    profile_stats: legacyProfileStats,
+    ...mediaSummaryWithoutLegacyStats
+  } = existingMediaSummary;
   const mediaSummary = {
-    ...existingMediaSummary,
+    ...mediaSummaryWithoutLegacyStats,
     unverified_legacy: {
       ...mediaSummaryRecord(existingMediaSummary.unverified_legacy),
       ...(legacyProfileStats && typeof legacyProfileStats === 'object'
@@ -391,8 +394,6 @@ export async function saveProfileEdit(
       ),
       gender: normalizeProfileGender(input.gender),
     },
-    profile_stats:
-      mediaSummaryRecord(habits.media_summary).profile_stats ?? null,
     profile_status: normalizeStatus(input.status),
   };
 

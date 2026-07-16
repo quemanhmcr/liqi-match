@@ -298,7 +298,7 @@ describe('NotificationsScreen', () => {
         sessionId: '42000000-0000-4000-8000-000000000001',
         target: 'session_feedback' as const,
       },
-      expectedRoute: appRoutes.trust.feedback(
+      expectedRoute: appRoutes.sessions.feedback(
         '42000000-0000-4000-8000-000000000001',
       ),
       id: '90000000-0000-4000-8000-000000000101',

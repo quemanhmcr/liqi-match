@@ -6,6 +6,14 @@ const migrationPath = path.join(
   root,
   'supabase/migrations/202607141440_profile_trusted_stats_cutover_v2.sql',
 );
+const repairPath = path.join(
+  root,
+  'supabase/migrations/202607151200_profile_trusted_stats_backfill_guard_v3.sql',
+);
+const privilegePath = path.join(
+  root,
+  'supabase/migrations/202607150130_profile_habits_privilege_hardening_v2.sql',
+);
 const testPath = path.join(
   root,
   'supabase/tests/database/core_v2_profile_trusted_stats_cutover.test.sql',
@@ -37,6 +45,8 @@ const profileShareScreenPath = path.join(
 
 for (const file of [
   migrationPath,
+  repairPath,
+  privilegePath,
   testPath,
   identityPath,
   commandPath,
@@ -50,6 +60,8 @@ for (const file of [
 }
 
 const migration = fs.readFileSync(migrationPath, 'utf8');
+const repair = fs.readFileSync(repairPath, 'utf8');
+const privilege = fs.readFileSync(privilegePath, 'utf8');
 const test = fs.readFileSync(testPath, 'utf8');
 const identity = fs.readFileSync(identityPath, 'utf8');
 const command = fs.readFileSync(commandPath, 'utf8');
@@ -66,6 +78,22 @@ requireInvariant(
   migration.includes("'{unverified_legacy,profile_stats}'") &&
     migration.includes("media_summary -> 'profile_stats'"),
   'Legacy editable stats must be preserved only under unverified_legacy',
+);
+requireInvariant(
+  repair.includes("- 'profile_stats'") &&
+    repair.includes('jsonb_build_object(') &&
+    repair.includes('before insert or update of media_summary'),
+  'Cloud repair must create the unverified parent, remove root stats, and guard inserts plus updates',
+);
+requireInvariant(
+  privilege.includes(
+    'revoke all on table public.profile_habits from anon, authenticated',
+  ) &&
+    privilege.includes(
+      'grant select, insert, update on table public.profile_habits to authenticated',
+    ) &&
+    !privilege.includes('grant delete'),
+  'Profile habit privileges must preserve app writes without granting row deletion',
 );
 requireInvariant(
   migration.includes('reject_authenticated_trusted_stats_mutation_v2') &&
@@ -94,7 +122,8 @@ requireInvariant(
   'Identity save must preserve the immutable baseline legacy payload',
 );
 requireInvariant(
-  legacySave.includes('existingMediaSummary.profile_stats') &&
+  legacySave.includes('profile_stats: legacyProfileStats') &&
+    legacySave.includes('mediaSummaryWithoutLegacyStats') &&
     legacySave.includes('unverified_legacy') &&
     !legacySave.includes('profile_stats: normalizeProfileStats(input.stats)'),
   'Legacy save path must preserve and relabel old stats instead of accepting client values',
@@ -147,13 +176,15 @@ const assertionCount = assertionPatterns.reduce(
   0,
 );
 requireInvariant(
-  plan === assertionCount && assertionCount >= 8,
+  plan === assertionCount && assertionCount >= 11,
   `Trusted-stat pgTAP plan mismatch: plan=${plan}, assertions=${assertionCount}`,
 );
 requireInvariant(
   test.includes('trusted_stats_read_only') &&
     test.includes('unverified_legacy') &&
-    test.includes('unrelated profile metadata remains editable'),
+    test.includes('unrelated profile metadata remains editable') &&
+    test.includes('cannot introduce trusted-looking stats on insert') &&
+    test.includes('cannot delete the onboarding/profile habit authority row'),
   'pgTAP must prove mutation denial, migration preservation and unrelated edit compatibility',
 );
 

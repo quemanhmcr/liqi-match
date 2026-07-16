@@ -206,7 +206,7 @@ describe('HomeDashboardScreen', () => {
     expect(await screen.findByText('Hoàn tất phản hồi buổi chơi')).toBeTruthy();
     await fireEvent.press(screen.getByText('Phản hồi'));
     expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
-      appRoutes.trust.feedback(feedbackActivity.payload.sessionId),
+      appRoutes.sessions.feedback(feedbackActivity.payload.sessionId),
     );
   });
 

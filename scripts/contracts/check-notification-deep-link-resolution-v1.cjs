@@ -4,6 +4,10 @@ const migration = fs.readFileSync(
   'supabase/migrations/202607140037_notification_deep_link_resolution_v1.sql',
   'utf8',
 );
+const cloudRepair = fs.readFileSync(
+  'supabase/migrations/202607151210_return_loop_social_aware_cloud_repairs_v2.sql',
+  'utf8',
+);
 const databaseTest = fs.readFileSync(
   'supabase/tests/database/notification_deep_link_resolution_v1.test.sql',
   'utf8',
@@ -25,6 +29,14 @@ const failures = [];
 function requireInvariant(condition, message) {
   if (!condition) failures.push(message);
 }
+
+requireInvariant(
+  /from public\.match_sets_v1 set_projection/i.test(cloudRepair) &&
+    /resolve_visible_profile_identity_v2/i.test(cloudRepair) &&
+    !/from public\.sets/i.test(cloudRepair) &&
+    !/from public\.teams/i.test(cloudRepair),
+  'Cloud repair must resolve Set targets through canonical match_sets_v1 only.',
+);
 
 requireInvariant(
   /persisted\.id = p_notification_id[\s\S]*persisted\.source_event_id = p_source_event_id[\s\S]*persisted\.recipient_player_id = actor_snapshot\.player_id/i.test(

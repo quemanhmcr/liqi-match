@@ -1,6 +1,6 @@
 const fs = require('node:fs');
 const migration = fs.readFileSync(
-  'supabase/migrations/202607141450_session_feedback_surface_v2.sql',
+  'supabase/migrations/202607141500_session_feedback_surface_v2.sql',
   'utf8',
 );
 const test = fs.readFileSync(
