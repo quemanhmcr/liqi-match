@@ -31,7 +31,9 @@ import {
 } from '@/shared/components/liquid';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { useAssetResolver } from '@/entities/media-asset';
+import { usePlayerTrustProjection } from '@/entities/trust-outcomes';
 import { useAuth } from '@/shared/auth/auth-context';
+import type { PlayerTrustProjectionV2 } from '@/shared/contracts/core-v2';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
   liquidColors,
@@ -114,6 +116,11 @@ export function ProfileShareScreen() {
     },
     queryKey: ['profile-settings', session?.user.id],
   });
+  const profile = profileQuery.data;
+  const trustProjectionQuery = usePlayerTrustProjection(
+    session,
+    profile?.playerId,
+  );
 
   const selectedCta = useMemo(
     () => ctaOptions.find((item) => item.id === cta) ?? ctaOptions[0]!,
@@ -237,7 +244,6 @@ export function ProfileShareScreen() {
     );
   }
 
-  const profile = profileQuery.data;
   if (!profile) {
     return (
       <LiquidScreen
@@ -248,6 +254,47 @@ export function ProfileShareScreen() {
         <ShareTopBar loading={false} />
         <ShareGuardCard icon="person-outline" title="Không tìm thấy hồ sơ">
           Tài khoản hiện tại chưa có projection hồ sơ trong runtime.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
+
+  if (trustProjectionQuery.isPending) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading />
+        <ShareGuardCard
+          icon="shield-checkmark-outline"
+          title="Đang tải số liệu xác minh"
+        >
+          Liqi Match đang đọc thành tích từ reputation projection authoritative.
+        </ShareGuardCard>
+      </LiquidScreen>
+    );
+  }
+
+  if (trustProjectionQuery.isError) {
+    return (
+      <LiquidScreen
+        contentContainerStyle={styles.scrollContent}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ShareTopBar loading={false} />
+        <ShareGuardCard
+          icon="warning-outline"
+          primaryLabel="Thử lại"
+          secondaryLabel="Về hồ sơ"
+          title="Chưa tải được số liệu xác minh"
+          onPrimaryPress={() => void trustProjectionQuery.refetch()}
+          onSecondaryPress={() => router.replace(appRoutes.profile.self)}
+        >
+          Ảnh chia sẻ được tạm khoá để không hiển thị số liệu tự khai hoặc dữ
+          liệu cũ chưa xác minh.
         </ShareGuardCard>
       </LiquidScreen>
     );
@@ -268,6 +315,7 @@ export function ProfileShareScreen() {
           profile={profile}
           ratio={ratio}
           template={template}
+          trustProjection={trustProjectionQuery.data}
         />
       </View>
 
@@ -355,7 +403,7 @@ export function ProfileShareScreen() {
 
       <ProfileText style={styles.exportNote}>
         Preview này được render thành PNG thật để lưu vào máy hoặc gửi qua
-        native share sheet. Không kèm QR, deep link hay link mở app.
+        native share sheet. Thành tích trên ảnh chỉ lấy từ dữ liệu đã xác minh.
       </ProfileText>
     </LiquidScreen>
   );
@@ -471,12 +519,14 @@ function SocialProfileCard({
   profile,
   ratio,
   template,
+  trustProjection,
 }: {
   captureRef: RefObject<View | null>;
   cta: string;
   profile: ProfileViewModel;
   ratio: ShareRatio;
   template: ShareTemplate;
+  trustProjection?: PlayerTrustProjectionV2;
 }) {
   const assetResolver = useAssetResolver();
   const coverMedia = resolveProfileMedia(assetResolver, {
@@ -606,11 +656,30 @@ function SocialProfileCard({
         </ProfileText>
 
         <View style={styles.statsBox}>
-          <PosterStat label="Trận" value={String(profile.stats.matches)} />
-          {profile.showWinRate ? (
-            <PosterStat label="Win" value={`${profile.stats.winRate}%`} />
-          ) : null}
-          <PosterStat label="Rating" value={String(profile.stats.rating)} />
+          <PosterStat
+            label="Buổi chơi"
+            value={
+              trustProjection ? String(trustProjection.completedSessions) : '—'
+            }
+          />
+          <PosterStat
+            label="Hoàn tất"
+            value={
+              trustProjection
+                ? `${Math.round(
+                    trustProjection.completionReliabilityBps / 100,
+                  )}%`
+                : '—'
+            }
+          />
+          <PosterStat
+            label="Lời khen"
+            value={
+              trustProjection
+                ? String(trustProjection.positiveEndorsements)
+                : '—'
+            }
+          />
         </View>
 
         {heroNames.length ? (

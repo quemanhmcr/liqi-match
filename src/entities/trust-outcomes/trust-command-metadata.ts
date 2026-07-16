@@ -2,11 +2,11 @@ import {
   CorrelationIdSchema,
   IdempotencyKeySchema,
 } from '@/shared/contracts/core-v1';
+import { z } from 'zod';
 import type {
   CoreV2CreateCommandMetadataSchema,
   CoreV2MutationCommandMetadataSchema,
 } from '@/shared/contracts/core-v2';
-import type { z } from 'zod';
 
 type MutationMetadata = z.infer<typeof CoreV2MutationCommandMetadataSchema>;
 type CreateMetadata = z.infer<typeof CoreV2CreateCommandMetadataSchema>;
@@ -35,6 +35,58 @@ export function createTrustCreateMetadata(
   dependencies: TrustCommandMetadataDependencies = {},
 ): CreateMetadata {
   return createMetadata(0, operation, dependencies) as CreateMetadata;
+}
+
+export function createTrustMutationMetadataForSource(
+  expectedVersion: number,
+  operation: string,
+  sourceId: string,
+  qualifiers: readonly string[] = [],
+  dependencies: Omit<TrustCommandMetadataDependencies, 'createUuid'> = {},
+): MutationMetadata {
+  return createSourceMetadata(
+    expectedVersion,
+    operation,
+    sourceId,
+    qualifiers,
+    dependencies,
+  ) as MutationMetadata;
+}
+
+export function createTrustCreateMetadataForSource(
+  operation: string,
+  sourceId: string,
+  qualifiers: readonly string[] = [],
+  dependencies: Omit<TrustCommandMetadataDependencies, 'createUuid'> = {},
+): CreateMetadata {
+  return {
+    ...createSourceMetadata(0, operation, sourceId, qualifiers, dependencies),
+    expectedVersion: 0 as const,
+  } as CreateMetadata;
+}
+
+function createSourceMetadata(
+  expectedVersion: number,
+  operation: string,
+  sourceId: string,
+  qualifiers: readonly string[],
+  dependencies: Omit<TrustCommandMetadataDependencies, 'createUuid'>,
+) {
+  const canonicalSourceId = z.string().uuid().parse(sourceId);
+  const timestamp = (dependencies.now ?? (() => new Date()))().toISOString();
+  return {
+    audit: {
+      appVersion: dependencies.appVersion ?? runtimeAppVersion(),
+      clientCreatedAt: timestamp,
+      clientRequestId: canonicalSourceId,
+      platform: dependencies.platform ?? runtimePlatform(),
+    },
+    correlationId: CorrelationIdSchema.parse(canonicalSourceId),
+    expectedVersion,
+    idempotencyKey: IdempotencyKeySchema.parse(
+      ['trust', operation, canonicalSourceId, ...qualifiers].join(':'),
+    ),
+  };
 }
 
 function createMetadata(

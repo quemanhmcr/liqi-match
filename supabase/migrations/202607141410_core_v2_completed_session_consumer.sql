@@ -115,11 +115,11 @@ begin
           'activity.payload.outcomeId'
         );
       end if;
-      return jsonb_strip_nulls(jsonb_build_object(
+      return jsonb_build_object(
         'target', 'session_feedback',
         'sessionId', session_id_value,
         'outcomeId', outcome_id_value
-      ));
+      );
     when 'reputation_progress' then
       return jsonb_build_object(
         'target', 'reputation',
@@ -265,8 +265,6 @@ begin
     'target', target_value,
     'deliveryDecision', jsonb_build_object(
       'decisionId', decision_id_value,
-      'activityItemId', activity_row.id,
-      'playerId', activity_row.player_id,
       'engagementPreferencesVersion', preference_row.version,
       'frequencyWindowKey', frequency_window_key_value,
       'reactivationNotificationsUsed', notifications_used_value,

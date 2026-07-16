@@ -460,7 +460,9 @@ export class InMemoryTrustOutcomesEngine
         );
       }
     }
-    return this.rebuildProjectionSync(playerId);
+    return (
+      this.projections.get(playerId) ?? this.rebuildProjectionSync(playerId)
+    );
   }
 
   async list(
@@ -888,6 +890,7 @@ export class InMemoryTrustOutcomesEngine
             payload: {
               completedSessionCount: completed.length,
               relationshipId: relationship?.relationshipId ?? null,
+              relationshipVersion: relationship?.version ?? 0,
               sourceSessionId: outcome.sessionId,
               teammatePlayerIds: [teammatePlayerId],
             },

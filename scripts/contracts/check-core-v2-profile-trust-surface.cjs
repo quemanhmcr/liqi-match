@@ -6,6 +6,14 @@ const migrationPath = path.join(
   root,
   'supabase/migrations/202607141440_profile_trusted_stats_cutover_v2.sql',
 );
+const repairPath = path.join(
+  root,
+  'supabase/migrations/202607151200_profile_trusted_stats_backfill_guard_v3.sql',
+);
+const privilegePath = path.join(
+  root,
+  'supabase/migrations/202607150130_profile_habits_privilege_hardening_v2.sql',
+);
 const testPath = path.join(
   root,
   'supabase/tests/database/core_v2_profile_trusted_stats_cutover.test.sql',
@@ -30,27 +38,37 @@ const profileScreenPath = path.join(
   root,
   'src/features/profile/screens/ProfileScreen.tsx',
 );
+const profileShareScreenPath = path.join(
+  root,
+  'src/features/profile/screens/ProfileShareScreen.tsx',
+);
 
 for (const file of [
   migrationPath,
+  repairPath,
+  privilegePath,
   testPath,
   identityPath,
   commandPath,
   legacySavePath,
   statsBarPath,
   profileScreenPath,
+  profileShareScreenPath,
 ]) {
   if (!fs.existsSync(file))
     throw new Error(`Missing trusted-stat file: ${file}`);
 }
 
 const migration = fs.readFileSync(migrationPath, 'utf8');
+const repair = fs.readFileSync(repairPath, 'utf8');
+const privilege = fs.readFileSync(privilegePath, 'utf8');
 const test = fs.readFileSync(testPath, 'utf8');
 const identity = fs.readFileSync(identityPath, 'utf8');
 const command = fs.readFileSync(commandPath, 'utf8');
 const legacySave = fs.readFileSync(legacySavePath, 'utf8');
 const statsBar = fs.readFileSync(statsBarPath, 'utf8');
 const profileScreen = fs.readFileSync(profileScreenPath, 'utf8');
+const profileShareScreen = fs.readFileSync(profileShareScreenPath, 'utf8');
 
 function requireInvariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -60,6 +78,22 @@ requireInvariant(
   migration.includes("'{unverified_legacy,profile_stats}'") &&
     migration.includes("media_summary -> 'profile_stats'"),
   'Legacy editable stats must be preserved only under unverified_legacy',
+);
+requireInvariant(
+  repair.includes("- 'profile_stats'") &&
+    repair.includes('jsonb_build_object(') &&
+    repair.includes('before insert or update of media_summary'),
+  'Cloud repair must create the unverified parent, remove root stats, and guard inserts plus updates',
+);
+requireInvariant(
+  privilege.includes(
+    'revoke all on table public.profile_habits from anon, authenticated',
+  ) &&
+    privilege.includes(
+      'grant select, insert, update on table public.profile_habits to authenticated',
+    ) &&
+    !privilege.includes('grant delete'),
+  'Profile habit privileges must preserve app writes without granting row deletion',
 );
 requireInvariant(
   migration.includes('reject_authenticated_trusted_stats_mutation_v2') &&
@@ -88,7 +122,8 @@ requireInvariant(
   'Identity save must preserve the immutable baseline legacy payload',
 );
 requireInvariant(
-  legacySave.includes('existingMediaSummary.profile_stats') &&
+  legacySave.includes('profile_stats: legacyProfileStats') &&
+    legacySave.includes('mediaSummaryWithoutLegacyStats') &&
     legacySave.includes('unverified_legacy') &&
     !legacySave.includes('profile_stats: normalizeProfileStats(input.stats)'),
   'Legacy save path must preserve and relabel old stats instead of accepting client values',
@@ -112,6 +147,20 @@ requireInvariant(
     !profileScreen.includes('Hợp vibe'),
   'Profile must consume the trust projection provider and never derive a score from legacy stats',
 );
+requireInvariant(
+  profileShareScreen.includes('usePlayerTrustProjection') &&
+    profileShareScreen.includes(
+      'trustProjection={trustProjectionQuery.data}',
+    ) &&
+    profileShareScreen.includes('label="Buổi chơi"') &&
+    profileShareScreen.includes('completionReliabilityBps') &&
+    profileShareScreen.includes('positiveEndorsements') &&
+    !profileShareScreen.includes('profile.stats.matches') &&
+    !profileShareScreen.includes('profile.stats.winRate') &&
+    !profileShareScreen.includes('profile.stats.rating') &&
+    profileShareScreen.includes('Chưa tải được số liệu xác minh'),
+  'Profile share poster must use authoritative trust projection data and fail closed without legacy fallbacks',
+);
 
 const plan = Number(test.match(/select plan\((\d+)\)/i)?.[1] ?? 0);
 const assertionPatterns = [
@@ -127,13 +176,15 @@ const assertionCount = assertionPatterns.reduce(
   0,
 );
 requireInvariant(
-  plan === assertionCount && assertionCount >= 8,
+  plan === assertionCount && assertionCount >= 11,
   `Trusted-stat pgTAP plan mismatch: plan=${plan}, assertions=${assertionCount}`,
 );
 requireInvariant(
   test.includes('trusted_stats_read_only') &&
     test.includes('unverified_legacy') &&
-    test.includes('unrelated profile metadata remains editable'),
+    test.includes('unrelated profile metadata remains editable') &&
+    test.includes('cannot introduce trusted-looking stats on insert') &&
+    test.includes('cannot delete the onboarding/profile habit authority row'),
   'pgTAP must prove mutation denial, migration preservation and unrelated edit compatibility',
 );
 

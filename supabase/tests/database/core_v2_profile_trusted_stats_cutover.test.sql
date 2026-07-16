@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(8);
+select plan(11);
 
 select has_function(
   'private',
@@ -32,18 +32,11 @@ insert into auth.users (
 insert into public.profiles (id, display_name)
 values ('01000000-0000-4000-8000-000000000951', 'Trust Cutover');
 insert into public.profile_habits (
-  profile_id,
-  decision_style,
-  session_length,
-  seriousness,
-  feedback_style,
-  loss_response,
-  comeback_response,
-  media_summary
-)
-values (
+  profile_id, decision_style, session_length, seriousness,
+  feedback_style, loss_response, comeback_response, media_summary
+) values (
   '01000000-0000-4000-8000-000000000951',
-  'team_consensus',
+  'team_vote',
   'medium',
   'balanced',
   'direct',
@@ -53,17 +46,17 @@ values (
 );
 
 -- Simulate the migration backfill for a row inserted after migration execution.
-update public.profile_habits
-set media_summary = coalesce(media_summary, '{}'::jsonb)
-  || jsonb_build_object(
-    'unverified_legacy',
-    case
-      when jsonb_typeof(media_summary -> 'unverified_legacy') = 'object'
-        then media_summary -> 'unverified_legacy'
-      else '{}'::jsonb
-    end
-    || jsonb_build_object('profile_stats', media_summary -> 'profile_stats')
-  )
+update public.profile_habits habits
+set media_summary = jsonb_set(
+  coalesce(habits.media_summary, '{}'::jsonb) - 'profile_stats',
+  '{unverified_legacy}',
+  (case
+    when jsonb_typeof(habits.media_summary -> 'unverified_legacy') = 'object'
+      then habits.media_summary -> 'unverified_legacy'
+    else '{}'::jsonb
+  end) || jsonb_build_object('profile_stats', habits.media_summary -> 'profile_stats'),
+  true
+)
 where profile_id = '01000000-0000-4000-8000-000000000951';
 
 select is(
@@ -72,6 +65,13 @@ select is(
    where profile_id = '01000000-0000-4000-8000-000000000951'),
   '99',
   'legacy editable matches are preserved only as unverified history'
+);
+select is(
+  (select media_summary -> 'profile_stats'
+   from public.profile_habits
+   where profile_id = '01000000-0000-4000-8000-000000000951'),
+  null::jsonb,
+  'legacy trusted-looking stats are removed from the root namespace'
 );
 
 select set_config('request.jwt.claim.role', 'authenticated', true);
@@ -87,7 +87,7 @@ select set_config(
 
 select throws_like(
   $$update public.profile_habits
-    set media_summary = jsonb_set(media_summary, '{profile_stats,matches}', '100'::jsonb, true)
+    set media_summary = jsonb_set(media_summary, '{profile_stats}', '{"matches":100}'::jsonb, true)
     where profile_id = '01000000-0000-4000-8000-000000000951'$$,
   '%trusted_stats_read_only%',
   'authenticated clients cannot change legacy trusted-looking stats'
@@ -99,11 +99,11 @@ select lives_ok(
   'unrelated profile metadata remains editable when profile_stats is unchanged'
 );
 select is(
-  (select media_summary #>> '{profile_stats,matches}'
+  (select media_summary -> 'profile_stats'
    from public.profile_habits
    where profile_id = '01000000-0000-4000-8000-000000000951'),
-  '99',
-  'rejected mutation leaves legacy stats unchanged'
+  null::jsonb,
+  'rejected mutation does not restore root trusted-looking stats'
 );
 select is(
   (select media_summary #>> '{profile_status}'
@@ -112,6 +112,18 @@ select is(
   'busy',
   'allowed metadata mutation persists'
 );
+select throws_like(
+  $$insert into public.profile_habits (
+      profile_id, decision_style, session_length, seriousness,
+      feedback_style, loss_response, comeback_response, media_summary
+    ) values (
+      '01000000-0000-4000-8000-000000000951',
+      'team_vote', 'medium', 'balanced', 'direct', 'review', 'reset',
+      '{"profile_stats":{"matches":100}}'::jsonb
+    )$$,
+  '%trusted_stats_read_only%',
+  'authenticated clients cannot introduce trusted-looking stats on insert'
+);
 select ok(
   not has_function_privilege(
     'authenticated',
@@ -119,6 +131,10 @@ select ok(
     'EXECUTE'
   ),
   'authenticated clients cannot call the private guard directly'
+);
+select ok(
+  not has_table_privilege('authenticated', 'public.profile_habits', 'DELETE'),
+  'authenticated clients cannot delete the onboarding/profile habit authority row'
 );
 
 select * from finish();

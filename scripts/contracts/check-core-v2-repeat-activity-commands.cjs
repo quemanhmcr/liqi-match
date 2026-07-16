@@ -102,6 +102,8 @@ requireInvariant(
     deriveBlock.includes(inviteSqlPath) &&
     deriveBlock.includes('if blocked_value or not can_invite_value then') &&
     deriveBlock.includes("'repeat_play_recommendation'") &&
+    deriveBlock.includes("'relationshipVersion'") &&
+    deriveBlock.includes('coalesce(relationship_row.version, 0)') &&
     deriveBlock.includes('activity.dismissed_at is null') &&
     deriveBlock.includes("activity.payload -> 'teammatePlayerIds'"),
   'Recommendations must consume live Social capability, fail closed, and supersede older active cards for the same teammate',

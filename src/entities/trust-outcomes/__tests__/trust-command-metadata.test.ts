@@ -2,7 +2,9 @@ import { describe, expect, it } from '@jest/globals';
 
 import {
   createTrustCreateMetadata,
+  createTrustCreateMetadataForSource,
   createTrustMutationMetadata,
+  createTrustMutationMetadataForSource,
 } from '../trust-command-metadata';
 
 function uuidSequence() {
@@ -31,6 +33,50 @@ describe('trust command metadata', () => {
       expectedVersion: 7,
       idempotencyKey:
         'trust:confirm-participation:43000000-0000-4000-8000-000000000001',
+    });
+  });
+
+  it('derives retry-stable metadata from an authoritative source UUID', () => {
+    const first = createTrustMutationMetadataForSource(
+      3,
+      'confirm-participation',
+      '42000000-0000-4000-8000-000000000001',
+      [],
+      {
+        appVersion: '2.0.0',
+        now: () => new Date('2026-07-14T14:00:00.000Z'),
+        platform: 'android',
+      },
+    );
+    const retry = createTrustMutationMetadataForSource(
+      3,
+      'confirm-participation',
+      '42000000-0000-4000-8000-000000000001',
+      [],
+      {
+        appVersion: '2.0.0',
+        now: () => new Date('2026-07-14T14:01:00.000Z'),
+        platform: 'android',
+      },
+    );
+    const endorsement = createTrustCreateMetadataForSource(
+      'submit-endorsement',
+      '42000000-0000-4000-8000-000000000001',
+      ['20000000-0000-4000-8000-000000000002'],
+      {
+        appVersion: '2.0.0',
+        now: () => new Date('2026-07-14T14:00:00.000Z'),
+        platform: 'android',
+      },
+    );
+
+    expect(retry.idempotencyKey).toBe(first.idempotencyKey);
+    expect(retry.correlationId).toBe(first.correlationId);
+    expect(endorsement).toMatchObject({
+      correlationId: first.correlationId,
+      expectedVersion: 0,
+      idempotencyKey:
+        'trust:submit-endorsement:42000000-0000-4000-8000-000000000001:20000000-0000-4000-8000-000000000002',
     });
   });
 

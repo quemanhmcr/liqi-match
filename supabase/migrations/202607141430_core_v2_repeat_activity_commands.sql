@@ -332,6 +332,7 @@ begin
             'repeat_play_recommendation',
             jsonb_build_object(
               'relationshipId', relationship_row.id,
+              'relationshipVersion', coalesce(relationship_row.version, 0),
               'completedSessionCount', confirmed_session_count_value,
               'sourceSessionId', source_outcome.session_id,
               'teammatePlayerIds', jsonb_build_array(teammate_player_id)

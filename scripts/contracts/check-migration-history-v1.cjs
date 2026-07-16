@@ -187,7 +187,9 @@ for (const referenceRoot of referenceRoots) {
   }
 }
 
-const integratedVersions = [...versionOwners.keys()];
+const integratedVersions = [...versionOwners.keys()].filter(
+  (version) => version >= '202607140000',
+);
 const latestIntegratedVersion = integratedVersions.sort().at(-1);
 if (!latestIntegratedVersion || latestIntegratedVersion < '202607140035') {
   fail(

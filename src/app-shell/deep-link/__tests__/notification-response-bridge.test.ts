@@ -86,6 +86,32 @@ describe('NotificationResponseBridge', () => {
     expect(onIntentEnqueued).toHaveBeenCalledTimes(1);
   });
 
+  it('persists an exact post-session feedback target from a cold-start response', async () => {
+    const activityPayload = {
+      ...payload,
+      deepLink: {
+        sessionId: '42000000-0000-4000-8000-000000000001',
+        target: 'session_feedback' as const,
+      },
+      notificationId: '90000000-0000-4000-8000-000000000010',
+      sourceEventId: '80000000-0000-4000-8000-000000000010',
+    };
+    const store = new PersistedDeepLinkIntentStore(new MemoryStorage());
+    const source = sourceWith(response(activityPayload));
+    const bridge = new NotificationResponseBridge({
+      source: source.source,
+      store,
+    });
+
+    await bridge.start();
+
+    await expect(store.peek()).resolves.toMatchObject({
+      deepLink: activityPayload.deepLink,
+      intentId: `notification:${activityPayload.notificationId}`,
+    });
+    expect(source.clearLastResponse).toHaveBeenCalledTimes(1);
+  });
+
   it('deduplicates cold-start and live listener delivery of the same notification', async () => {
     const store = new PersistedDeepLinkIntentStore(new MemoryStorage());
     const source = sourceWith(response(payload));

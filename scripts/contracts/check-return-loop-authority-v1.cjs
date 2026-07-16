@@ -4,6 +4,10 @@ const migrationPath =
   'supabase/migrations/202607140036_return_loop_authority_v1.sql';
 const testPath = 'supabase/tests/database/return_loop_authority_v1.test.sql';
 const migration = fs.readFileSync(migrationPath, 'utf8');
+const cloudRepair = fs.readFileSync(
+  'supabase/migrations/202607151210_return_loop_social_aware_cloud_repairs_v2.sql',
+  'utf8',
+);
 const variableConflictMigrationPath =
   'supabase/migrations/202607140044_fix_return_loop_event_variable_conflict_v1.sql';
 const variableConflictMigration = fs.readFileSync(
@@ -46,6 +50,14 @@ const failures = [];
 function requireInvariant(condition, message) {
   if (!condition) failures.push(message);
 }
+
+requireInvariant(
+  /event_id_value uuid :=/i.test(cloudRepair) &&
+    /event_type_value text :=/i.test(cloudRepair) &&
+    /where processed\.event_id = event_id_value/i.test(cloudRepair) &&
+    !/consume_return_loop_event_v1\.event_id/i.test(cloudRepair),
+  'Cloud repair must keep the outer Return Loop replay wrapper free of PL/pgSQL variable ambiguity.',
+);
 
 requireInvariant(
   /resolve_player_identity_v1\(p_account_id, p_lock\)/i.test(migration) &&

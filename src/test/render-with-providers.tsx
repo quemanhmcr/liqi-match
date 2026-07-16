@@ -17,6 +17,7 @@ import { AuthStateProvider } from '@/shared/auth/auth-context';
 type ApplicationServiceOverrides = Partial<
   Pick<
     ApplicationServices,
+    | 'activityFeedRepository'
     | 'assetResolver'
     | 'discoverRepository'
     | 'homeRepository'

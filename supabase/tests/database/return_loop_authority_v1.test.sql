@@ -2,7 +2,7 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(48);
+select plan(50);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -253,6 +253,34 @@ select is((select status::text from private.notification_push_jobs_v1 where prov
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'suspended_notification')) ->> 'processed')::boolean, 'suspended recipient event is safely consumed');
 select is((select count(*)::integer from public.notifications_v1 where recipient_player_id = '20000000-0000-4000-8000-000000000403'), 0, 'suspended recipient receives no notification');
 select is((select count(*)::integer from private.return_loop_suppressed_events_v1 where recipient_player_id = '20000000-0000-4000-8000-000000000403'), 1, 'suspension policy is observable');
+
+create temporary table lifecycle_suspension_event as
+select jsonb_build_object(
+  'eventId', '80000000-0000-4000-8000-000000000410',
+  'eventType', 'player.suspended.v1',
+  'aggregateType', 'player',
+  'aggregateId', '20000000-0000-4000-8000-000000000403',
+  'occurredAt', '2026-07-14T08:06:00.000Z',
+  'correlationId', '70000000-0000-4000-8000-000000000403',
+  'causationId', null,
+  'data', jsonb_build_object(
+    'accountId', '00000000-0000-0000-0000-000000000403',
+    'playerId', '20000000-0000-4000-8000-000000000403',
+    'profileId', '30000000-0000-4000-8000-000000000403',
+    'lifecycleVersion', 2,
+    'reasonCode', 'trust.return_loop_cloud_test'
+  )
+) as payload;
+select is(
+  (public.consume_return_loop_event_v1((select payload from lifecycle_suspension_event)) ->> 'processed')::boolean,
+  true,
+  'outer Return Loop consumer processes an authoritative suspension event'
+);
+select is(
+  (public.consume_return_loop_event_v1((select payload from lifecycle_suspension_event)) ->> 'repeated')::boolean,
+  true,
+  'outer Return Loop consumer returns the durable replay receipt'
+);
 
 update private.return_loop_config_v1 set event_consumer_enabled = false;
 select is(

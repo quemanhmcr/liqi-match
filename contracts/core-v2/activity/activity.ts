@@ -9,8 +9,10 @@ import {
   ActivityItemIdSchema,
   EventIdSchema,
   PlayerIdSchema,
+  PlaySessionIdSchema,
   RepeatPlayRequestIdSchema,
   RepeatTeammateRelationshipIdSchema,
+  SessionOutcomeIdSchema,
 } from '../identity/semantic-ids';
 
 const EventfulReceiptBaseV2Schema = CoreV2ReceiptBaseSchema.extend({
@@ -38,6 +40,68 @@ export const ActivityItemV2Schema = z
   })
   .strict();
 export type ActivityItemV2 = z.infer<typeof ActivityItemV2Schema>;
+
+export const FeedbackPromptActivityPayloadV2Schema = z
+  .object({
+    confirmationDeadlineAt: z.string().datetime({ offset: true }),
+    outcomeId: SessionOutcomeIdSchema,
+    sessionId: PlaySessionIdSchema,
+  })
+  .strict();
+
+export const ReputationProgressActivityPayloadV2Schema = z
+  .object({
+    projectionVersion: z.number().int().nonnegative(),
+    sessionId: PlaySessionIdSchema,
+  })
+  .strict();
+
+export const RepeatPlayRecommendationActivityPayloadV2Schema = z
+  .object({
+    completedSessionCount: z.number().int().positive(),
+    relationshipId: RepeatTeammateRelationshipIdSchema.nullable(),
+    relationshipVersion: z.number().int().nonnegative(),
+    sourceSessionId: PlaySessionIdSchema,
+    teammatePlayerIds: z.array(PlayerIdSchema).length(1),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (
+      new Set(value.teammatePlayerIds).size !== value.teammatePlayerIds.length
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Repeat recommendation teammates must be unique.',
+        path: ['teammatePlayerIds'],
+      });
+    }
+    if (
+      (value.relationshipId === null && value.relationshipVersion !== 0) ||
+      (value.relationshipId !== null && value.relationshipVersion < 1)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Repeat relationship ID and version must advance together.',
+        path: ['relationshipVersion'],
+      });
+    }
+  });
+
+export const TrustActivityItemV2Schema = z.discriminatedUnion('kind', [
+  ActivityItemV2Schema.extend({
+    kind: z.literal('feedback_prompt'),
+    payload: FeedbackPromptActivityPayloadV2Schema,
+  }).strict(),
+  ActivityItemV2Schema.extend({
+    kind: z.literal('reputation_progress'),
+    payload: ReputationProgressActivityPayloadV2Schema,
+  }).strict(),
+  ActivityItemV2Schema.extend({
+    kind: z.literal('repeat_play_recommendation'),
+    payload: RepeatPlayRecommendationActivityPayloadV2Schema,
+  }).strict(),
+]);
+export type TrustActivityItemV2 = z.infer<typeof TrustActivityItemV2Schema>;
 
 export const RepeatTeammateRelationshipV2Schema = z
   .object({
