@@ -1,7 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
-import { useState } from 'react';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Image,
@@ -46,6 +47,19 @@ export function ChatMediaViewer({
     y: number;
   }>();
   const [zoomScale, setZoomScale] = useState(1);
+
+  const videoPlayer = useVideoPlayer(
+    attachment.mediaType === 'video' ? attachment.uri : null,
+  );
+
+  useEffect(() => {
+    if (visible && attachment.mediaType === 'video') {
+      videoPlayer.play();
+      return () => videoPlayer.pause();
+    }
+    videoPlayer.pause();
+    return undefined;
+  }, [attachment.mediaType, videoPlayer, visible]);
 
   const handleMediaTap = () => {
     const result = resolveChatMediaViewerTap({
@@ -105,58 +119,65 @@ export function ChatMediaViewer({
     >
       <View style={styles.root} testID="chat-media-viewer">
         <View
-          onTouchEnd={(event) => {
-            if (!touchStart) return;
-            if (touchStart.touchCount > 1) {
-              setTouchStart(undefined);
-              return;
-            }
-            const deltaX = event.nativeEvent.pageX - touchStart.x;
-            const deltaY = event.nativeEvent.pageY - touchStart.y;
-            if (
-              shouldDismissChatMediaViewer({
-                deltaX,
-                deltaY,
-                touchCount: touchStart.touchCount,
-                zoomScale,
-              })
-            ) {
-              onClose();
-            } else if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) {
-              handleMediaTap();
-            }
-            setTouchStart(undefined);
-          }}
-          onTouchStart={(event) =>
-            setTouchStart({
-              touchCount: event.nativeEvent.touches.length,
-              x: event.nativeEvent.pageX,
-              y: event.nativeEvent.pageY,
-            })
+          onTouchEnd={
+            attachment.mediaType === 'image'
+              ? (event) => {
+                  if (!touchStart) return;
+                  if (touchStart.touchCount > 1) {
+                    setTouchStart(undefined);
+                    return;
+                  }
+                  const deltaX = event.nativeEvent.pageX - touchStart.x;
+                  const deltaY = event.nativeEvent.pageY - touchStart.y;
+                  if (
+                    shouldDismissChatMediaViewer({
+                      deltaX,
+                      deltaY,
+                      touchCount: touchStart.touchCount,
+                      zoomScale,
+                    })
+                  ) {
+                    onClose();
+                  } else if (Math.abs(deltaX) < 8 && Math.abs(deltaY) < 8) {
+                    handleMediaTap();
+                  }
+                  setTouchStart(undefined);
+                }
+              : undefined
+          }
+          onTouchStart={
+            attachment.mediaType === 'image'
+              ? (event) =>
+                  setTouchStart({
+                    touchCount: event.nativeEvent.touches.length,
+                    x: event.nativeEvent.pageX,
+                    y: event.nativeEvent.pageY,
+                  })
+              : undefined
           }
           style={styles.gestureSurface}
           testID="chat-media-gesture-surface"
         >
-          <ScrollView
-            centerContent
-            contentContainerStyle={styles.zoomContent}
-            maximumZoomScale={4}
-            minimumZoomScale={1}
-            onScroll={(event) => {
-              const nextScale = event.nativeEvent.zoomScale ?? 1;
-              if (Math.abs(nextScale - zoomScale) > 0.02) {
-                setZoomScale(nextScale);
-              }
-            }}
-            pinchGestureEnabled
-            scrollEventThrottle={32}
-            showsHorizontalScrollIndicator={false}
-            showsVerticalScrollIndicator={false}
-            style={styles.zoomScroller}
-            testID="chat-media-zoom-scroller"
-            zoomScale={zoomScale}
-          >
-            {attachment.mediaType === 'image' ? (
+          {attachment.mediaType === 'image' ? (
+            <ScrollView
+              centerContent
+              contentContainerStyle={styles.zoomContent}
+              maximumZoomScale={4}
+              minimumZoomScale={1}
+              onScroll={(event) => {
+                const nextScale = event.nativeEvent.zoomScale ?? 1;
+                if (Math.abs(nextScale - zoomScale) > 0.02) {
+                  setZoomScale(nextScale);
+                }
+              }}
+              pinchGestureEnabled
+              scrollEventThrottle={32}
+              showsHorizontalScrollIndicator={false}
+              showsVerticalScrollIndicator={false}
+              style={styles.zoomScroller}
+              testID="chat-media-zoom-scroller"
+              zoomScale={zoomScale}
+            >
               <Image
                 accessibilityLabel={attachment.altText || mediaLabel}
                 fadeDuration={120}
@@ -167,18 +188,17 @@ export function ChatMediaViewer({
                 source={{ uri: attachment.uri }}
                 style={{ height: viewport.height, width: viewport.width }}
               />
-            ) : (
-              <View
-                style={[
-                  styles.videoPlaceholder,
-                  { height: viewport.height, width: viewport.width },
-                ]}
-              >
-                <Ionicons color="#FFFFFF" name="play-circle" size={58} />
-                <Text style={styles.videoPlaceholderText}>Video preview</Text>
-              </View>
-            )}
-          </ScrollView>
+            </ScrollView>
+          ) : (
+            <VideoView
+              accessibilityLabel={attachment.altText || mediaLabel}
+              contentFit="contain"
+              nativeControls
+              player={videoPlayer}
+              style={{ height: viewport.height, width: viewport.width }}
+              testID="chat-video-player"
+            />
+          )}
           {imageLoading && attachment.mediaType === 'image' ? (
             <View pointerEvents="none" style={styles.loadingOverlay}>
               <ActivityIndicator color="rgba(255,255,255,0.74)" size="small" />
@@ -230,7 +250,9 @@ export function ChatMediaViewer({
                 </Text>
               ) : null}
               <Text style={styles.hint}>
-                Chạm hai lần để thu phóng · Vuốt xuống để đóng
+                {attachment.mediaType === 'video'
+                  ? 'Dùng điều khiển phát hoặc mở toàn màn hình'
+                  : 'Chạm hai lần để thu phóng · Vuốt xuống để đóng'}
               </Text>
             </SafeAreaView>
           </>

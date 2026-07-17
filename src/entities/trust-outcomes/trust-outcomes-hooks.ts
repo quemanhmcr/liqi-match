@@ -22,6 +22,8 @@ export const trustOutcomeQueryKeys = {
     ['core-v2-trust', 'outcome', accountId, sessionId] as const,
   preferences: (accountId: string) =>
     ['core-v2-trust', 'preferences', accountId] as const,
+  reputationLedger: (viewerAccountId: string, playerId: string) =>
+    ['core-v2-trust', 'reputation-ledger', viewerAccountId, playerId] as const,
   projection: (viewerAccountId: string, playerId: string) =>
     ['core-v2-trust', 'projection', viewerAccountId, playerId] as const,
   recommendations: (accountId: string) =>
@@ -79,6 +81,27 @@ export function useSubmitPlayerEndorsement(session: AuthSession | null) {
       command as SubmitPlayerEndorsementCommandV2,
     ),
   );
+}
+
+export function useReputationLedger(
+  session: AuthSession | null,
+  playerId: string | undefined,
+) {
+  const { reputationLedgerProvider } = useTrustOutcomesServices();
+  return useQuery({
+    enabled: Boolean(session && playerId),
+    queryFn: () => {
+      if (!session || !playerId) {
+        throw new Error('Reputation ledger requires a session and PlayerId.');
+      }
+      return reputationLedgerProvider.listForPlayer(session, playerId);
+    },
+    queryKey: trustOutcomeQueryKeys.reputationLedger(
+      session?.user.id ?? 'anonymous',
+      playerId ?? 'missing',
+    ),
+    staleTime: 30_000,
+  });
 }
 
 export function usePlayerTrustProjection(

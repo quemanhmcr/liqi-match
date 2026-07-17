@@ -30,3 +30,7 @@ export function useDiscoverRepository() {
   }
   return repository;
 }
+
+export function useDiscoverCapabilities() {
+  return useDiscoverRepository().capabilities;
+}

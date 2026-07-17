@@ -21,6 +21,8 @@ describe('deleteMedia', () => {
       markDeleted: vi.fn(async () => {
         calls.push('metadata');
       }),
+      markReady: vi.fn(),
+      markRejected: vi.fn(),
     };
     await deleteMedia({
       job: {

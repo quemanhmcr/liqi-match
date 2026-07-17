@@ -3,6 +3,10 @@ create extension if not exists pgtap with schema extensions;
 begin;
 select plan(29);
 
+create temporary table readiness_baseline as
+select count(*)::integer as command_receipt_count
+from private.command_receipts_v1;
+
 select has_table(
   'private',
   'party_session_api_e2e_runs_v2',
@@ -107,7 +111,11 @@ select is((select value #>> '{checks,rollbackSafe}' from rollback_readiness), 't
 select is((select value ->> 'ready' from rollback_readiness), 'false', 'rollback posture blocks release readiness');
 select is((select value #>> '{flags,readsEnabled}' from rollback_readiness), 'true', 'rollback preserves authoritative reads');
 select is((select count(*)::integer from private.party_session_api_e2e_runs_v2), 1, 'rollback preserves API E2E evidence');
-select is((select count(*)::integer from private.command_receipts_v1), 0, 'rollback does not synthesize or delete command receipts');
+select is(
+  (select count(*)::integer from private.command_receipts_v1),
+  (select command_receipt_count from readiness_baseline),
+  'rollback does not synthesize or delete command receipts'
+);
 
 update private.party_session_config_v2
 set creation_writes_enabled = true,

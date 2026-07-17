@@ -40,6 +40,7 @@ export {
   useEngagementPreferences,
   usePlayerTrustProjection,
   useRepeatPlayRecommendations,
+  useReputationLedger,
   useRequestRepeatSession,
   useSessionFeedbackSurface,
   useSubmitPlayerEndorsement,

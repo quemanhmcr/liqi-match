@@ -9,11 +9,14 @@ const SUPABASE_CLI = 'supabase@2.109.1';
 const APPROVED_PROJECT_REF = 'ibprkyemsuktfrdpxvza';
 const suites = [
   'supabase/tests/database/match_set_authority_v1.test.sql',
+  'supabase/tests/database/match_set_dashboard_identity_v2.test.sql',
   'supabase/tests/database/repeat_play_session_consumer_v2.test.sql',
   'supabase/tests/database/core_v2_completed_session_consumer.test.sql',
   'supabase/tests/database/session_social_safety_consumer_v2.test.sql',
   'supabase/tests/database/party_session_release_readiness_v2.test.sql',
   'supabase/tests/database/party_session_runtime_v2.test.sql',
+  'supabase/tests/database/decline_session_invite_v2.test.sql',
+  'supabase/tests/database/session_conversation_dispatch_runtime_v2.test.sql',
 ];
 
 function parseExpectedProjectRef(argv) {

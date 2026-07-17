@@ -15,8 +15,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { appRoutes } from '@/app-shell/navigation/routes';
 
 import {
+  useMatchSetCommandMutation,
   useMatchSetDiscoveryQuery,
-  useRequestSetJoinV1Mutation,
 } from '@/entities/match-set';
 import {
   playSessionQueryKeys,
@@ -34,7 +34,13 @@ export function MatchSetDiscoveryScreen() {
   const { commandService } = usePlaySessionServices();
   const queryClient = useQueryClient();
   const query = useMatchSetDiscoveryQuery(20);
-  const joinMutation = useRequestSetJoinV1Mutation();
+  const joinMutation = useMatchSetCommandMutation(
+    (repository, currentSession, input: { setId: string; version: number }) =>
+      repository.requestJoinV2(currentSession, {
+        ...prepareCoreV2CommandMetadata(input.version),
+        setId: SetIdSchema.parse(input.setId),
+      }),
+  );
   const createSessionMutation = useMutation({
     mutationFn: async (candidate: SetDiscoveryCandidateV1) => {
       if (!session) throw new Error('Authentication is required.');
@@ -77,6 +83,14 @@ export function MatchSetDiscoveryScreen() {
           <Text style={styles.eyebrow}>DISCOVER</Text>
           <Text style={styles.title}>Đội đang mở</Text>
         </View>
+        <Pressable
+          accessibilityLabel="Mở Set của tôi"
+          accessibilityRole="button"
+          onPress={() => router.push(appRoutes.sets.hub)}
+          style={styles.iconButton}
+        >
+          <Ionicons color="#D9C7FF" name="albums-outline" size={21} />
+        </Pressable>
       </View>
 
       {query.isPending ? (
@@ -109,7 +123,7 @@ export function MatchSetDiscoveryScreen() {
             <View style={styles.center}>
               <Text style={styles.errorTitle}>Chưa có đội phù hợp</Text>
               <Text style={styles.secondary}>
-                Kết quả chỉ gồm đội authoritative đang mở và còn chỗ.
+                Chưa có đội đang mở và còn chỗ phù hợp với bạn.
               </Text>
             </View>
           }
@@ -133,10 +147,11 @@ export function MatchSetDiscoveryScreen() {
               onCreateSession={() => createSessionMutation.mutate(item)}
               onJoin={() =>
                 joinMutation.mutate({
-                  expectedSetVersion: item.set.version,
                   setId: item.set.setId,
+                  version: item.set.version,
                 })
               }
+              onOpen={() => router.push(appRoutes.sets.detail(item.set.setId))}
               viewerPlayerId={session?.principal?.playerId ?? null}
             />
           )}
@@ -152,6 +167,7 @@ function MatchSetCard({
   isPending,
   onCreateSession,
   onJoin,
+  onOpen,
   viewerPlayerId,
 }: {
   candidate: SetDiscoveryCandidateV1;
@@ -159,6 +175,7 @@ function MatchSetCard({
   isPending: boolean;
   onCreateSession: () => void;
   onJoin: () => void;
+  onOpen: () => void;
   viewerPlayerId: string | null;
 }) {
   const set = candidate.set;
@@ -193,6 +210,13 @@ function MatchSetCard({
       </View>
 
       <View style={styles.actionRow}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onOpen}
+          style={styles.secondaryButton}
+        >
+          <Text style={styles.secondaryButtonText}>Xem chi tiết</Text>
+        </Pressable>
         {canCreateSession ? (
           <Pressable
             accessibilityLabel={`Tạo Session từ ${set.title}`}
@@ -330,6 +354,16 @@ const styles = StyleSheet.create({
   reasonText: { color: 'rgba(218, 223, 255, 0.82)', fontSize: 12 },
   safeArea: { backgroundColor: '#0B0E19', flex: 1 },
   secondary: { color: 'rgba(223, 227, 245, 0.62)', lineHeight: 20 },
+  secondaryButton: {
+    alignItems: 'center',
+    borderColor: 'rgba(180, 165, 255, 0.24)',
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
+    minHeight: 42,
+    paddingHorizontal: 16,
+  },
+  secondaryButtonText: { color: '#DCCFFF', fontSize: 12, fontWeight: '700' },
   stateBadge: {
     backgroundColor: 'rgba(75, 206, 151, 0.12)',
     borderRadius: 999,

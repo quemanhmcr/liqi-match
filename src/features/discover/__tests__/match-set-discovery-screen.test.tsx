@@ -63,7 +63,8 @@ jest.mock('@/entities/match-set', () => ({
     isPending: false,
     refetch: jest.fn(),
   }),
-  useRequestSetJoinV1Mutation: () => ({
+  useMatchSetCommandMutation: () => ({
+    error: null,
     isPending: false,
     mutate: mockJoin,
     variables: undefined,
@@ -149,8 +150,8 @@ describe('MatchSetDiscoveryScreen', () => {
     await fireEvent.press(screen.getByLabelText('Xin vào Team Sao Băng'));
 
     expect(mockJoin).toHaveBeenCalledWith({
-      expectedSetVersion: 7,
       setId: 'a1000000-0000-4000-8000-000000000001',
+      version: 7,
     });
   });
 

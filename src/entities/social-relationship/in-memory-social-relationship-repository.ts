@@ -1,6 +1,7 @@
 import {
   BlockedPlayerListPageV2Schema,
   FriendshipListPageV2Schema,
+  SocialRelationshipListPageV2Schema,
   SocialRelationshipSnapshotV2Schema,
   TrustVisibilityDecisionV2Schema,
   type SocialRelationshipSnapshotV2,
@@ -106,6 +107,38 @@ export class InMemorySocialRelationshipRepository implements SocialRelationshipR
       nextCursor:
         ordered.length > limit ? (page.at(-1)?.targetPlayerId ?? null) : null,
       totalCount: ordered.length,
+    });
+  }
+
+  async listRelationships(
+    session: AuthSession,
+    input: Readonly<{ afterPlayerId?: string | null; limit?: number }> = {},
+  ) {
+    const viewerPlayerId = requireActiveCanonicalPlayer(session);
+    const limit = normalizeLimit(input.limit);
+    const visibleLabels = new Set([
+      'friend',
+      'pending_incoming',
+      'pending_outgoing',
+    ]);
+    const ordered = [...this.relationships.values()]
+      .filter(
+        (relationship) =>
+          relationship.viewerPlayerId === viewerPlayerId &&
+          visibleLabels.has(relationship.friendship.label) &&
+          !relationship.capabilities.blocked &&
+          (!input.afterPlayerId ||
+            relationship.targetPlayerId > input.afterPlayerId),
+      )
+      .sort((left, right) =>
+        left.targetPlayerId.localeCompare(right.targetPlayerId),
+      );
+    const items = ordered.slice(0, limit);
+    return SocialRelationshipListPageV2Schema.parse({
+      contractVersion: 2,
+      items,
+      nextCursor:
+        ordered.length > limit ? (items.at(-1)?.targetPlayerId ?? null) : null,
     });
   }
 

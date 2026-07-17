@@ -62,23 +62,26 @@ const privacyDefinitions: Record<PrivacySettingKey, PrivacySettingDefinition> =
       icon: 'radio-outline',
       options: [
         {
-          description: 'Người chơi đủ điều kiện có thể thấy trạng thái online.',
+          description:
+            'Người chơi đủ điều kiện có thể thấy trạng thái hoạt động khi presence được phát.',
           label: 'Mọi người',
           value: 'everyone',
         },
         {
-          description: 'Chỉ bạn bè thấy trạng thái online của bạn.',
+          description:
+            'Chỉ bạn bè có thể thấy trạng thái hoạt động khi presence được phát.',
           label: 'Chỉ bạn bè',
           value: 'friends',
         },
         {
-          description: 'Không hiển thị presence cho người chơi khác.',
+          description: 'Không cấp quyền đọc presence cho người chơi khác.',
           label: 'Ẩn trạng thái',
           value: 'hidden',
         },
       ],
-      subtitle: 'Áp dụng cho inbox, profile và session presence.',
-      title: 'Ai có thể thấy trạng thái online',
+      subtitle:
+        'Đây là quyền xem; không tự tạo trạng thái online hoặc suy luận từ last-seen.',
+      title: 'Ai có thể xem trạng thái hoạt động',
     },
     friendshipRequests: {
       icon: 'person-add-outline',
@@ -89,7 +92,7 @@ const privacyDefinitions: Record<PrivacySettingKey, PrivacySettingDefinition> =
           value: 'everyone',
         },
         {
-          description: 'Chỉ người đã match với bạn có thể gửi lời mời.',
+          description: 'Chỉ người đã ghép đôi với bạn có thể gửi lời mời.',
           label: 'Chỉ người đã match',
           value: 'matched_only',
         },
@@ -99,51 +102,53 @@ const privacyDefinitions: Record<PrivacySettingKey, PrivacySettingDefinition> =
           value: 'nobody',
         },
       ],
-      subtitle: 'Không suy luận friendship từ match hoặc conversation.',
+      subtitle: 'Lời mời kết bạn luôn tuân theo lựa chọn này.',
       title: 'Ai có thể gửi lời mời kết bạn',
     },
     sessionInvites: {
       icon: 'game-controller-outline',
       options: [
         {
-          description: 'Người chơi đủ điều kiện có thể mời bạn vào session.',
+          description: 'Người chơi đủ điều kiện có thể mời bạn vào buổi chơi.',
           label: 'Mọi người',
           value: 'everyone',
         },
         {
-          description: 'Chỉ bạn bè có thể mời bạn vào session.',
+          description: 'Chỉ bạn bè có thể mời bạn vào buổi chơi.',
           label: 'Chỉ bạn bè',
           value: 'friends',
         },
         {
-          description: 'Tạm ngừng nhận lời mời session mới.',
+          description: 'Tạm ngừng nhận lời mời vào buổi chơi mới.',
           label: 'Không ai',
           value: 'nobody',
         },
       ],
-      subtitle: 'Session authority vẫn kiểm tra lại block và lifecycle.',
+      subtitle:
+        'Hệ thống vẫn kiểm tra trạng thái chặn và tài khoản trước khi gửi lời mời.',
       title: 'Ai có thể mời vào buổi chơi',
     },
     trustVisibility: {
       icon: 'shield-checkmark-outline',
       options: [
         {
-          description: 'Người chơi đủ điều kiện có thể xem trust projection.',
+          description:
+            'Người chơi đủ điều kiện có thể xem điểm uy tín của bạn.',
           label: 'Mọi người',
           value: 'everyone',
         },
         {
-          description: 'Chỉ bạn bè có thể xem trust projection.',
+          description: 'Chỉ bạn bè có thể xem điểm uy tín của bạn.',
           label: 'Chỉ bạn bè',
           value: 'friends',
         },
         {
-          description: 'Trust projection chỉ hiển thị cho chính bạn.',
+          description: 'Điểm uy tín chỉ hiển thị cho chính bạn.',
           label: 'Chỉ mình tôi',
           value: 'private',
         },
       ],
-      subtitle: 'Không thay đổi cách hệ thống tính reputation authoritative.',
+      subtitle: 'Lựa chọn hiển thị không thay đổi cách điểm uy tín được tính.',
       title: 'Ai có thể xem uy tín',
     },
   };
@@ -199,13 +204,13 @@ export function ProfilePrivacySettingsSection({
         <View style={styles.copy}>
           <ProfileText style={styles.title}>
             {loading
-              ? 'Đang tải quyền riêng tư authoritative'
+              ? 'Đang tải quyền riêng tư'
               : 'Quyền riêng tư đang khoá an toàn'}
           </ProfileText>
           <ProfileText style={styles.subtitle}>
             {error
-              ? 'Không thể xác minh policy Core V2. Ứng dụng không dùng cài đặt legacy để thay thế.'
-              : 'Đang đồng bộ profile, presence, friendship, session và trust policy.'}
+              ? 'Chưa thể xác minh cài đặt quyền riêng tư. Các lựa chọn tạm thời bị khoá để bảo vệ bạn.'
+              : 'Đang đồng bộ hồ sơ, trạng thái hoạt động, kết nối và quyền riêng tư.'}
           </ProfileText>
         </View>
         {!loading && error && onRetry ? (

@@ -19,9 +19,10 @@ import {
   type RequestSetJoinCommand,
 } from '../contracts/discover-contracts';
 import { createAuthoritativePlayerOverview } from './discover-authoritative-overview';
-import type {
-  DiscoverRepository,
-  DiscoverRequestContext,
+import {
+  productionDiscoverCapabilities,
+  type DiscoverRepository,
+  type DiscoverRequestContext,
 } from './discover-repository';
 
 export type DiscoverRpcTransport = (
@@ -31,6 +32,7 @@ export type DiscoverRpcTransport = (
 ) => Promise<unknown>;
 
 export class ApiDiscoverRepository implements DiscoverRepository {
+  readonly capabilities = productionDiscoverCapabilities;
   constructor(private readonly rpc: DiscoverRpcTransport = callRpc) {}
 
   async getOverview(

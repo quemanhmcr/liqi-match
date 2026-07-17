@@ -4,9 +4,16 @@ import { createClient, processLock } from '@supabase/supabase-js';
 
 import { env } from '@/shared/config/env';
 
+import {
+  createAuthStorageKey,
+  LEGACY_AUTH_STORAGE_KEY,
+} from './auth-storage-key';
 import { createSecureAuthStorage } from './secure-auth-storage';
 
-export const AUTH_STORAGE_KEY = 'liqi-match.auth.session.v1';
+export const AUTH_STORAGE_KEY = createAuthStorageKey(
+  env.EXPO_PUBLIC_SUPABASE_URL,
+  __DEV__,
+);
 
 export const authStorage = createSecureAuthStorage();
 
@@ -35,10 +42,16 @@ export const supabaseAuthClient = createClient(
 );
 
 export async function clearSupabaseAuthStorage(): Promise<void> {
-  const results = await Promise.allSettled([
-    authStorage.removeItem(AUTH_STORAGE_KEY),
-    authStorage.removeItem(`${AUTH_STORAGE_KEY}-code-verifier`),
+  const keys = new Set([
+    AUTH_STORAGE_KEY,
+    `${AUTH_STORAGE_KEY}-code-verifier`,
+    ...(AUTH_STORAGE_KEY !== LEGACY_AUTH_STORAGE_KEY
+      ? [LEGACY_AUTH_STORAGE_KEY, `${LEGACY_AUTH_STORAGE_KEY}-code-verifier`]
+      : []),
   ]);
+  const results = await Promise.allSettled(
+    [...keys].map((key) => authStorage.removeItem(key)),
+  );
   const failures = results.flatMap((result) =>
     result.status === 'rejected' ? [result.reason] : [],
   );

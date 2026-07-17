@@ -34,6 +34,14 @@ import {
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { useNotificationInboxSummary } from '@/entities/notifications';
 import {
+  isMatchIntentActive,
+  matchIntentFiltersForMood,
+  moodForMatchIntent,
+  useActivateMatchIntentMutation,
+  useCurrentMatchIntentQuery,
+  usePauseMatchIntentMutation,
+} from '@/entities/match-intent';
+import {
   playSessionQueryKeys,
   prepareCoreV2CommandMetadata,
   resolvePlaySessionActor,
@@ -279,9 +287,16 @@ export default function HomeDashboardScreen() {
   const notificationSummaryQuery = useNotificationInboxSummary(session);
   const hasUnreadNotifications =
     (notificationSummaryQuery.data?.unseenCount ?? 0) > 0;
-  const [selectedModeId, setSelectedModeId] =
-    useState<HomeReadyMode['id']>('setlove');
-  const [readyEnabled, setReadyEnabled] = useState(false);
+  const currentMatchIntentQuery = useCurrentMatchIntentQuery();
+  const activateMatchIntent = useActivateMatchIntentMutation();
+  const pauseMatchIntent = usePauseMatchIntentMutation();
+  const currentMatchIntent = currentMatchIntentQuery.data ?? null;
+  const readyEnabled = isMatchIntentActive(currentMatchIntent);
+  const [selectedModeOverride, setSelectedModeOverride] = useState<
+    HomeReadyMode['id'] | null
+  >(null);
+  const selectedModeId =
+    selectedModeOverride ?? moodForMatchIntent(currentMatchIntent) ?? 'setlove';
 
   const dashboardQuery = useQuery({
     enabled: Boolean(session),
@@ -307,14 +322,58 @@ export default function HomeDashboardScreen() {
     ? `Đang bật · ${selectedModeLabel}`
     : `Mood · ${selectedModeLabel}`;
 
+  const readinessPending =
+    activateMatchIntent.isPending || pauseMatchIntent.isPending;
+  const readinessError =
+    activateMatchIntent.error ??
+    pauseMatchIntent.error ??
+    currentMatchIntentQuery.error;
+
   const selectMode = (modeId: HomeReadyMode['id']) => {
+    if (readinessPending) return;
     selectionImpact();
-    setSelectedModeId(modeId);
+    setSelectedModeOverride(modeId);
+    if (!readyEnabled || !currentMatchIntent) return;
+    activateMatchIntent.mutate(
+      {
+        expectedVersion: currentMatchIntent.version,
+        filters: matchIntentFiltersForMood(modeId),
+      },
+      {
+        onError: () => {
+          setSelectedModeOverride(null);
+          void currentMatchIntentQuery.refetch();
+        },
+        onSuccess: () => setSelectedModeOverride(null),
+      },
+    );
   };
 
   const toggleReady = () => {
+    if (readinessPending) return;
     impactLight();
-    setReadyEnabled((value) => !value);
+    if (readyEnabled && currentMatchIntent) {
+      pauseMatchIntent.mutate(
+        { expectedVersion: currentMatchIntent.version },
+        { onError: () => void currentMatchIntentQuery.refetch() },
+      );
+      return;
+    }
+    activateMatchIntent.mutate(
+      {
+        ...(currentMatchIntent
+          ? { expectedVersion: currentMatchIntent.version }
+          : {}),
+        filters: matchIntentFiltersForMood(selectedModeId),
+      },
+      {
+        onError: () => {
+          setSelectedModeOverride(null);
+          void currentMatchIntentQuery.refetch();
+        },
+        onSuccess: () => setSelectedModeOverride(null),
+      },
+    );
   };
 
   if (!session) {
@@ -360,9 +419,14 @@ export default function HomeDashboardScreen() {
         session ? (
           <RefreshControl
             onRefresh={() => {
-              void dashboardQuery.refetch();
+              void Promise.all([
+                dashboardQuery.refetch(),
+                currentMatchIntentQuery.refetch(),
+              ]);
             }}
-            refreshing={dashboardQuery.isFetching}
+            refreshing={
+              dashboardQuery.isFetching || currentMatchIntentQuery.isFetching
+            }
             tintColor="#C679FF"
           />
         ) : undefined
@@ -535,7 +599,7 @@ export default function HomeDashboardScreen() {
             <View style={styles.boardTitleBlock}>
               <HomeText style={styles.eyebrow}>LIQI LOBBY</HomeText>
               <HomeText numberOfLines={1} style={styles.boardTitle}>
-                Sẵn sàng vào set?
+                Tìm người vào set?
               </HomeText>
             </View>
             <View style={styles.liveBadge}>
@@ -543,13 +607,14 @@ export default function HomeDashboardScreen() {
                 style={[styles.liveDot, readyEnabled && styles.liveDotActive]}
               />
               <HomeText style={styles.liveText}>
-                {readyEnabled ? 'Đang sẵn sàng' : 'Chưa sẵn sàng'}
+                {readyEnabled ? 'Đang tìm đội' : 'Chưa tìm đội'}
               </HomeText>
             </View>
           </View>
 
           <HomeText numberOfLines={2} style={styles.boardSubtitle}>
-            Chọn mood và bật trạng thái để tìm người vào set.
+            Chọn mood rồi bật tìm đội. Trạng thái này không thay đổi kích hoạt
+            tài khoản.
           </HomeText>
 
           <View style={styles.modeGrid} testID="home-ready-mode-grid">
@@ -596,9 +661,7 @@ export default function HomeDashboardScreen() {
               </HomeText>
             </View>
             <LiquidButton
-              accessibilityLabel={
-                readyEnabled ? 'Tắt sẵn sàng' : 'Bật sẵn sàng'
-              }
+              accessibilityLabel={readyEnabled ? 'Tắt tìm đội' : 'Bật tìm đội'}
               contentStyle={styles.primaryActionGradient}
               glowPreset={ctaPurpleCyanGlowSegments}
               gradientColors={
@@ -615,6 +678,7 @@ export default function HomeDashboardScreen() {
                     ]
               }
               gradientLocations={readyEnabled ? [0, 0.5, 1] : [0, 0.52, 1]}
+              disabled={readinessPending}
               onPress={toggleReady}
               radius={22}
               state={readyEnabled ? 'active' : 'idle'}
@@ -625,7 +689,11 @@ export default function HomeDashboardScreen() {
               withShadow={false}
             >
               <HomeText style={styles.primaryActionText}>
-                {readyEnabled ? 'Tắt sẵn sàng' : 'Bật sẵn sàng'}
+                {readinessPending
+                  ? 'Đang đồng bộ…'
+                  : readyEnabled
+                    ? 'Tắt tìm đội'
+                    : 'Bật tìm đội'}
               </HomeText>
               <Ionicons
                 color="#FFFFFF"
@@ -635,6 +703,12 @@ export default function HomeDashboardScreen() {
               />
             </LiquidButton>
           </View>
+          {readinessError ? (
+            <HomeText accessibilityRole="alert" style={styles.readinessError}>
+              Trạng thái tìm đội vừa thay đổi hoặc chưa thể đồng bộ. Hãy kiểm
+              tra lại.
+            </HomeText>
+          ) : null}
         </View>
       </LiquidGlassSurface>
 
@@ -746,7 +820,10 @@ function MatchedSetCard({
     <Pressable
       accessibilityLabel={`${set.name}, ${displayKind}`}
       accessibilityRole="button"
-      onPress={selectionImpact}
+      onPress={() => {
+        selectionImpact();
+        router.push(appRoutes.discover.matchDetail(canonicalMatchId(set.id)));
+      }}
       style={({ pressed }) => [
         styles.matchCardPressable,
         { shadowColor: tone.text },
@@ -1866,6 +1943,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 12,
     marginTop: 1,
+  },
+  readinessError: {
+    color: 'rgba(255,190,199,0.88)',
+    fontSize: 10,
+    fontWeight: '600',
+    lineHeight: 14,
+    marginTop: 7,
   },
   readyHeroImage: {
     height: '100%',

@@ -91,6 +91,26 @@ Run checks proportional to the change during development, then use the broader s
 npm run task:check
 ```
 
+## Client/backend environment evidence
+
+Do not infer a working backend from successful Auth, simulation tests, repository tests or a green disposable cloud project. For a change that claims staging or production behavior, the pull request or handoff must identify one environment and keep every proof on that same target.
+
+Required evidence for backend-connected mobile work:
+
+- sanitized Supabase project ref and `EXPO_PUBLIC_APPLICATION_RUNTIME_MODE=api`;
+- migration parity for that project;
+- exact RPC signatures, grants and required private dependencies;
+- rollout/kill-switch state;
+- an authenticated Profile read and the changed command path;
+- persisted database evidence or an explicitly rollback-only smoke;
+- full app reload after public-environment changes.
+
+The disposable project `ibprkyemsuktfrdpxvza` is for isolated cloud proof. Passing there does not establish staging readiness. Staging is `wngumhizuxtlhavbpxzy`; production must always be identified explicitly rather than inferred from the current Supabase CLI link.
+
+Never rename, renumber or edit a migration after it has reached any shared environment. When remote history and Git disagree, stop normal deployment, back up the target, compare migration names and SQL content, and repair history only with recorded evidence. Do not mark different SQL as applied merely to make `db push` green.
+
+Follow [the environment parity runbook](docs/runbooks/mobile-backend-environment-parity.md) and [ADR 0008](docs/adr/0008-client-backend-environment-authority.md).
+
 ## Tool-enforced safety boundaries
 
 A few constraints are intentionally harder because violating them can corrupt history, leak secrets or destroy work:

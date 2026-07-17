@@ -27,11 +27,14 @@ Do not use `raw_user_meta_data` for authorization. Authorization must come from 
 
 ## Cloudflare And Supabase Login Steps
 
-This repository cannot contain your real credentials. A developer must log in and create/link resources:
+This repository cannot contain your real credentials. A developer must log in and create/link resources. Before linking, print the current project ref and decide whether the workspace link is protected. Prefer an isolated Supabase workdir for staging/production operations rather than relinking a workspace reserved for disposable E2E evidence.
 
 ```sh
 supabase login
-supabase link --project-ref <staging-project-ref>
+cat supabase/.temp/project-ref
+# In an isolated workdir only:
+supabase link --project-ref <explicitly-approved-staging-project-ref>
+cat supabase/.temp/project-ref
 supabase secrets set --env-file .env.staging
 
 wrangler login
@@ -41,7 +44,7 @@ wrangler secret put SUPABASE_SERVICE_ROLE_KEY --env staging
 wrangler secret put SUPABASE_JWT_JWKS_URL --env staging
 ```
 
-Repeat with separate projects, buckets, queues, workers, and secrets for production. Do not use prefixes inside one bucket as a substitute for separate staging and production buckets.
+Repeat with separate projects, buckets, queues, workers, and secrets for production. Do not use prefixes inside one bucket as a substitute for separate staging and production buckets. Supabase Auth success does not prove the client is using remote application repositories; follow the [environment parity runbook](../runbooks/mobile-backend-environment-parity.md).
 
 ## Required Cloudflare R2 Posture
 

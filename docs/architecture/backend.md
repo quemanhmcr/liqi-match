@@ -23,6 +23,25 @@ media metadata, and outbox state. R2 stores binary objects only. Presigned URLs
 and server credentials are never persisted or returned outside their intended
 short-lived operation.
 
+## Client composition and environment authority
+
+The backend becomes authoritative only when the mobile composition root selects API services for the same Supabase project whose schema and rollout state were verified. Authentication is one subsystem, not proof that application repositories are remote. The invalid split-brain state is:
+
+```text
+Supabase Auth -> remote project
+Profile/Match/Session repositories -> simulation memory
+```
+
+`src/shared/config/env.ts` therefore rejects remote Supabase plus `simulation`, and API mode rejects the placeholder key. Query/cache identity that can cross accounts or projects must include the sanitized Supabase project ref and canonical actor identity. Late responses from a previous account, route or project must not mutate the current screen.
+
+Environment roles are explicit:
+
+- `wngumhizuxtlhavbpxzy`: `liqi-match-staging`, used for staging mobile/API behavior;
+- `ibprkyemsuktfrdpxvza`: disposable cloud E2E proof, never a substitute for staging;
+- production: always supplied and approved explicitly.
+
+The current Supabase CLI link is not an environment decision. Before any remote query, migration, flag change or evidence run, print and verify the target ref. Prefer an isolated CLI workdir when inspecting or operating on a project other than the workspace's protected E2E link.
+
 ## Repository ownership
 
 ```text
@@ -104,6 +123,8 @@ timestamps when branches start in the same minute. Keep unrelated domain
 changes in separate migrations so conflicts and rollback reasoning stay local.
 Every authorization or state-machine change ships with pgTAP coverage.
 
+A migration deployed to any shared project is immutable: do not edit, rename or renumber it later. When an integrated migration needs correction, add a later reconciliation migration. If remote migration history already drifted, first back up the target and compare the recorded migration name and SQL content with Git; history repair is allowed only when equivalence is demonstrated.
+
 ## Parallel-development workflow
 
 Use the [worktree decision guide](worktree-workflow.md) when choosing between a managed snapshot worktree and a normal Git worktree. Prefer an understood, current baseline and preserve local state before destructive operations.
@@ -144,4 +165,4 @@ npm --prefix cloudflare/media-worker test
 npm --prefix cloudflare/media-worker run deploy:dry-run
 ```
 
-Before handoff also run the repository-wide lint, typecheck, and test gates.
+Before handoff also run the repository-wide lint, typecheck, and test gates. For staging or production claims, repository checks are necessary but insufficient; complete the [mobile/backend environment parity runbook](../runbooks/mobile-backend-environment-parity.md) on the named target.

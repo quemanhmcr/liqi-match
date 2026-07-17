@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -13,6 +14,7 @@ import {
 } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { FriendPlayerPickerModal } from '@/entities/social-relationship/ui';
 import {
   useAssetResolver,
   usePreloadAssetSurface,
@@ -23,6 +25,7 @@ import {
   LiquidGlassSurface,
   LiquidOrbButton,
 } from '@/shared/components/liquid';
+import type { PlayerId } from '@/shared/contracts/core-v1';
 import { classifyApplicationError } from '@/shared/errors/application-error';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
@@ -35,7 +38,10 @@ import {
 } from '@/shared/theme/liquid-glow.presets';
 
 import { MessageResolvedImage } from '../components/MessageResolvedImage';
-import type { MessageInboxFilter } from '../contracts/messages-contracts';
+import type {
+  MessageConversationSummary,
+  MessageInboxFilter,
+} from '../contracts/messages-contracts';
 import { loadChatDraftIndex } from '../model/chat-draft-store';
 import type { ChatDeliveryStatus } from '../model/chat-message';
 import {
@@ -144,6 +150,20 @@ function compareActivity(
   return (right.activityAt ?? '').localeCompare(left.activityAt ?? '');
 }
 
+function findDirectConversation(
+  conversations: readonly MessageConversationSummary[],
+  targetPlayerId: PlayerId,
+) {
+  return conversations.find(
+    (conversation) =>
+      conversation.kind === 'direct' &&
+      conversation.capabilities.canMessage &&
+      conversation.participants.preview.some(
+        (participant) => participant.id === targetPlayerId,
+      ),
+  );
+}
+
 export function MessagesScreen(props: MessagesScreenProps = {}) {
   const services = useMessagesServices();
   const assetResolver = useAssetResolver();
@@ -153,6 +173,11 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   const [query, setQuery] = useState('');
   const [selectedFilter, setSelectedFilter] =
     useState<MessageInboxFilter>('all');
+  const [composePickerVisible, setComposePickerVisible] = useState(false);
+  const [composePending, setComposePending] = useState(false);
+  const [composeSelectedPlayerIds, setComposeSelectedPlayerIds] = useState<
+    readonly PlayerId[]
+  >([]);
   const runtimeMessagesByConversation = useChatRuntimeStore(
     (state) => state.messagesByConversation,
   );
@@ -246,6 +271,52 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
       ? `${unreadCount} cuộc trò chuyện chưa đọc`
       : `${activeSnapshot?.totalCount ?? 0} cuộc trò chuyện`;
 
+  const openComposePicker = () => {
+    lightImpact();
+    setQuery('');
+    setSelectedFilter('friends');
+    setComposeSelectedPlayerIds([]);
+    setComposePickerVisible(true);
+  };
+
+  const openFriendConversation = async (playerIds: readonly PlayerId[]) => {
+    const targetPlayerId = playerIds[0];
+    if (!targetPlayerId || composePending) return;
+
+    setComposePending(true);
+    try {
+      let conversation = findDirectConversation(
+        activeSnapshot?.items ?? [],
+        targetPlayerId,
+      );
+      if (!conversation) {
+        const refreshed = await inboxQuery.refetch();
+        conversation = findDirectConversation(
+          refreshed.data?.data.items ?? [],
+          targetPlayerId,
+        );
+      }
+      if (!conversation) {
+        Alert.alert(
+          'Trò chuyện đang được đồng bộ',
+          'Quan hệ bạn bè đã được ghi nhận nhưng phòng chat chưa xuất hiện trong hộp thư. Hãy làm mới và thử lại.',
+        );
+        return;
+      }
+
+      setComposePickerVisible(false);
+      setComposeSelectedPlayerIds([]);
+      openConversation(conversation.id);
+    } catch {
+      Alert.alert(
+        'Chưa mở được trò chuyện',
+        'Không thể làm mới hộp thư lúc này. Hãy kiểm tra kết nối và thử lại.',
+      );
+    } finally {
+      setComposePending(false);
+    }
+  };
+
   return (
     <LiquidScreen
       contentContainerStyle={styles.content}
@@ -269,22 +340,10 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
             accessibilityLabel="Tạo cuộc trò chuyện"
             glowIntensity="low"
             glowPreset={ctaPurpleCyanGlowSegments}
-            onPress={lightImpact}
+            onPress={openComposePicker}
             size={38}
           >
             <Ionicons color="#FFFFFF" name="create-outline" size={18} />
-          </LiquidOrbButton>
-          <LiquidOrbButton
-            accessibilityLabel="Tuỳ chọn tin nhắn"
-            glowIntensity="low"
-            onPress={selectionImpact}
-            size={38}
-          >
-            <Ionicons
-              color="rgba(248,250,255,0.86)"
-              name="ellipsis-horizontal"
-              size={20}
-            />
           </LiquidOrbButton>
         </View>
       </View>
@@ -435,6 +494,23 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
           />
         </View>
       )}
+
+      <FriendPlayerPickerModal
+        maxSelected={1}
+        onClose={() => {
+          if (composePending) return;
+          setComposePickerVisible(false);
+          setComposeSelectedPlayerIds([]);
+        }}
+        onConfirm={(playerIds) => {
+          void openFriendConversation(playerIds);
+        }}
+        purpose="conversation"
+        selectedPlayerIds={composeSelectedPlayerIds}
+        setSelectedPlayerIds={setComposeSelectedPlayerIds}
+        title="Bắt đầu trò chuyện"
+        visible={composePickerVisible}
+      />
     </LiquidScreen>
   );
 }

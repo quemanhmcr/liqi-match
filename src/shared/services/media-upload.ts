@@ -181,7 +181,7 @@ async function uploadSingleMedia(
 
   if (finalized.status !== 'uploaded' && finalized.status !== 'ready') {
     throw new Error(
-      'áº¢nh Ä‘Ã£ upload nhÆ°ng chÆ°a Ä‘Æ°á»£c xÃ¡c nháº­n. Vui lÃ²ng thá»­ láº¡i.',
+      'Ảnh đã upload nhưng chưa được xác nhận. Vui lòng thử lại.',
     );
   }
 
@@ -202,16 +202,12 @@ async function readLocalImageFile(uri: string): Promise<LocalImageFile> {
   const info = await FileSystem.getInfoAsync(uri);
 
   if (!info.exists) {
-    throw new Error(
-      'KhÃ´ng thá»ƒ Ä‘á»c áº£nh Ä‘Ã£ chá»n. Vui lÃ²ng chá»n láº¡i áº£nh.',
-    );
+    throw new Error('Không thể đọc ảnh đã chọn. Vui lòng chọn lại ảnh.');
   }
 
   const size = 'size' in info && typeof info.size === 'number' ? info.size : 0;
   if (!size) {
-    throw new Error(
-      'áº¢nh Ä‘Ã£ chá»n khÃ´ng cÃ³ dá»¯ liá»‡u. Vui lÃ²ng chá»n láº¡i áº£nh.',
-    );
+    throw new Error('Ảnh đã chọn không có dữ liệu. Vui lòng chọn lại ảnh.');
   }
 
   return { size };
@@ -232,7 +228,7 @@ async function uploadLocalFileToR2(input: {
 
   if (response.status < 200 || response.status >= 300) {
     throw new Error(
-      'KhÃ´ng thá»ƒ upload áº£nh lÃªn R2. Vui lÃ²ng thá»­ láº¡i.',
+      'Không thể upload ảnh. Vui lòng kiểm tra kết nối và thử lại.',
     );
   }
 }
@@ -267,14 +263,12 @@ function validateImageUpload(input: {
 }) {
   if (!ALLOWED_MIME_TYPES.has(input.mimeType)) {
     throw new Error(
-      'Äá»‹nh dáº¡ng áº£nh chÆ°a Ä‘Æ°á»£c há»— trá»£. HÃ£y dÃ¹ng JPG, PNG hoáº·c WebP.',
+      'Định dạng ảnh chưa được hỗ trợ. Hãy dùng JPG, PNG hoặc WebP.',
     );
   }
 
   if (input.byteSize > MAX_BYTES_BY_PURPOSE[input.purpose]) {
-    throw new Error(
-      'áº¢nh quÃ¡ lá»›n. HÃ£y chá»n áº£nh nháº¹ hÆ¡n rá»“i thá»­ láº¡i.',
-    );
+    throw new Error('Ảnh quá lớn. Hãy chọn ảnh nhẹ hơn rồi thử lại.');
   }
 }
 

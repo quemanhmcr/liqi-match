@@ -48,12 +48,14 @@ import {
   filterSets,
   filterVibes,
 } from '../model/discover-search';
-import type {
-  DiscoverRepository,
-  DiscoverRequestContext,
+import {
+  fullDiscoverCapabilities,
+  type DiscoverRepository,
+  type DiscoverRequestContext,
 } from './discover-repository';
 
 export class SimulationDiscoverRepository implements DiscoverRepository {
+  readonly capabilities = fullDiscoverCapabilities;
   private requestSequence = 0;
   private readonly unregisterResetParticipant: () => void;
 

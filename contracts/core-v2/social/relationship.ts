@@ -374,6 +374,37 @@ export const FriendshipListPageV2Schema = z
   })
   .strict();
 
+export const SocialRelationshipListPageV2Schema = z
+  .object({
+    contractVersion: CoreV2ContractVersionSchema,
+    items: z.array(SocialRelationshipSnapshotV2Schema).max(100),
+    nextCursor: PlayerIdSchema.nullable(),
+  })
+  .strict()
+  .superRefine((page, context) => {
+    page.items.forEach((relationship, index) => {
+      if (
+        !['friend', 'pending_incoming', 'pending_outgoing'].includes(
+          relationship.friendship.label,
+        )
+      ) {
+        context.addIssue({
+          code: 'custom',
+          message:
+            'Social Hub rows must be accepted friendships or pending requests.',
+          path: ['items', index, 'friendship', 'label'],
+        });
+      }
+      if (relationship.capabilities.blocked) {
+        context.addIssue({
+          code: 'custom',
+          message: 'Blocked relationships must not appear in Social Hub.',
+          path: ['items', index, 'capabilities', 'blocked'],
+        });
+      }
+    });
+  });
+
 export const SocialRelationshipCommandReceiptV2Schema = z
   .object({
     correlationId: CorrelationIdSchema,
@@ -488,6 +519,9 @@ export type BlockedPlayerListPageV2 = z.infer<
   typeof BlockedPlayerListPageV2Schema
 >;
 export type FriendshipListPageV2 = z.infer<typeof FriendshipListPageV2Schema>;
+export type SocialRelationshipListPageV2 = z.infer<
+  typeof SocialRelationshipListPageV2Schema
+>;
 export type TrustVisibilityV2 = z.infer<typeof TrustVisibilityV2Schema>;
 export type TrustVisibilityDecisionV2 = z.infer<
   typeof TrustVisibilityDecisionV2Schema

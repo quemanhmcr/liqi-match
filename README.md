@@ -175,9 +175,34 @@ This project uses `expo-dev-client`; Expo Go is not the production development w
 
 ## Environment and secrets
 
-Local mobile configuration belongs in `.env.local`, created from `.env.example`.
+Local mobile configuration belongs in `.env.local`, created from one of the checked-in examples. `.env.example` is a **local simulation** template; `.env.staging.example` is the **real staging API** template. Do not mix values from those two modes.
 
 `EXPO_PUBLIC_*` values are embedded in the client bundle and are readable by users. Never put secrets, service-role keys, access keys, private tokens or credentials in those variables. Server-only values belong in Supabase secrets, Cloudflare secrets or CI secret stores.
+
+### Runtime and backend authority contract
+
+`APP_VARIANT` controls the installed application identity. `EXPO_PUBLIC_APPLICATION_RUNTIME_MODE` independently controls which application services the client constructs:
+
+| Purpose                            | Runtime mode | Supabase target                               | Evidence it may support                             |
+| ---------------------------------- | ------------ | --------------------------------------------- | --------------------------------------------------- |
+| Deterministic local UI/domain work | `simulation` | local Supabase only (`localhost`/`127.0.0.1`) | simulation and component evidence only              |
+| Staging device/API work            | `api`        | `liqi-match-staging` (`wngumhizuxtlhavbpxzy`) | staging behavior and persisted staging records      |
+| Disposable cloud database proof    | `api`        | E2E project (`ibprkyemsuktfrdpxvza`)          | isolated SQL/RPC proof only; never staging evidence |
+| Production                         | `api`        | explicitly approved production project        | production release evidence only                    |
+
+The client rejects `simulation` with a remote Supabase URL and rejects `api` with the development placeholder key. Keep that fail-closed behavior. A successful Supabase login proves only that Auth is reachable; it does **not** prove Profile, Match, Conversation or Party/Session services are using the same project.
+
+A backend connection may be claimed only when all of these are recorded for the same environment:
+
+1. the bundle resolves `runtimeMode=api` and the expected sanitized Supabase project ref;
+2. local/remote migration history is at parity and no deployed migration was renamed or silently rewritten;
+3. every client RPC exists with the exact parameter signature, grants and private dependencies expected by the client;
+4. required rollout flags are enabled, with emergency stops in the intended state;
+5. an authenticated smoke flow reads Profile and performs the relevant command through the real RPC;
+6. the resulting record is observed in that same database, or the smoke is explicitly rollback-only;
+7. the app is fully reloaded after changing any `EXPO_PUBLIC_*` value. Fast Refresh is not sufficient because the service composition and query cache may already exist.
+
+Use the [mobile/backend environment parity runbook](docs/runbooks/mobile-backend-environment-parity.md) before calling a staging or production integration complete. Use the [isolated mobile Party/Session review runbook](docs/runbooks/mobile-party-session-review.md) only for the disposable E2E project.
 
 `APP_VARIANT` selects application identity:
 
@@ -234,6 +259,8 @@ Build IDs and artifact URLs are operational outputs and intentionally do not liv
 - [Security contracts](docs/architecture/security.md)
 - [Worktree toolbox and decision guide](docs/architecture/worktree-workflow.md)
 - [Android development-client runbook](docs/android-dev-client-runbook.md)
+- [Mobile/backend environment parity runbook](docs/runbooks/mobile-backend-environment-parity.md)
+- [Client/backend environment authority ADR](docs/adr/0008-client-backend-environment-authority.md)
 - [Liquid Glass design system](docs/liquid-glass-design-system.md)
 - [Product and service contracts](docs/contracts/)
 - [Architecture decision records](docs/adr/)

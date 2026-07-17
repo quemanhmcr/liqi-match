@@ -1,4 +1,5 @@
 import { HEROES } from '@/entities/hero';
+import { profileWallMediaIds } from '@/entities/player-profile';
 import {
   uploadProfileMediaAsset,
   type LocalImageAsset,
@@ -167,6 +168,7 @@ export type ProfileViewModel = {
   statusValue: ProfileStatusValue;
   verified: boolean;
   wallAssetKeys?: AssetKey[];
+  wallUrls?: string[];
 };
 
 export type ProfileReferenceOption = {
@@ -510,6 +512,9 @@ export async function fetchProfileView(input: {
   const showWinRate = showWinRateFromSummary(mediaSummary);
   const stats = profileStatsFromSummary(mediaSummary, emptyProfileStats);
   const statusValue = statusFromSummary(mediaSummary);
+  const wallUrls = profileWallMediaIds(mediaSummary)
+    .map(mediaUrl)
+    .filter((url): url is string => Boolean(url));
 
   return {
     avatarFallbackUrl,
@@ -530,6 +535,7 @@ export async function fetchProfileView(input: {
     statusLabel: statusLabel(statusValue),
     statusValue,
     verified: false,
+    wallUrls,
   };
 }
 

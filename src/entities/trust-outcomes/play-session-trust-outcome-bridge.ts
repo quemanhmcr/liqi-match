@@ -13,6 +13,7 @@ export function createTrustAwarePlaySessionCommandService(input: {
 }): PlaySessionCommandService {
   return {
     acceptInvite: (...args) => input.delegate.acceptInvite(...args),
+    declineInvite: (...args) => input.delegate.declineInvite(...args),
     assignRole: (...args) => input.delegate.assignRole(...args),
     cancel: (...args) => input.delegate.cancel(...args),
     create: (...args) => input.delegate.create(...args),

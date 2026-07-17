@@ -10,10 +10,12 @@ import { useAuth } from '@/shared/auth/auth-context';
 import { setChatPendingMessagePersistenceScope } from '../model/chat-runtime-store';
 
 import type { ChatMessageTransport } from '../services/chat-message-transport';
+import type { ConversationLifecyclePort } from '../services/conversation-lifecycle';
 import type { ChatRepository } from '../services/chat-repository';
 import type { MessageReportEvidenceProvider } from '../services/message-report-evidence';
 
 export type MessagesServices = {
+  conversationLifecycle?: ConversationLifecyclePort;
   evidenceProvider: MessageReportEvidenceProvider | null;
   messageTransport: ChatMessageTransport;
   repository: ChatRepository;
@@ -41,6 +43,7 @@ export function conversationTransportSession(
 
 export function MessagesServicesProvider({
   children,
+  conversationLifecycle,
   evidenceProvider,
   messageTransport,
   repository,
@@ -60,7 +63,12 @@ export function MessagesServicesProvider({
 
   return (
     <MessagesServicesContext.Provider
-      value={{ evidenceProvider, messageTransport, repository }}
+      value={{
+        conversationLifecycle,
+        evidenceProvider,
+        messageTransport,
+        repository,
+      }}
     >
       {children}
     </MessagesServicesContext.Provider>

@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import {
   useMutation,
   useQuery,
@@ -75,11 +76,18 @@ export function usePlaySessionCommandMutation<TCommand>(
 ) {
   const { session } = useAuth();
   const queryClient = useQueryClient();
-  const playerId = session?.lifecycle?.playerId ?? 'anonymous';
+  const sessionRef = useRef(session);
+  const mutationPlayerIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
   return useMutation({
     ...options,
-    mutationFn: async (command) =>
-      execute(resolvePlaySessionActor(session), command),
+    mutationFn: async (command) => {
+      const actor = resolvePlaySessionActor(sessionRef.current);
+      mutationPlayerIdRef.current = actor.lifecycle.playerId;
+      return execute(actor, command);
+    },
     onError: async (error, command, onMutateResult, mutationContext) => {
       const commandSessionId =
         command &&
@@ -88,14 +96,19 @@ export function usePlaySessionCommandMutation<TCommand>(
         typeof command.sessionId === 'string'
           ? command.sessionId
           : null;
+      const playerId = mutationPlayerIdRef.current;
       await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: playSessionQueryKeys.current(playerId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: playSessionQueryKeys.invites(playerId),
-        }),
-        ...(commandSessionId
+        ...(playerId
+          ? [
+              queryClient.invalidateQueries({
+                queryKey: playSessionQueryKeys.current(playerId),
+              }),
+              queryClient.invalidateQueries({
+                queryKey: playSessionQueryKeys.invites(playerId),
+              }),
+            ]
+          : []),
+        ...(commandSessionId && playerId
           ? [
               queryClient.invalidateQueries({
                 queryKey: playSessionQueryKeys.detail(
@@ -109,17 +122,23 @@ export function usePlaySessionCommandMutation<TCommand>(
       await options.onError?.(error, command, onMutateResult, mutationContext);
     },
     onSuccess: async (receipt, command, onMutateResult, mutationContext) => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: playSessionQueryKeys.current(playerId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: playSessionQueryKeys.invites(playerId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: playSessionQueryKeys.detail(playerId, receipt.aggregateId),
-        }),
-      ]);
+      const playerId = mutationPlayerIdRef.current;
+      if (playerId) {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: playSessionQueryKeys.current(playerId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: playSessionQueryKeys.invites(playerId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: playSessionQueryKeys.detail(
+              playerId,
+              receipt.aggregateId,
+            ),
+          }),
+        ]);
+      }
       await options.onSuccess?.(
         receipt,
         command,

@@ -3,7 +3,7 @@ import {
   CoreErrorV1Schema,
   type CoreErrorCodeV1,
 } from '@/shared/contracts/core-v1';
-import { env } from '@/shared/config/env';
+import { env, runtimeEnvironment } from '@/shared/config/env';
 
 export class SupabaseRestError extends Error {
   constructor(
@@ -46,7 +46,7 @@ export async function supabaseRest<T>(path: string, options: RestOptions) {
   });
 
   if (!response.ok) {
-    throw await toRestError(response);
+    throw await toRestError(response, path);
   }
 
   if (response.status === 204) {
@@ -65,7 +65,7 @@ export function restUrl(path: string) {
   ).toString();
 }
 
-async function toRestError(response: Response) {
+async function toRestError(response: Response, path: string) {
   const fallback = `Supabase request failed with status ${response.status}`;
   const headerRequestId =
     response.headers.get('x-request-id') ??
@@ -87,7 +87,7 @@ async function toRestError(response: Response) {
         coreError.code,
         coreError.requestId,
         coreError.retryable,
-        coreError.details,
+        withRuntimeContext(coreError.details, path),
         body.code,
       );
     }
@@ -98,7 +98,7 @@ async function toRestError(response: Response) {
       body.code,
       headerRequestId,
       isRetryableStatus(response.status),
-      recordOrUndefined(body.details),
+      withRuntimeContext(recordOrUndefined(body.details), path),
       body.code,
     );
   } catch {
@@ -108,6 +108,7 @@ async function toRestError(response: Response) {
       undefined,
       headerRequestId,
       isRetryableStatus(response.status),
+      withRuntimeContext(undefined, path),
     );
   }
 }
@@ -120,6 +121,17 @@ function parseCoreError(message: string | undefined) {
   } catch {
     return null;
   }
+}
+
+function withRuntimeContext(
+  details: Record<string, unknown> | undefined,
+  path: string,
+): Record<string, unknown> {
+  return {
+    ...(details ?? {}),
+    projectRef: runtimeEnvironment.supabaseProjectRef,
+    restPath: path,
+  };
 }
 
 function recordOrUndefined(value: unknown) {

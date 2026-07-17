@@ -2,6 +2,7 @@ export {
   MatchIntentRepositoryProvider,
   useMatchIntentRepository,
 } from './MatchIntentRepositoryProvider';
+export { resolveActiveMatchIntentActor } from './match-intent-actor';
 export { InMemoryMatchIntentRepository } from './in-memory-match-intent-repository';
 export { MatchIntentCommandJournal } from './match-intent-command-journal';
 export type { MatchIntentRepository } from './match-intent-repository';
@@ -11,7 +12,15 @@ export {
 } from './supabase-match-intent-repository';
 export {
   matchIntentQueryKey,
+  matchIntentQueryKeys,
   useActivateMatchIntentMutation,
   useCurrentMatchIntentQuery,
   usePauseMatchIntentMutation,
 } from './match-intent-queries';
+export {
+  isMatchIntentActive,
+  matchIntentFiltersForMood,
+  moodForMatchIntent,
+  resolveMatchIntentTimezone,
+  type MatchIntentMoodId,
+} from './match-intent-presentation';

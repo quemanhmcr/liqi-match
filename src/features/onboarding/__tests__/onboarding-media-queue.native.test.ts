@@ -88,6 +88,74 @@ describe('onboarding media queue', () => {
     );
   });
 
+  it('associates an already-uploaded cover without uploading again', async () => {
+    mockSupabaseRest
+      .mockResolvedValueOnce([{ media_summary: { gender: 'hidden' } }])
+      .mockResolvedValueOnce(undefined);
+    const item = mediaItem({
+      localId: 'cover:0:uploaded',
+      slot: 'cover',
+      status: 'uploaded',
+      uploadedAssetId: 'cover-asset',
+      uploadedObjectKey: 'owner/cover-asset.jpg',
+    });
+
+    await expect(
+      uploadOnboardingMediaQueueItem(session, item),
+    ).resolves.toEqual(
+      expect.objectContaining({ failure: null, status: 'associated' }),
+    );
+
+    expect(mockUploadMediaBatch).not.toHaveBeenCalled();
+    expect(mockSupabaseRest).toHaveBeenNthCalledWith(
+      2,
+      'profile_habits?profile_id=eq.account-a',
+      expect.objectContaining({
+        body: {
+          media_summary: {
+            cover_media_id: 'cover-asset',
+            gender: 'hidden',
+          },
+        },
+        method: 'PATCH',
+      }),
+    );
+  });
+
+  it('associates a wall asset at its persisted position without uploading again', async () => {
+    mockSupabaseRest
+      .mockResolvedValueOnce([
+        { media_summary: { wall_media_ids: ['wall-a', null, null, null] } },
+      ])
+      .mockResolvedValueOnce(undefined);
+    const item = mediaItem({
+      localId: 'wall:2:uploaded',
+      position: 2,
+      slot: 'wall',
+      status: 'uploaded',
+      uploadedAssetId: 'wall-c',
+      uploadedObjectKey: 'owner/wall-c.jpg',
+    });
+
+    await uploadOnboardingMediaQueueItem(session, item);
+
+    expect(mockUploadMediaBatch).not.toHaveBeenCalled();
+    expect(mockSupabaseRest).toHaveBeenNthCalledWith(
+      2,
+      'profile_habits?profile_id=eq.account-a',
+      expect.objectContaining({
+        body: {
+          media_summary: expect.objectContaining({
+            wall_count: 2,
+            wall_media_ids: ['wall-a', null, 'wall-c', null],
+            wall_positions: [0, 2],
+          }),
+        },
+        method: 'PATCH',
+      }),
+    );
+  });
+
   it('retains the uploaded asset when avatar association fails', async () => {
     mockUploadMediaBatch.mockResolvedValueOnce([
       {
@@ -139,7 +207,7 @@ describe('onboarding media queue', () => {
     const completed = mediaItem({
       localId: 'cover:0:done',
       slot: 'cover',
-      status: 'uploaded',
+      status: 'associated',
       uploadedAssetId: 'cover-asset',
     });
     const pending = mediaItem({

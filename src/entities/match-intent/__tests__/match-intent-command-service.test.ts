@@ -3,8 +3,10 @@ import { describe, expect, it, jest } from '@jest/globals';
 import {
   AccountIdSchema,
   ActivateMatchIntentReceiptV1Schema,
+  AuthenticatedPrincipalV1Schema,
   IdempotencyKeySchema,
   PauseMatchIntentReceiptV1Schema,
+  PlayerLifecycleSnapshotV1Schema,
 } from '@/shared/contracts/core-v1';
 import type { AuthSession } from '@/shared/auth/auth-service';
 
@@ -15,13 +17,36 @@ import {
 } from '../match-intent-command-service';
 import type { MatchIntentRepository } from '../match-intent-repository';
 
-const session: AuthSession = {
-  accessToken: 'access',
-  expiresAt: 9_999_999_999,
-  refreshToken: 'refresh',
-  tokenType: 'bearer',
-  user: { id: '00000000-0000-4000-8000-000000000001' },
-};
+const accountIdValue = '00000000-0000-4000-8000-000000000001';
+const playerIdValue = '20000000-0000-4000-8000-000000000001';
+
+function authSession(state: 'active' | 'onboarding' = 'active'): AuthSession {
+  return {
+    accessToken: 'access',
+    expiresAt: 9_999_999_999,
+    lifecycle: PlayerLifecycleSnapshotV1Schema.parse({
+      discoverable: state === 'active',
+      messagingAllowed: state === 'active',
+      playerId: playerIdValue,
+      profileId: '30000000-0000-4000-8000-000000000001',
+      state,
+      updatedAt: '2026-07-14T08:00:00.000Z',
+      version: state === 'active' ? 2 : 1,
+    }),
+    principal: AuthenticatedPrincipalV1Schema.parse({
+      accountId: accountIdValue,
+      expiresAt: '2286-11-20T17:46:39.000Z',
+      issuedAt: '2026-07-14T07:00:00.000Z',
+      playerId: playerIdValue,
+      sessionId: '09000000-0000-4000-8000-000000000001',
+    }),
+    refreshToken: 'refresh',
+    tokenType: 'bearer',
+    user: { id: accountIdValue },
+  };
+}
+
+const session = authSession();
 const filters = {
   intentKind: 'rank' as const,
   mode: 'ranked' as const,
@@ -106,6 +131,26 @@ function createRepository(input: {
 }
 
 describe('Match Intent command service', () => {
+  it('rejects readiness activation before journaling when lifecycle is not active', async () => {
+    const journal = createJournal();
+    const repository = createRepository({});
+
+    await expect(
+      activateMatchIntent({
+        filters,
+        journal,
+        repository,
+        session: authSession('onboarding'),
+      }),
+    ).rejects.toMatchObject({
+      code: 'lifecycle_not_active',
+      details: { state: 'onboarding' },
+      retryable: false,
+    });
+    expect(journal.activation).not.toHaveBeenCalled();
+    expect(repository.activate).not.toHaveBeenCalled();
+  });
+
   it('preserves the activation journal identity through repository success', async () => {
     const journal = createJournal();
     const repository = createRepository({});

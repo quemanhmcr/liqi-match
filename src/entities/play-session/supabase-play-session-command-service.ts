@@ -23,18 +23,21 @@ export class CoreV2RpcError extends Error {
   readonly code: string;
   readonly details: unknown;
   readonly retryable: boolean;
+  readonly status: number | null;
 
   constructor(input: {
     code: string;
     details?: unknown;
     message: string;
     retryable?: boolean;
+    status?: number | null;
   }) {
     super(input.message);
     this.name = 'CoreV2RpcError';
     this.code = input.code;
     this.details = input.details ?? null;
     this.retryable = input.retryable ?? false;
+    this.status = input.status ?? null;
   }
 }
 
@@ -90,36 +93,91 @@ function parsePostgrestError(payload: unknown, status: number): CoreV2RpcError {
   }
   return new CoreV2RpcError({
     code: typeof authority?.code === 'string' ? authority.code : 'rpc_failed',
-    details: authority?.details ?? record.details ?? null,
+    details: authority?.details ?? {
+      postgrestCode: typeof record.code === 'string' ? record.code : null,
+      postgrestDetails: record.details ?? null,
+      postgrestHint: typeof record.hint === 'string' ? record.hint : null,
+    },
     message:
       typeof authority?.message === 'string' ? authority.message : rawMessage,
     retryable: authority?.retryable === true || status >= 500,
+    status,
   });
+}
+
+function logRpcFailure(
+  rpcName: string,
+  error: CoreV2RpcError,
+  supabaseUrl: string,
+): void {
+  if (!__DEV__) return;
+  console.warn('[Core V2 RPC failed]', {
+    code: error.code,
+    projectRef: readSupabaseProjectRef(supabaseUrl),
+    retryable: error.retryable,
+    rpcName,
+    status: error.status,
+  });
+}
+
+function readSupabaseProjectRef(supabaseUrl: string): string {
+  try {
+    return new URL(supabaseUrl).hostname.split('.')[0] || 'unknown';
+  } catch {
+    return 'invalid-url';
+  }
 }
 
 export function createSupabaseCoreV2RpcTransport(input: {
   anonKey: string;
   fetchImpl?: typeof fetch;
+  requestTimeoutMs?: number;
   supabaseUrl: string;
 }): CoreV2RpcTransport {
   const fetchImpl = input.fetchImpl ?? fetch;
   const baseUrl = input.supabaseUrl.replace(/\/$/, '');
+  const requestTimeoutMs = input.requestTimeoutMs ?? 15_000;
   return {
     async invoke(request) {
-      const response = await fetchImpl(
-        `${baseUrl}/rest/v1/rpc/${request.rpcName}`,
-        {
-          body: JSON.stringify(request.args),
-          headers: {
-            apikey: input.anonKey,
-            Authorization: `Bearer ${request.accessToken}`,
-            'Content-Type': 'application/json',
+      let response: Response;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+      try {
+        response = await fetchImpl(
+          `${baseUrl}/rest/v1/rpc/${request.rpcName}`,
+          {
+            body: JSON.stringify(request.args),
+            headers: {
+              apikey: input.anonKey,
+              Authorization: `Bearer ${request.accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            method: 'POST',
+            signal: controller.signal,
           },
-          method: 'POST',
-        },
-      );
+        );
+      } catch (caught) {
+        const timedOut =
+          caught instanceof Error && caught.name === 'AbortError';
+        const error = new CoreV2RpcError({
+          code: timedOut ? 'timeout' : 'network_error',
+          message: timedOut
+            ? 'Core V2 RPC request timed out.'
+            : 'Unable to reach the Core V2 RPC endpoint.',
+          retryable: true,
+        });
+        logRpcFailure(request.rpcName, error, baseUrl);
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+
       const payload: unknown = await response.json().catch(() => null);
-      if (!response.ok) throw parsePostgrestError(payload, response.status);
+      if (!response.ok) {
+        const error = parsePostgrestError(payload, response.status);
+        logRpcFailure(request.rpcName, error, baseUrl);
+        throw error;
+      }
       return payload;
     },
   };
@@ -175,6 +233,8 @@ export function createSupabasePlaySessionCommandService(input: {
     invite: (...args) => execute('invite', 'invite_to_session_v2', args),
     acceptInvite: (...args) =>
       execute('acceptInvite', 'accept_session_invite_v2', args),
+    declineInvite: (...args) =>
+      execute('declineInvite', 'decline_session_invite_v2', args),
     leave: (...args) => execute('leave', 'leave_session_v2', args),
     removeMember: (...args) =>
       execute('removeMember', 'remove_session_member_v2', args),

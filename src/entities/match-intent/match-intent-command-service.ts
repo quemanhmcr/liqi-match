@@ -1,6 +1,7 @@
 import type { MatchIntentFiltersV1 } from '@/shared/contracts/core-v1';
 import type { AuthSession } from '@/shared/auth/auth-service';
 
+import { resolveActiveMatchIntentActor } from './match-intent-actor';
 import type { MatchIntentCommandJournal } from './match-intent-command-journal';
 import type { MatchIntentRepository } from './match-intent-repository';
 
@@ -16,8 +17,9 @@ export async function activateMatchIntent(input: {
   repository: MatchIntentRepository;
   session: AuthSession;
 }) {
+  const actor = resolveActiveMatchIntentActor(input.session);
   const command = await input.journal.activation({
-    accountId: input.session.user.id,
+    accountId: actor.accountId,
     expectedVersion: input.expectedVersion,
     filters: input.filters,
   });
@@ -28,7 +30,7 @@ export async function activateMatchIntent(input: {
   });
   await input.journal.complete(
     'activate',
-    input.session.user.id,
+    actor.accountId,
     command.idempotencyKey,
   );
   return receipt;
@@ -40,8 +42,9 @@ export async function pauseMatchIntent(input: {
   repository: MatchIntentRepository;
   session: AuthSession;
 }) {
+  const actor = resolveActiveMatchIntentActor(input.session);
   const command = await input.journal.pause({
-    accountId: input.session.user.id,
+    accountId: actor.accountId,
     expectedVersion: input.expectedVersion,
   });
   const receipt = await input.repository.pause(input.session, {
@@ -50,7 +53,7 @@ export async function pauseMatchIntent(input: {
   });
   await input.journal.complete(
     'pause',
-    input.session.user.id,
+    actor.accountId,
     command.idempotencyKey,
   );
   return receipt;

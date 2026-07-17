@@ -6,6 +6,7 @@ import type {
   CreatePlaySessionCommandV2,
   CreateSessionFromMatchCommandV2,
   CreateSessionFromSetCommandV2,
+  DeclineSessionInviteCommandV2,
   InviteToSessionCommandV2,
   LeaveSessionCommandV2,
   OpenReadyCheckCommandV2,
@@ -69,6 +70,10 @@ export interface PlaySessionCommandService {
   acceptInvite(
     actor: PlaySessionActorContext,
     command: AcceptSessionInviteCommandV2,
+  ): Promise<PlaySessionCommandReceiptV2>;
+  declineInvite(
+    actor: PlaySessionActorContext,
+    command: DeclineSessionInviteCommandV2,
   ): Promise<PlaySessionCommandReceiptV2>;
   leave(
     actor: PlaySessionActorContext,

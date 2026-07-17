@@ -1,21 +1,51 @@
 import Constants from 'expo-constants';
 import { z } from 'zod';
 
-const publicEnvSchema = z.object({
-  EXPO_PUBLIC_APPLICATION_RUNTIME_MODE: z.enum(['simulation', 'api']),
-  EXPO_PUBLIC_API_URL: z
-    .string()
-    .url('EXPO_PUBLIC_API_URL must be a valid URL.'),
-  EXPO_PUBLIC_SUPABASE_URL: z
-    .string()
-    .url('EXPO_PUBLIC_SUPABASE_URL must be a valid URL.'),
-  EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z
-    .string()
-    .min(1, 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required.'),
-  EXPO_PUBLIC_MEDIA_BASE_URL: z
-    .string()
-    .url('EXPO_PUBLIC_MEDIA_BASE_URL must be a valid URL.'),
-});
+const publicEnvSchema = z
+  .object({
+    EXPO_PUBLIC_APPLICATION_RUNTIME_MODE: z.enum(['simulation', 'api']),
+    EXPO_PUBLIC_API_URL: z
+      .string()
+      .url('EXPO_PUBLIC_API_URL must be a valid URL.'),
+    EXPO_PUBLIC_SUPABASE_URL: z
+      .string()
+      .url('EXPO_PUBLIC_SUPABASE_URL must be a valid URL.'),
+    EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY: z
+      .string()
+      .min(1, 'EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY is required.'),
+    EXPO_PUBLIC_MEDIA_BASE_URL: z
+      .string()
+      .url('EXPO_PUBLIC_MEDIA_BASE_URL must be a valid URL.'),
+  })
+  .superRefine((value, context) => {
+    const supabaseUrl = new URL(value.EXPO_PUBLIC_SUPABASE_URL);
+    const localSupabase = ['127.0.0.1', 'localhost'].includes(
+      supabaseUrl.hostname,
+    );
+
+    if (
+      value.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE === 'simulation' &&
+      !localSupabase
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'simulation mode cannot use a remote Supabase project. Set EXPO_PUBLIC_APPLICATION_RUNTIME_MODE=api or use local Supabase.',
+        path: ['EXPO_PUBLIC_APPLICATION_RUNTIME_MODE'],
+      });
+    }
+
+    if (
+      value.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE === 'api' &&
+      value.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY === 'development-placeholder'
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'api mode requires a real Supabase publishable key.',
+        path: ['EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY'],
+      });
+    }
+  });
 
 export type PublicEnv = Readonly<z.infer<typeof publicEnvSchema>>;
 
@@ -80,4 +110,17 @@ export const env = parsePublicEnv({
     process.env.EXPO_PUBLIC_MEDIA_BASE_URL ??
     publicEnv?.mediaBaseUrl ??
     devPublicEnv?.mediaBaseUrl,
+});
+
+export function resolveSupabaseProjectRef(supabaseUrl: string): string {
+  const hostname = new URL(supabaseUrl).hostname;
+  const suffix = '.supabase.co';
+  return hostname.endsWith(suffix)
+    ? hostname.slice(0, -suffix.length)
+    : hostname;
+}
+
+export const runtimeEnvironment = Object.freeze({
+  mode: env.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE,
+  supabaseProjectRef: resolveSupabaseProjectRef(env.EXPO_PUBLIC_SUPABASE_URL),
 });

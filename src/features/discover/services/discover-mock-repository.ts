@@ -41,14 +41,16 @@ import {
   filterSets,
   filterVibes,
 } from '../model/discover-search';
-import type {
-  DiscoverRepository,
-  DiscoverRequestContext,
+import {
+  fullDiscoverCapabilities,
+  type DiscoverRepository,
+  type DiscoverRequestContext,
 } from './discover-repository';
 
 type Clock = { now: () => string };
 
 export class MockDiscoverRepository implements DiscoverRepository {
+  readonly capabilities = fullDiscoverCapabilities;
   private requestCounter = 0;
   private readonly joinBySet = new Map<string, SetJoinRequestReceipt>();
   private readonly inviteByProfile = new Map<string, PlayerInviteReceipt>();

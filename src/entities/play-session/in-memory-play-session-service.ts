@@ -5,6 +5,7 @@ import {
   CreatePlaySessionCommandV2Schema,
   CreateSessionFromMatchCommandV2Schema,
   CreateSessionFromSetCommandV2Schema,
+  DeclineSessionInviteCommandV2Schema,
   InviteToSessionCommandV2Schema,
   LeaveSessionCommandV2Schema,
   OpenReadyCheckCommandV2Schema,
@@ -134,10 +135,7 @@ export class InMemoryPlaySessionService
             'Initial invitees exceed Session capacity.',
           );
         }
-        await this.lifecycleProvider.assertActive([
-          actorPlayerId,
-          ...inviteePlayerIds,
-        ]);
+        await this.lifecycleProvider.assertActive(inviteePlayerIds);
         for (const targetPlayerId of inviteePlayerIds) {
           await this.assertInviteAllowed(actorPlayerId, targetPlayerId);
         }
@@ -576,7 +574,6 @@ export class InMemoryPlaySessionService
             'Session invite is no longer pending.',
           );
         }
-        await this.lifecycleProvider.assertActive([actorPlayerId]);
         await this.assertPairwiseSessionEligibility([
           ...this.activeParticipantIds(session),
           actorPlayerId,
@@ -617,6 +614,67 @@ export class InMemoryPlaySessionService
     );
     await this.reconcileCommunication(command.sessionId, command.correlationId);
     return receipt;
+  }
+
+  async declineInvite(actor: PlaySessionActorContext, rawCommand: unknown) {
+    const command = DeclineSessionInviteCommandV2Schema.parse(rawCommand);
+    const actorPlayerId = this.requireActor(actor);
+    return await this.executeSessionCommand(
+      actorPlayerId,
+      command,
+      'decline_session_invite_v2',
+      async (session) => {
+        this.assertExpectedVersion(session, command.expectedVersion);
+        this.assertRecruiting(session);
+        const invite = this.invites.get(command.inviteId);
+        if (
+          !invite ||
+          invite.sessionId !== session.sessionId ||
+          invite.targetPlayerId !== actorPlayerId
+        ) {
+          throw new PlaySessionDomainError(
+            'not_found',
+            'Session invite was not found.',
+          );
+        }
+        if (invite.state !== 'pending') {
+          throw new PlaySessionDomainError(
+            'invalid_transition',
+            'Session invite is no longer pending.',
+          );
+        }
+        if (
+          invite.expiresAt &&
+          Date.parse(invite.expiresAt) <= this.clock().getTime()
+        ) {
+          throw new PlaySessionDomainError(
+            'invalid_transition',
+            'Session invite has expired.',
+          );
+        }
+        invite.state = 'declined';
+        invite.version += 1;
+        this.touch(session);
+        const event = this.emit(
+          session,
+          actorPlayerId,
+          command.correlationId,
+          null,
+          {
+            eventType: 'session.invite_declined.v2',
+            payload: {
+              inviteId: command.inviteId,
+              sessionId: session.sessionId,
+              targetPlayerId: actorPlayerId,
+            },
+          },
+        );
+        return {
+          eventIds: [event.eventId],
+          resultCode: 'invite_declined' as const,
+        };
+      },
+    );
   }
 
   async leave(actor: PlaySessionActorContext, rawCommand: unknown) {
@@ -1014,7 +1072,9 @@ export class InMemoryPlaySessionService
             'Session membership changed after ready-check pass.',
           );
         }
-        await this.lifecycleProvider.assertActive(activePlayerIds);
+        await this.lifecycleProvider.assertActive(
+          activePlayerIds.filter((playerId) => playerId !== actorPlayerId),
+        );
         session.startedAt = this.now();
         session.state = 'in_progress';
         this.touch(session);

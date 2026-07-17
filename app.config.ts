@@ -30,7 +30,7 @@ function resolveApplicationRuntimeMode(
       `Invalid EXPO_PUBLIC_APPLICATION_RUNTIME_MODE "${value}". Expected simulation or api.`,
     );
   }
-  return variant === 'production' ? 'api' : 'simulation';
+  return variant === 'development' ? 'simulation' : 'api';
 }
 
 type VariantConfig = {
@@ -119,6 +119,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-dev-client',
       'expo-font',
       'expo-sharing',
+      'expo-video',
       [
         'expo-secure-store',
         {

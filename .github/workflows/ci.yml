@@ -45,6 +45,9 @@ jobs:
       - name: Check generated Core V1 contracts
         run: npm run contracts:check
 
+      - name: Check completed product authority surfaces
+        run: npm run product-completion-v2:check
+
       - name: Check production authority invariants
         run: |
           npm run match-authority:check

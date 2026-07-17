@@ -1,24 +1,31 @@
 import {
   useInfiniteQuery,
+  useQuery,
   useMutation,
   useQueryClient,
   type InfiniteData,
 } from '@tanstack/react-query';
 
+import type { AuthSession } from '@/shared/auth/auth-service';
 import type { SetDiscoveryPageV1 } from '@/shared/contracts/core-v1';
+import type { MatchSetCommandReceiptV2 } from '@/shared/contracts/core-v2';
 
 import { useAuth } from '@/shared/auth/auth-context';
 
 import { MatchSetCommandJournal } from './match-set-command-journal';
 import { useMatchSetRepository } from './MatchSetRepositoryProvider';
 
-export const matchSetQueryKey = ['match-set', 'discovery'] as const;
+export const matchSetQueryKey = ['match-set'] as const;
+export const matchSetDashboardQueryKey = [
+  ...matchSetQueryKey,
+  'dashboard',
+] as const;
 const journal = new MatchSetCommandJournal();
 
 export function useMatchSetDiscoveryQuery(limit = 20) {
   const { session } = useAuth();
   const repository = useMatchSetRepository();
-  const queryKey = [...matchSetQueryKey, limit] as const;
+  const queryKey = [...matchSetQueryKey, 'discovery', limit] as const;
   return useInfiniteQuery<
     SetDiscoveryPageV1,
     Error,
@@ -92,5 +99,57 @@ export function useCreateSetInviteV1Mutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: matchSetQueryKey });
     },
+  });
+}
+
+export function useMatchSetDetailQuery(setId: string | undefined) {
+  const { session } = useAuth();
+  const repository = useMatchSetRepository();
+  return useQuery({
+    enabled: Boolean(session && setId),
+    queryFn: async () => {
+      if (!session || !setId) throw new Error('SetId is required.');
+      return repository.get(session, setId);
+    },
+    queryKey: [...matchSetQueryKey, 'detail', setId ?? 'missing'],
+  });
+}
+
+export function useMatchSetDashboardQuery() {
+  const { session } = useAuth();
+  const repository = useMatchSetRepository();
+  return useQuery({
+    enabled: Boolean(session),
+    queryFn: async () => {
+      if (!session) throw new Error('Authentication is required.');
+      return repository.dashboard(session);
+    },
+    queryKey: matchSetDashboardQueryKey,
+  });
+}
+
+export function useMatchSetCommandMutation<TInput>(
+  execute: (
+    repository: ReturnType<typeof useMatchSetRepository>,
+    session: AuthSession,
+    input: TInput,
+  ) => Promise<MatchSetCommandReceiptV2>,
+  options: Readonly<{
+    onSuccess?: (receipt: MatchSetCommandReceiptV2) => void | Promise<void>;
+  }> = {},
+) {
+  const { session } = useAuth();
+  const repository = useMatchSetRepository();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: TInput) => {
+      if (!session) throw new Error('Authentication is required.');
+      return execute(repository, session, input);
+    },
+    onSuccess: async (receipt) => {
+      await queryClient.invalidateQueries({ queryKey: matchSetQueryKey });
+      await options.onSuccess?.(receipt);
+    },
+    retry: false,
   });
 }

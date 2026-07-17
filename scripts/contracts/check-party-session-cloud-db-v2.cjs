@@ -16,11 +16,14 @@ const runtime = fs.readFileSync(
 const expectedRef = 'ibprkyemsuktfrdpxvza';
 const expectedSuites = [
   ['match_set_authority_v1.test.sql', 31],
+  ['match_set_dashboard_identity_v2.test.sql', 18],
   ['repeat_play_session_consumer_v2.test.sql', 12],
   ['core_v2_completed_session_consumer.test.sql', 36],
   ['session_social_safety_consumer_v2.test.sql', 47],
   ['party_session_release_readiness_v2.test.sql', 29],
   ['party_session_runtime_v2.test.sql', 58],
+  ['decline_session_invite_v2.test.sql', 18],
+  ['session_conversation_dispatch_runtime_v2.test.sql', 31],
 ];
 const failures = [];
 const requireInvariant = (condition, message) => {
@@ -57,8 +60,8 @@ for (const [name, plan] of expectedSuites) {
   total += plan;
 }
 requireInvariant(
-  total === 213,
-  `cloud proof must total 213 assertions, got ${total}`,
+  total === 280,
+  `cloud proof must total 280 assertions, got ${total}`,
 );
 requireInvariant(
   runner.includes(

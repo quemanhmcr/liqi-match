@@ -1,6 +1,6 @@
 # Production Match Authority v1 rollout
 
-> Integrated primary note: use `docs/runbooks/primary-production-integration-v1.md` for the canonical migration boundary, cross-domain deployment order, and release evidence.
+> Integrated primary note: use `docs/runbooks/primary-production-integration-v1.md` for the canonical migration boundary, cross-domain deployment order, and release evidence. Before claiming staging or production behavior, complete `docs/runbooks/mobile-backend-environment-parity.md` on that exact project; E2E project results are not transferable.
 
 ## Expansion
 

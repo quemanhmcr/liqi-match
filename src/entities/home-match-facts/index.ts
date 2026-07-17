@@ -6,6 +6,7 @@ export { InMemoryHomeMatchFactsRepository } from './in-memory-home-match-facts-r
 export type { HomeMatchFactsRepository } from './home-match-facts-repository';
 export {
   homeMatchFactsQueryKey,
+  useHomeMatchFactQuery,
   useHomeMatchFactsQuery,
 } from './home-match-facts-queries';
 export {

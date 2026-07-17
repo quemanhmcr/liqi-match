@@ -13,6 +13,9 @@ Describe the owned problem and the resulting behavior.
 - [ ] `npm run task:check` passed, or omitted lanes are explained below.
 - [ ] Relevant device, emulator, Supabase or Worker validation is recorded when applicable.
 - [ ] Tests were added or updated beside the owning feature/service.
+- [ ] Any staging/production claim names the sanitized project ref and proves `api` runtime, migration parity, RPC/dependency parity and rollout flags on that same project.
+- [ ] Auth success, simulation tests or disposable E2E results are not presented as evidence for another environment.
+- [ ] Public environment changes include a full-reload/re-authentication smoke note.
 
 ## Handoff
 

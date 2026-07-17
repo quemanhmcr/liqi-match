@@ -18,3 +18,17 @@ export function useHomeMatchFactsQuery() {
     queryKey: homeMatchFactsQueryKey,
   });
 }
+
+export function useHomeMatchFactQuery(matchId: string | undefined) {
+  const { session } = useAuth();
+  const repository = useHomeMatchFactsRepository();
+  return useQuery({
+    enabled: Boolean(session && matchId),
+    queryFn: async () => {
+      if (!session || !matchId) throw new Error('MatchId is required.');
+      const facts = await repository.list(session);
+      return facts.items.find((fact) => fact.matchId === matchId) ?? null;
+    },
+    queryKey: [...homeMatchFactsQueryKey, 'detail', matchId ?? 'missing'],
+  });
+}

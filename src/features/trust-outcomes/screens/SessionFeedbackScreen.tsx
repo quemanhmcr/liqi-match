@@ -18,6 +18,7 @@ import {
   useSessionFeedbackSurface,
   useSubmitPlayerEndorsement,
 } from '@/entities/trust-outcomes';
+import { usePlayerIdentities } from '@/entities/player-identity';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
   LiquidButton,
@@ -86,6 +87,17 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
   const waitingForOthers =
     actorStatus === 'confirmed' && !surface?.allParticipantsConfirmed;
   const eligibleTargets = surface?.endorsementTargetPlayerIds ?? [];
+  const identitiesQuery = usePlayerIdentities(eligibleTargets);
+  const identities = useMemo(
+    () =>
+      new Map(
+        (identitiesQuery.data ?? []).map((identity) => [
+          identity.playerId,
+          identity,
+        ]),
+      ),
+    [identitiesQuery.data],
+  );
   const resolvedSelectedTarget = eligibleTargets.includes(
     selectedTarget as never,
   )
@@ -207,7 +219,7 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
       ) : feedbackQuery.isError || !surface ? (
         <StateCard
           onRetry={() => void feedbackQuery.refetch()}
-          title="Chưa tải được feedback authoritative"
+          title="Chưa tải được phản hồi mới nhất"
         />
       ) : (
         <>
@@ -299,7 +311,7 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
               </Text>
               <Text style={styles.label}>Đồng đội</Text>
               <View style={styles.chips}>
-                {eligibleTargets.map((playerId, index) => (
+                {eligibleTargets.map((playerId) => (
                   <LiquidChip
                     density="compact"
                     key={playerId}
@@ -307,7 +319,10 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
                     selected={resolvedSelectedTarget === playerId}
                     variant={selectedTarget === playerId ? 'cyan' : 'default'}
                   >
-                    Đồng đội {index + 1}
+                    {identities.get(playerId)?.displayName ??
+                      (identitiesQuery.isPending
+                        ? 'Đang tải đồng đội…'
+                        : 'Người chơi Liqi')}
                   </LiquidChip>
                 ))}
               </View>

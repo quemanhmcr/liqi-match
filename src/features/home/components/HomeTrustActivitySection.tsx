@@ -121,15 +121,17 @@ export function HomeTrustActivitySection({
             <Text style={styles.title}>Đã tạo session chơi lại</Text>
             <Text style={styles.body}>
               {createdSession.activityDismissed
-                ? 'Lời mời đã được gửi. Mở Messages để tiếp tục phối hợp.'
+                ? 'Lời mời đã được gửi. Mở session để tiếp tục phối hợp.'
                 : 'Session đã được tạo. Activity cũ sẽ được đồng bộ lại; không cần tạo thêm session.'}
             </Text>
           </View>
           <LiquidButton
-            onPress={() => router.push(appRoutes.main.messages)}
+            onPress={() =>
+              router.push(appRoutes.sessions.detail(createdSession.sessionId))
+            }
             variant="secondary"
           >
-            Messages
+            Mở session
           </LiquidButton>
         </LiquidCard>
       ) : null}
@@ -176,7 +178,7 @@ export function HomeTrustActivitySection({
       {activityQuery.isError ? (
         <LiquidCard density="compact" style={styles.errorCard}>
           <Text style={styles.errorText}>
-            Chưa tải được hoạt động authoritative.
+            Chưa tải được hoạt động mới nhất.
           </Text>
           <LiquidButton
             onPress={() => void activityQuery.refetch()}

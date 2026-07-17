@@ -50,3 +50,4 @@ export {
   type ConversationTelemetryEvent,
   type ConversationTelemetrySink,
 } from './services/conversation-telemetry';
+export * from './services/conversation-lifecycle';

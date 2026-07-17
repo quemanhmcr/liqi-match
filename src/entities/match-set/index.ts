@@ -4,6 +4,10 @@ export type { MatchSetRepository } from './match-set-repository';
 export {
   matchSetQueryKey,
   useCreateSetInviteV1Mutation,
+  matchSetDashboardQueryKey,
+  useMatchSetCommandMutation,
+  useMatchSetDashboardQuery,
+  useMatchSetDetailQuery,
   useMatchSetDiscoveryQuery,
   useRequestSetJoinV1Mutation,
 } from './match-set-queries';

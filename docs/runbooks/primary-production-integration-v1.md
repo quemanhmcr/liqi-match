@@ -21,8 +21,9 @@ The primary integration contains:
 - an executable production walking skeleton from active intents through pending
   Conversation and Home facts.
 
-The latest integrated migration is `202607140035`. New migrations must start at
-`202607140036` or later and must pass `npm run migration-history:check`.
+Do not record a mutable “latest migration” number in this runbook. Determine the
+current head from `supabase/migrations` and require `npm run migration-history:check`;
+a prose checkpoint must never become the authority for the next timestamp.
 
 ## Migration rules
 
@@ -39,6 +40,11 @@ The latest integrated migration is `202607140035`. New migrations must start at
    consumer's processing state.
 6. Migration filenames use one unique 12-digit version followed by a snake-case
    name. The repository gate rejects duplicate versions and stale references.
+7. Once a migration reaches any shared project, never edit, rename or renumber it.
+   Correct behavior with a later migration.
+8. If remote history and Git disagree, stop deployment, back up the target, compare
+   recorded names and SQL content, then repair history only for proven-equivalent
+   migrations. Never mark different SQL as applied to silence `db push`.
 
 ## Required source validation
 
@@ -72,7 +78,10 @@ Deploy to an isolated or preview Supabase project first:
 7. Verify consumer receipts and pending outbox age before enabling cohorts.
 
 Database migrations and Edge Function deployment are separate release actions.
-A green repository or Deno check does not mean either has been deployed.
+A green repository or Deno check does not mean either has been deployed. A green
+disposable E2E project also does not mean staging is current. Complete the
+[environment parity runbook](mobile-backend-environment-parity.md) separately for
+each release environment.
 
 ## Capability rollout
 

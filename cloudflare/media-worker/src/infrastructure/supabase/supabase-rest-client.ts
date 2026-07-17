@@ -2,6 +2,7 @@ import type { MediaRepository } from '../../application/ports';
 import type {
   DeleteMediaJob,
   MediaAsset,
+  MediaProcessingJob,
 } from '../../domain/media/media-types';
 import type { WorkerEnv } from '../../platform/env';
 
@@ -12,7 +13,7 @@ export class SupabaseMediaRepository implements MediaRepository {
     const url = this.url('/rest/v1/media_assets');
     url.searchParams.set(
       'select',
-      'id,owner_id,object_key,mime_type,byte_size,visibility,status,moderation_status,deleted_at',
+      'id,owner_id,purpose,object_key,mime_type,byte_size,visibility,status,moderation_status,deleted_at',
     );
     url.searchParams.set('id', `eq.${assetId}`);
     url.searchParams.set('limit', '1');
@@ -61,6 +62,54 @@ export class SupabaseMediaRepository implements MediaRepository {
     });
     if (!response.ok) {
       throw new Error(`Failed to mark media deleted: ${response.status}`);
+    }
+  }
+
+  async markReady(job: MediaProcessingJob) {
+    await this.patchAsset(job, ['uploaded'], {
+      moderation_status: 'approved',
+      status: 'ready',
+    });
+  }
+
+  async markRejected(
+    job: Pick<MediaProcessingJob, 'assetId' | 'objectKey'>,
+    reason: string,
+  ) {
+    await this.patchAsset(job, ['uploaded', 'ready'], {
+      moderation_status: 'rejected',
+      status: 'rejected',
+    });
+    console.warn(
+      JSON.stringify({
+        assetId: job.assetId,
+        level: 'warn',
+        message: 'media_rejected',
+        reason,
+      }),
+    );
+  }
+
+  private async patchAsset(
+    job: Pick<MediaProcessingJob, 'assetId' | 'objectKey'>,
+    statuses: readonly string[],
+    body: Record<string, unknown>,
+  ) {
+    const url = this.url('/rest/v1/media_assets');
+    url.searchParams.set('id', `eq.${job.assetId}`);
+    url.searchParams.set('object_key', `eq.${job.objectKey}`);
+    url.searchParams.set('status', `in.(${statuses.join(',')})`);
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: {
+        ...this.headers(),
+        'content-type': 'application/json',
+        prefer: 'return=minimal',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!response.ok) {
+      throw new Error(`Failed to transition media asset: ${response.status}`);
     }
   }
 

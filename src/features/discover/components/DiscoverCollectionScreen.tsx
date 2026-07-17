@@ -36,6 +36,7 @@ import type {
   DiscoverVibeCard,
 } from '../model/discover-domain';
 import { useDiscoverStore } from '../model/discover-store';
+import { useDiscoverCapabilities } from '../runtime/DiscoverRepositoryProvider';
 import {
   useDiscoverCollectionQuery,
   useDiscoverOverviewQuery,
@@ -162,15 +163,19 @@ function DiscoverText(props: TextProps) {
 
 export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
   const config = configs[kind];
+  const capability = useDiscoverCapabilities().collections[kind];
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const inheritedFilters = useDiscoverStore((state) => state.activeFilterIds);
   const inheritedQuery = useDiscoverStore((state) => state.query);
   const [activeFilterIds, setActiveFilterIds] = useState<DiscoverFilterId[]>(
-    () => [...inheritedFilters],
+    () => (capability.filters ? [...inheritedFilters] : []),
   );
-  const [query, setQuery] = useState(inheritedQuery);
-  const defaultSort = sortOptions[kind][0]!;
+  const [query, setQuery] = useState(capability.search ? inheritedQuery : '');
+  const supportedSortOptions = sortOptions[kind].filter((option) =>
+    capability.sorts.includes(option.id),
+  );
+  const defaultSort = supportedSortOptions[0] ?? sortOptions[kind][0]!;
   const [sortExpanded, setSortExpanded] = useState(false);
   const [sortId, setSortId] = useState<SortId>(defaultSort.id);
   const deferredQuery = useDeferredValue(query);
@@ -178,10 +183,12 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
   const horizontalPadding = compact ? 15 : 20;
   const cardWidth = width - horizontalPadding * 2;
 
-  const activeFacetIds = activeFilterIds.filter(
-    (filterId): filterId is Exclude<DiscoverFilterId, 'all'> =>
-      filterId !== 'all',
-  );
+  const activeFacetIds = capability.filters
+    ? activeFilterIds.filter(
+        (filterId): filterId is Exclude<DiscoverFilterId, 'all'> =>
+          filterId !== 'all',
+      )
+    : [];
   const filterOptionsQuery = useDiscoverOverviewQuery({
     facetIds: [],
     previewLimit: 1,
@@ -189,16 +196,19 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
   });
   const collectionQuery = useDiscoverCollectionQuery(kind, {
     facetIds: activeFacetIds,
-    query: deferredQuery,
-    sort: sortId,
+    query: capability.search ? deferredQuery : '',
+    sort: capability.sorts.includes(sortId) ? sortId : defaultSort.id,
   });
   const items = collectionQuery.data?.items ?? [];
   const discoverFilterChips = filterOptionsQuery.data?.filterChips ?? [];
 
   const selectedSort =
-    sortOptions[kind].find((option) => option.id === sortId) ?? defaultSort;
-  const criteriaActive = activeFilterIds.length > 0 || query.trim().length > 0;
-  const searchUpdating = query !== deferredQuery;
+    supportedSortOptions.find((option) => option.id === sortId) ?? defaultSort;
+  const criteriaActive =
+    (capability.filters && activeFilterIds.length > 0) ||
+    (capability.search && query.trim().length > 0);
+  const searchUpdating = capability.search && query !== deferredQuery;
+  const sortEnabled = supportedSortOptions.length > 1;
 
   const toggleFilter = (filterId: DiscoverFilterId) => {
     if (filterId === 'all') {
@@ -255,19 +265,23 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
           config={config}
           horizontalPadding={horizontalPadding}
         />
-        <CollectionSearch
-          onChangeQuery={setQuery}
-          onClear={() => setQuery('')}
-          placeholder={config.searchPlaceholder}
-          query={query}
-          horizontalPadding={horizontalPadding}
-        />
-        <CollectionFilterRow
-          activeFilterIds={activeFilterIds}
-          chips={discoverFilterChips}
-          horizontalPadding={horizontalPadding}
-          onToggle={toggleFilter}
-        />
+        {capability.search ? (
+          <CollectionSearch
+            onChangeQuery={setQuery}
+            onClear={() => setQuery('')}
+            placeholder={config.searchPlaceholder}
+            query={query}
+            horizontalPadding={horizontalPadding}
+          />
+        ) : null}
+        {capability.filters ? (
+          <CollectionFilterRow
+            activeFilterIds={activeFilterIds}
+            chips={discoverFilterChips}
+            horizontalPadding={horizontalPadding}
+            onToggle={toggleFilter}
+          />
+        ) : null}
         <CollectionToolbar
           count={items.length}
           horizontalPadding={horizontalPadding}
@@ -275,9 +289,10 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
           isUpdating={searchUpdating}
           onToggleSort={() => setSortExpanded((value) => !value)}
           selectedSort={selectedSort.label}
+          sortEnabled={sortEnabled}
           sortExpanded={sortExpanded}
         />
-        {sortExpanded ? (
+        {sortEnabled && sortExpanded ? (
           <SortOptions
             horizontalPadding={horizontalPadding}
             kind={kind}
@@ -286,6 +301,7 @@ export function DiscoverCollectionScreen({ kind }: { kind: CollectionKind }) {
               setSortExpanded(false);
             }}
             selectedId={sortId}
+            supportedSortIds={capability.sorts}
           />
         ) : null}
         {items.length ? (
@@ -528,6 +544,7 @@ function CollectionToolbar({
   kind,
   onToggleSort,
   selectedSort,
+  sortEnabled,
   sortExpanded,
 }: {
   count: number;
@@ -536,6 +553,7 @@ function CollectionToolbar({
   kind: CollectionKind;
   onToggleSort: () => void;
   selectedSort: string;
+  sortEnabled: boolean;
   sortExpanded: boolean;
 }) {
   return (
@@ -545,22 +563,36 @@ function CollectionToolbar({
           {isUpdating ? 'Đang cập nhật…' : collectionResultLabel(kind, count)}
         </DiscoverText>
       </View>
-      <Pressable
-        accessibilityLabel={sortExpanded ? 'Đóng sắp xếp' : 'Mở sắp xếp'}
-        accessibilityRole="button"
-        accessibilityState={{ expanded: sortExpanded }}
-        onPress={onToggleSort}
-        style={({ pressed }) => [styles.sortButton, pressed && styles.pressed]}
-      >
-        <DiscoverText numberOfLines={1} style={styles.sortLabel}>
-          {selectedSort}
-        </DiscoverText>
-        <Ionicons
-          color="rgba(215,223,247,0.58)"
-          name={sortExpanded ? 'chevron-up' : 'chevron-down'}
-          size={13}
-        />
-      </Pressable>
+      {sortEnabled ? (
+        <Pressable
+          accessibilityLabel={sortExpanded ? 'Đóng sắp xếp' : 'Mở sắp xếp'}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: sortExpanded }}
+          onPress={onToggleSort}
+          style={({ pressed }) => [
+            styles.sortButton,
+            pressed && styles.pressed,
+          ]}
+        >
+          <DiscoverText numberOfLines={1} style={styles.sortLabel}>
+            {selectedSort}
+          </DiscoverText>
+          <Ionicons
+            color="rgba(215,223,247,0.58)"
+            name={sortExpanded ? 'chevron-up' : 'chevron-down'}
+            size={13}
+          />
+        </Pressable>
+      ) : (
+        <View
+          accessibilityLabel={`Đang sắp xếp theo ${selectedSort}`}
+          style={styles.sortButton}
+        >
+          <DiscoverText numberOfLines={1} style={styles.sortLabel}>
+            {selectedSort}
+          </DiscoverText>
+        </View>
+      )}
     </View>
   );
 }
@@ -570,11 +602,13 @@ function SortOptions({
   kind,
   onSelect,
   selectedId,
+  supportedSortIds,
 }: {
   horizontalPadding: number;
   kind: CollectionKind;
   onSelect: (sortId: SortId) => void;
   selectedId: SortId;
+  supportedSortIds: readonly SortId[];
 }) {
   return (
     <View
@@ -588,35 +622,37 @@ function SortOptions({
         withInnerReflection={false}
         withShadow={false}
       >
-        {sortOptions[kind].map((option) => {
-          const selected = option.id === selectedId;
-          return (
-            <Pressable
-              accessibilityLabel={`Sắp xếp theo ${option.label}`}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-              key={option.id}
-              onPress={() => onSelect(option.id)}
-              style={({ pressed }) => [
-                styles.sortOption,
-                selected && styles.sortOptionActive,
-                pressed && styles.pressed,
-              ]}
-            >
-              <DiscoverText
-                style={[
-                  styles.sortOptionText,
-                  selected && styles.sortOptionTextActive,
+        {sortOptions[kind]
+          .filter((option) => supportedSortIds.includes(option.id))
+          .map((option) => {
+            const selected = option.id === selectedId;
+            return (
+              <Pressable
+                accessibilityLabel={`Sắp xếp theo ${option.label}`}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                key={option.id}
+                onPress={() => onSelect(option.id)}
+                style={({ pressed }) => [
+                  styles.sortOption,
+                  selected && styles.sortOptionActive,
+                  pressed && styles.pressed,
                 ]}
               >
-                {option.label}
-              </DiscoverText>
-              {selected ? (
-                <Ionicons color="#D9C2FF" name="checkmark" size={15} />
-              ) : null}
-            </Pressable>
-          );
-        })}
+                <DiscoverText
+                  style={[
+                    styles.sortOptionText,
+                    selected && styles.sortOptionTextActive,
+                  ]}
+                >
+                  {option.label}
+                </DiscoverText>
+                {selected ? (
+                  <Ionicons color="#D9C2FF" name="checkmark" size={15} />
+                ) : null}
+              </Pressable>
+            );
+          })}
       </LiquidGlassSurface>
     </View>
   );
