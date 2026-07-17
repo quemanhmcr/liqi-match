@@ -1,5 +1,9 @@
 import type { ImagePickerAsset } from 'expo-image-picker';
 
+import {
+  updateProfileWallMediaSlot,
+  profileMediaSummaryRecord,
+} from '@/entities/player-profile';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import {
   type LocalImageAsset,
@@ -71,8 +75,7 @@ export function validateOnboardingMediaSelection(
 }
 
 export function isOnboardingMediaItemComplete(item: OnboardingMediaQueueItem) {
-  if (item.slot === 'avatar') return item.status === 'associated';
-  return item.status === 'uploaded' || item.status === 'associated';
+  return item.status === 'associated';
 }
 
 export function hasPendingOnboardingMedia(items: OnboardingMediaQueueItem[]) {
@@ -163,10 +166,7 @@ export async function uploadOnboardingMediaQueueItem(
   if (isOnboardingMediaItemComplete(item)) return item;
 
   if (item.uploadedAssetId) {
-    if (item.slot !== 'avatar') {
-      return { ...item, failure: null, status: 'uploaded' };
-    }
-    await associateAvatar(session, item.uploadedAssetId);
+    await associateProfileMedia(session, item, item.uploadedAssetId);
     return { ...item, failure: null, status: 'associated' };
   }
 
@@ -188,8 +188,7 @@ export async function uploadOnboardingMediaQueueItem(
   };
 
   await onUploaded?.(uploadedItem);
-  if (item.slot !== 'avatar') return uploadedItem;
-  await associateAvatar(session, uploaded.assetId);
+  await associateProfileMedia(session, item, uploaded.assetId);
   return { ...uploadedItem, status: 'associated' };
 }
 
@@ -206,6 +205,45 @@ async function uploadSingleQueueAsset(
   const [uploaded] = await uploadMediaBatch(session, input);
   if (!uploaded) throw new Error('Không nhận được kết quả upload ảnh.');
   return uploaded satisfies UploadedMediaAsset;
+}
+
+async function associateProfileMedia(
+  session: AuthSession,
+  item: OnboardingMediaQueueItem,
+  assetId: string,
+) {
+  if (item.slot === 'avatar') {
+    await associateAvatar(session, assetId);
+    return;
+  }
+
+  const rows = await supabaseRest<{ media_summary: unknown | null }[]>(
+    `profile_habits?select=media_summary&profile_id=eq.${encodeURIComponent(session.user.id)}&limit=1`,
+    { session },
+  );
+  if (!rows[0]) {
+    throw new Error(
+      'profile_habits chưa sẵn sàng để liên kết media onboarding.',
+    );
+  }
+  const summary = profileMediaSummaryRecord(rows[0].media_summary);
+  const mediaSummary =
+    item.slot === 'cover'
+      ? { ...summary, cover_media_id: assetId }
+      : updateProfileWallMediaSlot({
+          assetId,
+          position: item.position,
+          summary,
+        });
+  await supabaseRest(
+    `profile_habits?profile_id=eq.${encodeURIComponent(session.user.id)}`,
+    {
+      body: { media_summary: mediaSummary },
+      method: 'PATCH',
+      prefer: 'return=minimal',
+      session,
+    },
+  );
 }
 
 async function associateAvatar(session: AuthSession, assetId: string) {

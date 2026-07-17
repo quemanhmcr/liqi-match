@@ -84,6 +84,25 @@ describe('SupabaseSocialRelationshipRepository', () => {
     );
   });
 
+  it('reads accepted and pending Social Hub relationships from the inclusive RPC', async () => {
+    const friend = read('relationship-friend.json');
+    const rpc = jest.fn(async () => ({
+      contractVersion: 2,
+      items: [friend],
+      nextCursor: null,
+    }));
+    const repository = new SupabaseSocialRelationshipRepository(rpc);
+
+    await expect(
+      repository.listRelationships(testAuthSession, { limit: 500 }),
+    ).resolves.toMatchObject({ items: [friend], nextCursor: null });
+    expect(rpc).toHaveBeenCalledWith(
+      'list_social_relationships_v2',
+      testAuthSession,
+      { p_after_player_id: null, p_limit: 100 },
+    );
+  });
+
   it('normalizes friendship pagination and rejects contract drift', async () => {
     const friend = read('relationship-friend.json');
     const rpc = jest

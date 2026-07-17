@@ -9,6 +9,7 @@ import type { MediaAsset } from '../src/domain/media/media-types';
 const asset: MediaAsset = {
   id: 'asset-id',
   owner_id: 'owner-id',
+  purpose: 'game_profile',
   object_key: 'avatar/owner-id/object.webp',
   mime_type: 'image/webp',
   byte_size: 42,

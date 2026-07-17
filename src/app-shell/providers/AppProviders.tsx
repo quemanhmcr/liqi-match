@@ -10,6 +10,7 @@ import { queryClient } from '@/shared/lib/query-client';
 import { getApplicationServices } from '../runtime/application-service-registry';
 import { registerQueryClientSimulationReset } from '../runtime/register-simulation-resets';
 import { ApplicationServiceProviders } from './ApplicationServiceProviders';
+import { QueryRuntimeLifecycle } from './QueryRuntimeLifecycle';
 
 const applicationServices = getApplicationServices();
 registerQueryClientSimulationReset(applicationServices, queryClient);
@@ -26,7 +27,7 @@ export function AppProviders({ children }: PropsWithChildren) {
           <PushDeviceLifecycleProvider>
             <ApplicationServiceProviders services={applicationServices}>
               <QueryClientProvider client={queryClient}>
-                {children}
+                <QueryRuntimeLifecycle>{children}</QueryRuntimeLifecycle>
               </QueryClientProvider>
             </ApplicationServiceProviders>
           </PushDeviceLifecycleProvider>

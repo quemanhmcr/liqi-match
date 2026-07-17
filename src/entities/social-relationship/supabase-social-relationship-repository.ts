@@ -5,6 +5,7 @@ import {
   PlayerPrivacySettingsV2Schema,
   ReportReceiptV2Schema,
   SocialRelationshipCommandReceiptV2Schema,
+  SocialRelationshipListPageV2Schema,
   SocialRelationshipSnapshotV2Schema,
   TrustVisibilityDecisionV2Schema,
   type AcceptFriendshipCommandV2,
@@ -169,6 +170,18 @@ export class SupabaseSocialRelationshipRepository
   ) {
     return BlockedPlayerListPageV2Schema.parse(
       await this.rpc('list_blocked_players_v2', session, {
+        p_after_player_id: input.afterPlayerId ?? null,
+        p_limit: normalizeLimit(input.limit),
+      }),
+    );
+  }
+
+  async listRelationships(
+    session: AuthSession,
+    input: Readonly<{ afterPlayerId?: string | null; limit?: number }> = {},
+  ) {
+    return SocialRelationshipListPageV2Schema.parse(
+      await this.rpc('list_social_relationships_v2', session, {
         p_after_player_id: input.afterPlayerId ?? null,
         p_limit: normalizeLimit(input.limit),
       }),

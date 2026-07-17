@@ -14,6 +14,7 @@ import type {
   ReportReceiptV2,
   RequestFriendshipCommandV2,
   SocialRelationshipCommandReceiptV2,
+  SocialRelationshipListPageV2,
   SocialRelationshipSnapshotV2,
   TrustVisibilityDecisionV2,
   UnblockPlayerCommandV2,
@@ -103,4 +104,8 @@ export interface SocialRelationshipRepository extends RelationshipCapabilitiesPr
     session: AuthSession,
     input?: Readonly<{ afterPlayerId?: string | null; limit?: number }>,
   ): Promise<FriendshipListPageV2>;
+  listRelationships(
+    session: AuthSession,
+    input?: Readonly<{ afterPlayerId?: string | null; limit?: number }>,
+  ): Promise<SocialRelationshipListPageV2>;
 }

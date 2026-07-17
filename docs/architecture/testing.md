@@ -43,6 +43,22 @@ npm run test:full
 
 CI calls the same lane through `npm run test:ci`.
 
+### Environment parity lane
+
+This lane answers a different question from Jest and rollback-only pgTAP: “Does this mobile bundle use the intended backend project and contract?” Run it for staging/production integration and before release claims.
+
+The evidence set must stay on one named project and include:
+
+1. `runtimeMode=api` plus the sanitized project ref resolved by the bundle;
+2. remote migration parity;
+3. exact client RPC signatures, execution grants and private helper dependencies;
+4. rollout flags and emergency-stop state;
+5. authenticated Profile read plus the changed command;
+6. a persisted record observed in the same database, or a clearly labeled rollback-only smoke;
+7. a full reload after environment changes and re-authentication after changing Supabase projects.
+
+The cloud E2E project proves SQL/RPC behavior in isolation. It does not prove staging configuration, feature flags, user data or client routing. See [the environment parity runbook](../runbooks/mobile-backend-environment-parity.md).
+
 ## Development workflow
 
 Inside a task branch or worktree, use the feedback loop that matches its baseline:
@@ -103,6 +119,8 @@ A suite that repeatedly exceeds its budget should move business logic out of the
 ## What Jest does not prove
 
 React Native component tests execute in Node. Critical native behavior still requires a development build and device-level smoke coverage, especially keyboard ownership, deep links, media selection/upload, safe-area behavior and native module configuration.
+
+A successful login proves only Auth connectivity. Simulation tests prove deterministic client behavior. Cloud pgTAP proves database contracts on its explicit project. None of those alone proves that the running device is using the intended staging or production repositories.
 
 References:
 

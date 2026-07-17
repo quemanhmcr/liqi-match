@@ -20,7 +20,12 @@ describe('supabaseRest structured errors', () => {
   it('preserves Core V1 code, request ID, retryability, and conflict details', async () => {
     const coreError = {
       code: 'profile_version_conflict',
-      details: { actualVersion: 3, expectedVersion: 2 },
+      details: {
+        actualVersion: 3,
+        expectedVersion: 2,
+        projectRef: 'wngumhizuxtlhavbpxzy',
+        restPath: 'rpc/complete_player_onboarding_v1',
+      },
       message: 'Profile changed on another session.',
       requestId: 'request-profile-conflict-0001',
       retryable: true,

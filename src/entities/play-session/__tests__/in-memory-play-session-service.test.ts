@@ -160,6 +160,32 @@ function acceptCommand(
 }
 
 describe('InMemoryPlaySessionService manual creation', () => {
+  it('trusts the already verified actor lifecycle instead of requiring a simulation fixture identity', async () => {
+    const assertActive = jest.fn<
+      SessionParticipantLifecycleProvider['assertActive']
+    >(async (playerIds) => {
+      if (playerIds.includes(PLAYER_A)) {
+        throw new PlaySessionDomainError(
+          'lifecycle_not_active',
+          'Actor is not part of the simulation fixture world.',
+        );
+      }
+    });
+    const service = createService({ lifecycleProvider: { assertActive } });
+
+    await expect(
+      service.create(actor(PLAYER_A), {
+        ...metadata(79, 0),
+        capacity: 2,
+        initialInviteePlayerIds: [],
+        scheduledFor: null,
+        timezone: 'Asia/Bangkok',
+        title: 'Authenticated player party',
+      }),
+    ).resolves.toMatchObject({ resultCode: 'created' });
+    expect(assertActive).toHaveBeenCalledWith([]);
+  });
+
   it('creates initial invites atomically and replays without duplicates', async () => {
     const service = createService();
     const command = {

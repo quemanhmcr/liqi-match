@@ -105,6 +105,14 @@ export type MessageConversationViewerState = z.infer<
   typeof MessageConversationViewerStateSchema
 >;
 
+export const MessageConversationSourceSchema = z.object({
+  id: z.string().uuid(),
+  type: z.enum(['direct_match', 'friendship', 'play_session', 'system']),
+});
+export type MessageConversationSource = z.infer<
+  typeof MessageConversationSourceSchema
+>;
+
 export const MessageConversationSummarySchema = z.object({
   avatar: MessageAssetRefSchema.optional(),
   capabilities: MessageConversationCapabilitiesSchema,
@@ -118,6 +126,7 @@ export const MessageConversationSummarySchema = z.object({
   }),
   presence: MessagePresenceSchema,
   relationship: MessageRelationshipSchema,
+  source: MessageConversationSourceSchema.optional(),
   title: z.string().min(1),
   viewerState: MessageConversationViewerStateSchema,
 });

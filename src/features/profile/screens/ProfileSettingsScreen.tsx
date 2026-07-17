@@ -127,7 +127,7 @@ export function ProfileSettingsScreen() {
       const privacy = privacyQuery.data;
       if (!session || !socialCoordinator || !privacy) {
         throw Object.assign(
-          new Error('Quyền riêng tư authoritative chưa sẵn sàng.'),
+          new Error('Cài đặt quyền riêng tư chưa sẵn sàng.'),
           { code: 'privacy_forbidden', retryable: false },
         );
       }
@@ -200,6 +200,21 @@ export function ProfileSettingsScreen() {
   const openBlockedUsers = () => {
     selectionImpact();
     router.push(appRoutes.profile.blocked);
+  };
+
+  const openSocialHub = () => {
+    selectionImpact();
+    router.push(appRoutes.social.hub);
+  };
+
+  const openEngagementPreferences = () => {
+    selectionImpact();
+    router.push(appRoutes.profile.engagement);
+  };
+
+  const openReputationLedger = () => {
+    selectionImpact();
+    router.push(appRoutes.profile.reputation);
   };
 
   const openLegalLink = (url: string) => {
@@ -375,6 +390,12 @@ export function ProfileSettingsScreen() {
           title="Chỉnh sửa hồ sơ"
         />
         <SettingsRow
+          icon="images-outline"
+          onPress={() => router.push(appRoutes.profile.gallery)}
+          subtitle="Thêm, thay hoặc gỡ tối đa 4 ảnh trên tường hồ sơ."
+          title="Khoảnh khắc nổi bật"
+        />
+        <SettingsRow
           icon="share-social-outline"
           onPress={openProfileShare}
           subtitle={
@@ -387,6 +408,12 @@ export function ProfileSettingsScreen() {
       </SettingsSection>
 
       <SettingsSection label="SOCIAL V2" title="Quan hệ & quyền riêng tư">
+        <SettingsRow
+          icon="people-outline"
+          onPress={openSocialHub}
+          subtitle="Bạn bè, lời mời đến, lời mời đã gửi và mute theo capability hiện tại."
+          title="Social Hub"
+        />
         <ProfilePrivacySettingsSection
           disabled={
             privacyMutation.isPending ||
@@ -410,6 +437,21 @@ export function ProfileSettingsScreen() {
         />
       </SettingsSection>
 
+      <SettingsSection label="UY TÍN & KẾT NỐI" title="Uy tín & nhắc nhở">
+        <SettingsRow
+          icon="shield-checkmark-outline"
+          onPress={openReputationLedger}
+          subtitle="Xem các ghi nhận uy tín từ buổi chơi, lời khen và những lần chơi lại."
+          title="Lịch sử uy tín"
+        />
+        <SettingsRow
+          icon="notifications-outline"
+          onPress={openEngagementPreferences}
+          subtitle="Điều chỉnh thông báo hoạt động, phản hồi, chơi lại và giới hạn mỗi ngày."
+          title="Nhắc nhở & hoạt động"
+        />
+      </SettingsSection>
+
       <SettingsSection label="RIÊNG TƯ" title="Hiển thị & an toàn">
         <SettingsRow
           accessory={
@@ -426,7 +468,7 @@ export function ProfileSettingsScreen() {
           onPress={() =>
             void updateSetting('isDiscoverable', !settings.isDiscoverable)
           }
-          subtitle="Core V1 discovery availability, tách biệt với quyền xem hồ sơ V2."
+          subtitle="Cho phép hồ sơ xuất hiện trong đề xuất và kết quả khám phá."
           title="Hiển thị trong khám phá"
         />
         <SettingsRow
@@ -444,7 +486,7 @@ export function ProfileSettingsScreen() {
           onPress={() =>
             void updateSetting('allowProfileShare', !settings.allowProfileShare)
           }
-          subtitle="Cài đặt trình bày cục bộ; không phải profile visibility authority."
+          subtitle="Chỉ áp dụng cho ảnh chia sẻ do bạn tạo; không thay đổi ai được xem hồ sơ."
           title="Cho phép tạo ảnh chia sẻ"
         />
         <SettingsRow
@@ -462,7 +504,7 @@ export function ProfileSettingsScreen() {
           onPress={() =>
             void updateSetting('showWinRate', !settings.showWinRate)
           }
-          subtitle="Tuỳ chọn trình bày; không thay đổi reputation hoặc trust authority."
+          subtitle="Chỉ thay đổi cách hồ sơ hiển thị tỷ lệ thắng."
           title="Hiển thị tỷ lệ thắng"
         />
         <SettingsRow
@@ -874,10 +916,10 @@ function privacyErrorCode(error: unknown) {
 function privacyErrorMessage(error: unknown) {
   const code = privacyErrorCode(error);
   if (code === 'privacy_version_conflict') {
-    return 'Policy đã thay đổi ở phiên khác. Hãy tải lại trước khi lưu.';
+    return 'Cài đặt đã thay đổi ở thiết bị khác. Hãy tải lại trước khi lưu.';
   }
   if (code === 'privacy_forbidden') {
-    return 'Không thể xác minh privacy authority. Các lựa chọn đang bị khoá an toàn.';
+    return 'Chưa thể xác minh quyền riêng tư. Các lựa chọn tạm thời bị khoá để bảo vệ bạn.';
   }
   return error instanceof Error && error.message
     ? error.message

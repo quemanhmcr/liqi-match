@@ -45,6 +45,7 @@ import type {
   SendChatTextCommand,
 } from './chat-message-transport';
 import type { ChatRepository } from './chat-repository';
+import type { ConversationLifecyclePort } from './conversation-lifecycle';
 import { emitConversationTelemetry } from './conversation-telemetry';
 import {
   MessageReportEvidenceV2Schema,
@@ -191,7 +192,8 @@ type AccessTokenSubscriber = (
 export type SupabaseConversationV2Adapter = ChatRepository &
   ChatMessageTransport &
   MessageReportEvidenceProvider &
-  ConversationModerationProvider & {
+  ConversationModerationProvider &
+  ConversationLifecyclePort & {
     readonly authorityVersion: 2;
     dispose: () => Promise<void>;
     setSession: (session: AuthSession | null) => Promise<void>;
@@ -216,6 +218,7 @@ export function createSupabaseConversationV2Adapter(
   const conversationVersionById = new Map<string, number>();
   const cursorVersionById = new Map<string, number>();
   const lastSequenceById = new Map<string, number>();
+  const acknowledgedDeliveryMessageIds = new Set<string>();
   let session: AuthSession | null = null;
   let sessionEpoch = 0;
   let requestSequence = 0;
@@ -276,6 +279,7 @@ export function createSupabaseConversationV2Adapter(
     conversationVersionById.clear();
     cursorVersionById.clear();
     lastSequenceById.clear();
+    acknowledgedDeliveryMessageIds.clear();
   };
 
   const removeAllChannels = async () => {
@@ -385,6 +389,50 @@ export function createSupabaseConversationV2Adapter(
     return cached ?? loadSurface(conversationId);
   };
 
+  const acknowledgeDeliveries = (
+    messages: readonly CombinedMessageV2[],
+    surface: ConversationMobileSurfaceV2,
+    expectedEpoch: number,
+  ) => {
+    const pending = messages.filter(
+      (message) =>
+        message.senderPlayerId !== null &&
+        message.senderPlayerId !== surface.viewer.playerId &&
+        message.sequence > surface.readCursor.lastReadSequence &&
+        !acknowledgedDeliveryMessageIds.has(message.messageId),
+    );
+    for (const message of pending) {
+      acknowledgedDeliveryMessageIds.add(message.messageId);
+    }
+    void (async () => {
+      for (let index = 0; index < pending.length; index += 5) {
+        const batch = pending.slice(index, index + 5);
+        await Promise.allSettled(
+          batch.map(async (message) => {
+            try {
+              await call<unknown>(
+                'acknowledge_message_delivery_v2',
+                {
+                  command: {
+                    causationId: null,
+                    correlationId: stableUuid(
+                      `delivery:${message.messageId}:${surface.viewer.playerId}`,
+                    ),
+                    messageId: message.messageId,
+                  },
+                },
+                undefined,
+                expectedEpoch,
+              );
+            } catch {
+              acknowledgedDeliveryMessageIds.delete(message.messageId);
+            }
+          }),
+        );
+      }
+    })();
+  };
+
   const repository: ChatRepository = {
     async getConversation(conversationId, context) {
       const epoch = sessionEpoch;
@@ -428,6 +476,7 @@ export function createSupabaseConversationV2Adapter(
         epoch,
       );
       const page = ConversationTimelineV2Schema.parse(raw);
+      acknowledgeDeliveries(page.items, surface, epoch);
       return MessageTimelineResponseSchema.parse(
         response({
           items: page.items.map((message) =>
@@ -506,6 +555,7 @@ export function createSupabaseConversationV2Adapter(
         messageCount: ordered.length,
         pageCount,
       });
+      acknowledgeDeliveries(ordered, surface, epoch);
       return MessageTimelineResponseSchema.parse(
         response({
           items: ordered.map((message) =>
@@ -832,6 +882,55 @@ export function createSupabaseConversationV2Adapter(
     },
   };
 
+  const lifecycle: ConversationLifecyclePort = {
+    async setMuted(command) {
+      const epoch = sessionEpoch;
+      const surface = await ensureSurface(command.conversationId);
+      if (epoch !== sessionEpoch) throw staleSessionError();
+      if (!surface.viewer.canRead || surface.state !== 'open') {
+        throw accessRevokedError();
+      }
+      const aggregateVersion =
+        conversationVersionById.get(command.conversationId) ?? surface.version;
+      const commandName = command.muted
+        ? 'mute_conversation_v2'
+        : 'unmute_conversation_v2';
+      const raw = await call<unknown>(
+        commandName,
+        {
+          command: {
+            conversationId: command.conversationId,
+            metadata: commandMetadata(
+              stableCommandKey(
+                command.muted ? 'mute' : 'unmute',
+                command.conversationId,
+                aggregateVersion,
+              ),
+              new Date().toISOString(),
+              aggregateVersion,
+            ),
+          },
+        },
+        undefined,
+        epoch,
+      );
+      const receipt = ConversationCommandReceiptSurfaceV2Schema.parse(raw);
+      conversationVersionById.set(
+        command.conversationId,
+        receipt.aggregateVersion,
+      );
+      rememberSurface({
+        ...surface,
+        muted: command.muted,
+        version: receipt.aggregateVersion,
+      });
+      return {
+        conversationId: command.conversationId,
+        muted: command.muted,
+      };
+    },
+  };
+
   type SessionEvidenceInput = Parameters<
     MessageReportEvidenceProvider['captureReportEvidence']
   >[0];
@@ -1017,6 +1116,7 @@ export function createSupabaseConversationV2Adapter(
     repository,
     transport,
     moderation,
+    lifecycle,
   ) as SupabaseConversationV2Adapter;
 }
 
@@ -1067,9 +1167,6 @@ function toConversationSummary(
         ? [
             { id: 'image', state: 'available' },
             { id: 'camera', state: 'available' },
-            { id: 'team_invite', state: 'coming_soon' },
-            { id: 'build_share', state: 'coming_soon' },
-            { id: 'voice', state: 'coming_soon' },
           ]
         : [],
     },
@@ -1092,6 +1189,10 @@ function toConversationSummary(
     },
     presence: { label: subtitleForSurface(surface), state: 'hidden' },
     relationship: relationshipForSource(surface),
+    source: {
+      id: surface.source.sourceId,
+      type: surface.source.sourceType,
+    },
     title,
     viewerState: {
       firstUnreadMessageId: surface.firstUnreadMessageId ?? undefined,

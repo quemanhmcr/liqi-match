@@ -47,6 +47,7 @@ import {
 } from '../components/ChatKeyboardScrollView';
 import { ChatMediaViewer } from '../components/ChatMediaViewer';
 import { ChatMessageReportModal } from '../components/ChatMessageReportModal';
+import { ConversationOptionsModal } from '../components/ConversationOptionsModal';
 import { MessageResolvedImage } from '../components/MessageResolvedImage';
 import {
   LiquidGlassSurface,
@@ -221,10 +222,10 @@ function reportMessageErrorMessage(error: unknown) {
       ? String(error.code)
       : null;
   if (code === 'report_evidence_invalid') {
-    return 'Tin nhắn không còn khớp evidence authoritative của cuộc trò chuyện.';
+    return 'Tin nhắn không còn khớp với bằng chứng đã lưu của cuộc trò chuyện.';
   }
   if (code === 'report_target_not_found') {
-    return 'Tin nhắn không còn tồn tại trong dữ liệu authoritative.';
+    return 'Tin nhắn không còn tồn tại trong dữ liệu mới nhất.';
   }
   if (code === 'report_self_forbidden') {
     return 'Bạn không thể báo cáo tin nhắn của chính mình.';
@@ -429,7 +430,41 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
   });
   const [messageReportTarget, setMessageReportTarget] =
     useState<ReportableMessageTarget | null>(null);
+  const [optionsVisible, setOptionsVisible] = useState(false);
   const reportSubmissionLockedRef = useRef(false);
+  const muteConversationMutation = useMutation({
+    mutationFn: async (muted: boolean) => {
+      if (!conversationId || !services.conversationLifecycle) {
+        throw new Error('Conversation notification lifecycle is unavailable.');
+      }
+      return services.conversationLifecycle.setMuted({
+        conversationId,
+        muted,
+      });
+    },
+    onError: () => {
+      Alert.alert(
+        'Chưa cập nhật được thông báo',
+        'Dữ liệu vừa thay đổi hoặc kết nối đang gián đoạn. Hãy thử lại.',
+      );
+    },
+    onSuccess: (receipt) => {
+      setConversationData((current) =>
+        current?.conversationId === receipt.conversationId && current.surface
+          ? {
+              ...current,
+              surface: {
+                ...current.surface,
+                viewerState: {
+                  ...current.surface.viewerState,
+                  isMuted: receipt.muted,
+                },
+              },
+            }
+          : current,
+      );
+    },
+  });
   const reportMessageMutation = useMutation({
     mutationFn: (category: ReportCategoryV2) => {
       if (
@@ -684,6 +719,19 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
     () => mergeThreadMessages(historyMessages, localMessages),
     [historyMessages, localMessages],
   );
+  const latestReportTarget = useMemo(() => {
+    for (let index = displayedMessages.length - 1; index >= 0; index -= 1) {
+      const message = displayedMessages[index];
+      if (!message) continue;
+      const target = reportableMessageTarget(
+        message,
+        conversationKey,
+        reporterPlayerId,
+      );
+      if (target) return target;
+    }
+    return null;
+  }, [conversationKey, displayedMessages, reporterPlayerId]);
   const firstUnreadMessageId = readConversation
     ? undefined
     : thread?.firstUnreadMessageId;
@@ -1305,7 +1353,15 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
     >
       <View pointerEvents="none" style={styles.ambientPurple} />
       <View pointerEvents="none" style={styles.ambientCyan} />
-      <ChatHeader surface={surface} thread={thread} />
+      <ChatHeader
+        onOpenOptions={() => {
+          selectionImpact();
+          setOptionsVisible(true);
+        }}
+        surface={surface}
+        thread={thread}
+      />
+      <ConversationSourceBanner source={surface.source} />
       <ChatNetworkBanner
         networkState={networkState}
         queuedMessageCount={queuedMessageCount}
@@ -1457,6 +1513,39 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
           />
         )}
       </ChatComposerDock>
+      <ConversationOptionsModal
+        canMute={Boolean(
+          surface.capabilities.canMute && services.conversationLifecycle,
+        )}
+        canReport={Boolean(latestReportTarget)}
+        isMuted={surface.viewerState.isMuted}
+        muting={muteConversationMutation.isPending}
+        onClose={() => setOptionsVisible(false)}
+        onReport={() => {
+          setOptionsVisible(false);
+          if (latestReportTarget) setMessageReportTarget(latestReportTarget);
+        }}
+        onToggleMute={() => {
+          muteConversationMutation.mutate(!surface.viewerState.isMuted);
+        }}
+        onViewProfile={() => {
+          const peer = surface.participants.preview[0];
+          if (!peer) return;
+          setOptionsVisible(false);
+          router.push(appRoutes.profile.playerDetail(peer.id));
+        }}
+        onViewSource={() => {
+          setOptionsVisible(false);
+          if (surface.source?.type === 'play_session') {
+            router.push(appRoutes.sessions.detail(surface.source.id));
+          } else if (surface.source?.type === 'direct_match') {
+            router.push(appRoutes.discover.matchDetail(surface.source.id));
+          }
+        }}
+        peer={surface.participants.preview[0]}
+        source={surface.source}
+        visible={optionsVisible}
+      />
       <ChatMessageReportModal
         onClose={() => {
           if (!reportSubmissionLockedRef.current) setMessageReportTarget(null);
@@ -1629,10 +1718,46 @@ function ChatTimelineSeparator({ createdAt }: { createdAt: string }) {
   );
 }
 
+function ConversationSourceBanner({
+  source,
+}: {
+  source?: MessageConversationDetail['source'];
+}) {
+  if (source?.type !== 'play_session') return null;
+  return (
+    <Pressable
+      accessibilityLabel="Mở chi tiết phiên chơi"
+      accessibilityRole="button"
+      onPress={() => {
+        selectionImpact();
+        router.push(appRoutes.sessions.detail(source.id));
+      }}
+      style={({ pressed }) => [styles.sourceBanner, pressed && styles.pressed]}
+    >
+      <View style={styles.sourceBannerIcon}>
+        <Ionicons color="#CFB7FF" name="game-controller-outline" size={16} />
+      </View>
+      <View style={styles.sourceBannerCopy}>
+        <Text style={styles.sourceBannerEyebrow}>PHIÊN CHƠI</Text>
+        <Text numberOfLines={1} style={styles.sourceBannerText}>
+          Trò chuyện của cả nhóm · Xem lịch và trạng thái
+        </Text>
+      </View>
+      <Ionicons
+        color="rgba(218, 225, 247, 0.46)"
+        name="chevron-forward"
+        size={16}
+      />
+    </Pressable>
+  );
+}
+
 function ChatHeader({
+  onOpenOptions,
   surface,
   thread,
 }: {
+  onOpenOptions: () => void;
   surface: MessageConversationDetail;
   thread: ChatThread;
 }) {
@@ -1690,26 +1815,11 @@ function ChatHeader({
       </View>
 
       <View style={styles.headerActions}>
-        {surface.capabilities.canCall ? (
-          <LiquidOrbButton
-            accessibilityLabel={`Gọi cho ${thread.name}`}
-            glassIntensity="low"
-            glowIntensity="low"
-            onPress={lightImpact}
-            size={34}
-          >
-            <Ionicons
-              color="rgba(232,238,255,0.72)"
-              name="call-outline"
-              size={17}
-            />
-          </LiquidOrbButton>
-        ) : null}
         <LiquidOrbButton
           accessibilityLabel={`Tuỳ chọn cuộc trò chuyện với ${thread.name}`}
           glassIntensity="low"
           glowIntensity="low"
-          onPress={selectionImpact}
+          onPress={onOpenOptions}
           size={34}
         >
           <Ionicons
@@ -2415,14 +2525,10 @@ function TeamInviteCard({
   message: Extract<ChatMessage, { kind: 'team-invite' }>;
 }) {
   return (
-    <Pressable
-      accessibilityLabel={`Xem set ${message.teamName}`}
-      accessibilityRole="button"
-      onPress={selectionImpact}
-      style={({ pressed }) => [
-        styles.teamCardPressable,
-        pressed && styles.pressed,
-      ]}
+    <View
+      accessibilityLabel={`Lời mời Set ${message.teamName}`}
+      accessible
+      style={styles.teamCardPressable}
     >
       <LinearGradient
         colors={[
@@ -2479,10 +2585,10 @@ function TeamInviteCard({
             start={{ x: 0, y: 0 }}
             style={StyleSheet.absoluteFill}
           />
-          <Text style={styles.teamActionText}>Xem set</Text>
+          <Text style={styles.teamActionText}>Lời mời Set</Text>
         </View>
       </LinearGradient>
-    </Pressable>
+    </View>
   );
 }
 
@@ -2501,14 +2607,10 @@ function BuildShareMessage({
         <IncomingAvatar show={showAvatar} thread={thread} />
         <View style={[styles.incomingBubble, styles.buildShareBubble]}>
           <Text style={styles.messageText}>{message.text}</Text>
-          <Pressable
-            accessibilityLabel={`Xem build ${message.heroName}`}
-            accessibilityRole="button"
-            onPress={selectionImpact}
-            style={({ pressed }) => [
-              styles.buildCardPressable,
-              pressed && styles.pressed,
-            ]}
+          <View
+            accessibilityLabel={`Build ${message.heroName}`}
+            accessible
+            style={styles.buildCardPressable}
           >
             <LinearGradient
               colors={[
@@ -2553,7 +2655,7 @@ function BuildShareMessage({
                   ))}
                 </View>
                 <View style={styles.buildActionLine}>
-                  <Text style={styles.buildActionText}>Xem build</Text>
+                  <Text style={styles.buildActionText}>Chi tiết build</Text>
                   <Ionicons
                     color="rgba(194,170,255,0.84)"
                     name="arrow-forward"
@@ -2562,7 +2664,7 @@ function BuildShareMessage({
                 </View>
               </View>
             </LinearGradient>
-          </Pressable>
+          </View>
         </View>
       </View>
       <Text style={styles.incomingTime}>
@@ -2652,7 +2754,7 @@ function Avatar({
   );
 }
 
-type ComposerTray = 'attachments' | 'emoji' | 'voice';
+type ComposerTray = 'attachments' | 'emoji';
 
 const quickEmojis = ['💜', '✨', '🔥', '😂', '👊🏻', 'GG', '🎮', '😎'] as const;
 
@@ -2873,16 +2975,10 @@ function ChatComposer({
   const attachmentActionIds: readonly MessageComposerAction['id'][] = [
     'image',
     'camera',
-    'team_invite',
-    'build_share',
   ];
   const hasVisibleAttachmentAction = attachmentActionIds.some(
-    (id) => actionState(id) !== 'hidden',
+    (id) => actionState(id) === 'available',
   );
-  const showComingSoonNotice = (label: string) => {
-    setComposerNotice(`${label} đang được hoàn thiện.`);
-    setActiveTray(undefined);
-  };
   const canSend =
     (normalizeChatText(draft).length > 0 || Boolean(selectedMedia)) &&
     (!selectedMedia || selectedMediaPhase === 'ready');
@@ -2959,44 +3055,18 @@ function ChatComposer({
               accessibilityLabel="Tuỳ chọn đính kèm"
               style={styles.actionTray}
             >
-              {actionState('image') !== 'hidden' ? (
+              {actionState('image') === 'available' ? (
                 <ComposerAction
                   icon="images-outline"
                   label="Ảnh/video"
-                  onPress={() =>
-                    actionState('image') === 'available'
-                      ? void chooseMedia('library')
-                      : showComingSoonNotice('Chọn ảnh/video')
-                  }
-                  state={actionState('image')}
+                  onPress={() => void chooseMedia('library')}
                 />
               ) : null}
-              {actionState('camera') !== 'hidden' ? (
+              {actionState('camera') === 'available' ? (
                 <ComposerAction
                   icon="camera-outline"
                   label="Camera"
-                  onPress={() =>
-                    actionState('camera') === 'available'
-                      ? void chooseMedia('camera')
-                      : showComingSoonNotice('Camera')
-                  }
-                  state={actionState('camera')}
-                />
-              ) : null}
-              {actionState('team_invite') !== 'hidden' ? (
-                <ComposerAction
-                  icon="people-outline"
-                  label="Mời vào set"
-                  onPress={() => showComingSoonNotice('Mời vào set')}
-                  state={actionState('team_invite')}
-                />
-              ) : null}
-              {actionState('build_share') !== 'hidden' ? (
-                <ComposerAction
-                  icon="construct-outline"
-                  label="Chia sẻ build"
-                  onPress={() => showComingSoonNotice('Chia sẻ build')}
-                  state={actionState('build_share')}
+                  onPress={() => void chooseMedia('camera')}
                 />
               ) : null}
             </View>
@@ -3016,25 +3086,6 @@ function ChatComposer({
                   <Text style={styles.emojiActionText}>{emoji}</Text>
                 </Pressable>
               ))}
-            </View>
-          ) : null}
-          {activeTray === 'voice' ? (
-            <View
-              accessibilityLabel="Tin nhắn thoại chưa khả dụng"
-              accessible
-              style={styles.voiceTray}
-            >
-              <Ionicons
-                color="rgba(205,184,255,0.82)"
-                name="mic-outline"
-                size={18}
-              />
-              <View style={styles.voiceTrayCopy}>
-                <Text style={styles.voiceTrayTitle}>Tin nhắn thoại</Text>
-                <Text style={styles.voiceTrayText}>
-                  Tính năng ghi âm đang được hoàn thiện.
-                </Text>
-              </View>
             </View>
           ) : null}
           {composerNotice ? (
@@ -3126,22 +3177,6 @@ function ChatComposer({
           </Pressable>
         </LiquidGlassSurface>
 
-        {actionState('voice') !== 'hidden' ? (
-          <LiquidOrbButton
-            accessibilityLabel="Gửi tin nhắn thoại"
-            glassIntensity="low"
-            glowIntensity="low"
-            onPress={() => openTray('voice')}
-            size={36}
-          >
-            <Ionicons
-              color="rgba(210,220,244,0.56)"
-              name={activeTray === 'voice' ? 'close' : 'mic-outline'}
-              size={17}
-            />
-          </LiquidOrbButton>
-        ) : null}
-
         <Pressable
           accessibilityLabel="Gửi tin nhắn"
           accessibilityRole="button"
@@ -3171,12 +3206,10 @@ function ComposerAction({
   icon,
   label,
   onPress,
-  state,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
-  state: MessageComposerAction['state'];
 }) {
   return (
     <Pressable
@@ -3194,9 +3227,6 @@ function ComposerAction({
       <Text numberOfLines={1} style={styles.composerActionText}>
         {label}
       </Text>
-      {state === 'coming_soon' ? (
-        <Text style={styles.composerActionState}>Sắp có</Text>
-      ) : null}
     </Pressable>
   );
 }
@@ -3288,12 +3318,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 46,
   },
-  composerActionState: {
-    color: 'rgba(205,184,255,0.58)',
-    fontSize: 8.5,
-    fontWeight: '800',
-    marginTop: -2,
-  },
   composerActionText: {
     color: 'rgba(213,222,246,0.66)',
     fontSize: 9.5,
@@ -3374,6 +3398,39 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 38,
   },
+  sourceBanner: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(103, 73, 183, 0.10)',
+    borderBottomColor: 'rgba(193, 166, 255, 0.10)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 10,
+    minHeight: 50,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  sourceBannerCopy: { flex: 1, gap: 2, minWidth: 0 },
+  sourceBannerEyebrow: {
+    color: 'rgba(203, 179, 255, 0.70)',
+    fontSize: 8.5,
+    fontWeight: '900',
+    letterSpacing: 0.9,
+  },
+  sourceBannerIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(131, 91, 232, 0.16)',
+    borderColor: 'rgba(196, 169, 255, 0.14)',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 34,
+    justifyContent: 'center',
+    width: 34,
+  },
+  sourceBannerText: {
+    color: 'rgba(225, 230, 248, 0.66)',
+    fontSize: 10.5,
+    fontWeight: '600',
+  },
   timeGap: {
     alignItems: 'center',
     alignSelf: 'center',
@@ -3410,28 +3467,6 @@ const styles = StyleSheet.create({
     marginBottom: 14,
     marginTop: 20,
     paddingHorizontal: 18,
-  },
-  voiceTray: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(112,82,190,0.08)',
-    borderColor: 'rgba(180,147,255,0.14)',
-    borderRadius: 13,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: 9,
-    paddingHorizontal: 11,
-    paddingVertical: 9,
-  },
-  voiceTrayCopy: { flex: 1, gap: 2 },
-  voiceTrayText: {
-    color: 'rgba(198,208,233,0.52)',
-    fontSize: 10.2,
-    lineHeight: 13,
-  },
-  voiceTrayTitle: {
-    color: 'rgba(232,225,255,0.84)',
-    fontSize: 11.5,
-    fontWeight: '700',
   },
   composerRow: {
     alignItems: 'center',

@@ -74,6 +74,10 @@ export async function handleFinalizeUpload(request: Request) {
     }
 
     if (asset.data.status === 'uploaded') {
+      await enqueueMediaProcessingJob({
+        assetId: asset.data.id,
+        objectKey: asset.data.object_key,
+      });
       return jsonResponse({
         assetId: asset.data.id,
         status: asset.data.status,
@@ -128,6 +132,10 @@ export async function handleFinalizeUpload(request: Request) {
         eventType: 'media_processing_requested',
         objectKey: asset.data.object_key,
       });
+      await enqueueMediaProcessingJob({
+        assetId: asset.data.id,
+        objectKey: asset.data.object_key,
+      });
     }
 
     return jsonResponse({
@@ -135,11 +143,25 @@ export async function handleFinalizeUpload(request: Request) {
       status: update.data.status,
     });
   } catch (error) {
+    if (error instanceof MediaProcessingQueueError) {
+      return errorResponse(
+        503,
+        'media_processing_unavailable',
+        'Media was uploaded but processing could not be scheduled. Retry finalize.',
+      );
+    }
     return errorResponse(
       400,
       'bad_request',
       error instanceof Error ? error.message : 'Bad request.',
     );
+  }
+}
+
+class MediaProcessingQueueError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'MediaProcessingQueueError';
   }
 }
 
@@ -162,6 +184,68 @@ function promoteProfileMediaAsset(
     .eq('status', expectedStatus)
     .select('id, status')
     .single();
+}
+
+async function enqueueMediaProcessingJob(input: {
+  assetId: string;
+  objectKey: string;
+}) {
+  const mediaWorkerInternalUrl = Deno.env.get('MEDIA_WORKER_INTERNAL_URL');
+  const mediaWorkerInternalToken = Deno.env.get('MEDIA_WORKER_INTERNAL_TOKEN');
+  if (!mediaWorkerInternalUrl || !mediaWorkerInternalToken) {
+    console.error(
+      JSON.stringify({
+        assetId: input.assetId,
+        level: 'error',
+        message: 'media_processing_queue_not_configured',
+      }),
+    );
+    throw new MediaProcessingQueueError(
+      'Media processing queue is not configured.',
+    );
+  }
+
+  try {
+    const baseUrl = mediaWorkerInternalUrl.replace(/\/$/, '');
+    const response = await fetch(`${baseUrl}/internal/media/process`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${mediaWorkerInternalToken}`,
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: 'media_processing_requested',
+        assetId: input.assetId,
+        objectKey: input.objectKey,
+      }),
+    });
+    if (!response.ok) {
+      console.error(
+        JSON.stringify({
+          assetId: input.assetId,
+          level: 'error',
+          message: 'media_processing_queue_enqueue_failed',
+          status: response.status,
+        }),
+      );
+      throw new MediaProcessingQueueError(
+        `Media processing queue returned ${response.status}.`,
+      );
+    }
+  } catch (error) {
+    if (error instanceof MediaProcessingQueueError) throw error;
+    console.error(
+      JSON.stringify({
+        assetId: input.assetId,
+        level: 'error',
+        message: 'media_processing_queue_enqueue_failed',
+        reason: error instanceof Error ? error.message : 'unknown_error',
+      }),
+    );
+    throw new MediaProcessingQueueError(
+      error instanceof Error ? error.message : 'Unknown queue error.',
+    );
+  }
 }
 
 async function enqueueMediaOutboxEvent(

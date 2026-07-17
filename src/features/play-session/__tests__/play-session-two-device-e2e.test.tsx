@@ -17,10 +17,18 @@ import type { ReactElement } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { InMemoryConversationV2Authority } from '@/entities/conversation-v2/in-memory-conversation-v2-authority';
+import {
+  InMemoryPlayerIdentityRepository,
+  PlayerIdentityRepositoryProvider,
+} from '@/entities/player-identity';
 import { createConversationV2SessionProvisioner } from '@/entities/play-session/conversation-v2-session-provisioner';
 import { prepareCoreV2CommandMetadata } from '@/entities/play-session/core-v2-command-metadata';
 import { InMemoryRepeatPlaySessionService } from '@/entities/play-session/in-memory-repeat-play-session-service';
 import { PlaySessionServicesProvider } from '@/entities/play-session/PlaySessionServicesProvider';
+import {
+  InMemorySocialRelationshipRepository,
+  RelationshipCapabilitiesProvider,
+} from '@/entities/social-relationship';
 import type { PlaySessionActorContext } from '@/entities/play-session/play-session-repository';
 import { InMemoryTrustOutcomesEngine } from '@/entities/trust-outcomes/in-memory-trust-outcomes-engine';
 import { createTrustAwarePlaySessionCommandService } from '@/entities/trust-outcomes/play-session-trust-outcome-bridge';
@@ -31,6 +39,7 @@ import {
   PlayerLifecycleSnapshotV1Schema,
   type PlayerId,
 } from '@/shared/contracts/core-v1';
+import { SocialRelationshipSnapshotV2Schema } from '@/shared/contracts/core-v2';
 
 import { PlaySessionCreateScreen } from '../screens/PlaySessionCreateScreen';
 import { PlaySessionDetailScreen } from '../screens/PlaySessionDetailScreen';
@@ -116,6 +125,62 @@ function createQueryClient() {
   return client;
 }
 
+function acceptedFriendship(
+  viewerPlayerId: PlayerId,
+  targetPlayerId: PlayerId,
+) {
+  return SocialRelationshipSnapshotV2Schema.parse({
+    block: { targetBlocksViewer: false, viewerBlocksTarget: false },
+    capabilities: {
+      blocked: false,
+      canAcceptFriendship: false,
+      canBlock: true,
+      canCancelFriendship: false,
+      canDeclineFriendship: false,
+      canDiscover: true,
+      canInviteToSession: true,
+      canMessage: true,
+      canMute: true,
+      canRemoveFriendship: true,
+      canReport: true,
+      canRequestFriendship: false,
+      canUnblock: false,
+      canUnmute: false,
+      canViewConversation: true,
+      canViewPresence: true,
+      canViewProfile: true,
+      friendshipLabel: 'friend',
+      muted: false,
+    },
+    contractVersion: 2,
+    friendship: {
+      acceptedAt: NOW,
+      label: 'friend',
+      requestId: null,
+      requestState: null,
+      requestVersion: null,
+      state: 'accepted',
+    },
+    mute: { viewerMutedTarget: false },
+    relationshipId: 'b1600000-0000-4000-8000-000000000001',
+    targetPlayerId,
+    targetPrivacy: {
+      contractVersion: 2,
+      friendshipRequests: 'everyone',
+      playerId: targetPlayerId,
+      presenceVisibility: 'friends',
+      profileVisibility: 'everyone',
+      sessionInvites: 'friends',
+      trustVisibility: 'friends',
+      updatedAt: NOW,
+      version: 1,
+    },
+    updatedAt: NOW,
+    version: 1,
+    viewerPlayerId,
+  });
+}
+
 function createHarness() {
   let sequence = 100;
   let elapsed = 0;
@@ -152,12 +217,23 @@ function createHarness() {
     },
   });
   const trust = new InMemoryTrustOutcomesEngine(clock);
+  const identityRepository = new InMemoryPlayerIdentityRepository();
+  const relationshipRepository = new InMemorySocialRelationshipRepository({
+    relationships: [acceptedFriendship(A, B)],
+  });
   const commandService = createTrustAwarePlaySessionCommandService({
     delegate: sessionAuthority,
     eventLog: sessionAuthority,
     sessionOutcomeRepository: trust,
   });
-  return { commandService, conversation, sessionAuthority, trust };
+  return {
+    commandService,
+    conversation,
+    identityRepository,
+    relationshipRepository,
+    sessionAuthority,
+    trust,
+  };
 }
 
 type Harness = ReturnType<typeof createHarness>;
@@ -169,16 +245,22 @@ async function renderDevice(
 ): Promise<RenderResult> {
   return await render(
     <QueryClientProvider client={client}>
-      <SafeAreaProvider initialMetrics={metrics}>
-        <PlaySessionServicesProvider
-          commandService={harness.commandService}
-          conversationMessageTransport={harness.conversation}
-          conversationRepository={harness.conversation}
-          repository={harness.sessionAuthority}
+      <PlayerIdentityRepositoryProvider repository={harness.identityRepository}>
+        <RelationshipCapabilitiesProvider
+          repository={harness.relationshipRepository}
         >
-          {screen}
-        </PlaySessionServicesProvider>
-      </SafeAreaProvider>
+          <SafeAreaProvider initialMetrics={metrics}>
+            <PlaySessionServicesProvider
+              commandService={harness.commandService}
+              conversationMessageTransport={harness.conversation}
+              conversationRepository={harness.conversation}
+              repository={harness.sessionAuthority}
+            >
+              {screen}
+            </PlaySessionServicesProvider>
+          </SafeAreaProvider>
+        </RelationshipCapabilitiesProvider>
+      </PlayerIdentityRepositoryProvider>
     </QueryClientProvider>,
   );
 }
@@ -192,7 +274,7 @@ function switchDevice(
 }
 
 function press(screen: RenderResult, label: string) {
-  return fireEvent.press(screen.getByText(label));
+  return fireEvent.press(screen.getByRole('button', { name: label }));
 }
 
 beforeEach(() => {
@@ -231,10 +313,9 @@ describe('Core V2 two-device mobile E2E', () => {
       deviceA,
       harness,
     );
-    await fireEvent.changeText(
-      screen.getByLabelText('PlayerId mời ban đầu'),
-      B,
-    );
+    await press(screen, 'Chọn bạn');
+    await fireEvent.press(await screen.findByLabelText('Chọn Người chơi 1'));
+    await press(screen, 'Xác nhận');
     await press(screen, 'Tạo buổi chơi');
     await waitFor(() => expect(mockReplace).toHaveBeenCalledTimes(1));
     const sessionsA = await harness.sessionAuthority.listCurrent(actorA);
@@ -273,13 +354,13 @@ describe('Core V2 two-device mobile E2E', () => {
     switchDevice(authA, { sessionId });
     screen = await renderDevice(<PlaySessionDetailScreen />, deviceA, harness);
     await waitFor(() => {
-      if (!screen.queryByText('Mở ready-check')) {
+      if (!screen.queryByText('Mở kiểm tra sẵn sàng')) {
         throw new Error(
           `Ready action not rendered. Tree: ${JSON.stringify(screen.toJSON())}`,
         );
       }
     });
-    await press(screen, 'Mở ready-check');
+    await press(screen, 'Mở kiểm tra sẵn sàng');
     await waitFor(() =>
       expect(
         harness.sessionAuthority
@@ -449,10 +530,9 @@ describe('Core V2 two-device mobile E2E', () => {
       deviceA,
       harness,
     );
-    await fireEvent.changeText(
-      screen.getByLabelText('PlayerId mời ban đầu'),
-      B,
-    );
+    await press(screen, 'Chọn bạn');
+    await fireEvent.press(await screen.findByLabelText('Chọn Người chơi 1'));
+    await press(screen, 'Xác nhận');
     await press(screen, 'Tạo buổi chơi');
     await waitFor(() => expect(mockReplace).toHaveBeenCalledTimes(1));
     const sessionId = (await harness.sessionAuthority.listCurrent(actorA))[0]!
@@ -462,8 +542,6 @@ describe('Core V2 two-device mobile E2E', () => {
     switchDevice(authB, {});
     screen = await renderDevice(<PlaySessionListScreen />, deviceB, harness);
     await waitFor(() => expect(screen.getByText('Tham gia')).toBeTruthy());
-    expect(screen.getByText(/v1/)).toBeTruthy();
-
     await harness.commandService.schedule(actorA, {
       ...prepareCoreV2CommandMetadata(1),
       scheduledFor: '2026-07-14T13:00:00.000Z',
@@ -472,7 +550,11 @@ describe('Core V2 two-device mobile E2E', () => {
     });
     await press(screen, 'Tham gia');
 
-    await waitFor(() => expect(screen.getByText(/v2/)).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent(
+        /Dữ liệu vừa thay đổi hoặc kết nối đang gián đoạn/,
+      ),
+    );
     expect(
       harness.sessionAuthority
         .listEvents(sessionId)

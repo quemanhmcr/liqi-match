@@ -29,3 +29,4 @@ export {
   type SocialTelemetryEvent,
   type SocialTelemetrySink,
 } from './social-telemetry';
+export * from './social-relationship-queries';

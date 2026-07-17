@@ -7,6 +7,7 @@ import { SupabaseMediaRepository } from '../infrastructure/supabase/supabase-res
 import type { WorkerEnv } from '../platform/env';
 import { jsonError } from '../transport/http/http-responses';
 import { handleInternalDelete } from '../transport/http/internal-delete-handler';
+import { handleInternalProcess } from '../transport/http/internal-process-handler';
 import { handleMediaRequest } from '../transport/http/media-handler';
 import { consumeMediaQueue } from '../transport/queue/media-queue-consumer';
 
@@ -25,6 +26,17 @@ export function createMediaWorker(): ExportedHandler<
         : undefined;
 
       try {
+        if (
+          request.method === 'POST' &&
+          url.pathname === '/internal/media/process'
+        ) {
+          return await handleInternalProcess({
+            internalToken: env.INTERNAL_WORKER_TOKEN,
+            queue,
+            request,
+            requestId,
+          });
+        }
         if (
           request.method === 'POST' &&
           url.pathname === '/internal/media/delete'

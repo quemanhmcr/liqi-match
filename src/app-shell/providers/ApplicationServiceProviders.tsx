@@ -9,6 +9,7 @@ import {
   usePreloadAssetSurface,
 } from '@/entities/media-asset';
 import { NotificationRepositoryProvider } from '@/entities/notifications';
+import { PlayerIdentityRepositoryProvider } from '@/entities/player-identity';
 import { PlaySessionServicesProvider } from '@/entities/play-session';
 import { RelationshipCapabilitiesProvider } from '@/entities/social-relationship';
 import { TrustOutcomesServicesProvider } from '@/entities/trust-outcomes';
@@ -45,6 +46,7 @@ export function ApplicationServiceProviders({
               >
                 <HomeRepositoryProvider repository={services.homeRepository}>
                   <MessagesServicesProvider
+                    conversationLifecycle={services.conversationLifecycle}
                     evidenceProvider={services.messageReportEvidenceProvider}
                     messageTransport={services.messageTransport}
                     repository={services.messageRepository}
@@ -55,24 +57,26 @@ export function ApplicationServiceProviders({
                       <RelationshipCapabilitiesProvider
                         repository={services.relationshipRepository}
                       >
-                        <ProfileReadRepositoryProvider
-                          repository={services.profileRepository}
+                        <PlayerIdentityRepositoryProvider
+                          repository={services.playerIdentityRepository}
                         >
-                          <PlaySessionServicesProvider
-                            commandService={services.playSessionCommandService}
-                            repository={services.playSessionRepository}
-                            conversationRepository={
-                              services.conversationV2Repository
-                            }
-                            conversationMessageTransport={
-                              services.conversationV2MessageTransport
-                            }
+                          <ProfileReadRepositoryProvider
+                            repository={services.profileRepository}
                           >
-                            <TrustOutcomesServicesProvider services={services}>
-                              {children}
-                            </TrustOutcomesServicesProvider>
-                          </PlaySessionServicesProvider>
-                        </ProfileReadRepositoryProvider>
+                            <PlaySessionServicesProvider
+                              commandService={
+                                services.playSessionCommandService
+                              }
+                              repository={services.playSessionRepository}
+                            >
+                              <TrustOutcomesServicesProvider
+                                services={services}
+                              >
+                                {children}
+                              </TrustOutcomesServicesProvider>
+                            </PlaySessionServicesProvider>
+                          </ProfileReadRepositoryProvider>
+                        </PlayerIdentityRepositoryProvider>
                       </RelationshipCapabilitiesProvider>
                     </NotificationRepositoryProvider>
                   </MessagesServicesProvider>

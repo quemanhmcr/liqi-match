@@ -19,6 +19,7 @@
     "expo-constants": "~56.0.21",
     "expo-crypto": "~56.0.4",
     "expo-dev-client": "~56.0.23",
+    "expo-device": "~56.0.4",
     "expo-file-system": "~56.0.8",
     "expo-font": "~56.0.7",
     "expo-haptics": "~56.0.3",
@@ -27,12 +28,14 @@
     "expo-linear-gradient": "~56.0.4",
     "expo-linking": "~56.0.15",
     "expo-media-library": "~56.0.9",
+    "expo-notifications": "~56.0.21",
     "expo-router": "~56.2.15",
     "expo-secure-store": "~56.0.4",
     "expo-sharing": "~56.0.22",
     "expo-splash-screen": "~56.0.13",
     "expo-status-bar": "~56.0.4",
     "expo-system-ui": "~56.0.5",
+    "expo-video": "~56.1.4",
     "expo-web-browser": "~56.0.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -48,9 +51,7 @@
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.8.3",
     "zod": "^4.4.3",
-    "zustand": "^5.0.14",
-    "expo-notifications": "~56.0.21",
-    "expo-device": "~56.0.4"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@emnapi/core": "^1.11.1",
@@ -133,7 +134,7 @@
     "task:start": "node scripts/worktree/worktree-cli.cjs create",
     "task:inspect": "node scripts/worktree/worktree-cli.cjs doctor",
     "task:list": "node scripts/worktree/worktree-cli.cjs list",
-    "task:check": "npm run repository:check && npm run migration-history:check && npm run core-v2-cloud-lint-runtime:check && npm run contracts:check && npm run profile-availability:check && npm run social-authority:check && npm run friendship-authority:check && npm run social-safety-authority:check && npm run privacy-report-authority:check && npm run friendship-notification:check && npm run social-release:check && npm run return-loop:check && npm run notification-deep-link:check && npm run push-delivery:check && npm run release-readiness:check && npm run e2e:return-loop:api:test && npm run e2e:party-session:api:test && npm run match-authority:check && npm run production-match-loop:check && npm run discovery-authority:check && npm run discover-overview-authority:check && npm run discover-production-path:check && npm run conversation-authority:check && npm run conversation-authority-v2:check && npm run conversation-mobile-v2:check && npm run conversation-evidence-v2:check && npm run conversation-session-saga-v2:check && npm run core-v2-trust-authority:check && npm run core-v2-completed-session:check && npm run core-v2-trust-commands:check && npm run session-feedback-surface:check && npm run core-v2-repeat-activity:check && npm run repeat-play-session:check && npm run session-social-safety:check && npm run match-set-compat-v2:check && npm run party-session-readiness:check && npm run party-session-cloud-db:check && npm run profile-trust-surface:check && npm run activity-deep-link-v2:check && npm run activity-notification-v2:check && npm run match-conversation-projection:check && npm run match-intent-lifecycle-projection:check && npm run home-match-facts:check && npm run match-authority-rollout:check && npm run match-funnel-telemetry:check && npm run match-set-authority:check && npm run party-session-authority:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
+    "task:check": "npm run repository:check && npm run migration-history:check && npm run product-completion-v2:check && npm run core-v2-cloud-lint-runtime:check && npm run contracts:check && npm run profile-availability:check && npm run social-authority:check && npm run friendship-authority:check && npm run social-safety-authority:check && npm run privacy-report-authority:check && npm run friendship-notification:check && npm run social-release:check && npm run return-loop:check && npm run notification-deep-link:check && npm run push-delivery:check && npm run release-readiness:check && npm run e2e:return-loop:api:test && npm run e2e:party-session:api:test && npm run match-authority:check && npm run production-match-loop:check && npm run discovery-authority:check && npm run discover-overview-authority:check && npm run discover-production-path:check && npm run conversation-authority:check && npm run conversation-authority-v2:check && npm run conversation-mobile-v2:check && npm run conversation-evidence-v2:check && npm run conversation-session-saga-v2:check && npm run core-v2-trust-authority:check && npm run core-v2-completed-session:check && npm run core-v2-trust-commands:check && npm run session-feedback-surface:check && npm run core-v2-repeat-activity:check && npm run repeat-play-session:check && npm run session-social-safety:check && npm run match-set-compat-v2:check && npm run party-session-readiness:check && npm run party-session-cloud-db:check && npm run profile-trust-surface:check && npm run activity-deep-link-v2:check && npm run activity-notification-v2:check && npm run match-conversation-projection:check && npm run match-intent-lifecycle-projection:check && npm run home-match-facts:check && npm run match-authority-rollout:check && npm run match-funnel-telemetry:check && npm run match-set-authority:check && npm run party-session-authority:check && npm run assets:check && npm run format:check && npm run architecture:check && npm run security:audit && npm run lint && npm run typecheck && npm run test:ci",
     "task:review": "node scripts/worktree/worktree-cli.cjs overlay",
     "task:undo": "node scripts/worktree/worktree-cli.cjs rollback",
     "task:finish": "node scripts/worktree/worktree-cli.cjs cleanup",
@@ -188,7 +189,11 @@
     "activity-deep-link-v2:check": "node scripts/contracts/check-core-v2-activity-deep-links.cjs",
     "core-v2-cloud-lint-runtime:check": "node scripts/contracts/check-core-v2-cloud-lint-repairs.cjs && node scripts/contracts/parse-conversation-sql-v2.cjs supabase/migrations/202607151220_core_v2_cloud_lint_runtime_repairs_v2.sql",
     "e2e:trust-return-loop:cloud-db": "node scripts/e2e/trust-return-loop-cloud-db-v2.cjs",
-    "e2e:core-v2:cloud-db": "node scripts/e2e/core-v2-cloud-db.cjs"
+    "e2e:core-v2:cloud-db": "node scripts/e2e/core-v2-cloud-db.cjs",
+    "product-completion-v2:check": "node scripts/contracts/check-product-completion-v2.cjs",
+    "party-session:review:status": "node scripts/review/party-session-review-env-v2.cjs status",
+    "party-session:review:enable": "node scripts/review/party-session-review-env-v2.cjs enable-review",
+    "party-session:review:disable-writes": "node scripts/review/party-session-review-env-v2.cjs disable-writes"
   },
   "overrides": {
     "xcode": {

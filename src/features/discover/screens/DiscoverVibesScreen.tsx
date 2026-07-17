@@ -36,9 +36,8 @@ export function DeferredVibeDiscoveryScreen() {
         </View>
         <Text style={styles.title}>Vibe discovery chưa bật trong v1</Text>
         <Text style={styles.body}>
-          Production Match Loop v1 tập trung vào người chơi và đội
-          authoritative. Bề mặt Vibe sẽ được mở khi có contract và backend owner
-          riêng.
+          Production Match Loop v1 tập trung vào người chơi và đội ổn định. Vibe
+          sẽ được mở khi dữ liệu và hành động đã sẵn sàng riêng.
         </Text>
       </View>
     </SafeAreaView>

@@ -153,8 +153,8 @@ export function SessionConversationScreen() {
     return (
       <LiquidScreen title="Communication đang đồng bộ">
         <Text style={styles.meta}>
-          Provider Conversation V2 production chưa sẵn sàng. Hệ thống không rơi
-          sang một chat authority khác.
+          Trò chuyện của buổi chơi chưa sẵn sàng. Hãy quay lại danh sách tin
+          nhắn và thử lại.
         </Text>
       </LiquidScreen>
     );
@@ -162,7 +162,7 @@ export function SessionConversationScreen() {
 
   return (
     <LiquidScreen
-      subtitle="Membership và quyền gửi là projection của Session authority."
+      subtitle="Quyền gửi tin nhắn được cập nhật theo thành viên của buổi chơi."
       title={conversation.data?.title ?? 'Session conversation'}
       withBottomNavPadding={false}
     >
@@ -173,7 +173,7 @@ export function SessionConversationScreen() {
           variant="cyan"
         >
           <Text style={styles.sender}>
-            {message.senderPlayerId ?? 'Hệ thống'} · #{message.sequence}
+            {message.senderPlayerId ? 'Thành viên' : 'Hệ thống'}
           </Text>
           <Text style={styles.body}>
             {message.content.kind === 'text'

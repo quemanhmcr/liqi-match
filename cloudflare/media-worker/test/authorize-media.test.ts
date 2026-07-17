@@ -10,6 +10,7 @@ import type { MediaAsset } from '../src/domain/media/media-types';
 const conversationAsset: MediaAsset = {
   id: 'asset-id',
   owner_id: 'owner-id',
+  purpose: 'chat_attachment',
   object_key: 'chat/owner-id/asset.webp',
   mime_type: 'image/webp',
   byte_size: 42,
@@ -27,6 +28,8 @@ function dependencies({ member = false, userId = 'member-id' } = {}) {
     findById: vi.fn(),
     isConversationMemberForAsset: vi.fn(async () => member),
     markDeleted: vi.fn(),
+    markReady: vi.fn(),
+    markRejected: vi.fn(),
   };
   return { identity, repository };
 }

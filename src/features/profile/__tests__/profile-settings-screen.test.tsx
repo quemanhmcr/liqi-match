@@ -165,7 +165,7 @@ describe('ProfileSettingsScreen Core V2 privacy consumer', () => {
     expect(await screen.findByText('Không ai')).toBeTruthy();
     expect(Alert.alert).toHaveBeenCalledWith(
       'Chưa lưu được quyền riêng tư',
-      'Policy đã thay đổi ở phiên khác. Hãy tải lại trước khi lưu.',
+      'Cài đặt đã thay đổi ở thiết bị khác. Hãy tải lại trước khi lưu.',
     );
   });
 });

@@ -1,3 +1,5 @@
+import type { Href } from 'expo-router';
+
 /**
  * Stable public URLs. Feature screens may depend on this contract, while only
  * app-shell owners change URL policy or primary navigation topology.
@@ -9,10 +11,10 @@ export const appRoutes = {
   },
   discover: {
     matchDetail: (matchId: string) =>
-      ({ pathname: '/discover/matches', params: { matchId } }) as const,
+      `/discover/matches/${encodeURIComponent(matchId)}` as Href,
     matches: '/discover/matches',
     setDetail: (setId: string) =>
-      ({ pathname: '/discover/sets', params: { setId } }) as const,
+      `/discover/sets/${encodeURIComponent(setId)}` as Href,
     sets: '/discover/sets',
     vibes: '/discover/vibes',
   },
@@ -38,10 +40,20 @@ export const appRoutes = {
     rank: '/rank',
   },
   notifications: '/notifications',
+  social: {
+    hub: '/social' as Href,
+  },
+  sets: {
+    create: '/sets/new' as Href,
+    detail: (setId: string) =>
+      `/discover/sets/${encodeURIComponent(setId)}` as Href,
+    edit: (setId: string) => `/sets/${encodeURIComponent(setId)}/edit` as Href,
+    hub: '/sets' as Href,
+  },
   sessions: {
     conversation: (conversationId: string) =>
       ({
-        pathname: '/sessions/conversations/[conversationId]',
+        pathname: '/messages/[conversationId]',
         params: { conversationId },
       }) as const,
     create: '/sessions/new',
@@ -59,6 +71,8 @@ export const appRoutes = {
   },
   profile: {
     blocked: '/profile/settings/blocked',
+    engagement: '/profile/settings/engagement' as Href,
+    gallery: '/profile/gallery' as Href,
     detail: (identityId: string) =>
       ({
         pathname: '/profile/[playerId]',
@@ -69,6 +83,9 @@ export const appRoutes = {
         pathname: '/profile/[playerId]',
         params: { playerId },
       }) as const,
+    reputation: '/profile/reputation' as Href,
+    reputationFor: (playerId: string) =>
+      `/profile/${encodeURIComponent(playerId)}/reputation` as Href,
     edit: '/profile/edit',
     self: '/profile',
     settings: '/profile/settings',

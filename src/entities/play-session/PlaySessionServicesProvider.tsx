@@ -12,8 +12,8 @@ import type {
 type PlaySessionServices = Readonly<{
   commandService: PlaySessionCommandService;
   repository: PlaySessionRepository;
-  conversationRepository: ConversationRepository | null;
-  conversationMessageTransport: MessageTransport | null;
+  conversationRepository?: ConversationRepository;
+  conversationMessageTransport?: MessageTransport;
 }>;
 
 const PlaySessionServicesContext = createContext<

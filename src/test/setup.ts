@@ -17,6 +17,20 @@ jest.mock('expo-blur', () => {
   };
 });
 
+jest.mock('expo-video', () => {
+  const ReactActual = jest.requireActual<typeof import('react')>('react');
+  const { View: MockView } =
+    jest.requireActual<typeof import('react-native')>('react-native');
+  const player = { pause: jest.fn(), play: jest.fn() };
+
+  return {
+    __esModule: true,
+    useVideoPlayer: () => player,
+    VideoView: ({ children, ...props }: { children?: ReactNode }) =>
+      ReactActual.createElement(MockView, props, children),
+  };
+});
+
 jest.mock('react-native-reanimated', () =>
   jest.requireActual('react-native-reanimated/mock'),
 );

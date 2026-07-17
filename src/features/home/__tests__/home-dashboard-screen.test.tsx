@@ -113,8 +113,8 @@ describe('HomeDashboardScreen', () => {
     expect(getByTestId('home-notification-unread-dot')).toBeTruthy();
     expect(getByText('Xin chào,')).toBeTruthy();
     expect(getByText('1 match mới')).toBeTruthy();
-    expect(getByText('Sẵn sàng vào set?')).toBeTruthy();
-    expect(getByText('Chưa sẵn sàng')).toBeTruthy();
+    expect(getByText('Tìm người vào set?')).toBeTruthy();
+    expect(getByText('Chưa tìm đội')).toBeTruthy();
     expect(getByText('Mood · Set Love')).toBeTruthy();
     expect(getByText('Những người đã match')).toBeTruthy();
     expect(getAllByText('Tri kỉ').length).toBeGreaterThan(0);
@@ -223,11 +223,11 @@ describe('HomeDashboardScreen', () => {
   it('uses one explicit ready action and keeps the selected mood visible', async () => {
     const { getByLabelText, getByText } = await renderHomeDashboard();
 
-    await fireEvent.press(getByLabelText('Bật sẵn sàng'));
+    await fireEvent.press(getByLabelText('Bật tìm đội'));
 
     await waitFor(() => {
-      expect(getByLabelText('Tắt sẵn sàng')).toBeTruthy();
-      expect(getByText('Đang sẵn sàng')).toBeTruthy();
+      expect(getByLabelText('Tắt tìm đội')).toBeTruthy();
+      expect(getByText('Đang tìm đội')).toBeTruthy();
       expect(getByText('Đang bật · Set Love')).toBeTruthy();
     });
 

@@ -323,6 +323,12 @@ export const AcceptSessionInviteCommandV2Schema =
     sessionId: PlaySessionIdSchema,
   }).strict();
 
+export const DeclineSessionInviteCommandV2Schema =
+  CoreV2MutationCommandMetadataSchema.extend({
+    inviteId: SessionInviteV2IdSchema,
+    sessionId: PlaySessionIdSchema,
+  }).strict();
+
 export const LeaveSessionCommandV2Schema =
   CoreV2MutationCommandMetadataSchema.extend({
     sessionId: PlaySessionIdSchema,
@@ -401,6 +407,7 @@ export const PlaySessionCommandNameV2Schema = z.enum([
   'create_session_from_repeat_play_v2',
   'invite_to_session_v2',
   'accept_session_invite_v2',
+  'decline_session_invite_v2',
   'leave_session_v2',
   'remove_session_member_v2',
   'assign_session_role_v2',
@@ -420,6 +427,7 @@ export const PlaySessionCommandReceiptV2Schema = CoreV2ReceiptBaseSchema.extend(
       'created',
       'invite_pending',
       'invite_accepted',
+      'invite_declined',
       'member_left',
       'member_removed',
       'role_assigned',
@@ -477,6 +485,9 @@ export type InviteToSessionCommandV2 = z.infer<
 >;
 export type AcceptSessionInviteCommandV2 = z.infer<
   typeof AcceptSessionInviteCommandV2Schema
+>;
+export type DeclineSessionInviteCommandV2 = z.infer<
+  typeof DeclineSessionInviteCommandV2Schema
 >;
 export type OpenReadyCheckCommandV2 = z.infer<
   typeof OpenReadyCheckCommandV2Schema

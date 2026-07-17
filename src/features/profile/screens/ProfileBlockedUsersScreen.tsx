@@ -119,7 +119,7 @@ export function ProfileBlockedUsersScreen() {
         <View aria-hidden style={styles.headerSpacer} />
       </View>
       <ProfileText style={styles.headerSubtitle}>
-        Danh sách này đến từ Social V2 authority và dùng PlayerId canonical.
+        Danh sách người bạn đã chặn. Bạn có thể gỡ chặn bất cứ lúc nào.
       </ProfileText>
 
       {blockedQuery.isLoading ? (
@@ -130,7 +130,7 @@ export function ProfileBlockedUsersScreen() {
       ) : blockedQuery.isError || !socialCoordinator ? (
         <EmptyCard
           icon="warning-outline"
-          text="Chưa xác minh được quyền quản lý block. Hành động đang bị khoá an toàn."
+          text="Chưa thể xác minh quyền quản lý danh sách. Hành động tạm thời bị khoá."
         />
       ) : blockedUsers.length === 0 ? (
         <EmptyCard

@@ -1,24 +1,40 @@
+import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { usePlayerIdentities } from '@/entities/player-identity';
 import { usePlaySessionServices } from '@/entities/play-session';
+import { FriendPlayerPickerModal } from '@/entities/social-relationship/ui';
 import { useAuth } from '@/shared/auth/auth-context';
+import type { PlayerId } from '@/shared/contracts/core-v1';
 import {
   PlaySessionIdSchema,
+  type AssignSessionRoleCommandV2,
   type CancelSessionCommandV2,
+  type InviteToSessionCommandV2,
+  type LeaveSessionCommandV2,
   type OpenReadyCheckCommandV2,
   type ProposeSessionCompletionCommandV2,
+  type RemoveSessionMemberCommandV2,
   type RespondReadyCheckCommandV2,
   type ScheduleSessionCommandV2,
   type StartSessionCommandV2,
 } from '@/shared/contracts/core-v2';
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+  LiquidButton,
+  LiquidCard,
+  LiquidChip,
+} from '@/shared/components/liquid';
+import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 
 import {
   prepareCoreV2CommandMetadata,
@@ -26,13 +42,31 @@ import {
   usePlaySessionDetail,
 } from '../queries/play-session-queries';
 
+const roleChoices = ['top', 'jungle', 'mid', 'marksman', 'support'] as const;
+
 export function PlaySessionDetailScreen() {
-  const params = useLocalSearchParams<{ sessionId?: string }>();
-  const parsedId = PlaySessionIdSchema.safeParse(params.sessionId);
+  const params = useLocalSearchParams<{ sessionId?: string | string[] }>();
+  const rawSessionId = Array.isArray(params.sessionId)
+    ? params.sessionId[0]
+    : params.sessionId;
+  const parsedId = PlaySessionIdSchema.safeParse(rawSessionId);
   const sessionId = parsedId.success ? parsedId.data : null;
   const detail = usePlaySessionDetail(sessionId);
   const { session: authSession } = useAuth();
   const { commandService } = usePlaySessionServices();
+  const [invitePickerVisible, setInvitePickerVisible] = useState(false);
+  const [selectedInvitees, setSelectedInvitees] = useState<readonly PlayerId[]>(
+    [],
+  );
+  const [readyMinutes, setReadyMinutes] = useState(10);
+  const snapshot = detail.data;
+  const identities = usePlayerIdentities(
+    snapshot?.members.map((member) => member.playerId) ?? [],
+  );
+  const identityById = new Map(
+    (identities.data ?? []).map((identity) => [identity.playerId, identity]),
+  );
+
   const openReady = usePlaySessionCommandMutation<OpenReadyCheckCommandV2>(
     (actor, command) => commandService.openReadyCheck(actor, command),
   );
@@ -52,136 +86,354 @@ export function PlaySessionDetailScreen() {
   const cancel = usePlaySessionCommandMutation<CancelSessionCommandV2>(
     (actor, command) => commandService.cancel(actor, command),
   );
-  const snapshot = detail.data;
-  const actorPlayerId = authSession?.principal?.playerId;
-  const isOwner = snapshot?.ownerPlayerId === actorPlayerId;
-  const activeMember = snapshot?.members.some(
-    (member) => member.playerId === actorPlayerId && member.state === 'active',
+  const invite = usePlaySessionCommandMutation<InviteToSessionCommandV2>(
+    (actor, command) => commandService.invite(actor, command),
+    {
+      onSuccess: () => {
+        setSelectedInvitees([]);
+        setInvitePickerVisible(false);
+      },
+    },
   );
+  const leave = usePlaySessionCommandMutation<LeaveSessionCommandV2>(
+    (actor, command) => commandService.leave(actor, command),
+    { onSuccess: () => router.replace(appRoutes.sessions.list) },
+  );
+  const remove = usePlaySessionCommandMutation<RemoveSessionMemberCommandV2>(
+    (actor, command) => commandService.removeMember(actor, command),
+  );
+  const assignRole = usePlaySessionCommandMutation<AssignSessionRoleCommandV2>(
+    (actor, command) => commandService.assignRole(actor, command),
+  );
+
+  if (!sessionId)
+    return (
+      <SessionState
+        title="Buổi chơi không hợp lệ"
+        description="Liên kết này không còn đúng định dạng."
+      />
+    );
+  if (detail.error && !snapshot)
+    return (
+      <SessionState
+        title="Chưa thể mở buổi chơi"
+        description="Quyền truy cập có thể đã thay đổi hoặc kết nối đang gián đoạn."
+        onRetry={() => void detail.refetch()}
+      />
+    );
+  if (detail.isLoading || !snapshot)
+    return (
+      <SessionState
+        loading
+        title="Đang mở buổi chơi"
+        description="LIQI đang đồng bộ thành viên và trạng thái mới nhất."
+      />
+    );
+
+  const actorPlayerId = authSession?.principal?.playerId;
+  const isOwner = snapshot.ownerPlayerId === actorPlayerId;
+  const activeMembers = snapshot.members.filter(
+    (member) => member.state === 'active',
+  );
+  const activeMember = activeMembers.some(
+    (member) => member.playerId === actorPlayerId,
+  );
+  const canManageMembers = isOwner && snapshot.state === 'recruiting';
+  const canInvite =
+    canManageMembers && activeMembers.length < snapshot.capacity;
+  const commandMeta = () => prepareCoreV2CommandMetadata(snapshot.version);
   const pendingError =
     openReady.error ??
     respond.error ??
     schedule.error ??
     start.error ??
     complete.error ??
-    cancel.error;
+    cancel.error ??
+    invite.error ??
+    leave.error ??
+    remove.error ??
+    assignRole.error;
+  const busy =
+    openReady.isPending ||
+    respond.isPending ||
+    schedule.isPending ||
+    start.isPending ||
+    complete.isPending ||
+    cancel.isPending ||
+    invite.isPending ||
+    leave.isPending ||
+    remove.isPending ||
+    assignRole.isPending;
 
-  if (!sessionId) {
-    return (
-      <LiquidScreen title="Session không hợp lệ">
-        <Text style={styles.error}>PlaySessionId không đúng contract.</Text>
-      </LiquidScreen>
-    );
-  }
-  if (detail.error && !snapshot) {
-    return (
-      <LiquidScreen title="Không thể tải Session">
-        <Text accessibilityRole="alert" style={styles.error}>
-          {detail.error.message}
-        </Text>
-        <LiquidButton onPress={() => void detail.refetch()} variant="ghost">
-          Thử lại
-        </LiquidButton>
-      </LiquidScreen>
-    );
-  }
-  if (detail.isLoading || !snapshot) {
-    return (
-      <LiquidScreen title="Đang tải Session">
-        <ActivityIndicator color={liquidColors.text.primary} />
-      </LiquidScreen>
-    );
-  }
+  const sendInvites = async (playerIds: readonly PlayerId[]) => {
+    let version = snapshot.version;
+    for (const playerId of playerIds) {
+      const receipt = await commandService.invite(
+        {
+          lifecycle: authSession!.lifecycle!,
+          principal: authSession!.principal!,
+        },
+        {
+          ...prepareCoreV2CommandMetadata(version),
+          sessionId,
+          targetPlayerId: playerId,
+        },
+      );
+      version = receipt.aggregateVersion;
+    }
+    setSelectedInvitees([]);
+    setInvitePickerVisible(false);
+    await detail.refetch();
+  };
 
-  const commandMeta = () => prepareCoreV2CommandMetadata(snapshot.version);
   return (
     <LiquidScreen
-      subtitle={`${snapshot.state.replaceAll('_', ' ')} · aggregate v${snapshot.version} · membership v${snapshot.membershipVersion}`}
+      contentContainerStyle={styles.screen}
+      subtitle={sessionStateLabel(snapshot.state)}
       title={snapshot.title}
     >
-      <LiquidCard variant="purple">
-        <Text style={styles.heading}>Thành viên</Text>
-        {snapshot.members.map((member) => (
-          <View
-            key={`${member.playerId}:${member.joinedAt}`}
-            style={styles.memberRow}
-          >
-            <View style={styles.grow}>
-              <Text style={styles.memberId}>{member.playerId}</Text>
-              <Text style={styles.meta}>
-                {member.role} · {member.state}
-              </Text>
-            </View>
-            <LiquidButton
-              onPress={() =>
-                router.push(appRoutes.profile.playerDetail(member.playerId))
-              }
-              variant="ghost"
-            >
-              Hồ sơ
-            </LiquidButton>
-          </View>
-        ))}
-      </LiquidCard>
-
-      <LiquidCard style={styles.card} variant="cyan">
-        <Text style={styles.heading}>Communication</Text>
-        <Text style={styles.meta}>
-          {snapshot.communication.status} · membership v
-          {snapshot.communication.membershipVersion}
-        </Text>
-        {snapshot.communication.conversationId ? (
+      <LiquidCard
+        contentStyle={styles.hero}
+        radius={28}
+        variant="purple"
+        withInnerReflection
+      >
+        <View style={styles.heroIcon}>
+          <Ionicons color="#D9C6FF" name="game-controller" size={28} />
+        </View>
+        <View style={styles.heroCopy}>
+          <Text style={styles.heroTitle}>
+            {activeMembers.length}/{snapshot.capacity} thành viên
+          </Text>
+          <Text style={styles.heroMeta}>
+            {scheduleLabel(snapshot.scheduledFor)} ·{' '}
+            {sourceLabel(snapshot.source.kind)}
+          </Text>
+        </View>
+        {canInvite ? (
           <LiquidButton
-            onPress={() =>
-              router.push(
-                appRoutes.sessions.conversation(
-                  snapshot.communication.conversationId!,
-                ),
-              )
-            }
-            style={styles.action}
-            variant="rank"
-          >
-            Mở trò chuyện Session
-          </LiquidButton>
-        ) : null}
-      </LiquidCard>
-
-      <Text style={styles.heading}>Điều phối</Text>
-      <View style={styles.actions}>
-        {isOwner && ['recruiting', 'scheduled'].includes(snapshot.state) ? (
-          <LiquidButton
-            onPress={() =>
-              schedule.mutate({
-                ...commandMeta(),
-                scheduledFor: new Date(Date.now() + 30 * 60_000).toISOString(),
-                sessionId,
-                timezone:
-                  Intl.DateTimeFormat().resolvedOptions().timeZone ||
-                  'Asia/Bangkok',
-              })
-            }
+            onPress={() => setInvitePickerVisible(true)}
             variant="ghost"
           >
-            Hẹn sau 30 phút
+            Mời bạn
           </LiquidButton>
         ) : null}
-        {isOwner && ['recruiting', 'scheduled'].includes(snapshot.state) ? (
+      </LiquidCard>
+
+      {snapshot.communication.conversationId ? (
+        <Pressable
+          accessibilityLabel="Mở trò chuyện của buổi chơi"
+          accessibilityRole="button"
+          onPress={() =>
+            router.push(
+              appRoutes.messages.detail(snapshot.communication.conversationId!),
+            )
+          }
+          style={({ pressed }) => pressed && styles.pressed}
+        >
+          <LiquidCard
+            contentStyle={styles.chatCard}
+            density="compact"
+            radius={22}
+            variant="cyan"
+            withShadow={false}
+          >
+            <View style={styles.chatIcon}>
+              <Ionicons color="#9DE4F4" name="chatbubbles-outline" size={20} />
+            </View>
+            <View style={styles.grow}>
+              <Text style={styles.cardTitle}>Trò chuyện cả đội</Text>
+              <Text style={styles.cardMeta}>
+                Tin nhắn, ảnh, trạng thái đã nhận và đã xem
+              </Text>
+            </View>
+            <Ionicons
+              color="rgba(217,226,247,0.42)"
+              name="chevron-forward"
+              size={18}
+            />
+          </LiquidCard>
+        </Pressable>
+      ) : (
+        <LiquidCard
+          contentStyle={styles.note}
+          density="compact"
+          radius={20}
+          variant="cyan"
+          withShadow={false}
+        >
+          <Ionicons color="#9DE4F4" name="hourglass-outline" size={18} />
+          <Text style={styles.noteText}>
+            Trò chuyện nhóm đang được chuẩn bị và sẽ xuất hiện khi thành viên đã
+            đồng bộ.
+          </Text>
+        </LiquidCard>
+      )}
+
+      <SectionTitle icon="people-outline">Thành viên</SectionTitle>
+      <LiquidCard
+        contentStyle={styles.membersCard}
+        radius={25}
+        variant="purple"
+        withShadow={false}
+      >
+        {activeMembers.map((member, index) => {
+          const identity = identityById.get(member.playerId);
+          const roleAssignment = snapshot.roleAssignments.find(
+            (assignment) => assignment.playerId === member.playerId,
+          );
+          const self = member.playerId === actorPlayerId;
+          return (
+            <View key={member.playerId} style={styles.memberBlock}>
+              <View style={styles.memberRow}>
+                <View style={styles.avatar}>
+                  {identity?.avatarUrl ? (
+                    <Image
+                      source={{ uri: identity.avatarUrl }}
+                      style={styles.avatarImage}
+                    />
+                  ) : (
+                    <Text style={styles.initial}>
+                      {identity?.displayName.slice(0, 1).toUpperCase() ??
+                        index + 1}
+                    </Text>
+                  )}
+                </View>
+                <Pressable
+                  accessibilityLabel={`Mở hồ sơ ${identity?.displayName ?? 'người chơi'}`}
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push(appRoutes.profile.playerDetail(member.playerId))
+                  }
+                  style={styles.memberCopy}
+                >
+                  <Text numberOfLines={1} style={styles.memberName}>
+                    {self
+                      ? 'Bạn'
+                      : (identity?.displayName ?? `Đồng đội ${index + 1}`)}
+                  </Text>
+                  <Text style={styles.memberMeta}>
+                    {member.role === 'owner'
+                      ? 'Chủ đội'
+                      : roleLabel(roleAssignment?.roleSlug)}
+                  </Text>
+                </Pressable>
+                {canManageMembers && !self && member.role !== 'owner' ? (
+                  <LiquidButton
+                    disabled={busy}
+                    onPress={() =>
+                      remove.mutate({
+                        ...commandMeta(),
+                        memberPlayerId: member.playerId,
+                        reasonCode: 'owner_removed',
+                        sessionId,
+                      })
+                    }
+                    variant="ghost"
+                  >
+                    Mời rời đội
+                  </LiquidButton>
+                ) : null}
+              </View>
+              {isOwner &&
+              ['recruiting', 'scheduled'].includes(snapshot.state) ? (
+                <View style={styles.roleRow}>
+                  {roleChoices.map((role) => (
+                    <LiquidChip
+                      key={role}
+                      onPress={() =>
+                        assignRole.mutate({
+                          ...commandMeta(),
+                          memberPlayerId: member.playerId,
+                          roleSlug: role,
+                          sessionId,
+                        })
+                      }
+                      selected={roleAssignment?.roleSlug === role}
+                      variant="purple"
+                    >
+                      {roleLabel(role)}
+                    </LiquidChip>
+                  ))}
+                </View>
+              ) : null}
+            </View>
+          );
+        })}
+      </LiquidCard>
+
+      {isOwner && ['recruiting', 'scheduled'].includes(snapshot.state) ? (
+        <>
+          <SectionTitle icon="calendar-outline">Lịch chơi</SectionTitle>
+          <View style={styles.wrapRow}>
+            {(
+              [
+                [30, 'Sau 30 phút'],
+                [120, 'Sau 2 giờ'],
+                [1440, 'Tối mai'],
+              ] as const
+            ).map(([minutes, label]) => (
+              <LiquidButton
+                disabled={busy}
+                key={minutes}
+                onPress={() =>
+                  schedule.mutate({
+                    ...commandMeta(),
+                    scheduledFor: scheduleAfter(minutes),
+                    sessionId,
+                    timezone: resolvedTimezone(),
+                  })
+                }
+                variant="ghost"
+              >
+                {label}
+              </LiquidButton>
+            ))}
+          </View>
+
+          <SectionTitle icon="checkmark-done-outline">
+            Kiểm tra sẵn sàng
+          </SectionTitle>
+          <View style={styles.wrapRow}>
+            {[5, 10, 15].map((minutes) => (
+              <LiquidChip
+                key={minutes}
+                onPress={() => setReadyMinutes(minutes)}
+                selected={readyMinutes === minutes}
+                variant="cyan"
+              >
+                {minutes} phút
+              </LiquidChip>
+            ))}
+          </View>
           <LiquidButton
+            disabled={busy}
             onPress={() =>
               openReady.mutate({
                 ...commandMeta(),
-                deadlineAt: new Date(Date.now() + 5 * 60_000).toISOString(),
+                deadlineAt: new Date(
+                  Date.now() + readyMinutes * 60_000,
+                ).toISOString(),
                 sessionId,
               })
             }
           >
-            Mở ready-check
+            Mở kiểm tra sẵn sàng
           </LiquidButton>
-        ) : null}
-        {activeMember && snapshot.readyCheck?.state === 'open' ? (
-          <>
+        </>
+      ) : null}
+
+      {activeMember && snapshot.readyCheck?.state === 'open' ? (
+        <LiquidCard contentStyle={styles.readyCard} radius={24} variant="cyan">
+          <View style={styles.readyCopy}>
+            <Text style={styles.cardTitle}>Bạn đã sẵn sàng?</Text>
+            <Text style={styles.cardMeta}>
+              Phản hồi trước {formatTime(snapshot.readyCheck.deadlineAt)}
+            </Text>
+          </View>
+          <View style={styles.wrapRow}>
             <LiquidButton
+              disabled={busy}
               onPress={() =>
                 respond.mutate({
                   ...commandMeta(),
@@ -195,6 +447,7 @@ export function PlaySessionDetailScreen() {
               Tôi sẵn sàng
             </LiquidButton>
             <LiquidButton
+              disabled={busy}
               onPress={() =>
                 respond.mutate({
                   ...commandMeta(),
@@ -207,10 +460,15 @@ export function PlaySessionDetailScreen() {
             >
               Chưa sẵn sàng
             </LiquidButton>
-          </>
-        ) : null}
+          </View>
+        </LiquidCard>
+      ) : null}
+
+      <SectionTitle icon="flash-outline">Hành động</SectionTitle>
+      <View style={styles.actions}>
         {isOwner && snapshot.state === 'scheduled' ? (
           <LiquidButton
+            disabled={busy}
             onPress={() => start.mutate({ ...commandMeta(), sessionId })}
           >
             Bắt đầu chơi
@@ -220,6 +478,7 @@ export function PlaySessionDetailScreen() {
         ['in_progress', 'completion_pending'].includes(snapshot.state) ? (
           <>
             <LiquidButton
+              disabled={busy}
               onPress={() =>
                 complete.mutate({
                   ...commandMeta(),
@@ -233,6 +492,7 @@ export function PlaySessionDetailScreen() {
               Xác nhận đã chơi xong
             </LiquidButton>
             <LiquidButton
+              disabled={busy}
               onPress={() =>
                 complete.mutate({
                   ...commandMeta(),
@@ -243,13 +503,33 @@ export function PlaySessionDetailScreen() {
               }
               variant="ghost"
             >
-              Báo tranh chấp
+              Báo kết quả chưa đúng
             </LiquidButton>
           </>
+        ) : null}
+        {['completed', 'disputed'].includes(snapshot.state) ? (
+          <LiquidButton
+            onPress={() => router.push(appRoutes.sessions.feedback(sessionId))}
+            variant="primary"
+          >
+            Gửi đánh giá đồng đội
+          </LiquidButton>
+        ) : null}
+        {activeMember &&
+        !isOwner &&
+        ['recruiting', 'scheduled'].includes(snapshot.state) ? (
+          <LiquidButton
+            disabled={busy}
+            onPress={() => leave.mutate({ ...commandMeta(), sessionId })}
+            variant="ghost"
+          >
+            Rời buổi chơi
+          </LiquidButton>
         ) : null}
         {isOwner &&
         !['completed', 'cancelled', 'disputed'].includes(snapshot.state) ? (
           <LiquidButton
+            disabled={busy}
             onPress={() =>
               cancel.mutate({
                 ...commandMeta(),
@@ -259,37 +539,245 @@ export function PlaySessionDetailScreen() {
             }
             variant="secondary"
           >
-            Hủy Session
+            Huỷ buổi chơi
           </LiquidButton>
         ) : null}
       </View>
+
       {pendingError ? (
-        <Text style={styles.error}>{pendingError.message}</Text>
+        <Text accessibilityRole="alert" style={styles.error}>
+          Dữ liệu vừa thay đổi hoặc thao tác chưa thể hoàn tất. Hãy kiểm tra
+          trạng thái mới nhất.
+        </Text>
       ) : null}
+
+      <FriendPlayerPickerModal
+        excludedPlayerIds={snapshot.members.map((member) => member.playerId)}
+        maxSelected={Math.max(1, snapshot.capacity - activeMembers.length)}
+        onClose={() => setInvitePickerVisible(false)}
+        onConfirm={(playerIds) => {
+          void sendInvites(playerIds);
+        }}
+        purpose="session"
+        selectedPlayerIds={selectedInvitees}
+        setSelectedPlayerIds={setSelectedInvitees}
+        title="Mời thêm vào đội"
+        visible={invitePickerVisible}
+      />
     </LiquidScreen>
   );
 }
 
+function SessionState({
+  description,
+  loading = false,
+  onRetry,
+  title,
+}: {
+  description: string;
+  loading?: boolean;
+  onRetry?: () => void;
+  title: string;
+}) {
+  return (
+    <LiquidScreen
+      contentContainerStyle={styles.stateScreen}
+      title={title}
+      withBottomNavPadding={false}
+    >
+      <LiquidCard contentStyle={styles.stateCard} radius={28} variant="purple">
+        {loading ? (
+          <ActivityIndicator color="#D3C0FF" />
+        ) : (
+          <Ionicons color="#D3C0FF" name="game-controller-outline" size={32} />
+        )}
+        <Text style={styles.stateText}>{description}</Text>
+        {onRetry ? (
+          <LiquidButton onPress={onRetry} variant="ghost">
+            Thử lại
+          </LiquidButton>
+        ) : null}
+        <LiquidButton
+          onPress={() => router.replace(appRoutes.sessions.list)}
+          variant="secondary"
+        >
+          Về danh sách buổi chơi
+        </LiquidButton>
+      </LiquidCard>
+    </LiquidScreen>
+  );
+}
+function SectionTitle({
+  children,
+  icon,
+}: {
+  children: string;
+  icon: keyof typeof Ionicons.glyphMap;
+}) {
+  return (
+    <View style={styles.sectionTitle}>
+      <Ionicons color="#CBB6FF" name={icon} size={17} />
+      <Text style={styles.sectionText}>{children}</Text>
+    </View>
+  );
+}
+function sessionStateLabel(value: string) {
+  return (
+    (
+      {
+        cancelled: 'Buổi chơi đã huỷ',
+        completed: 'Đã hoàn tất',
+        completion_pending: 'Đang xác nhận kết quả',
+        disputed: 'Kết quả đang được xem xét',
+        draft: 'Đang chuẩn bị',
+        in_progress: 'Đang chơi',
+        recruiting: 'Đang tìm thêm đồng đội',
+        scheduled: 'Đã lên lịch',
+      } as Record<string, string>
+    )[value] ?? 'Buổi chơi'
+  );
+}
+function sourceLabel(value: string) {
+  return (
+    (
+      {
+        manual: 'Tạo trực tiếp',
+        match: 'Từ một kết nối',
+        repeat_play: 'Chơi lại cùng đội',
+        set: 'Từ Match Set',
+      } as Record<string, string>
+    )[value] ?? 'LIQI'
+  );
+}
+function roleLabel(value?: string) {
+  return (
+    (
+      {
+        jungle: 'Đi rừng',
+        marksman: 'Xạ thủ',
+        mid: 'Đường giữa',
+        support: 'Hỗ trợ',
+        top: 'Đường trên',
+      } as Record<string, string>
+    )[value ?? ''] ?? 'Chưa chọn vai trò'
+  );
+}
+function scheduleLabel(value: string | null) {
+  return value
+    ? new Intl.DateTimeFormat('vi-VN', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+      }).format(new Date(value))
+    : 'Bắt đầu khi cả đội sẵn sàng';
+}
+function formatTime(value: string) {
+  return new Intl.DateTimeFormat('vi-VN', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+function resolvedTimezone() {
+  return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Bangkok';
+}
+function scheduleAfter(minutes: number) {
+  const date = new Date();
+  if (minutes === 1440) {
+    date.setDate(date.getDate() + 1);
+    date.setHours(20, 0, 0, 0);
+  } else date.setMinutes(date.getMinutes() + minutes);
+  return date.toISOString();
+}
+
 const styles = StyleSheet.create({
-  action: { marginTop: 12 },
-  actions: { gap: 10, marginTop: 12 },
-  card: { marginTop: 14 },
-  error: { color: '#FF9CB5', marginTop: 12 },
-  grow: { flex: 1 },
-  heading: {
-    ...liquidTypography.sectionTitle,
-    color: liquidColors.text.primary,
-    marginTop: 16,
+  actions: { gap: 10 },
+  avatar: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(130,91,220,0.17)',
+    borderRadius: 19,
+    height: 44,
+    justifyContent: 'center',
+    overflow: 'hidden',
+    width: 44,
   },
-  memberId: {
-    ...liquidTypography.cardTitle,
-    color: liquidColors.text.primary,
-  },
-  memberRow: {
+  avatarImage: { height: '100%', width: '100%' },
+  cardMeta: { color: 'rgba(208,218,242,0.56)', fontSize: 10.5, lineHeight: 15 },
+  cardTitle: { color: '#F4F1FF', fontSize: 14, fontWeight: '800' },
+  chatCard: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: 10,
-    marginTop: 10,
+    gap: 11,
+    padding: 13,
   },
-  meta: { ...liquidTypography.body, marginTop: 3 },
+  chatIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(54,167,190,0.11)',
+    borderRadius: 15,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  error: {
+    color: '#FFB9C5',
+    fontSize: 12,
+    lineHeight: 18,
+    textAlign: 'center',
+  },
+  grow: { flex: 1 },
+  hero: { alignItems: 'center', flexDirection: 'row', gap: 14, padding: 17 },
+  heroCopy: { flex: 1, gap: 4 },
+  heroIcon: {
+    alignItems: 'center',
+    backgroundColor: 'rgba(132,91,225,0.17)',
+    borderRadius: 23,
+    height: 54,
+    justifyContent: 'center',
+    width: 54,
+  },
+  heroMeta: { color: 'rgba(211,220,244,0.58)', fontSize: 10.5, lineHeight: 15 },
+  heroTitle: { color: '#FAF8FF', fontSize: 18, fontWeight: '800' },
+  initial: { color: '#E2D5FF', fontSize: 13, fontWeight: '800' },
+  memberBlock: {
+    borderBottomColor: 'rgba(211,221,246,0.07)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
+    paddingVertical: 10,
+  },
+  memberCopy: { flex: 1, gap: 3, minWidth: 0 },
+  memberMeta: { color: 'rgba(207,217,241,0.54)', fontSize: 10.5 },
+  memberName: { color: '#F6F3FF', fontSize: 13.5, fontWeight: '800' },
+  memberRow: { alignItems: 'center', flexDirection: 'row', gap: 11 },
+  membersCard: { paddingHorizontal: 14, paddingVertical: 3 },
+  note: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: 10,
+    padding: 13,
+  },
+  noteText: {
+    color: 'rgba(214,224,245,0.64)',
+    flex: 1,
+    fontSize: 11.5,
+    lineHeight: 17,
+  },
+  pressed: { opacity: 0.74, transform: [{ scale: 0.994 }] },
+  readyCard: { gap: 12, padding: 16 },
+  readyCopy: { gap: 4 },
+  roleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingLeft: 55 },
+  screen: { gap: 14 },
+  sectionText: { color: '#F2EDFF', fontSize: 15.5, fontWeight: '800' },
+  sectionTitle: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 5,
+  },
+  stateCard: { alignItems: 'center', gap: 16, padding: 24 },
+  stateScreen: { flexGrow: 1, justifyContent: 'center' },
+  stateText: {
+    color: 'rgba(218,225,247,0.68)',
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  wrapRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
 });

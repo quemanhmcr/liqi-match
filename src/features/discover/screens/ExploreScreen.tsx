@@ -24,6 +24,8 @@ import {
 import { liquidColors, liquidLayout } from '@/shared/theme/liquid-glass.tokens';
 
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
+import { DiscoverMatchIntentGate } from '../components/DiscoverMatchIntentGate';
+import { useDiscoverCapabilities } from '../runtime/DiscoverRepositoryProvider';
 import {
   DiscoverQueryState,
   DiscoverStaleBanner,
@@ -95,6 +97,15 @@ const toneColors: Record<
 const VIBE_CARD_HEIGHT = 134;
 
 export function ExploreScreen() {
+  return (
+    <DiscoverMatchIntentGate>
+      <ExploreContent />
+    </DiscoverMatchIntentGate>
+  );
+}
+
+function ExploreContent() {
+  const capabilities = useDiscoverCapabilities().overview;
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const activeFilterIds = useDiscoverStore((state) => state.activeFilterIds);
@@ -117,18 +128,20 @@ export function ExploreScreen() {
     Math.max(136, width * 0.38),
   );
   const overviewQuery = useDiscoverOverviewQuery({
-    facetIds: activeFilterIds.filter(
-      (filterId): filterId is Exclude<DiscoverFilterId, 'all'> =>
-        filterId !== 'all',
-    ),
+    facetIds: capabilities.filters
+      ? activeFilterIds.filter(
+          (filterId): filterId is Exclude<DiscoverFilterId, 'all'> =>
+            filterId !== 'all',
+        )
+      : [],
     previewLimit: 3,
-    query: deferredQuery,
+    query: capabilities.search ? deferredQuery : '',
   });
   const overview = overviewQuery.data;
   const filteredContent = {
     profiles: overview?.profiles ?? [],
     sets: overview?.sets ?? [],
-    vibes: overview?.vibes ?? [],
+    vibes: capabilities.vibes ? (overview?.vibes ?? []) : [],
   };
   const discoverFilterChips = overview?.filterChips ?? [];
   const discoverMetricCards = overview?.metrics ?? [];
@@ -137,8 +150,10 @@ export function ExploreScreen() {
   const activeFilterLabels = discoverFilterChips
     .filter((chip) => chip.id !== 'all' && activeFilterIds.includes(chip.id))
     .map((chip) => chip.label);
-  const criteriaActive = activeFilterIds.length > 0 || query.trim().length > 0;
-  const searchUpdating = deferredQuery !== query;
+  const criteriaActive =
+    (capabilities.filters && activeFilterIds.length > 0) ||
+    (capabilities.search && query.trim().length > 0);
+  const searchUpdating = capabilities.search && deferredQuery !== query;
 
   if (!overview) {
     return (
@@ -167,16 +182,22 @@ export function ExploreScreen() {
       >
         <Header horizontalPadding={horizontalPadding} />
         {overviewQuery.isError ? <DiscoverStaleBanner /> : null}
-        <SearchAndFilters
-          activeFilterCount={activeFilterIds.length}
-          filtersExpanded={filtersExpanded}
-          horizontalPadding={horizontalPadding}
-          onChangeQuery={setQuery}
-          onClearQuery={clearQuery}
-          onToggleFilters={toggleFiltersExpanded}
-          query={query}
-        />
-        {filtersExpanded ? (
+        {capabilities.search || capabilities.filters ? (
+          <SearchAndFilters
+            activeFilterCount={
+              capabilities.filters ? activeFilterIds.length : 0
+            }
+            filtersExpanded={capabilities.filters && filtersExpanded}
+            horizontalPadding={horizontalPadding}
+            onChangeQuery={capabilities.search ? setQuery : () => undefined}
+            onClearQuery={clearQuery}
+            onToggleFilters={
+              capabilities.filters ? toggleFiltersExpanded : () => undefined
+            }
+            query={capabilities.search ? query : ''}
+          />
+        ) : null}
+        {capabilities.filters && filtersExpanded ? (
           <>
             <ChipRow
               activeFilterIds={activeFilterIds}

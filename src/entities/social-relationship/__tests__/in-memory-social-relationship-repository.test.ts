@@ -93,6 +93,66 @@ describe('InMemorySocialRelationshipRepository', () => {
     });
   });
 
+  it('lists accepted and pending relationships for Social Hub without blocked rows', async () => {
+    const friend = SocialRelationshipSnapshotV2Schema.parse(
+      read('relationship-friend.json'),
+    );
+    const pendingTarget = '20000000-0000-4000-8000-000000000003';
+    const pending = SocialRelationshipSnapshotV2Schema.parse({
+      ...friend,
+      capabilities: {
+        ...friend.capabilities,
+        canAcceptFriendship: false,
+        canCancelFriendship: true,
+        canDeclineFriendship: false,
+        canInviteToSession: false,
+        canMessage: false,
+        canRemoveFriendship: false,
+        canViewConversation: false,
+        canViewPresence: false,
+        friendshipLabel: 'pending_outgoing',
+      },
+      friendship: {
+        acceptedAt: null,
+        label: 'pending_outgoing',
+        requestId: '42000000-0000-4000-8000-000000000003',
+        requestState: 'pending',
+        requestVersion: 1,
+        state: 'pending',
+      },
+      relationshipId: '41000000-0000-4000-8000-000000000003',
+      targetPlayerId: pendingTarget,
+      targetPrivacy: { ...friend.targetPrivacy, playerId: pendingTarget },
+      version: 1,
+    });
+    const blockedFixture = SocialRelationshipSnapshotV2Schema.parse(
+      read('relationship-blocked.json'),
+    );
+    const blockedTarget = '20000000-0000-4000-8000-000000000004';
+    const blocked = SocialRelationshipSnapshotV2Schema.parse({
+      ...blockedFixture,
+      relationshipId: '41000000-0000-4000-8000-000000000004',
+      targetPlayerId: blockedTarget,
+      targetPrivacy: {
+        ...blockedFixture.targetPrivacy,
+        playerId: blockedTarget,
+      },
+    });
+    const repository = new InMemorySocialRelationshipRepository({
+      relationships: [friend, pending, blocked],
+    });
+
+    await expect(
+      repository.listRelationships(testAuthSession),
+    ).resolves.toMatchObject({
+      items: [
+        { friendship: { label: 'friend' } },
+        { friendship: { label: 'pending_outgoing' } },
+      ],
+      nextCursor: null,
+    });
+  });
+
   it('filters blocked relationships from friendship listing', async () => {
     const repository = new InMemorySocialRelationshipRepository({
       relationships: [

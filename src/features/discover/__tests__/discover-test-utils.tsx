@@ -12,6 +12,10 @@ import {
   InMemoryMatchDecisionRepository,
   MatchDecisionRepositoryProvider,
 } from '@/entities/match-decision';
+import {
+  InMemoryMatchIntentRepository,
+  MatchIntentRepositoryProvider,
+} from '@/entities/match-intent';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import {
   AssetResolverProvider,
@@ -58,6 +62,7 @@ export function renderDiscoverScreen(
 
   const repository = new MockDiscoverRepository();
   const matchDecisionRepository = new InMemoryMatchDecisionRepository();
+  const matchIntentRepository = new InMemoryMatchIntentRepository();
   const assetResolver = createGoldenWorldAssetResolver();
 
   return render(
@@ -65,11 +70,13 @@ export function renderDiscoverScreen(
       <QueryClientProvider client={queryClient}>
         <AssetResolverProvider resolver={assetResolver}>
           <MatchDecisionRepositoryProvider repository={matchDecisionRepository}>
-            <DiscoverRepositoryProvider repository={repository}>
-              <SafeAreaProvider initialMetrics={initialMetrics}>
-                {ui}
-              </SafeAreaProvider>
-            </DiscoverRepositoryProvider>
+            <MatchIntentRepositoryProvider repository={matchIntentRepository}>
+              <DiscoverRepositoryProvider repository={repository}>
+                <SafeAreaProvider initialMetrics={initialMetrics}>
+                  {ui}
+                </SafeAreaProvider>
+              </DiscoverRepositoryProvider>
+            </MatchIntentRepositoryProvider>
           </MatchDecisionRepositoryProvider>
         </AssetResolverProvider>
       </QueryClientProvider>

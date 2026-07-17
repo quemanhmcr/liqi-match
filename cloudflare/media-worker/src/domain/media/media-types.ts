@@ -4,6 +4,8 @@ export type MediaVisibility =
 export type MediaAsset = {
   id: string;
   owner_id: string;
+  purpose:
+    'personal_avatar' | 'game_profile' | 'chat_attachment' | 'report_evidence';
   object_key: string;
   mime_type: string;
   byte_size: number;
@@ -14,6 +16,12 @@ export type MediaAsset = {
 };
 
 export type MediaQueueMessage =
+  | {
+      type: 'media_processing_requested';
+      assetId: string;
+      objectKey: string;
+      requestId?: string;
+    }
   | {
       type: 'media_delete_requested';
       assetId: string;
@@ -31,4 +39,9 @@ export type MediaQueueMessage =
 export type DeleteMediaJob = Extract<
   MediaQueueMessage,
   { type: 'media_delete_requested' }
+>;
+
+export type MediaProcessingJob = Extract<
+  MediaQueueMessage,
+  { type: 'media_processing_requested' }
 >;

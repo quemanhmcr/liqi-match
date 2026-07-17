@@ -1,6 +1,7 @@
 import type {
   DeleteMediaJob,
   MediaAsset,
+  MediaProcessingJob,
   MediaQueueMessage,
 } from '../domain/media/media-types';
 
@@ -11,6 +12,11 @@ export interface MediaRepository {
     userId: string,
   ): Promise<boolean>;
   markDeleted(job: DeleteMediaJob, deletedAt: string): Promise<void>;
+  markReady(job: MediaProcessingJob): Promise<void>;
+  markRejected(
+    job: Pick<MediaProcessingJob, 'assetId' | 'objectKey'>,
+    reason: string,
+  ): Promise<void>;
 }
 
 export interface IdentityVerifier {

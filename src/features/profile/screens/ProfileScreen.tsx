@@ -2,9 +2,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { MatchSetPickerModal } from '@/entities/match-set/ui';
 import {
   useSocialCommandCoordinator,
   useSocialRelationshipRepository,
@@ -15,6 +17,7 @@ import { LiquidButton, LiquidOrbButton } from '@/shared/components/liquid';
 import { classifyApplicationError } from '@/shared/errors/application-error';
 import { useAuth } from '@/shared/auth/auth-context';
 import { PlayerIdSchema } from '@/shared/contracts/core-v1';
+import { runtimeEnvironment } from '@/shared/config/env';
 import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
 import {
   liquidColors,
@@ -43,9 +46,14 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
   const profileRepository = useProfileReadRepository();
   const relationshipRepository = useSocialRelationshipRepository();
   const socialCoordinator = useSocialCommandCoordinator();
+  const [setPickerVisible, setSetPickerVisible] = useState(false);
   const openProfileEditor = () => {
     selectionImpact();
     router.push(appRoutes.profile.edit);
+  };
+  const openProfileGallery = () => {
+    selectionImpact();
+    router.push(appRoutes.profile.gallery);
   };
   const openProfileShare = () => {
     impactLight();
@@ -64,7 +72,13 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
         identityId: mode === 'other' ? identityId : undefined,
       });
     },
-    queryKey: ['profile-view', mode, identityId ?? session?.user.id],
+    queryKey: [
+      'profile-view',
+      runtimeEnvironment.supabaseProjectRef,
+      session?.principal?.playerId ?? session?.user.id,
+      mode,
+      identityId ?? session?.principal?.playerId ?? session?.user.id,
+    ],
   });
 
   const profile = profileQuery.data;
@@ -85,6 +99,7 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
   );
   const relationshipQueryKey = [
     'social-relationship',
+    runtimeEnvironment.supabaseProjectRef,
     viewerPlayerId,
     targetPlayerId,
   ] as const;
@@ -115,7 +130,7 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
       <ProfileReadState
         mode={mode}
         title="Không thể mở hồ sơ"
-        description="Thiếu phiên đăng nhập hoặc định danh hồ sơ canonical."
+        description="Thiếu phiên đăng nhập hoặc thông tin hồ sơ cần thiết."
       />
     );
   }
@@ -145,8 +160,8 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
           profileFailure.kind === 'offline'
             ? 'Thiết bị đang offline. Kết nối lại để tải hồ sơ.'
             : profileFailure.retryable
-              ? 'Repository tạm thời chưa phản hồi. Hãy thử lại.'
-              : 'Yêu cầu hồ sơ không thể hoàn tất. Ứng dụng không dùng fixture để che trạng thái này.'
+              ? 'Dịch vụ hồ sơ tạm thời chưa phản hồi. Hãy thử lại.'
+              : 'Hồ sơ hiện chưa thể hiển thị. Hãy thử lại sau.'
         }
       />
     );
@@ -157,7 +172,7 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
       <ProfileReadState
         mode={mode}
         title="Không tìm thấy hồ sơ"
-        description="Định danh này không tồn tại trong runtime hiện tại."
+        description="Người chơi này không tồn tại hoặc không còn khả dụng."
       />
     );
   }
@@ -189,7 +204,10 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
         messageDisabled={authoritativeMessageDisabled}
         mode={mode}
         onEdit={mode === 'self' ? openProfileEditor : selectionImpact}
-        onInvite={impactLight}
+        onInvite={() => {
+          impactLight();
+          setSetPickerVisible(true);
+        }}
         onMessage={() => {
           selectionImpact();
           if (profile.conversationId) {
@@ -212,13 +230,51 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
           <RelationshipReadState loading={relationshipQuery.isPending} />
         )
       ) : null}
+      {targetPlayerId && trustProjectionQuery.data ? (
+        <LiquidButton
+          accessibilityLabel="Mở lịch sử uy tín"
+          glowIntensity="low"
+          onPress={() =>
+            router.push(
+              mode === 'self'
+                ? appRoutes.profile.reputation
+                : appRoutes.profile.reputationFor(targetPlayerId),
+            )
+          }
+          style={styles.trustLedgerButton}
+          variant="secondary"
+          withShadow={false}
+        >
+          <Ionicons
+            color="rgba(178,235,255,0.86)"
+            name="shield-checkmark-outline"
+            size={17}
+          />
+          <ProfileText style={styles.trustLedgerButtonText}>
+            Xem lịch sử uy tín
+          </ProfileText>
+        </LiquidButton>
+      ) : null}
       <ProfileFavoriteHeroes
         heroes={profile.favoriteHeroes}
         showWinRate={profile.showWinRate}
         onOpen={mode === 'self' ? openProfileEditor : undefined}
       />
       <ProfilePlayStyle tags={profile.playStyleTags} />
-      <ProfileHighlights mode={mode} wallAssetKeys={profile.wallAssetKeys} />
+      <ProfileHighlights
+        mode={mode}
+        onManage={mode === 'self' ? openProfileGallery : undefined}
+        wallAssetKeys={profile.wallAssetKeys}
+        wallUrls={profile.wallUrls}
+      />
+      {mode === 'other' && targetPlayerId ? (
+        <MatchSetPickerModal
+          onClose={() => setSetPickerVisible(false)}
+          targetDisplayName={profile.displayName}
+          targetPlayerId={targetPlayerId}
+          visible={setPickerVisible}
+        />
+      ) : null}
     </LiquidScreen>
   );
 }
@@ -308,22 +364,24 @@ function ProfileTopBar({
         <ProfileText style={styles.title}>Hồ sơ</ProfileText>
         {loading ? <ActivityIndicator color="#C679FF" size="small" /> : null}
       </View>
-      <LiquidOrbButton
-        accessibilityLabel={
-          mode === 'self' ? 'Cài đặt hồ sơ' : 'Tùy chọn hồ sơ'
-        }
-        glowIntensity="low"
-        onPress={mode === 'self' ? onSettings : selectionImpact}
-        glassIntensity="low"
-        size={42}
-        style={styles.topOrb}
-      >
-        <Ionicons
-          color={liquidColors.text.primary}
-          name={mode === 'self' ? 'settings-outline' : 'ellipsis-horizontal'}
-          size={18}
-        />
-      </LiquidOrbButton>
+      {mode === 'self' ? (
+        <LiquidOrbButton
+          accessibilityLabel="Cài đặt hồ sơ"
+          glowIntensity="low"
+          onPress={onSettings}
+          glassIntensity="low"
+          size={42}
+          style={styles.topOrb}
+        >
+          <Ionicons
+            color={liquidColors.text.primary}
+            name="settings-outline"
+            size={18}
+          />
+        </LiquidOrbButton>
+      ) : (
+        <View style={styles.topOrb} />
+      )}
     </View>
   );
 }
@@ -339,6 +397,12 @@ function selectionImpact() {
 }
 
 const styles = StyleSheet.create({
+  trustLedgerButton: { marginTop: 10 },
+  trustLedgerButtonText: {
+    color: 'rgba(231,236,255,0.86)',
+    fontSize: 12.5,
+    fontWeight: '800',
+  },
   relationshipReadState: {
     alignItems: 'center',
     backgroundColor: 'rgba(198,121,255,0.08)',

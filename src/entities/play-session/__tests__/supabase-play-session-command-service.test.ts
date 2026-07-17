@@ -140,6 +140,7 @@ describe('Supabase Play Session command service', () => {
         code: 'version_conflict',
         details: { actualVersion: 4, expectedVersion: 3 },
         retryable: false,
+        status: 409,
       }),
     );
   });
@@ -175,5 +176,92 @@ describe('Supabase Play Session command service', () => {
       .catch((error: unknown) =>
         expect(error).toMatchObject({ code: 'rpc_failed', retryable: true }),
       );
+  });
+
+  it('preserves feature-disabled as a non-retryable environment error', async () => {
+    const fetchImpl = jest.fn(
+      async () =>
+        ({
+          json: async () => ({
+            code: 'P0001',
+            message: JSON.stringify({
+              code: 'feature_disabled',
+              details: { operation: 'create' },
+              message: 'Core V2 Party and Play Session operation is disabled.',
+              retryable: false,
+            }),
+          }),
+          ok: false,
+          status: 400,
+        }) as Response,
+    ) as unknown as typeof fetch;
+    const transport = createSupabaseCoreV2RpcTransport({
+      anonKey: 'anon-key',
+      fetchImpl,
+      supabaseUrl: 'https://example.supabase.co',
+    });
+
+    await expect(
+      transport.invoke({
+        accessToken: 'access-token',
+        args: {},
+        rpcName: 'create_play_session_v2',
+      }),
+    ).rejects.toMatchObject({
+      code: 'feature_disabled',
+      details: { operation: 'create' },
+      retryable: false,
+      status: 400,
+    });
+  });
+
+  it('normalizes fetch failures into retryable network errors', async () => {
+    const fetchImpl = jest.fn(async () => {
+      throw new TypeError('Network request failed');
+    }) as unknown as typeof fetch;
+    const transport = createSupabaseCoreV2RpcTransport({
+      anonKey: 'anon-key',
+      fetchImpl,
+      supabaseUrl: 'https://example.supabase.co',
+    });
+
+    await expect(
+      transport.invoke({
+        accessToken: 'access-token',
+        args: {},
+        rpcName: 'create_play_session_v2',
+      }),
+    ).rejects.toMatchObject({
+      code: 'network_error',
+      retryable: true,
+      status: null,
+    });
+  });
+
+  it('aborts a stalled POST and exposes a retryable timeout', async () => {
+    const fetchImpl = jest.fn(
+      async (_url: string | URL | Request, init?: RequestInit) =>
+        await new Promise<Response>((_resolve, reject) => {
+          init?.signal?.addEventListener('abort', () => {
+            const error = new Error('aborted');
+            error.name = 'AbortError';
+            reject(error);
+          });
+        }),
+    ) as unknown as typeof fetch;
+    const transport = createSupabaseCoreV2RpcTransport({
+      anonKey: 'anon-key',
+      fetchImpl,
+      requestTimeoutMs: 5,
+      supabaseUrl: 'https://example.supabase.co',
+    });
+
+    await expect(
+      transport.invoke({
+        accessToken: 'access-token',
+        args: {},
+        rpcName: 'create_play_session_v2',
+      }),
+    ).rejects.toMatchObject({ code: 'timeout', retryable: true });
   });
 });

@@ -271,7 +271,7 @@ export function ProfileShareScreen() {
           icon="shield-checkmark-outline"
           title="Đang tải số liệu xác minh"
         >
-          Liqi Match đang đọc thành tích từ reputation projection authoritative.
+          Liqi Match đang tải thành tích và điểm uy tín mới nhất.
         </ShareGuardCard>
       </LiquidScreen>
     );

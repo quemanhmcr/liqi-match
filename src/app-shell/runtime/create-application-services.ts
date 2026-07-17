@@ -25,6 +25,10 @@ import {
 import { createProductionSimulationRuntime } from '@/entities/simulation';
 import { InMemoryConversationV2Authority } from '@/entities/conversation-v2';
 import {
+  InMemoryPlayerIdentityRepository,
+  SupabasePlayerIdentityRepository,
+} from '@/entities/player-identity';
+import {
   InMemoryRepeatPlaySessionService,
   createConversationV2SessionProvisioner,
   createRepeatAwareRecommendationProvider,
@@ -175,10 +179,9 @@ export function createSimulationApplicationServices(
         runtime: simulationRuntime,
       }),
     profileRepository: createSimulationProfileReadRepository(simulationRuntime),
+    playerIdentityRepository: new InMemoryPlayerIdentityRepository(),
     playSessionCommandService: trustAwarePlaySessionCommandService,
     playSessionRepository: playSessionService,
-    conversationV2Repository: conversationV2Authority,
-    conversationV2MessageTransport: conversationV2Authority,
     relationshipRepository,
     endorsementCommandService: trustOutcomesEngine,
     engagementPolicyProvider: trustOutcomesEngine,
@@ -233,16 +236,16 @@ export function createApiApplicationServices(
     matchDecisionRepository: new SupabaseMatchDecisionRepository(),
     matchIntentRepository: new SupabaseMatchIntentRepository(),
     matchSetRepository: new SupabaseMatchSetRepository(),
+    conversationLifecycle: 'setMuted' in messages ? messages : undefined,
     messageReportEvidenceProvider: messages,
     messageRepository: messages,
     messageTransport: messages,
     mode: 'api',
     notificationRepository: createApiNotificationInboxRepository(),
     profileRepository: createApiProfileRepository(),
+    playerIdentityRepository: new SupabasePlayerIdentityRepository(),
     playSessionCommandService,
     playSessionRepository,
-    conversationV2Repository: null,
-    conversationV2MessageTransport: null,
     relationshipRepository,
     endorsementCommandService: trustOutcomesEngine,
     engagementPolicyProvider: trustOutcomesEngine,

@@ -134,10 +134,14 @@ describe('ChatConversationScreen', () => {
     resetChatRuntimeStore();
   });
   it('renders the relationship-priority chat experience', async () => {
-    const { getByLabelText, getByPlaceholderText, getByText } =
-      await renderChatWithProviders(
-        <ChatConversationScreen conversationId="minh-anh" />,
-      );
+    const {
+      getByLabelText,
+      getByPlaceholderText,
+      getByText,
+      queryByLabelText,
+    } = await renderChatWithProviders(
+      <ChatConversationScreen conversationId="minh-anh" />,
+    );
 
     expect(getByText('Minh Anh')).toBeTruthy();
     expect(getByText('Tri kỉ')).toBeTruthy();
@@ -148,11 +152,14 @@ describe('ChatConversationScreen', () => {
     expect(getByText('Cần Mid')).toBeTruthy();
     expect(getByText('Yue · Lorian')).toBeTruthy();
     expect(getByText('4/5')).toBeTruthy();
-    expect(getByText('Xem set')).toBeTruthy();
-    expect(getByLabelText('Xem set Team Sao Băng')).toBeTruthy();
+    expect(getByText('Lời mời Set')).toBeTruthy();
+    expect(getByLabelText('Lời mời Set Team Sao Băng')).toBeTruthy();
+    expect(
+      getByLabelText('Lời mời Set Team Sao Băng').props.accessibilityRole,
+    ).toBeUndefined();
     expect(getByPlaceholderText('Nhắn tin...')).toBeTruthy();
     expect(getByLabelText('Quay lại danh sách tin nhắn')).toBeTruthy();
-    expect(getByLabelText('Gọi cho Minh Anh')).toBeTruthy();
+    expect(queryByLabelText('Gọi cho Minh Anh')).toBeNull();
     expect(getByLabelText('Gửi tin nhắn')).toBeTruthy();
     expect(getByLabelText('Minh Anh đang nhập')).toBeTruthy();
   });
@@ -254,7 +261,7 @@ describe('ChatConversationScreen', () => {
   });
 
   it('opens composer utilities and inserts a quick emoji into the draft', async () => {
-    const { getByLabelText, getByPlaceholderText } =
+    const { getByLabelText, getByPlaceholderText, queryByLabelText } =
       await renderChatWithProviders(
         <ChatConversationScreen conversationId="minh-anh" />,
       );
@@ -263,16 +270,15 @@ describe('ChatConversationScreen', () => {
     expect(getByLabelText('Tuỳ chọn đính kèm')).toBeTruthy();
     expect(getByLabelText('Ảnh/video')).toBeTruthy();
     expect(getByLabelText('Camera')).toBeTruthy();
-    expect(getByLabelText('Mời vào set')).toBeTruthy();
-    expect(getByLabelText('Chia sẻ build')).toBeTruthy();
+    expect(queryByLabelText('Mời vào set')).toBeNull();
+    expect(queryByLabelText('Chia sẻ build')).toBeNull();
 
     await fireEvent.press(getByLabelText('Chọn biểu cảm'));
     expect(getByLabelText('Biểu cảm nhanh')).toBeTruthy();
     await fireEvent.press(getByLabelText('Chèn 💜'));
     expect(getByPlaceholderText('Nhắn tin...').props.value).toBe('💜');
 
-    await fireEvent.press(getByLabelText('Gửi tin nhắn thoại'));
-    expect(getByLabelText('Tin nhắn thoại chưa khả dụng')).toBeTruthy();
+    expect(queryByLabelText('Gửi tin nhắn thoại')).toBeNull();
   });
 
   it('reserves image geometry, shows upload state, and opens the media viewer', async () => {
@@ -501,8 +507,11 @@ describe('ChatConversationScreen', () => {
     expect(getByText('Khoa Jungle')).toBeTruthy();
     expect(getByText('Nakroth · Đi Rừng')).toBeTruthy();
     expect(getByText('Xuyên giáp')).toBeTruthy();
-    expect(getByText('Xem build')).toBeTruthy();
-    expect(getByLabelText('Xem build Nakroth · Đi Rừng')).toBeTruthy();
+    expect(getByText('Chi tiết build')).toBeTruthy();
+    expect(getByLabelText('Build Nakroth · Đi Rừng')).toBeTruthy();
+    expect(
+      getByLabelText('Build Nakroth · Đi Rừng').props.accessibilityRole,
+    ).toBeUndefined();
     expect(queryByText('Bạn bè')).toBeNull();
   });
 

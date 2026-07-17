@@ -171,6 +171,20 @@ export const SessionInviteCreatedEventV2Schema =
       .strict(),
   }).strict();
 
+export const SessionInviteDeclinedEventV2Schema =
+  CoreV2EventEnvelopeSchema.extend({
+    ...sessionEventBase,
+    aggregateId: PlaySessionIdSchema,
+    eventType: z.literal('session.invite_declined.v2'),
+    payload: z
+      .object({
+        inviteId: SessionInviteV2IdSchema,
+        sessionId: PlaySessionIdSchema,
+        targetPlayerId: PlayerIdSchema,
+      })
+      .strict(),
+  }).strict();
+
 export const SessionInviteCancelledEventV2Schema =
   CoreV2EventEnvelopeSchema.extend({
     ...sessionEventBase,
