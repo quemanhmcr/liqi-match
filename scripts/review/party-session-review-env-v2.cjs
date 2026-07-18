@@ -5,38 +5,24 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const {
+  E2E_DISPOSABLE_PROJECT,
+  assertLinkedProjectTarget,
+  requireExplicitProjectTarget,
+} = require('../supabase/project-registry.cjs');
 
-const APPROVED_PROJECT_REF = 'ibprkyemsuktfrdpxvza';
 const SUPABASE_CLI = 'supabase@2.109.1';
 const ACTIONS = new Set(['status', 'enable-review', 'disable-writes']);
 
 function parseArguments(argv) {
   const action = argv[0];
-  const refIndex = argv.indexOf('--project-ref');
-  const projectRef = refIndex >= 0 ? argv[refIndex + 1] : null;
   if (!ACTIONS.has(action)) {
     throw new Error(
-      'Usage: party-session-review-env-v2.cjs <status|enable-review|disable-writes> --project-ref <ref>',
+      'Usage: party-session-review-env-v2.cjs <status|enable-review|disable-writes> --target e2e-disposable',
     );
   }
-  if (projectRef !== APPROVED_PROJECT_REF) {
-    throw new Error(
-      `Refusing project ${projectRef ?? '<missing>'}; approved review project is ${APPROVED_PROJECT_REF}.`,
-    );
-  }
-  return { action, projectRef };
-}
-
-function readLinkedProjectRef(repoRoot) {
-  const candidates = [
-    path.join(repoRoot, 'supabase', '.temp', 'project-ref'),
-    path.join(repoRoot, '.supabase', 'project-ref'),
-  ];
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate))
-      return fs.readFileSync(candidate, 'utf8').trim();
-  }
-  throw new Error('No linked Supabase project found.');
+  const project = requireExplicitProjectTarget(argv, 'e2e-disposable');
+  return { action, project };
 }
 
 function resolveNpxInvocation() {
@@ -140,15 +126,10 @@ function runQuery(repoRoot, sql) {
 
 function main() {
   const repoRoot = path.resolve(__dirname, '..', '..');
-  const { action, projectRef } = parseArguments(process.argv.slice(2));
-  const linkedProjectRef = readLinkedProjectRef(repoRoot);
-  if (linkedProjectRef !== projectRef) {
-    throw new Error(
-      `Linked project ${linkedProjectRef} does not match approved review project ${projectRef}.`,
-    );
-  }
+  const { action, project } = parseArguments(process.argv.slice(2));
+  const linked = assertLinkedProjectTarget(repoRoot, 'e2e-disposable');
   console.log(
-    `PARTY_SESSION_REVIEW_ENV action=${action} project_ref=${projectRef} cli=${SUPABASE_CLI}`,
+    `PARTY_SESSION_REVIEW_ENV action=${action} target=${project.target} project_name=${project.projectName} project_ref=${linked.projectRef} cli=${SUPABASE_CLI}`,
   );
   runQuery(repoRoot, sqlFor(action));
 }

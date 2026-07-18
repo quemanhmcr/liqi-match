@@ -31,6 +31,7 @@ import {
 import { CoreV2SocialEventSchema } from './social-events';
 import { CoreV2TrustOutcomeEventSchema } from './trust-events';
 
+export * from './event-envelope';
 export * from './events';
 export * from './social-events';
 export * from './trust-events';

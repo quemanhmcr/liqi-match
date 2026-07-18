@@ -32,7 +32,7 @@ Supabase Auth -> remote project
 Profile/Match/Session repositories -> simulation memory
 ```
 
-`src/shared/config/env.ts` therefore rejects remote Supabase plus `simulation`, and API mode rejects the placeholder key. Query/cache identity that can cross accounts or projects must include the sanitized Supabase project ref and canonical actor identity. Late responses from a previous account, route or project must not mutate the current screen.
+`src/shared/config/env.ts` therefore rejects remote Supabase plus `simulation`, API mode rejects the placeholder key, and `staging-runtime` accepts only `liqi-match-staging`. The disposable E2E project is rejected before application services are composed. Query/cache identity that can cross accounts or projects must include the sanitized Supabase project ref and canonical actor identity. Late responses from a previous account, route or project must not mutate the current screen.
 
 Environment roles are explicit:
 

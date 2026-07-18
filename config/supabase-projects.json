@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "projects": {
+    "staging-runtime": {
+      "target": "staging-runtime",
+      "environment": "staging",
+      "projectName": "liqi-match-staging",
+      "projectRef": "wngumhizuxtlhavbpxzy",
+      "allowMobileRuntime": true,
+      "allowCloudDatabaseE2e": false,
+      "allowReleaseEvidence": true,
+      "disposable": false
+    },
+    "e2e-disposable": {
+      "target": "e2e-disposable",
+      "environment": "e2e",
+      "projectName": "liqi-conversation-v2-e2e-217c84e",
+      "projectRef": "ibprkyemsuktfrdpxvza",
+      "allowMobileRuntime": false,
+      "allowCloudDatabaseE2e": true,
+      "allowReleaseEvidence": false,
+      "disposable": true
+    }
+  }
+}

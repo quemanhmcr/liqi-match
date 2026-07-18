@@ -115,11 +115,13 @@ export function useMatchSetDetailQuery(setId: string | undefined) {
   });
 }
 
-export function useMatchSetDashboardQuery() {
+export function useMatchSetDashboardQuery(
+  options: Readonly<{ enabled?: boolean }> = {},
+) {
   const { session } = useAuth();
   const repository = useMatchSetRepository();
   return useQuery({
-    enabled: Boolean(session),
+    enabled: Boolean(session) && (options.enabled ?? true),
     queryFn: async () => {
       if (!session) throw new Error('Authentication is required.');
       return repository.dashboard(session);

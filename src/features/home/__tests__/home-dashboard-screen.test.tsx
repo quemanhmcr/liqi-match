@@ -90,7 +90,7 @@ async function renderHomeDashboard(
   });
   if (waitForSuccess) {
     await result.findByText('Synced');
-    expect(result.queryClient.isFetching()).toBe(0);
+    await waitFor(() => expect(result.queryClient.isFetching()).toBe(0));
   }
   return result;
 }

@@ -183,12 +183,12 @@ Local mobile configuration belongs in `.env.local`, created from one of the chec
 
 `APP_VARIANT` controls the installed application identity. `EXPO_PUBLIC_APPLICATION_RUNTIME_MODE` independently controls which application services the client constructs:
 
-| Purpose                            | Runtime mode | Supabase target                               | Evidence it may support                             |
-| ---------------------------------- | ------------ | --------------------------------------------- | --------------------------------------------------- |
-| Deterministic local UI/domain work | `simulation` | local Supabase only (`localhost`/`127.0.0.1`) | simulation and component evidence only              |
-| Staging device/API work            | `api`        | `liqi-match-staging` (`wngumhizuxtlhavbpxzy`) | staging behavior and persisted staging records      |
-| Disposable cloud database proof    | `api`        | E2E project (`ibprkyemsuktfrdpxvza`)          | isolated SQL/RPC proof only; never staging evidence |
-| Production                         | `api`        | explicitly approved production project        | production release evidence only                    |
+| Purpose                            | Runtime mode      | Supabase target                               | Evidence it may support                             |
+| ---------------------------------- | ----------------- | --------------------------------------------- | --------------------------------------------------- |
+| Deterministic local UI/domain work | `simulation`      | local Supabase only (`localhost`/`127.0.0.1`) | simulation and component evidence only              |
+| Staging device/API work            | `api`             | `liqi-match-staging` (`wngumhizuxtlhavbpxzy`) | staging behavior and persisted staging records      |
+| Disposable cloud database proof    | test harness only | E2E project (`ibprkyemsuktfrdpxvza`)          | isolated SQL/RPC proof only; never a mobile runtime |
+| Production                         | `api`             | explicitly approved production project        | production release evidence only                    |
 
 The client rejects `simulation` with a remote Supabase URL and rejects `api` with the development placeholder key. Keep that fail-closed behavior. A successful Supabase login proves only that Auth is reachable; it does **not** prove Profile, Match, Conversation or Party/Session services are using the same project.
 
@@ -202,7 +202,7 @@ A backend connection may be claimed only when all of these are recorded for the 
 6. the resulting record is observed in that same database, or the smoke is explicitly rollback-only;
 7. the app is fully reloaded after changing any `EXPO_PUBLIC_*` value. Fast Refresh is not sufficient because the service composition and query cache may already exist.
 
-Use the [mobile/backend environment parity runbook](docs/runbooks/mobile-backend-environment-parity.md) before calling a staging or production integration complete. Use the [isolated mobile Party/Session review runbook](docs/runbooks/mobile-party-session-review.md) only for the disposable E2E project.
+Use the [mobile/backend environment parity runbook](docs/runbooks/mobile-backend-environment-parity.md) before calling a staging or production integration complete. The [disposable Party/Session E2E runbook](docs/runbooks/mobile-party-session-review.md) is test-harness-only and must never configure the mobile runtime.
 
 `APP_VARIANT` selects application identity:
 

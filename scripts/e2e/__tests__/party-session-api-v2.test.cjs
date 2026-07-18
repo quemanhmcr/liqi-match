@@ -1,5 +1,8 @@
 const { describe, expect, it } = require('@jest/globals');
-const { runPartySessionApiE2e } = require('../party-session-api-v2.cjs');
+const {
+  assertApiE2eTarget,
+  runPartySessionApiE2e,
+} = require('../party-session-api-v2.cjs');
 
 const ids = {
   accountA: '01000000-0000-4000-8000-000000000101',
@@ -224,6 +227,17 @@ function scenarioFetch() {
     throw new Error(`Unexpected RPC ${rpc}`);
   });
 }
+
+describe('API E2E target guard', () => {
+  it('accepts only the disposable E2E project URL', () => {
+    expect(
+      assertApiE2eTarget('https://ibprkyemsuktfrdpxvza.supabase.co').target,
+    ).toBe('e2e-disposable');
+    expect(() =>
+      assertApiE2eTarget('https://wngumhizuxtlhavbpxzy.supabase.co'),
+    ).toThrow('not e2e-disposable');
+  });
+});
 
 describe('Party/Session API V2 E2E harness', () => {
   it('runs two REST clients through replay, stale retry and completion quorum', async () => {

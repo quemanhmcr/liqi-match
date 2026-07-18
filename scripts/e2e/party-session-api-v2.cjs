@@ -1,4 +1,8 @@
 const { randomUUID } = require('node:crypto');
+const {
+  E2E_DISPOSABLE_PROJECT,
+  assertUrlProjectTarget,
+} = require('../supabase/project-registry.cjs');
 
 class PartySessionApiE2eError extends Error {
   constructor(message, code = 'e2e_failed', details = null) {
@@ -379,6 +383,14 @@ function parseAuthorityError(payload) {
   return { code: 'rpc_failed', details: null, message: String(payload) };
 }
 
+function assertApiE2eTarget(baseUrl) {
+  try {
+    return assertUrlProjectTarget(baseUrl, 'e2e-disposable', 'SUPABASE_URL');
+  } catch (error) {
+    throw new PartySessionApiE2eError(error.message);
+  }
+}
+
 function requiredEnvironment(name) {
   const value = process.env[name];
   if (!value) throw new PartySessionApiE2eError(`Missing environment: ${name}`);
@@ -386,11 +398,16 @@ function requiredEnvironment(name) {
 }
 
 function environmentInput() {
+  const baseUrl = requiredEnvironment('SUPABASE_URL');
+  const target = assertApiE2eTarget(baseUrl);
+  console.log(
+    `API_E2E_TARGET target=${target.target} project_name=${target.projectName} project_ref=${target.projectRef}`,
+  );
   return {
     accessTokenA: requiredEnvironment('PARTY_SESSION_E2E_ACCESS_TOKEN_A'),
     accessTokenB: requiredEnvironment('PARTY_SESSION_E2E_ACCESS_TOKEN_B'),
     apiKey: requiredEnvironment('SUPABASE_ANON_KEY'),
-    baseUrl: requiredEnvironment('SUPABASE_URL'),
+    baseUrl,
     fetchImpl: fetch,
     now: () => new Date(),
     runId: randomUUID,
@@ -410,6 +427,7 @@ if (require.main === module) {
 
 module.exports = {
   PartySessionApiE2eError,
+  assertApiE2eTarget,
   createRestClient,
   runPartySessionApiE2e,
 };

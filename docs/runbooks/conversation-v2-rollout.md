@@ -90,7 +90,7 @@ Track `private.conversation_authority_metrics_v2` and outbox processing for:
 The cloud database gate is reproducible on an explicitly linked test project:
 
 ```bash
-npm run e2e:conversation:cloud-db -- --project-ref <test-project-ref>
+npm run e2e:conversation:cloud-db
 ```
 
 The runner is intentionally excluded from `task:check` because it mutates a

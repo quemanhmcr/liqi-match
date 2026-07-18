@@ -12,7 +12,7 @@ import {
   RelationshipFriendshipLabelV2Schema,
   ReportCategoryV2Schema,
 } from '../social/relationship';
-import { CoreV2EventEnvelopeSchema } from './events';
+import { CoreV2EventEnvelopeSchema } from './event-envelope';
 
 const relationshipEvent = <T extends z.ZodTypeAny>(
   eventType: string,

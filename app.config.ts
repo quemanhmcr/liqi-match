@@ -1,8 +1,66 @@
+import projectRegistry from './config/supabase-projects.json';
 import type { ConfigContext, ExpoConfig } from 'expo/config';
 
 type AppVariant = 'development' | 'preview' | 'production';
 
 type ApplicationRuntimeMode = 'simulation' | 'api';
+
+type BackendTarget =
+  'local-simulation' | 'staging-runtime' | 'production-runtime';
+
+function resolveBackendTarget(
+  value: string | undefined,
+  variant: AppVariant,
+): BackendTarget {
+  if (
+    value === 'local-simulation' ||
+    value === 'staging-runtime' ||
+    value === 'production-runtime'
+  ) {
+    return value;
+  }
+  if (value !== undefined && value !== '') {
+    throw new Error(
+      `Invalid EXPO_PUBLIC_BACKEND_TARGET "${value}". Expected local-simulation, staging-runtime, or production-runtime.`,
+    );
+  }
+  if (variant === 'development') return 'local-simulation';
+  if (variant === 'preview') return 'staging-runtime';
+  throw new Error(
+    'Production builds require EXPO_PUBLIC_BACKEND_TARGET=production-runtime.',
+  );
+}
+
+function resolveExpectedProjectRef(
+  value: string | undefined,
+  target: BackendTarget,
+) {
+  if (target === 'local-simulation') return value ?? 'local';
+  if (target === 'staging-runtime') {
+    const stagingRef = projectRegistry.projects['staging-runtime'].projectRef;
+    if (value && value !== stagingRef) {
+      throw new Error(
+        `staging-runtime requires project ref ${stagingRef}; received ${value}.`,
+      );
+    }
+    return stagingRef;
+  }
+  if (!value || !/^[a-z0-9]{20}$/.test(value)) {
+    throw new Error(
+      'production-runtime requires EXPO_PUBLIC_EXPECTED_SUPABASE_PROJECT_REF.',
+    );
+  }
+  const reservedRefs = new Set([
+    projectRegistry.projects['staging-runtime'].projectRef,
+    projectRegistry.projects['e2e-disposable'].projectRef,
+  ]);
+  if (reservedRefs.has(value)) {
+    throw new Error(
+      'production-runtime cannot reuse staging or disposable E2E.',
+    );
+  }
+  return value;
+}
 
 function resolveBooleanFlag(value: string | undefined, name: string) {
   const normalized = value?.trim().toLowerCase() ?? '';
@@ -77,6 +135,14 @@ export default ({ config }: ConfigContext): ExpoConfig => {
   const applicationRuntimeMode = resolveApplicationRuntimeMode(
     process.env.EXPO_PUBLIC_APPLICATION_RUNTIME_MODE,
     variant,
+  );
+  const backendTarget = resolveBackendTarget(
+    process.env.EXPO_PUBLIC_BACKEND_TARGET,
+    variant,
+  );
+  const expectedSupabaseProjectRef = resolveExpectedProjectRef(
+    process.env.EXPO_PUBLIC_EXPECTED_SUPABASE_PROJECT_REF,
+    backendTarget,
   );
   const conversationV2Enabled = resolveBooleanFlag(
     process.env.EXPO_PUBLIC_CONVERSATION_V2_ENABLED,
@@ -156,6 +222,8 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       appVariant: variant,
       publicEnv: {
         applicationRuntimeMode,
+        backendTarget,
+        expectedSupabaseProjectRef,
         conversationV2Enabled,
         apiUrl: process.env.EXPO_PUBLIC_API_URL,
         mediaBaseUrl: process.env.EXPO_PUBLIC_MEDIA_BASE_URL,

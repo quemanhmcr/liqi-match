@@ -12,11 +12,15 @@ Record the project name and sanitized ref. Never infer the target from `.env.loc
 | Disposable E2E                 | `ibprkyemsuktfrdpxvza`              |
 | Production                     | explicitly approved for the release |
 
-Print the current workspace link before any linked command:
+Verify the fixed primary-workspace split first:
 
 ```bash
-cat supabase/.temp/project-ref
+npm run supabase:roles:check
+npm run supabase:staging:runtime:check
+npm run supabase:e2e:cli:check
 ```
+
+The default workspace CLI is deliberately E2E-only. For staging remote commands, create or select an isolated Supabase workdir linked to staging and verify its ref before querying.
 
 If the workspace is linked to another protected project, do not casually relink it. Use an isolated Supabase workdir and verify that workdir's ref before querying or changing the target.
 
@@ -26,6 +30,8 @@ For staging, start from `.env.staging.example` and place the real publishable va
 
 ```text
 EXPO_PUBLIC_APPLICATION_RUNTIME_MODE=api
+EXPO_PUBLIC_BACKEND_TARGET=staging-runtime
+EXPO_PUBLIC_EXPECTED_SUPABASE_PROJECT_REF=wngumhizuxtlhavbpxzy
 EXPO_PUBLIC_SUPABASE_URL=https://wngumhizuxtlhavbpxzy.supabase.co
 EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<real publishable key for the same project>
 ```
@@ -34,6 +40,7 @@ Do not print the key in logs or handoffs. Record only:
 
 ```text
 runtimeMode=api
+backendTarget=staging-runtime
 projectRef=wngumhizuxtlhavbpxzy
 ```
 

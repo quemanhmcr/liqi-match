@@ -1,5 +1,7 @@
 const fs = require('node:fs');
 
+const { E2E_DISPOSABLE_PROJECT } = require('../supabase/project-registry.cjs');
+
 const runner = fs.readFileSync(
   'scripts/e2e/party-session-cloud-db-v2.cjs',
   'utf8',
@@ -13,7 +15,7 @@ const runtime = fs.readFileSync(
   'utf8',
 );
 
-const expectedRef = 'ibprkyemsuktfrdpxvza';
+const expectedRef = E2E_DISPOSABLE_PROJECT.projectRef;
 const expectedSuites = [
   ['match_set_authority_v1.test.sql', 31],
   ['match_set_dashboard_identity_v2.test.sql', 18],
@@ -31,10 +33,11 @@ const requireInvariant = (condition, message) => {
 };
 
 requireInvariant(
-  runner.includes(`const APPROVED_PROJECT_REF = '${expectedRef}'`) &&
-    runner.includes('value !== APPROVED_PROJECT_REF') &&
-    runner.includes('linkedProjectRef !== expectedProjectRef'),
-  'cloud runner must be hard-allowlisted and verify the linked project ref',
+  runner.includes('requireExplicitProjectTarget') &&
+    runner.includes('assertLinkedProjectTarget') &&
+    runner.includes("'e2e-disposable'") &&
+    !runner.includes('staging-runtime'),
+  'cloud runner must use the central E2E allowlist and verify the linked project role',
 );
 requireInvariant(
   runner.includes("const SUPABASE_CLI = 'supabase@2.109.1'") &&

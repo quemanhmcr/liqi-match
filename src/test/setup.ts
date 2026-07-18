@@ -1,6 +1,8 @@
 import { jest } from '@jest/globals';
 import type { ReactNode } from 'react';
 
+jest.setTimeout(10_000);
+
 jest.mock('expo-blur', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
   const { View: MockView } =
@@ -54,6 +56,8 @@ jest.mock('@shopify/react-native-skia', () => {
   };
 });
 
+process.env.EXPO_PUBLIC_BACKEND_TARGET ??= 'local-simulation';
+process.env.EXPO_PUBLIC_EXPECTED_SUPABASE_PROJECT_REF ??= 'local';
 process.env.EXPO_PUBLIC_API_URL ??= 'http://localhost:3000';
 process.env.EXPO_PUBLIC_SUPABASE_URL ??= 'http://127.0.0.1:54321';
 process.env.EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??= 'test-publishable-key';

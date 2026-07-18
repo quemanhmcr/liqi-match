@@ -1,0 +1,1240 @@
+import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Image,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
+
+import { appRoutes } from '@/app-shell/navigation/routes';
+import { LiquidOrbButton } from '@/shared/components/liquid';
+import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+
+import { ChatMediaViewer } from '../components/ChatMediaViewer';
+import { MessageResolvedImage } from '../components/MessageResolvedImage';
+import { calculateChatMediaPreviewMetrics } from '../model/chat-media-layout';
+import {
+  messageResolvedMediaSource,
+  messageResolvedMediaState,
+} from '../model/chat-message';
+import type {
+  ChatMessage,
+  ChatThread,
+  IncomingMediaMessage,
+  MessageResolvedMedia,
+  OutgoingChatMessage,
+  OutgoingMediaMessage,
+  OutgoingTextMessage,
+} from '../model/chat-message';
+import {
+  formatChatClock,
+  formatChatTimelineLabel,
+} from '../model/chat-timeline';
+import type { MessageConversationDetail } from '../contracts/messages-contracts';
+import type { ChatNetworkState } from '../services/chat-message-transport';
+import { selectionImpact } from './chat-conversation-haptics';
+import { chatConversationStyles as styles } from './chat-conversation.styles';
+import type { ConversationLoadState } from './chat-conversation.types';
+
+function isEmojiOnlyMessage(text: string) {
+  const value = text.trim();
+  return value.length > 0 && value.length <= 8 && !/[A-Za-zÀ-ỹ0-9]/.test(value);
+}
+
+export function ChatNetworkBanner({
+  networkState,
+  queuedMessageCount,
+}: {
+  networkState: ChatNetworkState;
+  queuedMessageCount: number;
+}) {
+  if (networkState === 'online' && queuedMessageCount === 0) return null;
+
+  const offline = networkState === 'offline';
+  const label = offline
+    ? queuedMessageCount > 0
+      ? `Ngoại tuyến · ${queuedMessageCount} tin sẽ tự gửi khi có mạng`
+      : 'Ngoại tuyến · Tin mới sẽ được xếp hàng'
+    : `Đang gửi lại ${queuedMessageCount} tin nhắn`;
+
+  return (
+    <View
+      accessibilityLabel={label}
+      accessibilityLiveRegion="polite"
+      accessible
+      style={styles.networkBanner}
+    >
+      <Ionicons
+        color={offline ? 'rgba(255,190,112,0.88)' : 'rgba(115,219,255,0.86)'}
+        name={offline ? 'cloud-offline-outline' : 'sync-outline'}
+        size={14}
+      />
+      <Text style={styles.networkBannerText}>{label}</Text>
+    </View>
+  );
+}
+
+export function ConversationStateScreen({
+  onRetry,
+  state,
+}: {
+  onRetry?: () => void;
+  state: ConversationLoadState;
+}) {
+  const goBack = () => {
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.navigate(appRoutes.main.messages);
+  };
+  const title =
+    state === 'loading'
+      ? 'Đang tải cuộc trò chuyện…'
+      : state === 'not-found'
+        ? 'Không tìm thấy cuộc trò chuyện'
+        : 'Không thể tải cuộc trò chuyện';
+  const description =
+    state === 'not-found'
+      ? 'Liên kết có thể đã hết hạn hoặc cuộc trò chuyện không còn tồn tại.'
+      : state === 'unavailable'
+        ? 'Vui lòng quay lại danh sách và thử lại sau.'
+        : 'Đang chuẩn bị lịch sử tin nhắn.';
+
+  return (
+    <LiquidScreen
+      scroll={false}
+      withBottomNavPadding={false}
+      withHeader={false}
+    >
+      <View style={styles.conversationStateHeader}>
+        <LiquidOrbButton
+          accessibilityLabel="Quay lại danh sách tin nhắn"
+          glassIntensity="low"
+          glowIntensity="low"
+          onPress={goBack}
+          size={34}
+        >
+          <Ionicons
+            color="rgba(244,247,255,0.88)"
+            name="chevron-back"
+            size={18}
+          />
+        </LiquidOrbButton>
+      </View>
+      <View accessibilityLabel={title} style={styles.conversationStateBody}>
+        <Ionicons
+          color="rgba(205,184,255,0.72)"
+          name={state === 'loading' ? 'chatbubble-ellipses' : 'alert-circle'}
+          size={34}
+        />
+        <Text style={styles.conversationStateTitle}>{title}</Text>
+        <Text style={styles.conversationStateDescription}>{description}</Text>
+        {onRetry ? (
+          <Pressable
+            accessibilityLabel="Thử tải lại cuộc trò chuyện"
+            accessibilityRole="button"
+            onPress={onRetry}
+            style={({ pressed }) => [
+              styles.conversationStateRetry,
+              pressed && styles.pressed,
+            ]}
+          >
+            <Ionicons color="rgba(238,230,255,0.86)" name="refresh" size={15} />
+            <Text style={styles.conversationStateRetryText}>Thử lại</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </LiquidScreen>
+  );
+}
+
+export function ChatTimeGap({ createdAt }: { createdAt: string }) {
+  const label = formatChatClock(createdAt);
+  if (!label) return null;
+
+  return (
+    <View
+      accessibilityLabel={`Cách quãng một giờ, tiếp tục lúc ${label}`}
+      accessible
+      style={styles.timeGap}
+    >
+      <View style={styles.timeGapDot} />
+      <Text style={styles.timeGapText}>{label}</Text>
+      <View style={styles.timeGapDot} />
+    </View>
+  );
+}
+
+export function ChatUnreadMarker() {
+  return (
+    <View
+      accessibilityLabel="Tin nhắn chưa đọc"
+      accessible
+      style={styles.unreadMarker}
+    >
+      <View style={styles.unreadMarkerRule} />
+      <Text style={styles.unreadMarkerText}>Tin nhắn chưa đọc</Text>
+      <View style={styles.unreadMarkerRule} />
+    </View>
+  );
+}
+
+export function ChatTimelineSeparator({ createdAt }: { createdAt: string }) {
+  const label = formatChatTimelineLabel(createdAt);
+  if (!label) return null;
+
+  return (
+    <View
+      accessibilityLabel={`Mốc thời gian ${label}`}
+      accessible
+      style={styles.timelineSeparator}
+    >
+      <View style={styles.timelineRule} />
+      <Text style={styles.timelineLabel}>{label}</Text>
+      <View style={styles.timelineRule} />
+    </View>
+  );
+}
+
+export function ConversationSourceBanner({
+  source,
+}: {
+  source?: MessageConversationDetail['source'];
+}) {
+  if (source?.type !== 'play_session') return null;
+  return (
+    <Pressable
+      accessibilityLabel="Mở chi tiết phiên chơi"
+      accessibilityRole="button"
+      onPress={() => {
+        selectionImpact();
+        router.push(appRoutes.sessions.detail(source.id));
+      }}
+      style={({ pressed }) => [styles.sourceBanner, pressed && styles.pressed]}
+    >
+      <View style={styles.sourceBannerIcon}>
+        <Ionicons color="#CFB7FF" name="game-controller-outline" size={16} />
+      </View>
+      <View style={styles.sourceBannerCopy}>
+        <Text style={styles.sourceBannerEyebrow}>PHIÊN CHƠI</Text>
+        <Text numberOfLines={1} style={styles.sourceBannerText}>
+          Trò chuyện của cả nhóm · Xem lịch và trạng thái
+        </Text>
+      </View>
+      <Ionicons
+        color="rgba(218, 225, 247, 0.46)"
+        name="chevron-forward"
+        size={16}
+      />
+    </Pressable>
+  );
+}
+
+export function ChatHeader({
+  onOpenOptions,
+  surface,
+  thread,
+}: {
+  onOpenOptions: () => void;
+  surface: MessageConversationDetail;
+  thread: ChatThread;
+}) {
+  const goBack = () => {
+    selectionImpact();
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+    router.navigate(appRoutes.main.messages);
+  };
+
+  return (
+    <View style={styles.header}>
+      <LiquidOrbButton
+        accessibilityLabel="Quay lại danh sách tin nhắn"
+        glassIntensity="low"
+        glowIntensity="low"
+        onPress={goBack}
+        size={34}
+      >
+        <Ionicons
+          color="rgba(244,247,255,0.88)"
+          name="chevron-back"
+          size={18}
+        />
+      </LiquidOrbButton>
+
+      <View style={styles.headerIdentity}>
+        <Avatar
+          avatar={thread.avatar}
+          icon={thread.icon}
+          online={thread.isOnline}
+          size={46}
+        />
+        <View style={styles.headerCopy}>
+          <View style={styles.headerNameLine}>
+            <Text numberOfLines={1} style={styles.headerName}>
+              {thread.name}
+            </Text>
+            {thread.kind !== 'Bạn bè' ? (
+              <View style={styles.relationshipTag}>
+                <Text style={styles.relationshipText}>
+                  {thread.kind === 'Hệ thống' ? 'Thông báo' : thread.kind}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+          <View style={styles.statusLine}>
+            <Text numberOfLines={1} style={styles.statusText}>
+              {thread.status}
+            </Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.headerActions}>
+        <LiquidOrbButton
+          accessibilityLabel={`Tuỳ chọn cuộc trò chuyện với ${thread.name}`}
+          glassIntensity="low"
+          glowIntensity="low"
+          onPress={onOpenOptions}
+          size={34}
+        >
+          <Ionicons
+            color="rgba(232,238,255,0.68)"
+            name="ellipsis-horizontal"
+            size={17}
+          />
+        </LiquidOrbButton>
+      </View>
+      <View pointerEvents="none" style={styles.headerDivider} />
+    </View>
+  );
+}
+
+export function ChatMessageRow({
+  message,
+  onCancelMedia,
+  onRemoveMedia,
+  onRetry,
+  showAvatar,
+  thread,
+}: {
+  message: ChatMessage;
+  onCancelMedia: (message: OutgoingMediaMessage) => void;
+  onRemoveMedia: (message: OutgoingMediaMessage) => void;
+  onRetry: (message: OutgoingChatMessage) => void;
+  showAvatar: boolean;
+  thread: ChatThread;
+}) {
+  if (message.kind === 'typing') {
+    return <TypingMessage showAvatar={showAvatar} thread={thread} />;
+  }
+
+  if (message.kind === 'team-invite') {
+    return (
+      <TeamInviteMessage
+        message={message}
+        showAvatar={showAvatar}
+        thread={thread}
+      />
+    );
+  }
+
+  if (message.kind === 'build-share') {
+    return (
+      <BuildShareMessage
+        message={message}
+        showAvatar={showAvatar}
+        thread={thread}
+      />
+    );
+  }
+
+  if (message.direction === 'outgoing') {
+    return message.kind === 'media' ? (
+      <OutgoingMediaMessageBubble
+        message={message}
+        onCancel={onCancelMedia}
+        onRemove={onRemoveMedia}
+        onRetry={onRetry}
+      />
+    ) : (
+      <OutgoingMessage message={message} onRetry={onRetry} />
+    );
+  }
+
+  if (message.kind === 'media') {
+    return (
+      <IncomingMediaMessageBubble
+        message={message}
+        showAvatar={showAvatar}
+        thread={thread}
+      />
+    );
+  }
+
+  return (
+    <IncomingMessage
+      message={message}
+      showAvatar={showAvatar}
+      thread={thread}
+    />
+  );
+}
+
+function IncomingMessage({
+  message,
+  showAvatar,
+  thread,
+}: {
+  message: Extract<ChatMessage, { kind: 'text' }>;
+  showAvatar: boolean;
+  thread: ChatThread;
+}) {
+  return (
+    <View style={styles.incomingBlock}>
+      <View style={styles.incomingRow}>
+        <IncomingAvatar show={showAvatar} thread={thread} />
+        <View style={styles.incomingBubble}>
+          <Text style={styles.messageText}>{message.text}</Text>
+        </View>
+      </View>
+      <Text style={styles.incomingTime}>
+        {formatChatClock(message.createdAt)}
+      </Text>
+    </View>
+  );
+}
+
+function OutgoingMessage({
+  message,
+  onRetry,
+}: {
+  message: OutgoingTextMessage;
+  onRetry: (message: OutgoingChatMessage) => void;
+}) {
+  const emojiOnly = isEmojiOnlyMessage(message.text);
+
+  return (
+    <View style={styles.outgoingRow}>
+      <LinearGradient
+        colors={[
+          'rgba(76,42,137,0.72)',
+          'rgba(12,20,41,0.94)',
+          'rgba(17,65,101,0.68)',
+        ]}
+        end={{ x: 1, y: 0.9 }}
+        locations={[0, 0.56, 1]}
+        start={{ x: 0, y: 0.1 }}
+        style={[
+          styles.outgoingBubble,
+          emojiOnly && styles.outgoingEmojiBubble,
+          message.deliveryStatus === 'failed' && styles.outgoingBubbleFailed,
+        ]}
+      >
+        {emojiOnly ? (
+          <View style={styles.outgoingEmojiRow}>
+            <Text style={styles.emojiMessageText}>{message.text}</Text>
+            <MessageDeliveryMeta compact message={message} onRetry={onRetry} />
+          </View>
+        ) : (
+          <>
+            <Text style={styles.messageText}>{message.text}</Text>
+            <MessageDeliveryMeta message={message} onRetry={onRetry} />
+          </>
+        )}
+      </LinearGradient>
+    </View>
+  );
+}
+
+function IncomingMediaMessageBubble({
+  message,
+  showAvatar,
+  thread,
+}: {
+  message: IncomingMediaMessage;
+  showAvatar: boolean;
+  thread: ChatThread;
+}) {
+  const viewport = useWindowDimensions();
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const resolvedMedia = message.attachment.resolvedMedia;
+  const resolvedSource = resolvedMedia
+    ? messageResolvedMediaSource(resolvedMedia)
+    : undefined;
+  const resolvedState = resolvedMedia
+    ? messageResolvedMediaState(resolvedMedia)
+    : 'ready';
+  const canOpenViewer = Boolean(message.attachment.uri);
+  const [imageLoading, setImageLoading] = useState(
+    message.attachment.mediaType === 'image' &&
+      Boolean(resolvedSource ?? message.attachment.uri),
+  );
+  const preview = useMemo(
+    () =>
+      calculateChatMediaPreviewMetrics({
+        mediaHeight: message.attachment.height,
+        mediaWidth: message.attachment.width,
+        viewportHeight: viewport.height,
+        viewportWidth: viewport.width,
+      }),
+    [
+      message.attachment.height,
+      message.attachment.width,
+      viewport.height,
+      viewport.width,
+    ],
+  );
+  const isVideo = message.attachment.mediaType === 'video';
+  const mediaLabel = `${isVideo ? 'Video' : 'Ảnh'} nhận được${
+    message.caption ? `, chú thích: ${message.caption}` : ''
+  }, lúc ${formatChatClock(message.createdAt)}`;
+
+  return (
+    <View style={styles.incomingBlock}>
+      <View style={styles.incomingRow}>
+        <IncomingAvatar show={showAvatar} thread={thread} />
+        <View style={[styles.mediaMessageShell, { width: preview.width }]}>
+          <Pressable
+            accessibilityLabel={mediaLabel}
+            accessibilityRole="imagebutton"
+            disabled={!canOpenViewer}
+            onPress={() => {
+              if (canOpenViewer) setViewerOpen(true);
+            }}
+            style={({ pressed }) => [
+              styles.mediaPreview,
+              { height: preview.height, width: preview.width },
+              pressed && styles.mediaPreviewPressed,
+            ]}
+          >
+            {message.attachment.thumbnailUri ? (
+              <Image
+                blurRadius={isVideo ? 0 : 5}
+                resizeMode="cover"
+                source={{ uri: message.attachment.thumbnailUri }}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : null}
+            {isVideo ? (
+              <View style={styles.mediaVideoPreview}>
+                <Ionicons
+                  color="rgba(255,255,255,0.92)"
+                  name="play-circle"
+                  size={42}
+                />
+                {message.attachment.durationMs ? (
+                  <Text style={styles.mediaDuration}>
+                    {formatMediaDuration(message.attachment.durationMs)}
+                  </Text>
+                ) : null}
+              </View>
+            ) : resolvedMedia ? (
+              <MessageResolvedImage
+                accessibilityIgnoresInvertColors
+                fadeDuration={120}
+                media={resolvedMedia}
+                onLoadEnd={() => setImageLoading(false)}
+                onLoadStart={() => setImageLoading(true)}
+                resizeMode={preview.resizeMode}
+                style={StyleSheet.absoluteFill}
+              />
+            ) : (
+              <Image
+                accessibilityIgnoresInvertColors
+                fadeDuration={120}
+                onLoadEnd={() => setImageLoading(false)}
+                onLoadStart={() => setImageLoading(true)}
+                resizeMode={preview.resizeMode}
+                source={{ uri: message.attachment.uri }}
+                style={StyleSheet.absoluteFill}
+              />
+            )}
+            {resolvedState !== 'ready' && !resolvedSource ? (
+              <View
+                accessibilityLabel={`Media ${resolvedState}`}
+                pointerEvents="none"
+                style={styles.mediaStateOverlay}
+              >
+                <Ionicons
+                  color="rgba(235,241,255,0.82)"
+                  name={
+                    resolvedState === 'offline-unavailable'
+                      ? 'cloud-offline-outline'
+                      : 'image-outline'
+                  }
+                  size={24}
+                />
+                <Text style={styles.mediaStateTitle}>
+                  {resolvedState === 'offline-unavailable'
+                    ? 'Media chưa có khi offline'
+                    : 'Media không khả dụng'}
+                </Text>
+              </View>
+            ) : null}
+            {imageLoading &&
+            !isVideo &&
+            Boolean(resolvedSource ?? message.attachment.uri) ? (
+              <View pointerEvents="none" style={styles.mediaLoadingOverlay}>
+                <ActivityIndicator
+                  color="rgba(242,246,255,0.72)"
+                  size="small"
+                />
+              </View>
+            ) : null}
+          </Pressable>
+          {message.caption ? (
+            <View style={styles.mediaCaptionSurface}>
+              <Text style={styles.mediaCaptionText}>{message.caption}</Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      <Text style={styles.incomingTime}>
+        {formatChatClock(message.createdAt)}
+      </Text>
+      {viewerOpen && canOpenViewer ? (
+        <ChatMediaViewer
+          attachment={message.attachment}
+          caption={message.caption}
+          createdAt={message.createdAt}
+          onClose={() => setViewerOpen(false)}
+          visible
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function OutgoingMediaMessageBubble({
+  message,
+  onCancel,
+  onRemove,
+  onRetry,
+}: {
+  message: OutgoingMediaMessage;
+  onCancel: (message: OutgoingMediaMessage) => void;
+  onRemove: (message: OutgoingMediaMessage) => void;
+  onRetry: (message: OutgoingChatMessage) => void;
+}) {
+  const viewport = useWindowDimensions();
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [imageLoading, setImageLoading] = useState(
+    message.attachment.mediaType === 'image',
+  );
+  const preview = useMemo(
+    () =>
+      calculateChatMediaPreviewMetrics({
+        mediaHeight: message.attachment.height,
+        mediaWidth: message.attachment.width,
+        viewportHeight: viewport.height,
+        viewportWidth: viewport.width,
+      }),
+    [
+      message.attachment.height,
+      message.attachment.width,
+      viewport.height,
+      viewport.width,
+    ],
+  );
+  const isVideo = message.attachment.mediaType === 'video';
+  const hasCaption = Boolean(message.caption);
+  const mediaLabel = `${isVideo ? 'Video' : 'Ảnh'} do bạn gửi${
+    message.caption ? `, chú thích: ${message.caption}` : ''
+  }, lúc ${formatChatClock(message.createdAt)}`;
+
+  return (
+    <View style={styles.outgoingRow}>
+      <View
+        style={[
+          styles.mediaMessageShell,
+          { width: preview.width },
+          message.deliveryStatus === 'failed' && styles.mediaMessageShellFailed,
+        ]}
+      >
+        <Pressable
+          accessibilityLabel={mediaLabel}
+          accessibilityRole="imagebutton"
+          onPress={() => setViewerOpen(true)}
+          style={({ pressed }) => [
+            styles.mediaPreview,
+            { height: preview.height, width: preview.width },
+            pressed && styles.mediaPreviewPressed,
+          ]}
+        >
+          {message.attachment.thumbnailUri ? (
+            <Image
+              blurRadius={5}
+              resizeMode="cover"
+              source={{ uri: message.attachment.thumbnailUri }}
+              style={StyleSheet.absoluteFill}
+            />
+          ) : null}
+          {isVideo ? (
+            <View style={styles.mediaVideoPreview}>
+              <Ionicons
+                color="rgba(255,255,255,0.92)"
+                name="play-circle"
+                size={42}
+              />
+              {message.attachment.durationMs ? (
+                <Text style={styles.mediaDuration}>
+                  {formatMediaDuration(message.attachment.durationMs)}
+                </Text>
+              ) : null}
+            </View>
+          ) : (
+            <Image
+              accessibilityIgnoresInvertColors
+              fadeDuration={120}
+              onLoadEnd={() => setImageLoading(false)}
+              onLoadStart={() => setImageLoading(true)}
+              resizeMode={preview.resizeMode}
+              source={{ uri: message.attachment.uri }}
+              style={StyleSheet.absoluteFill}
+            />
+          )}
+
+          {imageLoading && !isVideo ? (
+            <View pointerEvents="none" style={styles.mediaLoadingOverlay}>
+              <ActivityIndicator color="rgba(242,246,255,0.72)" size="small" />
+            </View>
+          ) : null}
+
+          {message.deliveryStatus === 'sending' ? (
+            <MediaUploadingOverlay message={message} onCancel={onCancel} />
+          ) : null}
+          {message.deliveryStatus === 'queued' ? (
+            <View style={styles.mediaStateOverlay}>
+              <Ionicons
+                color="rgba(255,220,164,0.92)"
+                name="cloud-offline-outline"
+                size={21}
+              />
+              <Text style={styles.mediaStateTitle}>Đang chờ mạng</Text>
+              <Text style={styles.mediaStateText}>
+                Ảnh sẽ tự gửi khi kết nối trở lại.
+              </Text>
+            </View>
+          ) : null}
+          {message.deliveryStatus === 'failed' ? (
+            <MediaFailedOverlay
+              message={message}
+              onRemove={onRemove}
+              onRetry={onRetry}
+            />
+          ) : null}
+
+          {!hasCaption &&
+          message.deliveryStatus !== 'sending' &&
+          message.deliveryStatus !== 'failed' ? (
+            <View style={styles.mediaMetaOverlay}>
+              <MediaDeliveryMeta message={message} />
+            </View>
+          ) : null}
+        </Pressable>
+
+        {hasCaption ? (
+          <View style={styles.mediaCaptionSurface}>
+            <Text style={styles.mediaCaptionText}>{message.caption}</Text>
+            <MediaDeliveryMeta message={message} />
+          </View>
+        ) : null}
+      </View>
+
+      {viewerOpen ? (
+        <ChatMediaViewer
+          attachment={message.attachment}
+          caption={message.caption}
+          createdAt={message.createdAt}
+          onClose={() => setViewerOpen(false)}
+          visible
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function formatMediaDuration(durationMs: number) {
+  const totalSeconds = Math.max(0, Math.round(durationMs / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = String(totalSeconds % 60).padStart(2, '0');
+  return `${minutes}:${seconds}`;
+}
+
+function MediaDeliveryMeta({ message }: { message: OutgoingMediaMessage }) {
+  const visual = deliveryVisual(message);
+  return (
+    <View
+      accessibilityLabel={`${formatChatClock(message.createdAt)}, ${visual.label}`}
+      accessible
+      style={styles.mediaDeliveryMeta}
+    >
+      <Text style={styles.mediaDeliveryTime}>
+        {formatChatClock(message.createdAt)}
+      </Text>
+      <Ionicons color={visual.color} name={visual.icon} size={13} />
+    </View>
+  );
+}
+
+function MediaUploadingOverlay({
+  message,
+  onCancel,
+}: {
+  message: OutgoingMediaMessage;
+  onCancel: (message: OutgoingMediaMessage) => void;
+}) {
+  const progress = Math.round(
+    Math.min(1, Math.max(0, message.transferProgress ?? 0)) * 100,
+  );
+  return (
+    <View style={styles.mediaStateOverlay}>
+      <ActivityIndicator color="#FFFFFF" size="small" />
+      <Text style={styles.mediaStateTitle}>Đang tải lên {progress}%</Text>
+      <View style={styles.mediaProgressTrack}>
+        <View style={[styles.mediaProgressValue, { width: `${progress}%` }]} />
+      </View>
+      <Pressable
+        accessibilityLabel="Hủy gửi media"
+        accessibilityRole="button"
+        onPress={(event) => {
+          event.stopPropagation();
+          onCancel(message);
+        }}
+        style={({ pressed }) => [
+          styles.mediaOverlayAction,
+          pressed && styles.pressed,
+        ]}
+      >
+        <Ionicons color="#FFFFFF" name="close" size={14} />
+        <Text style={styles.mediaOverlayActionText}>Hủy</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+function MediaFailedOverlay({
+  message,
+  onRemove,
+  onRetry,
+}: {
+  message: OutgoingMediaMessage;
+  onRemove: (message: OutgoingMediaMessage) => void;
+  onRetry: (message: OutgoingChatMessage) => void;
+}) {
+  const wasCancelled = message.mediaFailureReason === 'cancelled';
+  return (
+    <View style={[styles.mediaStateOverlay, styles.mediaFailedOverlay]}>
+      <Ionicons
+        color="rgba(255,178,187,0.96)"
+        name={wasCancelled ? 'close-circle-outline' : 'alert-circle-outline'}
+        size={22}
+      />
+      <Text style={styles.mediaStateTitle}>
+        {wasCancelled ? 'Đã hủy tải lên' : 'Không thể gửi'}
+      </Text>
+      <View style={styles.mediaFailedActions}>
+        <Pressable
+          accessibilityLabel="Thử lại media"
+          accessibilityRole="button"
+          onPress={(event) => {
+            event.stopPropagation();
+            onRetry(message);
+          }}
+          style={({ pressed }) => [
+            styles.mediaOverlayAction,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons color="#FFFFFF" name="refresh" size={14} />
+          <Text style={styles.mediaOverlayActionText}>Thử lại</Text>
+        </Pressable>
+        <Pressable
+          accessibilityLabel="Xóa media khỏi cuộc trò chuyện"
+          accessibilityRole="button"
+          onPress={(event) => {
+            event.stopPropagation();
+            onRemove(message);
+          }}
+          style={({ pressed }) => [
+            styles.mediaOverlayAction,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons color="#FFFFFF" name="trash-outline" size={14} />
+          <Text style={styles.mediaOverlayActionText}>Xóa</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
+}
+
+type DeliveryVisual = {
+  color: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+};
+
+function deliveryVisual(message: OutgoingChatMessage): DeliveryVisual {
+  switch (message.deliveryStatus) {
+    case 'queued':
+      return {
+        color: 'rgba(255,190,112,0.82)',
+        icon: 'cloud-offline-outline',
+        label: 'Đang chờ mạng',
+      };
+    case 'sending':
+      return {
+        color: 'rgba(198,208,235,0.48)',
+        icon: 'time-outline',
+        label: 'Đang gửi',
+      };
+    case 'sent':
+      return {
+        color: 'rgba(198,208,235,0.54)',
+        icon: 'checkmark',
+        label: 'Đã gửi',
+      };
+    case 'delivered':
+      return {
+        color: 'rgba(180,196,232,0.72)',
+        icon: 'checkmark-done',
+        label: 'Đã nhận',
+      };
+    case 'read':
+      return {
+        color: 'rgba(111,151,255,0.92)',
+        icon: 'checkmark-done',
+        label: 'Đã đọc',
+      };
+    case 'failed':
+      return {
+        color: 'rgba(255,139,150,0.88)',
+        icon: 'alert-circle-outline',
+        label: 'Không gửi được',
+      };
+  }
+}
+
+function MessageDeliveryMeta({
+  compact = false,
+  message,
+  onRetry,
+}: {
+  compact?: boolean;
+  message: OutgoingChatMessage;
+  onRetry: (message: OutgoingChatMessage) => void;
+}) {
+  const visual = deliveryVisual(message);
+
+  if (message.deliveryStatus === 'failed') {
+    return (
+      <View style={[styles.outgoingMeta, styles.outgoingMetaFailed]}>
+        <View
+          accessibilityLabel={visual.label}
+          accessible
+          style={styles.deliveryState}
+        >
+          <Ionicons color={visual.color} name={visual.icon} size={14} />
+          <Text style={styles.outgoingFailureText}>{visual.label}</Text>
+        </View>
+        <Pressable
+          accessibilityLabel="Gửi lại tin nhắn"
+          accessibilityRole="button"
+          hitSlop={8}
+          onPress={() => onRetry(message)}
+          style={({ pressed }) => [
+            styles.retryAction,
+            pressed && styles.pressed,
+          ]}
+        >
+          <Ionicons color="rgba(255,190,196,0.90)" name="refresh" size={13} />
+          <Text style={styles.retryActionText}>Thử lại</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.outgoingMeta, compact && styles.outgoingMetaCompact]}>
+      <Text style={styles.outgoingTime}>
+        {formatChatClock(message.createdAt)}
+      </Text>
+      <View accessibilityLabel={visual.label} accessible>
+        <Ionicons color={visual.color} name={visual.icon} size={14} />
+      </View>
+    </View>
+  );
+}
+
+function TeamInviteMessage({
+  message,
+  showAvatar,
+  thread,
+}: {
+  message: Extract<ChatMessage, { kind: 'team-invite' }>;
+  showAvatar: boolean;
+  thread: ChatThread;
+}) {
+  return (
+    <View style={styles.incomingBlock}>
+      <View style={styles.incomingRow}>
+        <IncomingAvatar show={showAvatar} thread={thread} />
+        <View style={styles.teamInviteStack}>
+          <View style={styles.incomingBubble}>
+            <Text style={styles.messageText}>{message.text}</Text>
+          </View>
+          <TeamInviteCard message={message} />
+        </View>
+      </View>
+      <Text style={styles.incomingTime}>
+        {formatChatClock(message.createdAt)}
+      </Text>
+    </View>
+  );
+}
+
+function TeamInviteCard({
+  message,
+}: {
+  message: Extract<ChatMessage, { kind: 'team-invite' }>;
+}) {
+  return (
+    <View
+      accessibilityLabel={`Lời mời Set ${message.teamName}`}
+      accessible
+      style={styles.teamCardPressable}
+    >
+      <LinearGradient
+        colors={[
+          'rgba(31,20,62,0.96)',
+          'rgba(13,20,40,0.98)',
+          'rgba(9,38,56,0.92)',
+        ]}
+        end={{ x: 1, y: 1 }}
+        start={{ x: 0, y: 0 }}
+        style={styles.teamCard}
+        testID="team-invite-card"
+      >
+        <View pointerEvents="none" style={styles.teamGlow} />
+        <View style={styles.teamTopRow}>
+          <View style={styles.teamEmblemFrame}>
+            <MessageResolvedImage
+              media={message.artwork}
+              style={styles.teamEmblem}
+            />
+          </View>
+          <View style={styles.teamCopy}>
+            <View style={styles.teamTitleRow}>
+              <Text numberOfLines={1} style={styles.teamName}>
+                {message.teamName}
+              </Text>
+              <View style={styles.teamCountBadge}>
+                <Text style={styles.teamCountText}>{message.teamSize}</Text>
+              </View>
+            </View>
+            <Text numberOfLines={1} style={styles.teamMode}>
+              {message.mode}
+            </Text>
+            <View style={styles.teamNeedRow}>
+              <View style={styles.teamNeedChip}>
+                <Ionicons
+                  color="rgba(255,177,105,0.88)"
+                  name="flash-outline"
+                  size={11}
+                />
+                <Text style={styles.teamNeedText}>
+                  Cần {message.missingRole}
+                </Text>
+              </View>
+              <Text numberOfLines={1} style={styles.teamMembers}>
+                {message.members.join(' · ')}
+              </Text>
+            </View>
+          </View>
+        </View>
+        <View style={styles.teamAction}>
+          <LinearGradient
+            colors={['rgba(137,70,232,0.94)', 'rgba(64,92,185,0.90)']}
+            end={{ x: 1, y: 1 }}
+            start={{ x: 0, y: 0 }}
+            style={StyleSheet.absoluteFill}
+          />
+          <Text style={styles.teamActionText}>Lời mời Set</Text>
+        </View>
+      </LinearGradient>
+    </View>
+  );
+}
+
+function BuildShareMessage({
+  message,
+  showAvatar,
+  thread,
+}: {
+  message: Extract<ChatMessage, { kind: 'build-share' }>;
+  showAvatar: boolean;
+  thread: ChatThread;
+}) {
+  return (
+    <View style={styles.incomingBlock}>
+      <View style={styles.incomingRow}>
+        <IncomingAvatar show={showAvatar} thread={thread} />
+        <View style={[styles.incomingBubble, styles.buildShareBubble]}>
+          <Text style={styles.messageText}>{message.text}</Text>
+          <View
+            accessibilityLabel={`Build ${message.heroName}`}
+            accessible
+            style={styles.buildCardPressable}
+          >
+            <LinearGradient
+              colors={[
+                'rgba(35,25,68,0.96)',
+                'rgba(12,21,42,0.98)',
+                'rgba(10,42,61,0.92)',
+              ]}
+              end={{ x: 1, y: 1 }}
+              start={{ x: 0, y: 0 }}
+              style={styles.buildCard}
+            >
+              <View style={styles.buildPreviewFrame}>
+                <MessageResolvedImage
+                  media={message.preview}
+                  style={styles.buildPreview}
+                />
+                <LinearGradient
+                  colors={['transparent', 'rgba(6,10,22,0.88)']}
+                  pointerEvents="none"
+                  style={StyleSheet.absoluteFill}
+                />
+                <View style={styles.buildRoleBadge}>
+                  <MessageResolvedImage
+                    media={message.roleIcon}
+                    style={styles.buildRoleIcon}
+                  />
+                </View>
+              </View>
+              <View style={styles.buildBody}>
+                <Text style={styles.buildEyebrow}>BUILD ĐI RỪNG</Text>
+                <Text numberOfLines={1} style={styles.buildTitle}>
+                  {message.heroName}
+                </Text>
+                <Text numberOfLines={2} style={styles.buildSummary}>
+                  {message.summary}
+                </Text>
+                <View style={styles.buildTags}>
+                  {message.tags.map((tag) => (
+                    <View key={tag} style={styles.buildTag}>
+                      <Text style={styles.buildTagText}>{tag}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={styles.buildActionLine}>
+                  <Text style={styles.buildActionText}>Chi tiết build</Text>
+                  <Ionicons
+                    color="rgba(194,170,255,0.84)"
+                    name="arrow-forward"
+                    size={14}
+                  />
+                </View>
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+      </View>
+      <Text style={styles.incomingTime}>
+        {formatChatClock(message.createdAt)}
+      </Text>
+    </View>
+  );
+}
+
+function IncomingAvatar({
+  show,
+  thread,
+}: {
+  show: boolean;
+  thread: ChatThread;
+}) {
+  return (
+    <View style={styles.messageAvatarSlot}>
+      {show ? (
+        <Avatar avatar={thread.avatar} icon={thread.icon} size={30} />
+      ) : null}
+    </View>
+  );
+}
+
+function TypingMessage({
+  showAvatar,
+  thread,
+}: {
+  showAvatar: boolean;
+  thread: ChatThread;
+}) {
+  return (
+    <View
+      accessibilityLabel={`${thread.name} đang nhập`}
+      accessibilityLiveRegion="polite"
+      accessible
+      style={styles.incomingRow}
+    >
+      <IncomingAvatar show={showAvatar} thread={thread} />
+      <View style={styles.typingBubble}>
+        {[0, 1, 2].map((dot) => (
+          <View key={dot} style={styles.typingDot} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
+function Avatar({
+  avatar,
+  icon,
+  online = false,
+  size,
+}: {
+  avatar?: MessageResolvedMedia;
+  icon?: keyof typeof Ionicons.glyphMap;
+  online?: boolean;
+  size: number;
+}) {
+  return (
+    <View
+      style={[
+        styles.avatarFrame,
+        { borderRadius: size / 2, height: size, width: size },
+      ]}
+    >
+      {avatar ? (
+        <MessageResolvedImage
+          media={avatar}
+          style={[styles.avatarImage, { borderRadius: size / 2 }]}
+        />
+      ) : (
+        <LinearGradient
+          colors={['rgba(123,66,216,0.76)', 'rgba(30,111,166,0.52)']}
+          style={[styles.avatarFallback, { borderRadius: size / 2 }]}
+        >
+          <Ionicons
+            color="rgba(244,241,255,0.88)"
+            name={icon ?? 'person-outline'}
+            size={Math.round(size * 0.42)}
+          />
+        </LinearGradient>
+      )}
+      {online ? <View style={styles.avatarOnlineDot} /> : null}
+    </View>
+  );
+}

@@ -4,6 +4,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawn, spawnSync } = require('node:child_process');
+const {
+  E2E_DISPOSABLE_PROJECT,
+  assertLinkedProjectTarget,
+  requireExplicitProjectTarget,
+} = require('../supabase/project-registry.cjs');
 
 const SUPABASE_CLI = 'supabase@2.109.1';
 const DATABASE_TEST_DIRECTORY = 'supabase/tests/database';
@@ -18,16 +23,7 @@ function optionValue(argv, name) {
 }
 
 function requiredProjectRef(argv) {
-  const projectRef = optionValue(argv, '--project-ref');
-  if (!projectRef) {
-    throw new Error(
-      'Refusing to run cloud database tests without --project-ref <20-char test project ref>.',
-    );
-  }
-  if (!/^[a-z]{20}$/.test(projectRef)) {
-    throw new Error(`Invalid Supabase project ref: ${projectRef}`);
-  }
-  return projectRef;
+  return requireExplicitProjectTarget(argv, 'e2e-disposable').projectRef;
 }
 
 function integerOption(argv, name, fallback) {
@@ -41,17 +37,7 @@ function integerOption(argv, name, fallback) {
 }
 
 function readLinkedProjectRef(repoRoot) {
-  for (const candidate of [
-    path.join(repoRoot, 'supabase', '.temp', 'project-ref'),
-    path.join(repoRoot, '.supabase', 'project-ref'),
-  ]) {
-    if (fs.existsSync(candidate)) {
-      return fs.readFileSync(candidate, 'utf8').trim();
-    }
-  }
-  throw new Error(
-    'No linked Supabase project found. Run `supabase link` first.',
-  );
+  return assertLinkedProjectTarget(repoRoot, 'e2e-disposable').projectRef;
 }
 
 function stripAnsi(value) {
@@ -387,7 +373,7 @@ async function main() {
     );
   }
   console.log(
-    `CORE_V2_CLOUD_DB_TARGET project_ref=${linkedProjectRef} cli=${SUPABASE_CLI} cli_mode=${cliInvocation.mode} shard=${shardIndex + 1}/${shardCount} suites=${selected.length} concurrency=${effectiveConcurrency}`,
+    `CORE_V2_CLOUD_DB_TARGET target=${E2E_DISPOSABLE_PROJECT.target} project_name=${E2E_DISPOSABLE_PROJECT.projectName} project_ref=${linkedProjectRef} cli=${SUPABASE_CLI} cli_mode=${cliInvocation.mode} shard=${shardIndex + 1}/${shardCount} suites=${selected.length} concurrency=${effectiveConcurrency}`,
   );
 
   const results = await runPool(

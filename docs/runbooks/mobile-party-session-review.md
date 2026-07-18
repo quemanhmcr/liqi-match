@@ -1,73 +1,76 @@
-# Mobile Party/Session review
+# Disposable Party/Session E2E review
 
-Use only the disposable Supabase project `ibprkyemsuktfrdpxvza`.
-The review controller refuses every other project ref and also verifies the
-workspace link before changing feature flags.
+This runbook is intentionally **not a mobile-runtime runbook**. The disposable
+Supabase project `liqi-conversation-v2-e2e-217c84e`
+(`ibprkyemsuktfrdpxvza`) exists only for isolated SQL/RPC and authenticated API
+E2E evidence.
 
-This runbook produces isolated E2E evidence only. It does not prove that
-`liqi-match-staging` is migrated, enabled or used by a mobile bundle. Do not copy
-this project ref into the normal staging `.env.local`. For staging work use the
-[mobile/backend environment parity runbook](mobile-backend-environment-parity.md).
+The mobile application must never use this project. Normal preview/device work
+uses `liqi-match-staging` (`wngumhizuxtlhavbpxzy`) through
+`EXPO_PUBLIC_BACKEND_TARGET=staging-runtime`.
 
-## 1. Confirm the linked project and flags
-
-```powershell
-npm run party-session:review:status -- --project-ref ibprkyemsuktfrdpxvza
-```
-
-## 2. Enable the isolated review environment
-
-This follows the rollout order: reads, reconciliation, mutation writes, then
-creation writes.
+## 1. Verify the fixed workspace roles
 
 ```powershell
-npm run party-session:review:enable -- --project-ref ibprkyemsuktfrdpxvza
+npm run supabase:roles:check
+npm run supabase:e2e:cli:check
 ```
 
-## 3. Start the phone review with an explicit environment
+Expected state:
 
-`.env.local` is intentionally ignored because it may belong to another
-workspace environment. Never place a service-role key in an `EXPO_PUBLIC_*`
-variable.
+```text
+runtime: staging-runtime -> wngumhizuxtlhavbpxzy
+workspace CLI: e2e-disposable -> ibprkyemsuktfrdpxvza
+```
+
+Stop if either role differs. Do not relink the primary workspace to staging just
+to run an operational command; use an isolated Supabase workdir for staging.
+
+## 2. Inspect or open the disposable write window
+
+The review controller is hard-restricted to `e2e-disposable` and verifies the
+linked project before issuing SQL.
 
 ```powershell
-$env:EXPO_NO_DOTENV="1"
-$env:EXPO_PUBLIC_APPLICATION_RUNTIME_MODE="api"
-$env:EXPO_PUBLIC_SUPABASE_URL="https://ibprkyemsuktfrdpxvza.supabase.co"
-$env:EXPO_PUBLIC_SUPABASE_PUBLISHABLE_KEY="<TEST_PROJECT_PUBLISHABLE_KEY>"
-npm run start
+npm run party-session:review:status
+npm run party-session:review:enable
 ```
 
-After changing an `EXPO_PUBLIC_*` value, perform a full app reload rather than
-relying on Fast Refresh. Development auth storage is scoped by Supabase project,
-so sign in again after switching the review project; a JWT from another project
-will not be restored into this client.
+Opening the E2E write window follows the rollout order: reads, reconciliation,
+mutation writes, then creation writes.
 
-Always set `EXPO_PUBLIC_APPLICATION_RUNTIME_MODE` explicitly. A development
-bundle without this variable defaults to simulation. Combining real Supabase Auth
-with simulation repositories creates a hybrid runtime and is not valid cloud E2E
-evidence. The runtime validator must continue to reject that remote/simulation
-combination.
+## 3. Run test harnesses only
 
-`Bật tìm đội` activates Match Intent only. It never transitions Player Lifecycle.
-The account must already have completed onboarding and have lifecycle `active`;
-both simulation and API paths must enforce this same rule.
-
-## 4. Review create and retry behavior
-
-- A single press creates one Session.
-- Rapid double press still creates one Session.
-- Disable network during submit; after the timeout, restore network and press
-  **Thử tạo lại**. The client reuses the exact command and idempotency key.
-- Leave the route while a request is resolving. A late callback must not reopen
-  the old route.
-- Sign out or switch account during a request. A response from the old account
-  must not navigate the new account.
-
-## 5. Close the write window
-
-This preserves reads but disables creation, mutation, and reconciliation writes.
+Cloud pgTAP/RPC proof:
 
 ```powershell
-npm run party-session:review:disable-writes -- --project-ref ibprkyemsuktfrdpxvza
+npm run e2e:party-session:cloud-db
+npm run e2e:conversation:cloud-db
+npm run e2e:trust-return-loop:cloud-db
+npm run e2e:core-v2:cloud-db
 ```
+
+Authenticated REST E2E requires E2E-project credentials in the local/CI secret
+store. The executable runners verify that `SUPABASE_URL` resolves to
+`ibprkyemsuktfrdpxvza` before using any token or service-role key:
+
+```powershell
+npm run e2e:party-session:api
+npm run e2e:return-loop:api
+```
+
+Do not start Metro with the E2E URL, do not copy the E2E publishable key into
+`.env.local`, and do not use E2E accounts as staging evidence.
+
+## 4. Close the disposable write window
+
+This preserves reads while disabling creation, mutation, and reconciliation
+writes:
+
+```powershell
+npm run party-session:review:disable-writes
+```
+
+For real mobile/API behavior, use the
+[mobile/backend environment parity runbook](mobile-backend-environment-parity.md)
+and produce staging-scoped release evidence.

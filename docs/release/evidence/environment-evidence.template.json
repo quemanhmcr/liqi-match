@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 2,
+  "environment": "staging",
+  "capturedAt": "REPLACE_WITH_ISO_TIMESTAMP",
+  "source": {
+    "gitHead": "REPLACE_WITH_FULL_GIT_SHA",
+    "branch": "REPLACE_WITH_RELEASE_BRANCH"
+  },
+  "targets": {
+    "targetRole": "staging-runtime",
+    "projectName": "liqi-match-staging",
+    "expectedProjectRef": "wngumhizuxtlhavbpxzy",
+    "runtimeProjectRef": "wngumhizuxtlhavbpxzy",
+    "remoteOperationProjectRef": "wngumhizuxtlhavbpxzy",
+    "evidenceProjectRef": "wngumhizuxtlhavbpxzy",
+    "workspaceDefaultCliProjectRef": "ibprkyemsuktfrdpxvza"
+  },
+  "database": {
+    "migrationHead": "REPLACE_WITH_LAST_APPLIED_MIGRATION"
+  },
+  "checks": {
+    "migrationParity": {
+      "status": "pending",
+      "observedAt": null,
+      "artifact": ""
+    },
+    "databaseAuthority": {
+      "status": "pending",
+      "observedAt": null,
+      "artifact": "",
+      "suites": 0,
+      "assertions": 0
+    },
+    "rpcPrivileges": {
+      "status": "pending",
+      "observedAt": null,
+      "artifact": ""
+    },
+    "rolloutFlags": {
+      "status": "pending",
+      "observedAt": null,
+      "artifact": ""
+    },
+    "authenticatedApiSmoke": {
+      "status": "pending",
+      "observedAt": null,
+      "artifact": "",
+      "actors": 0
+    },
+    "realtimeTwoDeviceSmoke": {
+      "status": "pending",
+      "observedAt": null,
+      "artifact": "",
+      "devices": 0
+    },
+    "workersHealthy": {
+      "status": "pending",
+      "observedAt": null,
+      "artifact": ""
+    },
+    "rollbackDrill": {
+      "status": "pending",
+      "observedAt": null,
+      "artifact": ""
+    }
+  },
+  "approval": {
+    "status": "pending",
+    "approver": "",
+    "changeReference": ""
+  }
+}
