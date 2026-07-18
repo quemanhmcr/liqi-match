@@ -1,4 +1,8 @@
 const { randomUUID } = require('node:crypto');
+const {
+  E2E_DISPOSABLE_PROJECT,
+  assertUrlProjectTarget,
+} = require('../supabase/project-registry.cjs');
 
 class ReturnLoopE2eError extends Error {}
 
@@ -548,6 +552,14 @@ function assertDifferent(left, right, label) {
   }
 }
 
+function assertApiE2eTarget(baseUrl) {
+  try {
+    return assertUrlProjectTarget(baseUrl, 'e2e-disposable', 'SUPABASE_URL');
+  } catch (error) {
+    throw new ReturnLoopE2eError(error.message);
+  }
+}
+
 function requiredEnvironment(name) {
   const value = process.env[name];
   if (!value) throw new ReturnLoopE2eError(`Missing environment: ${name}`);
@@ -559,11 +571,16 @@ function optionalEnvironment(name) {
 }
 
 function environmentInput() {
+  const baseUrl = requiredEnvironment('SUPABASE_URL');
+  const target = assertApiE2eTarget(baseUrl);
+  console.log(
+    `API_E2E_TARGET target=${target.target} project_name=${target.projectName} project_ref=${target.projectRef}`,
+  );
   return {
     accessTokenA: requiredEnvironment('RETURN_LOOP_E2E_ACCESS_TOKEN_A'),
     accessTokenB: requiredEnvironment('RETURN_LOOP_E2E_ACCESS_TOKEN_B'),
     apiKey: requiredEnvironment('SUPABASE_ANON_KEY'),
-    baseUrl: requiredEnvironment('SUPABASE_URL'),
+    baseUrl,
     expectedConversationId: requiredEnvironment(
       'RETURN_LOOP_E2E_CONVERSATION_ID',
     ),
@@ -599,6 +616,7 @@ if (require.main === module) {
 
 module.exports = {
   ReturnLoopE2eError,
+  assertApiE2eTarget,
   createRestClient,
   runReturnLoopApiE2e,
 };

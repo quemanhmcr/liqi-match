@@ -11,5 +11,4 @@ module.exports = {
     '<rootDir>/src/**/*.test.tsx',
     '<rootDir>/src/**/*.native.test.ts',
   ],
-  testTimeout: 10_000,
 };

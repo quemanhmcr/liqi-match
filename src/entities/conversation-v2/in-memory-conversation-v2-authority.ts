@@ -20,9 +20,6 @@ import {
   MessageV2Schema,
   ProvisionDirectConversationCommandV2Schema,
   ProvisionSessionConversationCommandV2Schema,
-  RelationshipConversationAccessEventV2Schema,
-  RelationshipConversationProjectionInputV2Schema,
-  RelationshipConversationProjectionReceiptV2Schema,
   ReconcileConversationMembershipCommandV2Schema,
   SendMediaMessageCommandV2Schema,
   SendMessageCommandV2Schema,
@@ -39,7 +36,6 @@ import {
   type ConversationMemberV2,
   type ConversationReadCursorV2,
   type ConversationSnapshotV2,
-  type ConversationSourceBindingV2,
   type ConversationSourceV2,
   type MessageV2,
   type PlaySessionMembershipProjectionV2,
@@ -58,74 +54,41 @@ import {
   EventIdSchema,
   IdempotencyKeySchema,
   PlayerIdSchema,
-  RequestIdSchema,
   type EventId,
   type PlayerId,
 } from '@/shared/contracts/core-v1';
 
 import type {
-  ConversationAccessProvider,
-  ConversationEventLogV2,
   ConversationInboxItemV2,
-  ConversationLifecycleProvider,
-  ConversationMembershipProjection,
-  ConversationModerationProvider,
   ConversationNotificationFactV2,
   ConversationNotificationProvider,
-  ConversationProvisioningService,
-  ConversationRelationshipProjection,
-  ConversationRepository,
   ConversationSystemActivityV2,
-  MessageTransport,
   VerifiedConversationActorV2,
 } from './conversation-v2-provider';
 import { ConversationV2ProviderError } from './conversation-v2-error';
-
-type StoredConversation = {
-  snapshot: ConversationSnapshotV2;
-  sources: Map<string, ConversationSourceBindingV2>;
-  members: Map<string, ConversationMemberV2>;
-  membershipVersion: number;
-  messages: MessageV2[];
-  cursors: Map<string, ConversationReadCursorV2>;
-  conversationMutedPlayerIds: Set<string>;
-  relationshipMutedPlayerIds: Set<string>;
-};
-
-type StoredReceipt = {
-  fingerprint: string;
-  receipt: ConversationCommandReceiptV2;
-};
-
-type StoredRelationshipProjectionReceipt = {
-  fingerprint: string;
-  receipt: RelationshipConversationProjectionReceiptV2;
-};
-
-type StoredEvidence = Readonly<{
-  evidenceId: ReturnType<typeof MessageReportEvidenceIdV2Schema.parse>;
-  conversationId: string;
-  message: MessageV2;
-  reporterPlayerId: PlayerId;
-  capturedAt: string;
-  reportId: string;
-}>;
-
-type AuthorityOptions = Readonly<{
-  clock?: () => Date;
-  createUuid?: () => string;
-  notificationProvider?: ConversationNotificationProvider;
-}>;
-
-type ConversationV2Authority = ConversationRepository &
-  ConversationProvisioningService &
-  ConversationRelationshipProjection &
-  ConversationMembershipProjection &
-  MessageTransport &
-  ConversationAccessProvider &
-  ConversationModerationProvider &
-  ConversationLifecycleProvider &
-  ConversationEventLogV2;
+import {
+  clone,
+  createUuid,
+  directPairKey,
+  listenerKey,
+  normalizedActiveMembers,
+  normalizedMembers,
+  sourceKey,
+  stableJson,
+  stripStoredEvidence,
+  type ConversationReadReceiptStore,
+  type ConversationV2Authority,
+  type InMemoryConversationV2AuthorityOptions,
+  type StoredEvidence,
+  type StoredReceipt,
+} from './in-memory-conversation-v2-model';
+import {
+  applyRelationshipEventProjection,
+  applyRelationshipProjection,
+  type RelationshipProjectionContext,
+  type StoredConversation,
+  type StoredRelationshipProjectionReceipt,
+} from './in-memory-conversation-v2-relationship-projector';
 
 export class InMemoryConversationV2Authority implements ConversationV2Authority {
   private readonly clock: () => Date;
@@ -146,10 +109,7 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
   private readonly commandReceipts = new Map<string, StoredReceipt>();
   private readonly clientMessageReceipts = new Map<string, StoredReceipt>();
   private readonly systemMessagesByEvent = new Map<string, MessageV2>();
-  private readonly readReceipts = new Map<
-    string,
-    ConversationCommandReceiptV2
-  >();
+  private readonly readReceipts: ConversationReadReceiptStore = new Map();
   private readonly reportEvidence = new Map<string, StoredEvidence>();
   private readonly accessListeners = new Map<
     string,
@@ -157,15 +117,13 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
   >();
   private readonly eventLog: ConversationEventV2[] = [];
 
-  constructor(options: AuthorityOptions = {}) {
+  constructor(options: InMemoryConversationV2AuthorityOptions = {}) {
     this.clock = options.clock ?? (() => new Date());
     this.createUuid = options.createUuid ?? createUuid;
     this.notificationProvider = options.notificationProvider;
   }
 
-  events() {
-    return [...this.eventLog];
-  }
+  readonly events = () => [...this.eventLog];
 
   async provisionDirect(
     actor: VerifiedConversationActorV2 | null,
@@ -260,531 +218,19 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
   async applyRelationship(
     input: RelationshipConversationProjectionInputV2,
   ): Promise<RelationshipConversationProjectionReceiptV2> {
-    const projection =
-      RelationshipConversationProjectionInputV2Schema.parse(input);
-    const fingerprint = stableJson(projection);
-    const replayKey = projection.sourceEventId;
-    const replay = this.relationshipProjectionReceipts.get(replayKey);
-    if (replay) {
-      if (replay.fingerprint !== fingerprint) {
-        throw new ConversationV2ProviderError(
-          'event_replay_conflict',
-          'Relationship event ID is already bound to different projection facts.',
-          false,
-        );
-      }
-      return { ...replay.receipt, repeated: true };
-    }
-
-    const relationship = projection.relationship;
-    const relationshipFingerprint = stableJson(relationship);
-    const observedVersion =
-      this.relationshipObservedVersions.get(relationship.relationshipId) ?? 0;
-    if (relationship.version < observedVersion) {
-      throw new ConversationV2ProviderError(
-        'source_version_conflict',
-        'Relationship projection version is older than an observed authority event.',
-        false,
-        { current: observedVersion, requested: relationship.version },
-      );
-    }
-    const projectedVersion = this.relationshipProjectionVersions.get(
-      relationship.relationshipId,
+    return applyRelationshipProjection(
+      this.relationshipProjectionContext(),
+      input,
     );
-    if (projectedVersion) {
-      if (relationship.version < projectedVersion.version) {
-        throw new ConversationV2ProviderError(
-          'source_version_conflict',
-          'Relationship projection version is stale.',
-          false,
-          {
-            current: projectedVersion.version,
-            requested: relationship.version,
-          },
-        );
-      }
-      if (
-        relationship.version === projectedVersion.version &&
-        relationshipFingerprint !== projectedVersion.fingerprint
-      ) {
-        throw new ConversationV2ProviderError(
-          'event_replay_conflict',
-          'Relationship version is already bound to different facts.',
-          false,
-        );
-      }
-    }
-    const pair = directPairKey([
-      relationship.viewerPlayerId,
-      relationship.targetPlayerId,
-    ]);
-    const friendshipSource: ConversationSourceV2 = {
-      sourceType: 'friendship',
-      sourceId: relationship.relationshipId,
-      sourceAggregateVersion: Math.max(1, relationship.version),
-    };
-    const eventIds: EventId[] = [];
-    let conversationId = this.directConversationByPair.get(pair) ?? null;
-    let action: RelationshipConversationProjectionReceiptV2['action'] = 'none';
-
-    const acceptedFriendship =
-      relationship.friendship.state === 'accepted' &&
-      relationship.friendship.label === 'friend';
-    if (!conversationId && acceptedFriendship) {
-      const provisionReceipt = await this.provision(null, {
-        commandName: 'provision_direct_conversation_v2',
-        kind: 'direct',
-        members: [
-          { playerId: relationship.viewerPlayerId, role: 'member' },
-          { playerId: relationship.targetPlayerId, role: 'member' },
-        ],
-        membershipVersion: friendshipSource.sourceAggregateVersion,
-        metadata: {
-          idempotencyKey: IdempotencyKeySchema.parse(
-            `relationship-projection:${projection.sourceEventId}`,
-          ),
-          correlationId: projection.correlationId,
-          causationId: projection.sourceEventId,
-          expectedAggregateVersion: 0,
-          audit: {
-            requestId: RequestIdSchema.parse(
-              `relationship-${projection.sourceEventId}`,
-            ),
-            clientCreatedAt: projection.occurredAt,
-            clientPlatform: 'service',
-            clientVersion: 'core-v2-social-projection',
-          },
-        },
-        source: friendshipSource,
-        title: null,
-      });
-      conversationId = provisionReceipt.conversationId;
-      eventIds.push(provisionReceipt.eventId);
-      action = 'provisioned';
-    }
-
-    if (!conversationId) {
-      const receipt = RelationshipConversationProjectionReceiptV2Schema.parse({
-        action,
-        conversationId: null,
-        relationshipId: relationship.relationshipId,
-        relationshipVersion: relationship.version,
-        sourceEventId: projection.sourceEventId,
-        eventIds,
-        repeated: false,
-      });
-      this.relationshipProjectionReceipts.set(replayKey, {
-        fingerprint,
-        receipt,
-      });
-      this.relationshipProjectionVersions.set(relationship.relationshipId, {
-        version: relationship.version,
-        fingerprint: relationshipFingerprint,
-      });
-      this.relationshipObservedVersions.set(
-        relationship.relationshipId,
-        Math.max(observedVersion, relationship.version),
-      );
-      return receipt;
-    }
-
-    const stored = this.requireConversation(conversationId);
-    const sourceKeyValue = sourceKey(friendshipSource);
-    const currentSourceBinding = stored.sources.get(sourceKeyValue);
-    const blocked = relationship.capabilities.blocked;
-    const canViewConversation = blocked
-      ? false
-      : relationship.capabilities.canViewConversation;
-    const canMessage =
-      canViewConversation && !blocked && relationship.capabilities.canMessage;
-    const reason: ConversationAccessReasonV2 = blocked
-      ? 'blocked'
-      : 'source_membership_revoked';
-    const now = projection.occurredAt;
-    const transitions: {
-      kind: 'added' | 'removed';
-      member: ConversationMemberV2;
-    }[] = [];
-    let accessChanged = false;
-
-    for (const playerId of [
-      relationship.viewerPlayerId,
-      relationship.targetPlayerId,
-    ]) {
-      const existing = stored.members.get(playerId);
-      if (!existing) {
-        if (!canViewConversation) continue;
-        const member = this.newMember(
-          { playerId, role: 'member' },
-          friendshipSource.sourceAggregateVersion,
-          now,
-        );
-        member.canMessage = canMessage;
-        member.canViewConversation = canViewConversation;
-        stored.members.set(playerId, member);
-        transitions.push({ kind: 'added', member });
-        accessChanged = true;
-        continue;
-      }
-
-      const nextState =
-        canViewConversation || canMessage
-          ? ('active' as const)
-          : ('revoked' as const);
-      const changed =
-        existing.canMessage !== canMessage ||
-        existing.canViewConversation !== canViewConversation ||
-        existing.state !== nextState ||
-        existing.membershipVersion !== friendshipSource.sourceAggregateVersion;
-      if (!changed) continue;
-      const previousState = existing.state;
-      const member: ConversationMemberV2 = {
-        ...existing,
-        canMessage,
-        canViewConversation,
-        state: nextState,
-        membershipVersion: friendshipSource.sourceAggregateVersion,
-        version: existing.version + 1,
-        revokedAt: nextState === 'revoked' ? now : null,
-        revocationReason: nextState === 'revoked' ? reason : null,
-      };
-      stored.members.set(playerId, member);
-      accessChanged = true;
-      if (previousState !== nextState) {
-        transitions.push({
-          kind: nextState === 'active' ? 'added' : 'removed',
-          member,
-        });
-      }
-    }
-
-    const sourceChanged =
-      !currentSourceBinding ||
-      currentSourceBinding.source.sourceAggregateVersion !==
-        friendshipSource.sourceAggregateVersion;
-    const relationshipMuted = relationship.mute.viewerMutedTarget;
-    const relationshipMuteChanged =
-      stored.relationshipMutedPlayerIds.has(relationship.viewerPlayerId) !==
-      relationshipMuted;
-    if (relationshipMuted) {
-      stored.relationshipMutedPlayerIds.add(relationship.viewerPlayerId);
-    } else {
-      stored.relationshipMutedPlayerIds.delete(relationship.viewerPlayerId);
-    }
-    if (sourceChanged || accessChanged || relationshipMuteChanged) {
-      stored.membershipVersion = Math.max(
-        stored.membershipVersion,
-        friendshipSource.sourceAggregateVersion,
-      );
-      stored.snapshot = this.advanceConversation(stored, now);
-    }
-    if (sourceChanged) {
-      const binding = ConversationSourceBindingV2Schema.parse({
-        conversationId,
-        source: friendshipSource,
-        boundAt: now,
-      });
-      stored.sources.set(sourceKeyValue, binding);
-      this.sourceToConversation.set(sourceKeyValue, conversationId);
-      const sourceBoundEventId = this.eventId();
-      eventIds.push(sourceBoundEventId);
-      this.eventLog.push(
-        ConversationSourceBoundEventV2Schema.parse({
-          eventId: sourceBoundEventId,
-          eventType: 'conversation.source_bound.v2',
-          eventVersion: 2,
-          aggregateType: 'conversation',
-          aggregateId: conversationId,
-          aggregateVersion: stored.snapshot.version,
-          actorPlayerId: null,
-          correlationId: projection.correlationId,
-          causationId: projection.sourceEventId,
-          occurredAt: now,
-          payload: { binding },
-        }),
-      );
-      if (action === 'none') action = 'bound_existing';
-    }
-
-    for (const transition of transitions) {
-      const memberEventId = this.eventId();
-      eventIds.push(memberEventId);
-      const common = {
-        eventId: memberEventId,
-        eventVersion: 2 as const,
-        aggregateType: 'conversation' as const,
-        aggregateId: conversationId,
-        aggregateVersion: stored.snapshot.version,
-        actorPlayerId: null,
-        correlationId: projection.correlationId,
-        causationId: projection.sourceEventId,
-        occurredAt: now,
-        payload: {
-          conversationId,
-          member: transition.member,
-          source: friendshipSource,
-        },
-      };
-      this.eventLog.push(
-        transition.kind === 'added'
-          ? ConversationMemberAddedEventV2Schema.parse({
-              ...common,
-              eventType: 'conversation.member_added.v2',
-            })
-          : ConversationMemberRemovedEventV2Schema.parse({
-              ...common,
-              eventType: 'conversation.member_removed.v2',
-            }),
-      );
-      if (transition.kind === 'removed') {
-        const revokedEvent = this.accessRevokedEvent(
-          stored,
-          transition.member.playerId,
-          reason,
-          now,
-          null,
-          projection.correlationId,
-          projection.sourceEventId,
-        );
-        eventIds.push(revokedEvent.eventId);
-        this.eventLog.push(revokedEvent);
-      }
-    }
-
-    if (accessChanged) {
-      action = canViewConversation ? 'access_reconciled' : 'access_revoked';
-    } else if (relationshipMuteChanged && action === 'none') {
-      action = 'notification_policy_reconciled';
-    }
-    for (const playerId of [
-      relationship.viewerPlayerId,
-      relationship.targetPlayerId,
-    ]) {
-      this.notifyAccess(stored, playerId);
-    }
-
-    const receipt = RelationshipConversationProjectionReceiptV2Schema.parse({
-      action,
-      conversationId,
-      relationshipId: relationship.relationshipId,
-      relationshipVersion: relationship.version,
-      sourceEventId: projection.sourceEventId,
-      eventIds,
-      repeated: false,
-    });
-    this.relationshipProjectionReceipts.set(replayKey, {
-      fingerprint,
-      receipt,
-    });
-    this.relationshipProjectionVersions.set(relationship.relationshipId, {
-      version: relationship.version,
-      fingerprint: relationshipFingerprint,
-    });
-    this.relationshipObservedVersions.set(
-      relationship.relationshipId,
-      Math.max(observedVersion, relationship.version),
-    );
-    return receipt;
   }
 
   async applyRelationshipEvent(
     input: RelationshipConversationAccessEventV2,
   ): Promise<RelationshipConversationProjectionReceiptV2> {
-    const event = RelationshipConversationAccessEventV2Schema.parse(input);
-    const fingerprint = stableJson(event);
-    const replay = this.relationshipProjectionReceipts.get(event.eventId);
-    if (replay) {
-      if (replay.fingerprint !== fingerprint) {
-        throw new ConversationV2ProviderError(
-          'event_replay_conflict',
-          'Relationship event ID is already bound to different access facts.',
-          false,
-        );
-      }
-      return { ...replay.receipt, repeated: true };
-    }
-
-    const pairIds =
-      'requesterPlayerId' in event.payload
-        ? [event.payload.requesterPlayerId, event.payload.recipientPlayerId]
-        : 'blockerPlayerId' in event.payload
-          ? [event.payload.blockerPlayerId, event.payload.blockedPlayerId]
-          : [event.payload.muterPlayerId, event.payload.mutedPlayerId];
-    let conversationId =
-      this.directConversationByPair.get(directPairKey(pairIds)) ?? null;
-    const observedVersion =
-      this.relationshipObservedVersions.get(event.aggregateId) ?? 0;
-    const eventIds: EventId[] = [];
-    let action: RelationshipConversationProjectionReceiptV2['action'] = 'none';
-
-    if (
-      event.eventType === 'friendship.accepted.v2' &&
-      event.aggregateVersion >= observedVersion
-    ) {
-      if (!('requesterPlayerId' in event.payload)) {
-        throw new ConversationV2ProviderError(
-          'validation_failed',
-          'Friendship accepted event payload is invalid.',
-          false,
-        );
-      }
-      const friendshipPayload = event.payload;
-      const existingConversationId = conversationId;
-      const receipt = await this.provision(null, {
-        commandName: 'provision_direct_conversation_v2',
-        kind: 'direct',
-        members: [
-          { playerId: friendshipPayload.requesterPlayerId, role: 'member' },
-          { playerId: friendshipPayload.recipientPlayerId, role: 'member' },
-        ],
-        membershipVersion: event.aggregateVersion,
-        metadata: {
-          idempotencyKey: IdempotencyKeySchema.parse(
-            `friendship-conversation:${event.eventId}`,
-          ),
-          correlationId: event.correlationId,
-          causationId: event.eventId,
-          expectedAggregateVersion: 0,
-          audit: {
-            requestId: RequestIdSchema.parse(
-              `relationship-event:${event.eventId}`,
-            ),
-            clientCreatedAt: event.occurredAt,
-            clientPlatform: 'service',
-          },
-        },
-        source: {
-          sourceType: 'friendship',
-          sourceId: event.aggregateId,
-          sourceAggregateVersion: event.aggregateVersion,
-        },
-        title: null,
-      });
-      const acceptedConversationId = receipt.conversationId;
-      conversationId = acceptedConversationId;
-      eventIds.push(receipt.eventId);
-      await this.projectSystemActivity({
-        conversationId: acceptedConversationId,
-        source: {
-          sourceType: 'friendship',
-          sourceId: event.aggregateId,
-          sourceAggregateVersion: event.aggregateVersion,
-        },
-        sourceEventId: event.eventId,
-        sourceEventType: event.eventType,
-        sourceEventVersion: event.eventVersion,
-        correlationId: event.correlationId,
-        causationId: event.causationId,
-        payload: friendshipPayload,
-      });
-      action = existingConversationId ? 'bound_existing' : 'provisioned';
-    } else if (event.aggregateVersion >= observedVersion && conversationId) {
-      const stored = this.requireConversation(conversationId);
-      if (event.eventType === 'player.blocked.v2') {
-        const transitions: ConversationMemberV2[] = [];
-        for (const playerId of pairIds) {
-          const existing = stored.members.get(playerId);
-          if (!existing) continue;
-          const changed =
-            existing.state !== 'revoked' ||
-            existing.canMessage ||
-            existing.canViewConversation ||
-            existing.revocationReason !== 'blocked' ||
-            existing.membershipVersion < event.aggregateVersion;
-          if (!changed) continue;
-          const member: ConversationMemberV2 = {
-            ...existing,
-            canMessage: false,
-            canViewConversation: false,
-            membershipVersion: Math.max(
-              existing.membershipVersion,
-              event.aggregateVersion,
-            ),
-            state: 'revoked',
-            revokedAt: event.occurredAt,
-            revocationReason: 'blocked',
-            version: existing.version + 1,
-          };
-          stored.members.set(playerId, member);
-          transitions.push(member);
-        }
-
-        if (transitions.length) {
-          stored.membershipVersion = Math.max(
-            stored.membershipVersion,
-            event.aggregateVersion,
-          );
-          stored.snapshot = this.advanceConversation(stored, event.occurredAt);
-          for (const member of transitions) {
-            const memberEventId = this.eventId();
-            eventIds.push(memberEventId);
-            this.eventLog.push(
-              ConversationMemberRemovedEventV2Schema.parse({
-                eventId: memberEventId,
-                eventType: 'conversation.member_removed.v2',
-                eventVersion: 2,
-                aggregateType: 'conversation',
-                aggregateId: conversationId,
-                aggregateVersion: stored.snapshot.version,
-                actorPlayerId: event.actorPlayerId,
-                correlationId: event.correlationId,
-                causationId: event.eventId,
-                occurredAt: event.occurredAt,
-                payload: {
-                  conversationId,
-                  member,
-                  source: stored.snapshot.source,
-                },
-              }),
-            );
-            const revoked = this.accessRevokedEvent(
-              stored,
-              member.playerId,
-              'blocked',
-              event.occurredAt,
-              event.actorPlayerId,
-              event.correlationId,
-              event.eventId,
-            );
-            eventIds.push(revoked.eventId);
-            this.eventLog.push(revoked);
-            this.notifyAccess(stored, member.playerId);
-          }
-          action = 'access_revoked';
-        }
-      } else if ('muterPlayerId' in event.payload) {
-        const muted = event.eventType === 'player.muted.v2';
-        const muterPlayerId = event.payload.muterPlayerId;
-        const current = stored.relationshipMutedPlayerIds.has(muterPlayerId);
-        if (current !== muted) {
-          if (muted) stored.relationshipMutedPlayerIds.add(muterPlayerId);
-          else stored.relationshipMutedPlayerIds.delete(muterPlayerId);
-          stored.snapshot = this.advanceConversation(stored, event.occurredAt);
-          action = 'notification_policy_reconciled';
-        }
-      }
-      // player.unblocked.v2 never grants access by itself. A complete
-      // relationship snapshot at the same or a newer version must reconcile it.
-    }
-
-    this.relationshipObservedVersions.set(
-      event.aggregateId,
-      Math.max(observedVersion, event.aggregateVersion),
+    return applyRelationshipEventProjection(
+      this.relationshipProjectionContext(),
+      input,
     );
-    const receipt = RelationshipConversationProjectionReceiptV2Schema.parse({
-      action,
-      conversationId,
-      relationshipId: event.aggregateId,
-      relationshipVersion: event.aggregateVersion,
-      sourceEventId: event.eventId,
-      eventIds,
-      repeated: false,
-    });
-    this.relationshipProjectionReceipts.set(event.eventId, {
-      fingerprint,
-      receipt,
-    });
-    return receipt;
   }
 
   async sendText(
@@ -1708,6 +1154,26 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     return receipt;
   }
 
+  private relationshipProjectionContext(): RelationshipProjectionContext {
+    return {
+      directConversationByPair: this.directConversationByPair,
+      eventId: () => this.eventId(),
+      eventLog: this.eventLog,
+      relationshipObservedVersions: this.relationshipObservedVersions,
+      relationshipProjectionReceipts: this.relationshipProjectionReceipts,
+      relationshipProjectionVersions: this.relationshipProjectionVersions,
+      sourceToConversation: this.sourceToConversation,
+      accessRevokedEvent: (...args) => this.accessRevokedEvent(...args),
+      advanceConversation: (...args) => this.advanceConversation(...args),
+      newMember: (...args) => this.newMember(...args),
+      notifyAccess: (...args) => this.notifyAccess(...args),
+      projectSystemActivity: (activity) => this.projectSystemActivity(activity),
+      provision: (actor, input) => this.provision(actor, input),
+      requireConversation: (conversationId) =>
+        this.requireConversation(conversationId),
+    };
+  }
+
   private memberEvent(
     kind: 'added' | 'removed',
     stored: StoredConversation,
@@ -2014,79 +1480,6 @@ export class InMemoryConversationV2Authority implements ConversationV2Authority 
     });
   }
 
-  private now() {
-    return this.clock().toISOString();
-  }
-
-  private eventId() {
-    return EventIdSchema.parse(this.createUuid());
-  }
-}
-
-function sourceKey(source: ConversationSourceV2) {
-  return `${source.sourceType}:${source.sourceId}`;
-}
-
-function listenerKey(conversationId: string, playerId: string) {
-  return `${conversationId}:${playerId}`;
-}
-
-function normalizedMembers(
-  members: readonly AuthoritativeConversationMemberV2[],
-) {
-  return [...members]
-    .map((member) => ({ playerId: member.playerId, role: member.role }))
-    .sort((left, right) => left.playerId.localeCompare(right.playerId));
-}
-
-function directPairKey(playerIds: readonly string[]) {
-  if (playerIds.length !== 2 || playerIds[0] === playerIds[1]) {
-    throw new ConversationV2ProviderError(
-      'validation_failed',
-      'Direct conversations require exactly two distinct players.',
-      false,
-    );
-  }
-  return [...playerIds].sort().join(':');
-}
-
-function normalizedActiveMembers(members: Map<string, ConversationMemberV2>) {
-  return normalizedMembers(
-    [...members.values()].filter(
-      (member): member is ConversationMemberV2 & { role: 'owner' | 'member' } =>
-        member.state === 'active' && member.role !== 'system',
-    ),
-  );
-}
-
-function stableJson(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
-  if (value && typeof value === 'object') {
-    return `{${Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, entry]) => `${JSON.stringify(key)}:${stableJson(entry)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
-
-function clone<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-function stripStoredEvidence(evidence: StoredEvidence) {
-  return {
-    capturedAt: evidence.capturedAt,
-    conversationId: evidence.conversationId,
-    evidenceId: evidence.evidenceId,
-    message: evidence.message,
-    reporterPlayerId: evidence.reporterPlayerId,
-  };
-}
-
-function createUuid() {
-  // Lazy native import keeps pure contract tests independent of Expo ESM.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const crypto = require('expo-crypto') as typeof import('expo-crypto');
-  return crypto.randomUUID();
+  private readonly now = () => this.clock().toISOString();
+  private readonly eventId = () => EventIdSchema.parse(this.createUuid());
 }

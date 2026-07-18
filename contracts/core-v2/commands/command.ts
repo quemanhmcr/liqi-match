@@ -7,15 +7,30 @@ import {
   PlayerIdSchema,
 } from '../../core-v1';
 
-export const CoreV2ClientPlatformSchema = z.enum(['android', 'ios', 'web']);
+export const CoreV2CommandOriginPlatformSchema = z.enum([
+  'android',
+  'ios',
+  'web',
+  'service',
+  'simulation',
+]);
+export const CoreV2OperationalClientPlatformSchema =
+  CoreV2CommandOriginPlatformSchema.exclude(['simulation']);
+export const CoreV2InteractiveClientPlatformSchema =
+  CoreV2OperationalClientPlatformSchema.exclude(['service']);
+/** @deprecated Prefer CoreV2InteractiveClientPlatformSchema for new contracts. */
+export const CoreV2ClientPlatformSchema = CoreV2InteractiveClientPlatformSchema;
+export const CoreV2AuditTimestampSchema = z.string().datetime({ offset: true });
+export const CoreV2AuditClientVersionSchema = z.string().trim().min(1).max(80);
+export const CoreV2AuditInstallationIdSchema = z.string().uuid();
 
 export const CoreV2CommandAuditMetadataSchema = z
   .object({
-    appVersion: z.string().trim().min(1).max(64),
-    clientCreatedAt: z.string().datetime({ offset: true }),
+    appVersion: CoreV2AuditClientVersionSchema.max(64),
+    clientCreatedAt: CoreV2AuditTimestampSchema,
     clientRequestId: z.string().uuid(),
-    deviceInstallationId: z.string().uuid().optional(),
-    platform: CoreV2ClientPlatformSchema,
+    deviceInstallationId: CoreV2AuditInstallationIdSchema.optional(),
+    platform: CoreV2InteractiveClientPlatformSchema,
   })
   .strict();
 

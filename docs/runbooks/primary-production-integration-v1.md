@@ -100,6 +100,26 @@ Do not restore legacy semantic writes as an emergency rollback. Use the existing
 capability flags and emergency stops to halt new authoritative work while
 preserving aggregates, command receipts, events, and tombstones.
 
+## Fail-closed target and evidence gate
+
+Before any remote Supabase command, print and verify the target context. Never infer the target from a shell session, a mobile `.env` file, or an existing CLI link alone.
+
+```bash
+npm run supabase:roles:status
+npm run supabase:roles:check
+npm run supabase:staging:runtime:check
+```
+
+The primary workspace CLI remains linked to the disposable E2E project. Any staging or production database operation must use an isolated Supabase workdir and verify that workdir before the operation. The guards print only project identity and never read or emit credentials.
+
+Staging and production approval require a fresh machine-verifiable artifact following `docs/release/environment-evidence.md`:
+
+```bash
+npm run release:evidence:check -- --file <environment-evidence.json>
+```
+
+A document claim, disposable-project proof, or source-only gate cannot substitute for this artifact.
+
 ## Release evidence
 
 Record these artifacts for every environment:

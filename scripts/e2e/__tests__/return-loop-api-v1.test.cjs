@@ -1,5 +1,8 @@
 const { describe, expect, it } = require('@jest/globals');
-const { runReturnLoopApiE2e } = require('../return-loop-api-v1.cjs');
+const {
+  assertApiE2eTarget,
+  runReturnLoopApiE2e,
+} = require('../return-loop-api-v1.cjs');
 
 const ids = {
   accountA: '01000000-0000-4000-8000-000000000001',
@@ -217,6 +220,17 @@ function input(fetchImpl) {
     uuid: () => uuids.shift() ?? ids.readCorrelation,
   };
 }
+
+describe('API E2E target guard', () => {
+  it('accepts only the disposable E2E project URL', () => {
+    expect(
+      assertApiE2eTarget('https://ibprkyemsuktfrdpxvza.supabase.co').target,
+    ).toBe('e2e-disposable');
+    expect(() =>
+      assertApiE2eTarget('https://wngumhizuxtlhavbpxzy.supabase.co'),
+    ).toThrow('not e2e-disposable');
+  });
+});
 
 describe('return-loop API-mode E2E runner', () => {
   it('proves send, idempotent retry, authoritative unread/read, notification, deep link and restart', async () => {

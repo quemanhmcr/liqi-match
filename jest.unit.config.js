@@ -9,7 +9,6 @@ module.exports = {
   testEnvironment: 'node',
   testMatch: ['<rootDir>/src/**/*.test.ts'],
   testPathIgnorePatterns: ['\\.native\\.test\\.ts$'],
-  testTimeout: 5_000,
   transform: {
     '^.+\.tsx$': [
       '@swc/jest',

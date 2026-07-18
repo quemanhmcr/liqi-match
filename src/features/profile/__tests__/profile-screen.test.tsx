@@ -97,6 +97,12 @@ describe('ProfileScreen repository consumer', () => {
       },
     );
 
+    await waitFor(() =>
+      expect(getForPlayer).toHaveBeenCalledWith(
+        testAuthSession,
+        canonicalProfile.playerId,
+      ),
+    );
     expect(await screen.findByText('7')).toBeTruthy();
     expect(screen.getByText('88%')).toBeTruthy();
     expect(screen.getByText('12')).toBeTruthy();
@@ -108,10 +114,6 @@ describe('ProfileScreen repository consumer', () => {
     expect(screen.queryByText('128')).toBeNull();
     expect(screen.queryByText('4.8')).toBeNull();
     expect(screen.queryByText('92')).toBeNull();
-    expect(getForPlayer).toHaveBeenCalledWith(
-      testAuthSession,
-      canonicalProfile.playerId,
-    );
   });
 
   it('uses the canonical route userId and renders the repository projection', async () => {

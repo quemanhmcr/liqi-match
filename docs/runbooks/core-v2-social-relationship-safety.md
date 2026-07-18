@@ -61,7 +61,7 @@ The release operator runs these commands. Do not continue after any failure:
 supabase db reset
 supabase db lint
 supabase test db
-supabase gen types typescript --local > src/shared/types/database.types.ts
+npm run supabase:types
 ```
 
 Review generated-type changes before commit. A generated diff is evidence of a

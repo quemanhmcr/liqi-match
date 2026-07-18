@@ -267,7 +267,7 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
         wallAssetKeys={profile.wallAssetKeys}
         wallUrls={profile.wallUrls}
       />
-      {mode === 'other' && targetPlayerId ? (
+      {mode === 'other' && targetPlayerId && setPickerVisible ? (
         <MatchSetPickerModal
           onClose={() => setSetPickerVisible(false)}
           targetDisplayName={profile.displayName}

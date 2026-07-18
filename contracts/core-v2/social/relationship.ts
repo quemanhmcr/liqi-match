@@ -1,6 +1,12 @@
 import { z } from 'zod';
 
 import {
+  CoreV2AuditClientVersionSchema,
+  CoreV2AuditTimestampSchema,
+  CoreV2OperationalClientPlatformSchema,
+} from '../commands/command';
+
+import {
   CorrelationIdSchema,
   IdempotencyKeySchema,
   PlayerIdSchema,
@@ -224,9 +230,9 @@ export const SocialRelationshipErrorCodeV2Schema = z.enum([
 
 export const SocialCommandAuditMetadataV2Schema = z
   .object({
-    clientCreatedAt: z.string().datetime({ offset: true }),
-    clientPlatform: z.enum(['ios', 'android', 'web', 'service']),
-    clientVersion: z.string().trim().min(1).max(64),
+    clientCreatedAt: CoreV2AuditTimestampSchema,
+    clientPlatform: CoreV2OperationalClientPlatformSchema,
+    clientVersion: CoreV2AuditClientVersionSchema.max(64),
     requestId: z.string().trim().min(1).max(128),
   })
   .strict();

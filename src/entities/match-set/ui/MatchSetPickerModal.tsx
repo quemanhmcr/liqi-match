@@ -23,7 +23,7 @@ export function MatchSetPickerModal({
   visible,
 }: MatchSetPickerModalProps) {
   const { session } = useAuth();
-  const dashboard = useMatchSetDashboardQuery();
+  const dashboard = useMatchSetDashboardQuery({ enabled: visible });
   const invite = useMatchSetCommandMutation(
     (repository, currentSession, input: { setId: string; version: number }) =>
       repository.inviteToSet(currentSession, {

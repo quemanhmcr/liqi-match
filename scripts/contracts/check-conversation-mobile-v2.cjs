@@ -18,6 +18,13 @@ const adapter = fs.readFileSync(
   ),
   'utf8',
 );
+const codec = fs.readFileSync(
+  path.join(
+    process.cwd(),
+    'src/features/messages/services/supabase-conversation-v2-codec.ts',
+  ),
+  'utf8',
+);
 const composition = fs.readFileSync(
   path.join(
     process.cwd(),
@@ -153,8 +160,10 @@ requireInvariant(
 requireInvariant(
   /commandMetadata\([\s\S]{0,180}aggregateVersion/.test(adapter) &&
     /commandMetadata\([\s\S]{0,180}cursorVersion/.test(adapter) &&
-    /expectedAggregateVersion/.test(adapter) &&
-    /stableCommandKey/.test(adapter),
+    /CoreV2CommandMetadataSchema\.parse/.test(codec) &&
+    /expectedAggregateVersion/.test(codec) &&
+    /stableCommandKey/.test(adapter) &&
+    /stableUuid\(identity\)[\s\S]{0,80}version/.test(codec),
   'send/read commands must carry exact optimistic versions and stable retry identity',
 );
 requireInvariant(

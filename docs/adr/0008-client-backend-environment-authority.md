@@ -31,6 +31,8 @@ This produced a split-brain system: login succeeded, simulation UI flows succeed
 
 The current Supabase CLI link does not choose the product environment. Every remote operation prints and verifies the target ref first; operations on a second project use an isolated CLI workdir where practical.
 
+The version-controlled registry `config/supabase-projects.json` is the canonical identity source. `staging-runtime` is the only registered non-production mobile target. `e2e-disposable` is rejected by the mobile environment parser and accepted only by E2E/review entrypoints. The primary workspace intentionally keeps `.env.local` on staging and its default Supabase CLI link on E2E.
+
 ## Required release evidence
 
 A release or handoff that claims remote behavior records:

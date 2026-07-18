@@ -12,6 +12,7 @@ import {
   PlaySessionIdSchema,
   SessionInviteV2IdSchema,
 } from '../identity/semantic-ids';
+import { CoreV2EventEnvelopeSchema } from './event-envelope';
 import { MatchSetSnapshotV2Schema } from '../party/match-set';
 import {
   PlaySessionCompletionClaimV2Schema,
@@ -21,22 +22,6 @@ import {
   PlaySessionSnapshotV2Schema,
   PlaySessionSourceV2Schema,
 } from '../party/play-session';
-
-export const CoreV2EventEnvelopeSchema = z
-  .object({
-    actorPlayerId: PlayerIdSchema.nullable(),
-    aggregateId: z.string().uuid(),
-    aggregateType: z.string().regex(/^[a-z][a-z0-9_]*$/),
-    aggregateVersion: z.number().int().positive(),
-    causationId: EventIdSchema.nullable(),
-    correlationId: CorrelationIdSchema,
-    eventId: EventIdSchema,
-    eventType: z.string().regex(/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+\.v2$/),
-    eventVersion: z.literal(2),
-    occurredAt: z.string().datetime({ offset: true }),
-    payload: z.unknown(),
-  })
-  .strict();
 
 const setEventBase = {
   aggregateType: z.literal('match_set'),

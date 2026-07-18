@@ -4,6 +4,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
+const {
+  E2E_DISPOSABLE_PROJECT,
+  assertLinkedProjectTarget,
+  requireExplicitProjectTarget,
+} = require('../supabase/project-registry.cjs');
 
 const SUPABASE_CLI = 'supabase@2.109.1';
 const suites = [
@@ -16,32 +21,11 @@ const suites = [
 ];
 
 function parseExpectedProjectRef(argv) {
-  const index = argv.indexOf('--project-ref');
-  if (index < 0 || !argv[index + 1]) {
-    throw new Error(
-      'Refusing to run cloud database tests without --project-ref <20-char test project ref>.',
-    );
-  }
-  const value = argv[index + 1];
-  if (!/^[a-z]{20}$/.test(value)) {
-    throw new Error(`Invalid Supabase project ref: ${value}`);
-  }
-  return value;
+  return requireExplicitProjectTarget(argv, 'e2e-disposable').projectRef;
 }
 
 function readLinkedProjectRef(repoRoot) {
-  const candidates = [
-    path.join(repoRoot, 'supabase', '.temp', 'project-ref'),
-    path.join(repoRoot, '.supabase', 'project-ref'),
-  ];
-  for (const candidate of candidates) {
-    if (fs.existsSync(candidate)) {
-      return fs.readFileSync(candidate, 'utf8').trim();
-    }
-  }
-  throw new Error(
-    'No linked Supabase project found. Run `supabase link` first.',
-  );
+  return assertLinkedProjectTarget(repoRoot, 'e2e-disposable').projectRef;
 }
 
 function stripAnsi(value) {
@@ -116,7 +100,7 @@ function main() {
   }
 
   console.log(
-    `CONVERSATION_CLOUD_DB_TARGET project_ref=${linkedProjectRef} cli=${SUPABASE_CLI}`,
+    `CONVERSATION_CLOUD_DB_TARGET target=${E2E_DISPOSABLE_PROJECT.target} project_name=${E2E_DISPOSABLE_PROJECT.projectName} project_ref=${linkedProjectRef} cli=${SUPABASE_CLI}`,
   );
 
   runSupabase(repoRoot, [

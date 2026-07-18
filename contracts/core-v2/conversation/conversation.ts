@@ -9,6 +9,12 @@ import {
   PlayerIdSchema,
   RequestIdSchema,
 } from '../../core-v1/identity/semantic-ids';
+import {
+  CoreV2AuditClientVersionSchema,
+  CoreV2AuditInstallationIdSchema,
+  CoreV2AuditTimestampSchema,
+  CoreV2CommandOriginPlatformSchema,
+} from '../commands/command';
 import { coreV2EventSchema } from '../events/event-envelope';
 import {
   FriendshipAcceptedEventV2Schema,
@@ -245,10 +251,10 @@ export type ConversationReadCursorV2 = z.infer<
 export const CommandAuditMetadataV2Schema = z
   .object({
     requestId: RequestIdSchema,
-    clientCreatedAt: z.string().datetime({ offset: true }),
-    clientPlatform: z.enum(['android', 'ios', 'web', 'service', 'simulation']),
-    clientVersion: z.string().min(1).max(80).optional(),
-    installationId: z.string().uuid().optional(),
+    clientCreatedAt: CoreV2AuditTimestampSchema,
+    clientPlatform: CoreV2CommandOriginPlatformSchema,
+    clientVersion: CoreV2AuditClientVersionSchema.optional(),
+    installationId: CoreV2AuditInstallationIdSchema.optional(),
   })
   .strict();
 

@@ -57,6 +57,7 @@ android/
 .tmp-runtime/
 .tmp-conflict-index/
 debug-artifacts/
+.artifacts/
 *.log
 scripts/*.backup-*
 

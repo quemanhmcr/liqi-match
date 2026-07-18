@@ -50,6 +50,9 @@ const files = {
     'src/features/profile/components/ProfilePrivacySettingsSection.tsx',
   ),
   chat: read('src/features/messages/screens/ChatConversationScreen.tsx'),
+  chatComposer: read(
+    'src/features/messages/screens/chat-conversation-composer.tsx',
+  ),
   chatMediaViewer: read('src/features/messages/components/ChatMediaViewer.tsx'),
   appServices: read('src/app-shell/runtime/create-application-services.ts'),
   mediaFinalize: read('supabase/functions/media-finalize-upload/handler.ts'),
@@ -202,9 +205,11 @@ expectInvariant(
 );
 expectInvariant(
   !files.chat.includes('Sắp có') &&
+    !files.chatComposer.includes('Sắp có') &&
     !files.chat.includes('đang được hoàn thiện') &&
-    /actionState\('image'\) === 'available'/.test(files.chat) &&
-    /actionState\('camera'\) === 'available'/.test(files.chat),
+    !files.chatComposer.includes('đang được hoàn thiện') &&
+    /actionState\('image'\) === 'available'/.test(files.chatComposer) &&
+    /actionState\('camera'\) === 'available'/.test(files.chatComposer),
   'Messages composer must fail closed and render only actions with production handlers.',
 );
 expectInvariant(
