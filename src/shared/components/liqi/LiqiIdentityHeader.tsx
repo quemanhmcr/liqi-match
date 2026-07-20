@@ -24,12 +24,15 @@ export type LiqiIdentityHeaderAction = Readonly<{
 
 export type LiqiIdentityHeaderProps = Readonly<{
   actions?: readonly LiqiIdentityHeaderAction[];
-  avatar: ReactNode;
+  avatar?: ReactNode;
+  leadingAction?: LiqiIdentityHeaderAction;
   compact: boolean;
   online?: boolean;
+  presentation?: 'identity' | 'page';
   subtitle: string;
   testID?: string;
   title: string;
+  titleAccessory?: ReactNode;
 }>;
 
 /**
@@ -41,37 +44,73 @@ export function LiqiIdentityHeader({
   actions = [],
   avatar,
   compact,
+  leadingAction,
   online = true,
+  presentation = 'identity',
   subtitle,
   testID,
   title,
+  titleAccessory,
 }: LiqiIdentityHeaderProps) {
+  const pagePresentation = presentation === 'page';
+
   return (
     <View
-      style={[styles.header, compact && styles.headerCompact]}
+      style={[
+        styles.header,
+        compact && styles.headerCompact,
+        pagePresentation && styles.pageHeader,
+        pagePresentation && compact && styles.pageHeaderCompact,
+      ]}
       testID={testID}
     >
-      <View style={[styles.identity, compact && styles.identityCompact]}>
-        <View style={styles.avatarWrap}>
-          {avatar}
-          {online ? <View style={styles.onlineDot} /> : null}
-        </View>
-        <View style={styles.copy}>
-          <Text
-            adjustsFontSizeToFit
-            maxFontSizeMultiplier={1}
-            minimumFontScale={0.76}
-            numberOfLines={1}
-            style={[styles.title, compact && styles.titleCompact]}
-          >
-            {title}
-          </Text>
+      {leadingAction ? (
+        <HeaderAction action={leadingAction} compact={compact} />
+      ) : null}
+      <View
+        style={[
+          styles.identity,
+          compact && styles.identityCompact,
+          pagePresentation && styles.pageIdentity,
+        ]}
+      >
+        {avatar ? (
+          <View style={styles.avatarWrap}>
+            {avatar}
+            {online ? <View style={styles.onlineDot} /> : null}
+          </View>
+        ) : null}
+        <View style={[styles.copy, pagePresentation && styles.pageCopy]}>
+          <View style={styles.titleLine}>
+            <Text
+              adjustsFontSizeToFit
+              maxFontSizeMultiplier={1}
+              minimumFontScale={0.76}
+              numberOfLines={1}
+              style={[
+                styles.title,
+                compact && styles.titleCompact,
+                pagePresentation && styles.pageTitle,
+                pagePresentation && compact && styles.pageTitleCompact,
+              ]}
+            >
+              {title}
+            </Text>
+            {titleAccessory ? (
+              <View style={styles.titleAccessory}>{titleAccessory}</View>
+            ) : null}
+          </View>
           <Text
             adjustsFontSizeToFit
             maxFontSizeMultiplier={1}
             minimumFontScale={0.78}
-            numberOfLines={1}
-            style={[styles.subtitle, compact && styles.subtitleCompact]}
+            numberOfLines={pagePresentation ? 2 : 1}
+            style={[
+              styles.subtitle,
+              compact && styles.subtitleCompact,
+              pagePresentation && styles.pageSubtitle,
+              pagePresentation && compact && styles.pageSubtitleCompact,
+            ]}
           >
             {subtitle}
           </Text>
@@ -221,6 +260,14 @@ const styles = StyleSheet.create({
     top: 4,
     width: 10,
   },
+  pageCopy: { gap: 5 },
+  pageHeader: { minHeight: 72 },
+  pageHeaderCompact: { minHeight: 66 },
+  pageIdentity: { alignItems: 'flex-start' },
+  pageSubtitle: { ...liqiTypography.body, maxWidth: 310 },
+  pageSubtitleCompact: { ...liqiTypography.bodyCompact, maxWidth: 230 },
+  pageTitle: { ...liqiTypography.displayHero },
+  pageTitleCompact: { ...liqiTypography.displayHeroCompact },
   onlineDot: {
     backgroundColor: liqiColors.status.online,
     borderColor: liqiComponentColors.identityHeader.avatarFrame,
@@ -246,6 +293,17 @@ const styles = StyleSheet.create({
   pressed: { opacity: liqiOpacity.pressed },
   subtitle: { ...liqiTypography.subtitle },
   subtitleCompact: { ...liqiTypography.subtitleCompact },
-  title: { ...liqiTypography.greeting, color: liqiColors.text.onAccent },
+  title: {
+    ...liqiTypography.greeting,
+    color: liqiColors.text.onAccent,
+    flexShrink: 1,
+  },
+  titleAccessory: { flexShrink: 0 },
   titleCompact: { ...liqiTypography.greetingCompact },
+  titleLine: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 6,
+    minWidth: 0,
+  },
 });

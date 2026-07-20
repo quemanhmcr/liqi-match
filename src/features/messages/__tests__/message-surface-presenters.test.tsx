@@ -4,10 +4,12 @@ import { createGoldenWorldAssetResolver } from '@/entities/media-asset';
 
 import {
   MessageConversationDetailSchema,
+  MessageConversationSummarySchema,
   MessageTimelineItemSchema,
 } from '@/features/messages/contracts/messages-contracts';
 import {
   presentConversationThread,
+  presentInboxConversation,
   presentTimelineMessage,
 } from '@/features/messages/model/message-surface-presenters';
 
@@ -92,9 +94,27 @@ describe('message surface presenters', () => {
       latestActivity: null,
       liveState: { typingParticipantIds: ['participant-1'] },
       members: [],
-      participants: { preview: [], totalCount: 3 },
+      participants: {
+        preview: [
+          {
+            avatar: {
+              id: 'participant-avatar-1',
+              kind: 'remote',
+              url: 'https://example.com/participant-1.jpg',
+            },
+            displayName: 'Participant One',
+            id: 'participant-1',
+            role: 'member',
+          },
+        ],
+        totalCount: 3,
+      },
       presence: { label: '2 người online', state: 'online' },
       relationship: 'team',
+      source: {
+        id: '41000000-0000-4000-8000-000000000003',
+        type: 'play_session',
+      },
       subtitle: '2 người online',
       title: 'Team Test',
       viewerState: {
@@ -111,10 +131,90 @@ describe('message surface presenters', () => {
     );
 
     expect(thread.kind).toBe('Team');
+    expect(thread.participantCount).toBe(3);
+    expect(thread.participantAvatars).toEqual([
+      expect.objectContaining({
+        kind: 'remote',
+        uri: 'https://example.com/participant-1.jpg',
+      }),
+    ]);
+    expect(
+      presentInboxConversation({
+        assetResolver,
+        conversation,
+        isRead: false,
+        referenceDate: new Date('2026-07-12T12:00:00.000Z'),
+        runtimeMessages: [],
+      }),
+    ).toMatchObject({
+      artworkVariant: 'party',
+      kind: 'group',
+      participantCount: 3,
+      sourceType: 'play_session',
+    });
     expect(thread.messages.at(-1)).toEqual({
       direction: 'incoming',
       id: 'typing:group-1',
       kind: 'typing',
     });
+  });
+
+  it('assigns stable, distributed artwork variants to direct matches', () => {
+    const matchIds = [
+      '60000000-0000-4000-8000-000000000001',
+      '60000000-0000-4000-8000-000000000002',
+      '60000000-0000-4000-8000-000000000003',
+    ] as const;
+
+    const conversations = matchIds.map((matchId, index) =>
+      MessageConversationSummarySchema.parse({
+        capabilities: {
+          canCall: false,
+          canMessage: true,
+          canMute: false,
+          canViewDetails: true,
+          composerActions: [],
+        },
+        id: `direct-match-${index + 1}`,
+        kind: 'direct',
+        latestActivity: null,
+        participants: {
+          preview: [
+            {
+              displayName: `Player ${index + 1}`,
+              id: `participant-${index + 1}`,
+              role: 'member',
+            },
+          ],
+          totalCount: 2,
+        },
+        presence: { label: 'Đã ghép đôi', state: 'hidden' },
+        relationship: 'match',
+        source: { id: matchId, type: 'direct_match' },
+        title: `Player ${index + 1}`,
+        viewerState: {
+          isArchived: false,
+          isMuted: false,
+          isPinned: false,
+          unreadCount: 0,
+        },
+      }),
+    );
+
+    const present = (conversation: (typeof conversations)[number]) =>
+      presentInboxConversation({
+        assetResolver,
+        conversation,
+        isRead: false,
+        referenceDate: new Date('2026-07-12T12:00:00.000Z'),
+        runtimeMessages: [],
+      }).artworkVariant;
+
+    const firstPass = conversations.map(present);
+    const secondPass = conversations.map(present);
+
+    expect(secondPass).toEqual(firstPass);
+    expect(new Set(firstPass).size).toBe(3);
+    expect(firstPass.every(Boolean)).toBe(true);
   });
 });

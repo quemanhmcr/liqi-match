@@ -137,12 +137,15 @@ describe('ChatConversationScreen', () => {
     const {
       getByLabelText,
       getByPlaceholderText,
+      getByTestId,
       getByText,
       queryByLabelText,
     } = await renderChatWithProviders(
       <ChatConversationScreen conversationId="minh-anh" />,
     );
 
+    expect(getByTestId('chat-identity-header')).toBeTruthy();
+    expect(getByTestId('chat-wallpaper-background')).toBeTruthy();
     expect(getByText('Minh Anh')).toBeTruthy();
     expect(getByText('Tri kỉ')).toBeTruthy();
     expect(getByText('Đang online')).toBeTruthy();
@@ -161,6 +164,10 @@ describe('ChatConversationScreen', () => {
     expect(getByLabelText('Quay lại danh sách tin nhắn')).toBeTruthy();
     expect(queryByLabelText('Gọi cho Minh Anh')).toBeNull();
     expect(getByLabelText('Gửi tin nhắn')).toBeTruthy();
+    expect(getByLabelText('Chèn 💜')).toBeTruthy();
+    expect(getByLabelText('Chèn ✨')).toBeTruthy();
+    expect(getByLabelText('Gửi ảnh hoặc video')).toBeTruthy();
+    expect(getByLabelText('Chụp ảnh')).toBeTruthy();
     expect(getByLabelText('Minh Anh đang nhập')).toBeTruthy();
   });
 
@@ -275,7 +282,7 @@ describe('ChatConversationScreen', () => {
 
     await fireEvent.press(getByLabelText('Chọn biểu cảm'));
     expect(getByLabelText('Biểu cảm nhanh')).toBeTruthy();
-    await fireEvent.press(getByLabelText('Chèn 💜'));
+    await fireEvent.press(getByLabelText('Chọn 💜 từ bảng biểu cảm'));
     expect(getByPlaceholderText('Nhắn tin...').props.value).toBe('💜');
 
     expect(queryByLabelText('Gửi tin nhắn thoại')).toBeNull();
@@ -1130,6 +1137,8 @@ Dòng hai`,
       expect(getByPlaceholderText('Nhắn tin...')).toBeTruthy(),
     );
     expect(queryByLabelText('Thêm nội dung')).toBeNull();
+    expect(queryByLabelText('Gửi ảnh hoặc video')).toBeNull();
+    expect(queryByLabelText('Chụp ảnh')).toBeNull();
     expect(queryByLabelText('Gửi tin nhắn thoại')).toBeNull();
   });
 

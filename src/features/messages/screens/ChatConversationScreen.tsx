@@ -14,8 +14,10 @@ import {
   Alert,
   AppState,
   FlatList,
+  ImageBackground,
   Platform,
   Pressable,
+  StyleSheet,
   Text,
   View,
   type NativeScrollEvent,
@@ -47,7 +49,12 @@ import {
   PlayerIdSchema,
 } from '@/shared/contracts/core-v1';
 import type { ReportCategoryV2 } from '@/shared/contracts/core-v2';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import {
+  liqiColors,
+  liqiComponentColors,
+  liqiComponentGradients,
+} from '@/shared/theme/liqi-design-system';
 import { chatConversationStyles as styles } from './chat-conversation.styles';
 import {
   authoritativeSequence,
@@ -71,6 +78,7 @@ import {
 } from './chat-conversation-timeline';
 import { ChatComposer, ReadOnlyComposer } from './chat-conversation-composer';
 import type { ConversationLoadState } from './chat-conversation.types';
+import { messagesChatAssets } from './messages-redesign-assets';
 
 import {
   acknowledgeChatFollowTarget,
@@ -1210,20 +1218,17 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
   }
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screenContent}
       scroll={false}
       withBottomNavPadding={false}
       withHeader={false}
     >
-      <View pointerEvents="none" style={styles.ambientPurple} />
-      <View pointerEvents="none" style={styles.ambientCyan} />
       <ChatHeader
         onOpenOptions={() => {
           selectionImpact();
           setOptionsVisible(true);
         }}
-        surface={surface}
         thread={thread}
       />
       <ConversationSourceBanner source={surface.source} />
@@ -1232,6 +1237,20 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
         queuedMessageCount={queuedMessageCount}
       />
       <View style={styles.messageViewport} testID="chat-message-viewport">
+        <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+          <ImageBackground
+            resizeMode="cover"
+            source={messagesChatAssets.chatWallpaper}
+            style={StyleSheet.absoluteFill}
+            testID="chat-wallpaper-background"
+          />
+        </View>
+        <LinearGradient
+          colors={liqiComponentGradients.messages.wallpaperScrim}
+          locations={[0, 0.52, 1]}
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+        />
         <FlatList
           automaticallyAdjustKeyboardInsets={false}
           contentContainerStyle={styles.messageContent}
@@ -1315,7 +1334,7 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
                     testID={`report-message-${message.id}`}
                   >
                     <Ionicons
-                      color="rgba(255,179,198,0.68)"
+                      color={liqiComponentColors.messages.chat.messageReport}
                       name="flag-outline"
                       size={12}
                     />
@@ -1350,14 +1369,18 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
               pressed && styles.pressed,
             ]}
           >
-            <Ionicons color="#FFFFFF" name="arrow-down" size={14} />
+            <Ionicons
+              color={liqiColors.text.onAccent}
+              name="arrow-down"
+              size={14}
+            />
             <Text style={styles.newMessagePillText}>
               {newMessageCount} tin nhắn mới
             </Text>
           </Pressable>
         ) : null}
         <LinearGradient
-          colors={['rgba(3,7,17,0.98)', 'rgba(3,7,17,0)']}
+          colors={liqiComponentGradients.messages.chat.viewportTopScrim}
           pointerEvents="none"
           style={styles.messageTopScrim}
         />
@@ -1423,6 +1446,6 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
         pending={reportMessageMutation.isPending}
         visible={Boolean(messageReportTarget)}
       />
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }

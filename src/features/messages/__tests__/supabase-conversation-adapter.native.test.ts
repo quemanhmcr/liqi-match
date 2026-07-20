@@ -193,6 +193,10 @@ describe('Supabase Conversation adapter', () => {
     expect(inbox.data.items[0]).toMatchObject({
       id: surface.conversation.conversationId,
       relationship: 'match',
+      source: {
+        id: surface.conversation.matchId,
+        type: 'direct_match',
+      },
       title: 'Peer Player',
       viewerState: { unreadCount: 1 },
     });

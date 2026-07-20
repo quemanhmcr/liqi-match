@@ -5,6 +5,7 @@ import {
   liqiBreakpoints,
   liqiColors,
   liqiComponentColors,
+  liqiComponentGradients,
   liqiComponents,
   liqiDesignVersion,
   liqiRadius,
@@ -49,6 +50,24 @@ describe('LiQi design system foundation', () => {
     );
     expect(liqiComponentColors.profile.surface).toMatch(/^#/);
     expect(liqiComponentColors.profile.surfaceStrong).toMatch(/^#/);
+  });
+
+  it('publishes a canonical Messages and Chat presentation recipe', () => {
+    expect(liqiComponents.messages.inbox.cardMinHeightCompact).toBeLessThan(
+      liqiComponents.messages.inbox.cardMinHeight,
+    );
+    expect(
+      liqiComponents.messages.chat.composerControlCompact,
+    ).toBeGreaterThanOrEqual(liqiTouch.minimum);
+    expect(liqiComponents.messages.chat.headerAvatar).toBeLessThanOrEqual(
+      liqiComponents.identityHeader.avatar,
+    );
+    expect(liqiComponentColors.messages.listCardSurface).toBeTruthy();
+    expect(liqiComponentColors.messages.composerDock).toBeTruthy();
+    expect(liqiComponents.messages.inbox.filterHeight).toBeLessThan(36);
+    expect(liqiComponentGradients.messages.filterSelected).toHaveLength(3);
+    expect(liqiComponentGradients.messages.outgoingBubble).toHaveLength(3);
+    expect(liqiComponentGradients.messages.wallpaperScrim).toHaveLength(3);
   });
 
   it('uses an ordered spacing/radius scale and readable typography metrics', () => {
