@@ -81,6 +81,13 @@ function main() {
     allowFailure: true,
   });
   const hooksActive = hooksPath === '.githooks';
+  const designSystem = {
+    authority: 'Home and Messages shared UI language v1',
+    contract: 'DESIGN.md',
+    specification: 'docs/design/LIQI_DESIGN_SYSTEM.md',
+    scaffold: 'npm run design:new-screen -- <feature> <PascalCaseName>',
+    check: 'npm run design-system:check',
+  };
 
   let role = 'unmanaged-or-publishable';
   let contract =
@@ -119,6 +126,12 @@ function main() {
     ];
   }
 
+  if (
+    !next.includes('UI work: read DESIGN.md before copying nearby page code.')
+  ) {
+    next.push('UI work: read DESIGN.md before copying nearby page code.');
+  }
+
   const result = {
     role,
     root,
@@ -131,6 +144,7 @@ function main() {
       repairCommand: hooksActive ? null : 'npm run repo:setup',
     },
     localOnly,
+    designSystem,
     managedTask: manifest
       ? {
           id: manifest.id,
@@ -163,6 +177,10 @@ function main() {
     console.log(`Primary: ${result.managedTask.primary}`);
   }
   console.log(`Guidance: ${contract}`);
+  console.log(`Design authority: ${designSystem.authority}`);
+  console.log(`UI contract: ${designSystem.contract}`);
+  console.log(`New screen: ${designSystem.scaffold}`);
+  console.log(`Design check: ${designSystem.check}`);
   console.log('Next:');
   for (const command of next) console.log(`  ${command}`);
   if (result.activeTasks.length) {

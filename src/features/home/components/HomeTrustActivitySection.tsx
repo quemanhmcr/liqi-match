@@ -20,14 +20,10 @@ import {
   TrustActivityItemV2Schema,
   type TrustActivityItemV2,
 } from '@/shared/contracts/core-v2';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidSectionHeader,
-} from '@/shared/components/liquid';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { AppButton, AppCard, AppSectionHeader, appColors } from '@/shared/ui';
 
 import { orchestrateRepeatSession } from '../services/repeat-session-orchestrator';
+import { homeUi } from '../ui/home-ui';
 
 export function HomeTrustActivitySection({
   session,
@@ -109,13 +105,17 @@ export function HomeTrustActivitySection({
 
   return (
     <View style={styles.section}>
-      <LiquidSectionHeader title="Hoạt động của bạn" />
+      <AppSectionHeader title="Hoạt động của bạn" />
       <Text style={styles.sectionSubtitle}>Từ session và trust facts thật</Text>
 
       {createdSession ? (
-        <LiquidCard density="compact" style={styles.successCard}>
+        <AppCard density="compact" style={styles.successCard}>
           <View style={styles.iconCircle}>
-            <Ionicons color="#67E8FF" name="checkmark-done" size={20} />
+            <Ionicons
+              color={homeUi.colors.trustActivity.feedback}
+              name="checkmark-done"
+              size={20}
+            />
           </View>
           <View style={styles.copy}>
             <Text style={styles.title}>Đã tạo session chơi lại</Text>
@@ -125,22 +125,22 @@ export function HomeTrustActivitySection({
                 : 'Session đã được tạo. Activity cũ sẽ được đồng bộ lại; không cần tạo thêm session.'}
             </Text>
           </View>
-          <LiquidButton
+          <AppButton
             onPress={() =>
               router.push(appRoutes.sessions.detail(createdSession.sessionId))
             }
             variant="secondary"
           >
             Mở session
-          </LiquidButton>
-        </LiquidCard>
+          </AppButton>
+        </AppCard>
       ) : null}
 
       {activityQuery.isLoading ? (
-        <LiquidCard density="compact" style={styles.loadingCard}>
-          <ActivityIndicator color="#67E8FF" />
+        <AppCard density="compact" style={styles.loadingCard}>
+          <ActivityIndicator color={homeUi.colors.trustActivity.feedback} />
           <Text style={styles.body}>Đang đồng bộ hoạt động...</Text>
-        </LiquidCard>
+        </AppCard>
       ) : null}
 
       {items.map((item) => (
@@ -176,17 +176,17 @@ export function HomeTrustActivitySection({
       ))}
 
       {activityQuery.isError ? (
-        <LiquidCard density="compact" style={styles.errorCard}>
+        <AppCard density="compact" style={styles.errorCard}>
           <Text style={styles.errorText}>
             Chưa tải được hoạt động mới nhất.
           </Text>
-          <LiquidButton
+          <AppButton
             onPress={() => void activityQuery.refetch()}
             variant="secondary"
           >
             Tải lại
-          </LiquidButton>
-        </LiquidCard>
+          </AppButton>
+        </AppCard>
       ) : null}
 
       {actionError ? (
@@ -211,7 +211,7 @@ function ActivityCard({
 }) {
   const presentation = present(item);
   return (
-    <LiquidCard density="compact" style={styles.card}>
+    <AppCard density="compact" style={styles.card}>
       <View style={styles.iconCircle}>
         <Ionicons
           color={presentation.color}
@@ -223,19 +223,19 @@ function ActivityCard({
         <Text style={styles.title}>{presentation.title}</Text>
         <Text style={styles.body}>{presentation.body}</Text>
         <View style={styles.actions}>
-          <LiquidButton disabled={actionPending} onPress={onAction}>
+          <AppButton disabled={actionPending} onPress={onAction}>
             {presentation.action}
-          </LiquidButton>
-          <LiquidButton
+          </AppButton>
+          <AppButton
             disabled={actionPending}
             onPress={onDismiss}
             variant="secondary"
           >
             Ẩn
-          </LiquidButton>
+          </AppButton>
         </View>
       </View>
-    </LiquidCard>
+    </AppCard>
   );
 }
 
@@ -251,7 +251,7 @@ function present(item: TrustActivityItemV2): {
       return {
         action: 'Phản hồi',
         body: 'Xác nhận tham gia và ghi nhận đồng đội sau session.',
-        color: '#67E8FF',
+        color: homeUi.colors.trustActivity.feedback,
         icon: 'checkmark-done-outline',
         title: 'Hoàn tất phản hồi buổi chơi',
       };
@@ -259,7 +259,7 @@ function present(item: TrustActivityItemV2): {
       return {
         action: 'Xem hồ sơ',
         body: `Trust profile đã cập nhật ở phiên bản ${item.payload.projectionVersion}.`,
-        color: '#BCA8FF',
+        color: homeUi.colors.trustActivity.reputation,
         icon: 'shield-checkmark-outline',
         title: 'Thành tích đã xác minh mới',
       };
@@ -267,7 +267,7 @@ function present(item: TrustActivityItemV2): {
       return {
         action: 'Tạo session',
         body: `Bạn đã hoàn tất ${item.payload.completedSessionCount} buổi chơi cùng đồng đội này.`,
-        color: '#FFD56A',
+        color: homeUi.colors.trustActivity.repeat,
         icon: 'people-outline',
         title: 'Chơi lại cùng đồng đội',
       };
@@ -276,14 +276,18 @@ function present(item: TrustActivityItemV2): {
 
 const styles = StyleSheet.create({
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
-  body: { color: liquidColors.text.secondary, fontSize: 12, lineHeight: 17 },
+  body: { color: appColors.text.secondary, fontSize: 12, lineHeight: 17 },
   card: { alignItems: 'flex-start', flexDirection: 'row', gap: 12 },
   copy: { flex: 1, gap: 3 },
   errorCard: { alignItems: 'center', gap: 10 },
-  errorText: { color: '#FFB4A9', fontSize: 12, lineHeight: 18 },
+  errorText: {
+    color: homeUi.colors.trustActivity.error,
+    fontSize: 12,
+    lineHeight: 18,
+  },
   iconCircle: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: homeUi.colors.trustActivity.iconSurface,
     borderRadius: 20,
     height: 40,
     justifyContent: 'center',
@@ -292,10 +296,10 @@ const styles = StyleSheet.create({
   loadingCard: { alignItems: 'center', flexDirection: 'row', gap: 10 },
   section: { gap: 10 },
   sectionSubtitle: {
-    color: liquidColors.text.secondary,
+    color: appColors.text.secondary,
     fontSize: 12,
     lineHeight: 17,
   },
   successCard: { alignItems: 'center', flexDirection: 'row', gap: 10 },
-  title: { color: liquidColors.text.primary, fontSize: 14, fontWeight: '800' },
+  title: { color: appColors.text.primary, fontSize: 14, fontWeight: '800' },
 });

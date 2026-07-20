@@ -9,11 +9,17 @@ import {
   selectMainTab,
 } from '@/app-shell/navigation/MainTabsLayout';
 import { MAIN_TABS, mainTabForRoute } from '@/app-shell/navigation/main-tabs';
-import { shouldUseNativeLiquidBlur } from '@/shared/components/liquid/LiquidGlassSurface';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { appColors } from '@/shared/ui';
+
+const visualTabLabels = {
+  explore: 'Khám phá',
+  home: 'Trang chủ',
+  messages: 'Tin nhắn',
+  profile: 'Cá nhân',
+} as const;
 
 describe('primary tab contract', () => {
-  it('has stable unique keys, route names, and URLs', () => {
+  it('has stable unique navigator keys, route names, and URLs', () => {
     expect(MAIN_TABS.map((tab) => tab.key)).toEqual([
       'home',
       'explore',
@@ -32,15 +38,20 @@ describe('primary tab contract', () => {
   it('keeps navigator chrome dark independently of the operating-system theme', () => {
     expect(appNavigationTheme.dark).toBe(true);
     expect(appNavigationTheme.colors.background).toBe(
-      liquidColors.background.base,
+      appColors.background.base,
     );
-    expect(appNavigationTheme.colors.card).toBe(liquidColors.background.base);
+    expect(appNavigationTheme.colors.card).toBe(appColors.background.base);
   });
 
-  it('emits the selected tab key and exposes tab accessibility state', async () => {
+  it('emits navigator tabs and opens Sessions through the dedicated room action', async () => {
     const onSelect = jest.fn();
+    const onOpenSessions = jest.fn();
     const { getByLabelText } = await render(
-      <MainTabBar activeRouteName="home" onSelect={onSelect} />,
+      <MainTabBar
+        activeRouteName="home"
+        onOpenSessions={onOpenSessions}
+        onSelect={onSelect}
+      />,
     );
 
     expect(getByLabelText('Trang chủ').props.accessibilityState).toEqual({
@@ -48,60 +59,105 @@ describe('primary tab contract', () => {
     });
 
     await fireEvent.press(getByLabelText('Tin nhắn'));
+    await fireEvent.press(getByLabelText('Phòng'));
 
     expect(onSelect).toHaveBeenCalledWith('messages');
+    expect(onOpenSessions).toHaveBeenCalledTimes(1);
   });
 
-  it('retains all four visual tab items through repeated route commits', async () => {
+  it('renders the five-position reference bar through repeated route commits', async () => {
     const onSelect = jest.fn();
+    const onOpenSessions = jest.fn();
     const { getByLabelText, getByTestId, rerender } = await render(
-      <MainTabBar activeRouteName="home" onSelect={onSelect} />,
+      <MainTabBar
+        activeRouteName="home"
+        onOpenSessions={onOpenSessions}
+        onSelect={onSelect}
+      />,
     );
 
     for (const activeTab of [...MAIN_TABS, MAIN_TABS[0]]) {
       await rerender(
         <MainTabBar
           activeRouteName={activeTab.routeName}
+          onOpenSessions={onOpenSessions}
           onSelect={onSelect}
         />,
       );
 
       const content = getByTestId('main-bottom-nav-content');
-      const renderedTabs = MAIN_TABS.map((tab) =>
-        within(content).getByTestId(`main-bottom-nav-item-${tab.key}`),
+      const renderedItems = [
+        'home',
+        'messages',
+        'explore',
+        'sessions',
+        'profile',
+      ].map((key) =>
+        within(content).getByTestId(`main-bottom-nav-item-${key}`),
       );
 
-      expect(renderedTabs).toHaveLength(MAIN_TABS.length);
+      expect(renderedItems).toHaveLength(5);
       expect(
-        renderedTabs.filter(
-          (tab) => tab.props.accessibilityState?.selected === true,
+        renderedItems.filter(
+          (item) => item.props.accessibilityState?.selected === true,
         ),
       ).toHaveLength(1);
-      expect(getByLabelText(activeTab.label).props.accessibilityState).toEqual({
-        selected: true,
-      });
+      expect(
+        getByLabelText(visualTabLabels[activeTab.key]).props.accessibilityState,
+      ).toEqual({ selected: true });
     }
   });
 
-  it('keeps native blur as a non-interactive sibling behind tab buttons', async () => {
-    const { getByTestId } = await render(
-      <MainTabBar activeRouteName="home" onSelect={jest.fn()} />,
+  it('keeps the center heart elevated above the navigation surface', async () => {
+    const { getByLabelText, getByTestId } = await render(
+      <MainTabBar
+        activeRouteName="explore"
+        onOpenSessions={jest.fn()}
+        onSelect={jest.fn()}
+      />,
     );
-    const backdrop = getByTestId('main-bottom-nav-backdrop');
     const content = getByTestId('main-bottom-nav-content');
+    const centerHeart = StyleSheet.flatten(
+      getByTestId('main-bottom-nav-center-heart').props.style,
+    );
 
-    expect(backdrop.props.pointerEvents).toBe('none');
-    expect(within(backdrop).queryByLabelText('Trang chủ')).toBeNull();
     expect(within(content).getByLabelText('Trang chủ')).toBeTruthy();
-    expect(within(content).getByLabelText('Khám phá')).toBeTruthy();
     expect(within(content).getByLabelText('Tin nhắn')).toBeTruthy();
-    expect(within(content).getByLabelText('Hồ sơ')).toBeTruthy();
+    expect(within(content).getByLabelText('Khám phá')).toBeTruthy();
+    expect(within(content).getByLabelText('Phòng')).toBeTruthy();
+    expect(within(content).getByLabelText('Cá nhân')).toBeTruthy();
+    expect(getByLabelText('Khám phá').props.accessibilityState).toEqual({
+      selected: true,
+    });
+    expect(centerHeart).toMatchObject({
+      borderRadius: 36,
+      height: 72,
+      width: 72,
+    });
   });
 
-  it('uses a deterministic View fallback on Android without a blur target', () => {
-    expect(shouldUseNativeLiquidBlur('android', false)).toBe(false);
-    expect(shouldUseNativeLiquidBlur('android', true)).toBe(true);
-    expect(shouldUseNativeLiquidBlur('ios', false)).toBe(true);
+  it('uses compact production metrics on narrow phones', async () => {
+    const { getByTestId } = await render(
+      <MainTabBar
+        activeRouteName="home"
+        onOpenSessions={jest.fn()}
+        onSelect={jest.fn()}
+        viewportWidth={360}
+      />,
+    );
+
+    expect(
+      StyleSheet.flatten(
+        getByTestId('main-bottom-nav-center-heart').props.style,
+      ),
+    ).toMatchObject({
+      borderRadius: 31,
+      height: 62,
+      width: 62,
+    });
+    expect(
+      StyleSheet.flatten(getByTestId('main-tab-bar').props.style),
+    ).toMatchObject({ paddingTop: 14 });
   });
 
   it('keeps the bar above a device bottom inset on a dark host', async () => {
@@ -110,6 +166,7 @@ describe('primary tab contract', () => {
         activeRouteName="home"
         bottomInset={34}
         horizontalInset={0}
+        onOpenSessions={jest.fn()}
         onSelect={jest.fn()}
       />,
     );
@@ -117,7 +174,7 @@ describe('primary tab contract', () => {
     expect(
       StyleSheet.flatten(getByTestId('main-tab-bar').props.style),
     ).toMatchObject({
-      backgroundColor: liquidColors.background.base,
+      backgroundColor: appColors.background.base,
       flexShrink: 0,
       paddingBottom: 34,
     });

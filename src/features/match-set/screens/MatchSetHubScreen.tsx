@@ -10,12 +10,8 @@ import {
 import { usePlayerIdentities } from '@/entities/player-identity';
 import { useAuth } from '@/shared/auth/auth-context';
 import { prepareCoreV2CommandMetadata } from '@/shared/core-v2';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-} from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiButton, LiqiCard, LiqiChip } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 export function MatchSetHubScreen() {
   const { session } = useAuth();
@@ -111,30 +107,30 @@ export function MatchSetHubScreen() {
     (data?.outgoingJoinRequests.length ?? 0);
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screen}
       subtitle="Đội, lời mời và yêu cầu tham gia ở cùng một nơi"
       title="Set của bạn"
       withBottomNavPadding={false}
     >
       <View style={styles.heroActions}>
-        <LiquidButton
+        <LiqiButton
           onPress={() => router.push(appRoutes.sets.create)}
           variant="primary"
         >
           <Ionicons color="#FFFFFF" name="add" size={17} />
           <Text style={styles.buttonText}>Tạo Set</Text>
-        </LiquidButton>
-        <LiquidButton
+        </LiqiButton>
+        <LiqiButton
           onPress={() => router.push(appRoutes.discover.sets)}
           variant="ghost"
         >
           Khám phá Set
-        </LiquidButton>
+        </LiqiButton>
       </View>
 
       {pending ? (
-        <LiquidCard
+        <LiqiCard
           contentStyle={styles.notice}
           density="compact"
           radius={20}
@@ -145,7 +141,7 @@ export function MatchSetHubScreen() {
           <Text style={styles.noticeText}>
             {pending} mục đang chờ bạn xử lý
           </Text>
-        </LiquidCard>
+        </LiqiCard>
       ) : null}
 
       <SectionTitle icon="people-outline" title="Đội của tôi" />
@@ -163,7 +159,7 @@ export function MatchSetHubScreen() {
             onPress={() => router.push(appRoutes.sets.detail(set.setId))}
             style={({ pressed }) => pressed && styles.pressed}
           >
-            <LiquidCard
+            <LiqiCard
               contentStyle={styles.setCard}
               density="list"
               radius={23}
@@ -174,9 +170,9 @@ export function MatchSetHubScreen() {
                   <Text numberOfLines={1} style={styles.setTitle}>
                     {set.title}
                   </Text>
-                  <LiquidChip density="tag" variant={owner ? 'purple' : 'cyan'}>
+                  <LiqiChip density="tag" variant={owner ? 'purple' : 'cyan'}>
                     {owner ? 'Bạn quản lý' : 'Thành viên'}
-                  </LiquidChip>
+                  </LiqiChip>
                 </View>
                 <Text style={styles.setMeta}>
                   {activeMembers.length}/{set.capacity} thành viên ·{' '}
@@ -197,7 +193,7 @@ export function MatchSetHubScreen() {
                 name="chevron-forward"
                 size={18}
               />
-            </LiquidCard>
+            </LiqiCard>
           </Pressable>
         );
       })}
@@ -216,19 +212,19 @@ export function MatchSetHubScreen() {
             key={item.inviteId}
             title={item.set.title}
           >
-            <LiquidButton
+            <LiqiButton
               disabled={acceptInvite.isPending || declineInvite.isPending}
               onPress={() => acceptInvite.mutate(item)}
             >
               Tham gia
-            </LiquidButton>
-            <LiquidButton
+            </LiqiButton>
+            <LiqiButton
               disabled={acceptInvite.isPending || declineInvite.isPending}
               onPress={() => declineInvite.mutate(item)}
               variant="ghost"
             >
               Từ chối
-            </LiquidButton>
+            </LiqiButton>
           </InboxCard>
         );
       })}
@@ -249,19 +245,19 @@ export function MatchSetHubScreen() {
             }
             title={item.set.title}
           >
-            <LiquidButton
+            <LiqiButton
               disabled={acceptRequest.isPending || rejectRequest.isPending}
               onPress={() => acceptRequest.mutate(item)}
             >
               Chấp nhận
-            </LiquidButton>
-            <LiquidButton
+            </LiqiButton>
+            <LiqiButton
               disabled={acceptRequest.isPending || rejectRequest.isPending}
               onPress={() => rejectRequest.mutate(item)}
               variant="ghost"
             >
               Từ chối
-            </LiquidButton>
+            </LiqiButton>
           </InboxCard>
         );
       })}
@@ -275,13 +271,13 @@ export function MatchSetHubScreen() {
           key={item.joinRequestId}
           title={item.set.title}
         >
-          <LiquidButton
+          <LiqiButton
             disabled={cancelRequest.isPending}
             onPress={() => cancelRequest.mutate(item)}
             variant="ghost"
           >
             Huỷ yêu cầu
-          </LiquidButton>
+          </LiqiButton>
         </InboxCard>
       ))}
 
@@ -297,14 +293,14 @@ export function MatchSetHubScreen() {
         </Text>
       ) : null}
       {dashboard.error ? (
-        <LiquidButton
+        <LiqiButton
           onPress={() => void dashboard.refetch()}
           variant="secondary"
         >
           Thử lại
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -334,7 +330,7 @@ function InboxCard({
   title: string;
 }) {
   return (
-    <LiquidCard
+    <LiqiCard
       contentStyle={styles.inboxCard}
       density="compact"
       radius={22}
@@ -351,7 +347,7 @@ function InboxCard({
         ) : null}
       </View>
       <View style={styles.inboxActions}>{children}</View>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 function MiniAvatar({

@@ -1,190 +1,241 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { PlayerTrustProjectionV2 } from '@/shared/contracts/core-v2';
-import { LiquidCard } from '@/shared/components/liquid';
 import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+  liqiColors,
+  liqiComponentColors,
+  liqiComponents,
+  liqiMotion,
+  liqiOpacity,
+  liqiRadius,
+  liqiShadow,
+  liqiSpacing,
+  liqiTypography,
+} from '@/shared/theme/liqi-design-system';
 
 import { ProfileText } from './ProfileShared';
 
-type StatItem = {
-  color: string;
+type ProfileStatTone = 'amber' | 'pink' | 'purple';
+
+type ProfileStatItem = Readonly<{
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
+  tone: ProfileStatTone;
   value: string;
-};
+}>;
 
-function buildStats(projection?: PlayerTrustProjectionV2): StatItem[] {
-  return [
+export function ProfileStatsBar({
+  compact,
+  onOpenTrust,
+  projection,
+}: {
+  compact: boolean;
+  onOpenTrust?: () => void;
+  projection?: PlayerTrustProjectionV2;
+}) {
+  const stats: readonly ProfileStatItem[] = [
     {
-      color: 'rgba(142,118,255,0.78)',
-      icon: 'game-controller-outline',
+      icon: 'heart',
       label: 'Buổi đã chơi',
+      tone: 'pink',
       value: projection ? String(projection.completedSessions) : '—',
     },
     {
-      color: 'rgba(103,232,255,0.88)',
-      icon: 'shield-checkmark-outline',
-      label: 'Hoàn tất',
+      icon: 'people',
+      label: 'Đồng đội quen',
+      tone: 'purple',
+      value: projection ? String(projection.repeatTeammateCount) : '—',
+    },
+    {
+      icon: 'shield-checkmark',
+      label: 'Độ tin cậy',
+      tone: 'amber',
       value: projection
         ? `${Math.round(projection.completionReliabilityBps / 100)}%`
         : '—',
     },
-    {
-      color: 'rgba(255,205,74,0.88)',
-      icon: 'heart-outline',
-      label: 'Lời khen',
-      value: projection ? String(projection.positiveEndorsements) : '—',
-    },
-    {
-      color: 'rgba(170,190,255,0.72)',
-      icon: 'people-outline',
-      label: 'Đồng đội quen',
-      value: projection ? String(projection.repeatTeammateCount) : '—',
-    },
   ];
-}
 
-export function ProfileStatsBar({
-  embedded = false,
-  projection,
-}: {
-  embedded?: boolean;
-  projection?: PlayerTrustProjectionV2;
-}) {
-  const items = buildStats(projection);
+  const trustNote = (
+    <View style={styles.trustNoteContent}>
+      <Ionicons color={liqiColors.accent.pink} name="sparkles" size={14} />
+      <ProfileText style={styles.trustNoteValue}>
+        {projection ? String(projection.positiveEndorsements) : '—'}
+      </ProfileText>
+      <ProfileText style={styles.trustNoteLabel}>Lời khen</ProfileText>
+      <View style={styles.trustNoteSpacer} />
+      <ProfileText numberOfLines={1} style={styles.trustNoteMeta}>
+        Dữ liệu uy tín đã xác minh
+      </ProfileText>
+      {onOpenTrust ? (
+        <Ionicons
+          color={liqiComponentColors.profile.subtleIcon}
+          name="chevron-forward"
+          size={16}
+        />
+      ) : null}
+    </View>
+  );
 
   return (
-    <LiquidCard
-      baseStrokeColor={
-        embedded ? 'rgba(150,190,255,0.14)' : 'rgba(103,232,255,0.20)'
-      }
-      baseStrokeOpacity={embedded ? 0.045 : 0.06}
-      blurIntensity={embedded ? 18 : 28}
-      contentStyle={[styles.surface, embedded && styles.embeddedSurface]}
-      density="compact"
-      frameColors={
-        embedded
-          ? [
-              'rgba(106,101,255,0.075)',
-              'rgba(210,225,255,0.018)',
-              'rgba(103,232,255,0.075)',
-            ]
-          : [
-              'rgba(106,101,255,0.14)',
-              'rgba(210,225,255,0.030)',
-              'rgba(103,232,255,0.15)',
-            ]
-      }
-      glassIntensity="low"
-      glowIntensity={embedded ? 'none' : 'low'}
-      radius={embedded ? 24 : 27}
-      style={[styles.frame, embedded && styles.embeddedFrame]}
-      surfaceBackground={embedded ? 'rgba(4,8,20,0.76)' : undefined}
-      withInnerReflection
-      withShadow={false}
-    >
-      <LinearGradient
-        colors={
-          embedded
-            ? [
-                'rgba(106,101,255,0.034)',
-                'rgba(56,215,255,0.026)',
-                'rgba(255,255,255,0)',
-              ]
-            : [
-                'rgba(106,101,255,0.060)',
-                'rgba(56,215,255,0.050)',
-                'rgba(255,255,255,0)',
-              ]
-        }
-        end={{ x: 1, y: 1 }}
-        pointerEvents="none"
-        start={{ x: 0, y: 0 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['rgba(255,255,255,0.16)', 'rgba(255,255,255,0.00)']}
-        end={{ x: 1, y: 0 }}
-        pointerEvents="none"
-        start={{ x: 0, y: 0 }}
-        style={styles.topHighlight}
-      />
-      <View style={styles.row}>
-        {items.map((item, index) => (
-          <View key={item.label} style={styles.statSlot}>
-            {index > 0 ? <View style={styles.separator} /> : null}
-            <Ionicons color={item.color} name={item.icon} size={15} />
-            <ProfileText style={styles.value}>{item.value}</ProfileText>
-            <ProfileText numberOfLines={1} style={styles.label}>
-              {item.label}
-            </ProfileText>
+    <View style={styles.container} testID="profile-trust-summary">
+      <View style={[styles.row, compact && styles.rowCompact]}>
+        {stats.map((item) => (
+          <View
+            key={item.label}
+            style={[styles.card, compact && styles.cardCompact]}
+          >
+            <View
+              style={[
+                styles.iconOrb,
+                compact && styles.iconOrbCompact,
+                toneOrbStyle(item.tone),
+              ]}
+            >
+              <Ionicons
+                color={colorForTone(item.tone)}
+                name={item.icon}
+                size={compact ? 18 : 22}
+              />
+            </View>
+            <View style={styles.copy}>
+              <ProfileText numberOfLines={1} style={styles.label}>
+                {item.label}
+              </ProfileText>
+              <ProfileText
+                numberOfLines={1}
+                style={[styles.value, compact && styles.valueCompact]}
+              >
+                {item.value}
+              </ProfileText>
+            </View>
           </View>
         ))}
       </View>
-    </LiquidCard>
+
+      {onOpenTrust ? (
+        <Pressable
+          accessibilityLabel="Mở lịch sử uy tín"
+          accessibilityRole="button"
+          onPress={onOpenTrust}
+          style={({ pressed }) => [styles.trustNote, pressed && styles.pressed]}
+        >
+          {trustNote}
+        </Pressable>
+      ) : (
+        <View style={styles.trustNote}>{trustNote}</View>
+      )}
+    </View>
   );
 }
 
+function colorForTone(tone: ProfileStatTone) {
+  if (tone === 'pink') return liqiComponentColors.profile.statPink;
+  if (tone === 'amber') return liqiComponentColors.profile.statAmber;
+  return liqiComponentColors.profile.statPurple;
+}
+
+function toneOrbStyle(tone: ProfileStatTone) {
+  if (tone === 'pink') return styles.iconOrbPink;
+  if (tone === 'amber') return styles.iconOrbAmber;
+  return styles.iconOrbPurple;
+}
+
 const styles = StyleSheet.create({
-  embeddedFrame: {
-    marginTop: 11,
+  card: {
+    ...liqiShadow.card,
+    alignItems: 'center',
+    backgroundColor: liqiComponentColors.profile.surface,
+    borderColor: liqiComponentColors.profile.surfaceBorder,
+    borderRadius: liqiComponents.profile.detailCardRadius,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    flexDirection: 'row',
+    gap: liqiSpacing.lg,
+    height: liqiComponents.profile.statCardHeight,
+    minWidth: 0,
+    paddingHorizontal: liqiSpacing.xl,
   },
-  embeddedSurface: {
-    paddingVertical: 5,
+  cardCompact: {
+    gap: liqiSpacing.xs,
+    height: liqiComponents.profile.statCardHeightCompact,
+    paddingHorizontal: liqiSpacing.sm,
   },
-  frame: {
-    marginTop: 10,
+  container: { gap: liqiSpacing.md },
+  copy: { flex: 1, minWidth: 0 },
+  iconOrb: {
+    alignItems: 'center',
+    borderRadius: liqiRadius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: liqiComponents.profile.statIcon,
+    justifyContent: 'center',
+    width: liqiComponents.profile.statIcon,
+  },
+  iconOrbAmber: {
+    backgroundColor: liqiComponentColors.profile.statIconAmberSurface,
+    borderColor: liqiComponentColors.profile.statAmber,
+  },
+  iconOrbCompact: {
+    height: liqiComponents.profile.statIconCompact,
+    width: liqiComponents.profile.statIconCompact,
+  },
+  iconOrbPink: {
+    backgroundColor: liqiComponentColors.profile.statIconPinkSurface,
+    borderColor: liqiComponentColors.profile.statPink,
+  },
+  iconOrbPurple: {
+    backgroundColor: liqiComponentColors.profile.statIconPurpleSurface,
+    borderColor: liqiComponentColors.profile.statPurple,
   },
   label: {
-    color: liquidColors.text.muted,
-    fontSize: 8.5,
-    fontWeight: '500',
-    marginTop: 0,
+    ...liqiTypography.caption,
+    color: liqiColors.text.secondary,
+    fontSize: 10,
+    lineHeight: 13,
   },
-  row: {
-    flexDirection: 'row',
+  pressed: {
+    opacity: liqiOpacity.subtlePressed,
+    transform: [{ scale: liqiMotion.subtlePressScale }],
   },
-  separator: {
-    backgroundColor: 'rgba(255,255,255,0.052)',
-    bottom: 11,
-    left: 0,
-    position: 'absolute',
-    top: 11,
-    width: StyleSheet.hairlineWidth,
+  row: { flexDirection: 'row', gap: liqiSpacing.lg },
+  rowCompact: { gap: liqiSpacing.md },
+  trustNote: {
+    backgroundColor: liqiComponentColors.profile.actions.ghost.background,
+    borderColor: liqiComponentColors.profile.actions.ghost.border,
+    borderRadius: liqiRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: 38,
+    paddingHorizontal: liqiSpacing.xl,
   },
-  statSlot: {
+  trustNoteContent: {
     alignItems: 'center',
     flex: 1,
-    gap: 0,
-    justifyContent: 'center',
-    minHeight: 50,
-    position: 'relative',
+    flexDirection: 'row',
+    gap: liqiSpacing.sm,
+    minHeight: 38,
   },
-  surface: {
-    borderRadius: 25,
-    overflow: 'hidden',
-    paddingHorizontal: 4,
-    paddingVertical: 8,
+  trustNoteLabel: {
+    ...liqiTypography.caption,
+    color: liqiColors.text.secondary,
   },
-  topHighlight: {
-    height: 1,
-    left: 18,
-    opacity: 0.4,
-    position: 'absolute',
-    right: 18,
-    top: 1,
+  trustNoteMeta: {
+    ...liqiTypography.caption,
+    color: liqiColors.text.muted,
+    flexShrink: 1,
+  },
+  trustNoteSpacer: { flex: 1 },
+  trustNoteValue: {
+    ...liqiTypography.caption,
+    color: liqiColors.text.primary,
+    fontWeight: '800',
   },
   value: {
-    ...liquidTypography.cardTitle,
-    color: 'rgba(250,252,255,0.94)',
-    fontSize: 18.5,
-    fontWeight: '700',
-    letterSpacing: -0.34,
-    marginTop: 0,
+    ...liqiTypography.screenTitle,
+    color: liqiColors.text.onAccent,
+    fontSize: 23,
+    lineHeight: 27,
+    marginTop: liqiSpacing.xs,
   },
+  valueCompact: { fontSize: 20, lineHeight: 24 },
 });

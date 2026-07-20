@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
 
-import { LiquidBadge, LiquidCard } from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiBadge, LiqiCard } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 export type FeatureStageScreenProps = {
   body: string;
@@ -18,20 +18,20 @@ export function FeatureStageScreen({
   title,
 }: FeatureStageScreenProps) {
   return (
-    <LiquidScreen subtitle="Không gian riêng cho feature này" title={title}>
-      <LiquidCard style={styles.card} variant="purple">
+    <LiqiScreen subtitle="Không gian riêng cho feature này" title={title}>
+      <LiqiCard style={styles.card} variant="purple">
         <View style={styles.iconWrap}>
           <Ionicons color="#CFA8FF" name={icon} size={28} />
         </View>
-        <LiquidBadge size="sm" variant="pink">
+        <LiqiBadge size="sm" variant="pink">
           ĐANG PHÁT TRIỂN
-        </LiquidBadge>
+        </LiqiBadge>
         <Text accessibilityRole="header" style={styles.title}>
           {title}
         </Text>
         <Text style={styles.body}>{body}</Text>
-      </LiquidCard>
-    </LiquidScreen>
+      </LiqiCard>
+    </LiqiScreen>
   );
 }
 
@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     width: 64,
   },
   title: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 20,
     fontWeight: '800',
     marginTop: 13,

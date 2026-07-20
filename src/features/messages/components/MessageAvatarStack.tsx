@@ -3,14 +3,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import type { ComponentProps } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-import {
-  liqiColors,
-  liqiComponentColors,
-  liqiComponentGradients,
-} from '@/shared/theme/liqi-design-system';
+import { appColors } from '@/shared/ui';
 
 import type { MessageResolvedMedia } from '../model/chat-message';
 import { MessageResolvedImage } from './MessageResolvedImage';
+import { messagesUi } from '../ui/messages-ui';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
@@ -72,7 +69,7 @@ function AvatarFrame({
 }>) {
   return (
     <LinearGradient
-      colors={liqiComponentGradients.messages.avatarRing}
+      colors={messagesUi.gradients.avatarRing}
       style={[
         styles.ring,
         {
@@ -101,7 +98,7 @@ function AvatarFrame({
           />
         ) : (
           <Ionicons
-            color={liqiColors.icon.primary}
+            color={appColors.icon.primary}
             name={fallbackIcon ?? 'person-outline'}
             size={Math.round(size * 0.42)}
           />
@@ -130,13 +127,13 @@ function mediaIdentity(media: MessageResolvedMedia) {
 const styles = StyleSheet.create({
   frame: {
     alignItems: 'center',
-    backgroundColor: liqiComponentColors.messages.avatarFrame,
+    backgroundColor: messagesUi.colors.avatarFrame,
     justifyContent: 'center',
     overflow: 'hidden',
   },
   onlineDot: {
-    backgroundColor: liqiColors.status.online,
-    borderColor: liqiComponentColors.messages.onlineFrame,
+    backgroundColor: appColors.status.online,
+    borderColor: messagesUi.colors.onlineFrame,
     borderRadius: 7,
     borderWidth: 2,
     bottom: 0,

@@ -17,12 +17,8 @@ import { FriendPlayerPickerModal } from '@/entities/social-relationship/ui';
 import { useAuth } from '@/shared/auth/auth-context';
 import type { PlayerId } from '@/shared/contracts/core-v1';
 import type { CreatePlaySessionCommandV2 } from '@/shared/contracts/core-v2';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-} from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiButton, LiqiCard, LiqiChip } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 import { presentPlaySessionError } from '../model/play-session-error-presentation';
 import {
@@ -149,17 +145,17 @@ export function PlaySessionCreateScreen() {
   };
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screen}
       subtitle="Chọn bạn bè, lịch chơi và quy mô đội"
       title="Tạo buổi chơi"
       withBottomNavPadding={false}
     >
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.card}
         radius={28}
         variant="purple"
-        withInnerReflection
+        withHighlight
       >
         <FieldLabel icon="game-controller-outline">Tên buổi chơi</FieldLabel>
         <TextInput
@@ -179,7 +175,7 @@ export function PlaySessionCreateScreen() {
         <FieldLabel icon="people-outline">Quy mô đội</FieldLabel>
         <View style={styles.wrapRow}>
           {[2, 3, 4, 5].map((value) => (
-            <LiquidChip
+            <LiqiChip
               disabled={create.isPending}
               key={value}
               onPress={() => changeCapacity(value)}
@@ -187,7 +183,7 @@ export function PlaySessionCreateScreen() {
               variant="purple"
             >
               {value} người
-            </LiquidChip>
+            </LiqiChip>
           ))}
         </View>
 
@@ -201,7 +197,7 @@ export function PlaySessionCreateScreen() {
               ['tomorrow', 'Tối mai'],
             ] as const
           ).map(([value, label]) => (
-            <LiquidChip
+            <LiqiChip
               disabled={create.isPending}
               key={value}
               onPress={() => {
@@ -212,12 +208,12 @@ export function PlaySessionCreateScreen() {
               variant="cyan"
             >
               {label}
-            </LiquidChip>
+            </LiqiChip>
           ))}
         </View>
-      </LiquidCard>
+      </LiqiCard>
 
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.inviteCard}
         radius={25}
         variant="cyan"
@@ -230,13 +226,13 @@ export function PlaySessionCreateScreen() {
               {invitees.length}/{capacity - 1} vị trí mời trước
             </Text>
           </View>
-          <LiquidButton
+          <LiqiButton
             disabled={create.isPending}
             onPress={() => setPickerVisible(true)}
             variant="ghost"
           >
             {invitees.length ? 'Thay đổi' : 'Chọn bạn'}
-          </LiquidButton>
+          </LiqiButton>
         </View>
         {invitees.length ? (
           <View style={styles.inviteeList}>
@@ -299,9 +295,9 @@ export function PlaySessionCreateScreen() {
             </Text>
           </View>
         )}
-      </LiquidCard>
+      </LiqiCard>
 
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.note}
         density="compact"
         radius={20}
@@ -312,14 +308,14 @@ export function PlaySessionCreateScreen() {
         <Text style={styles.noteText}>
           Quyền mời và trạng thái tài khoản được kiểm tra lại khi tạo buổi chơi.
         </Text>
-      </LiquidCard>
+      </LiqiCard>
 
       {validationError || createFailure ? (
         <Text accessibilityRole="alert" style={styles.error}>
           {validationError ?? createFailure?.message}
         </Text>
       ) : null}
-      <LiquidButton
+      <LiqiButton
         disabled={create.isPending}
         onPress={submit}
         variant="primary"
@@ -329,14 +325,14 @@ export function PlaySessionCreateScreen() {
           : createFailure?.retryable
             ? 'Thử tạo lại'
             : 'Tạo buổi chơi'}
-      </LiquidButton>
-      <LiquidButton
+      </LiqiButton>
+      <LiqiButton
         disabled={create.isPending}
         onPress={() => router.back()}
         variant="ghost"
       >
         Huỷ
-      </LiquidButton>
+      </LiqiButton>
 
       {pickerVisible && !create.isPending ? (
         <FriendPlayerPickerModal
@@ -358,7 +354,7 @@ export function PlaySessionCreateScreen() {
           visible
         />
       ) : null}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 

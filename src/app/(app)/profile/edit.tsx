@@ -1,5 +1,5 @@
-import { ProfileEditScreen } from '@/features/profile/screens/ProfileEditScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function ProfileEditRoute() {
-  return <ProfileEditScreen />;
+  return <ResetRouteScreen routeId="profile-edit" />;
 }

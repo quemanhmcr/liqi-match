@@ -34,6 +34,19 @@ src/
 | `src/entities/**`                            | domain owner             | Add only concepts used by at least two features.                         |
 | `src/shared/**`                              | platform owner           | Add only reusable primitives/infrastructure, never feature logic.        |
 
+## Home-derived visual language contract
+
+All new or materially changed mobile UI follows [DESIGN.md](../../DESIGN.md). Home is the visual authority for hierarchy, density, restraint and responsive behavior; it is not a layout template for unrelated features.
+
+- Start a new screen with `npm run design:new-screen -- <feature> <PascalCaseName>`.
+- Import tokens only from `@/shared/theme/liqi-design-system`.
+- Import primitives only from `@/shared/components/liqi`.
+- Use `LiqiScreen` for full-page composition, or document a genuine embedded/modal host with the required marker.
+- New UI contains no raw color literals and does not recreate the removed liquid/glass/blur effect system.
+- Existing non-compliant UI is checksum-frozen. A material edit migrates the file; it does not expand or refresh the legacy baseline in an unrelated patch.
+
+`npm run design-system:check` enforces these rules repository-wide and runs inside `architecture:check`, CI and UI-sensitive pre-commit validation.
+
 `src/app` must remain thin. A leaf route imports exactly one feature screen
 surface from `features/<feature>/screens/` and renders it. App-shell imports a
 feature's lightweight `index.ts` only when it needs a cross-layer domain API.
@@ -57,7 +70,7 @@ Routes remain URL-compatible with the former app:
 `MAIN_TABS` in `src/app-shell/navigation/main-tabs.ts` is the only primary-tab
 contract. `MainTabsLayout` uses Expo Router `Tabs` with lazy loading and
 `freezeOnBlur`; tab changes use navigator semantics rather than `router.push`,
-so tab history does not grow a Home/Profile stack. `LiquidBottomNav` remains a
+so tab history does not grow a Home/Profile stack. `LiqiBottomNav` remains a
 presentation primitive and is never rendered by a page.
 
 `RouteAccessGate` owns session/onboarding decisions for public, onboarding and
@@ -91,14 +104,13 @@ manual `Stack.Screen` registrations in `src/app` layouts. It is a CI gate.
 
 ### A normal page in an existing feature
 
-1. Add its screen, components, data and service inside
+1. Run `npm run design:new-screen -- <feature> <PascalCaseName>` and replace scaffold copy with authoritative feature state.
+2. Add its remaining components, data and service inside
    `src/features/<feature>/`.
-2. Add one thin adapter in the correct existing route group that imports that
-   screen surface. No root layout
-   change is needed.
-3. Add a colocated feature test that imports the feature screen/service directly,
-   never a route file.
-4. Run the required quality gates.
+3. Add one thin adapter in the correct existing route group that imports that
+   screen surface. No root layout change is needed.
+4. Extend the generated colocated test with feature behavior; import the feature screen/service directly, never a route file.
+5. Run the required quality gates, including `npm run design-system:check`.
 
 ### A new feature
 

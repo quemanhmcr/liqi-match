@@ -1,0 +1,76 @@
+{
+  "assets": [
+    {
+      "file": "background_ui_tim_tri_ki_hero_1536x1024.png",
+      "role": "Background hero cho mục Tìm Tri Kỉ / Auto Match trên Trang chủ",
+      "width": 1536,
+      "height": 1024,
+      "aspect_ratio": 1.5,
+      "recommended_usage": "Khung ngang lớn, crop khoảng 3:2; chừa vùng tối bên trái để đặt tiêu đề và CTA."
+    },
+    {
+      "file": "background_ui_phong_cua_ban_1391x1131.png",
+      "role": "Background card Phòng của bạn",
+      "width": 1391,
+      "height": 1131,
+      "aspect_ratio": 1.2299,
+      "recommended_usage": "Card gần vuông, crop khoảng 5:4; phù hợp đặt avatar đôi và nhãn phòng."
+    },
+    {
+      "file": "background_ui_buoi_choi_sap_toi_1391x1131.png",
+      "role": "Background card Buổi chơi sắp tới",
+      "width": 1391,
+      "height": 1131,
+      "aspect_ratio": 1.2299,
+      "recommended_usage": "Card gần vuông, crop khoảng 5:4; đặt thông tin giờ, mode và trạng thái sẵn sàng."
+    },
+    {
+      "file": "background_ui_hoat_dong_chien_thang_1064x1478.png",
+      "role": "Ảnh hoạt động gần đây: Chiến thắng / MVP",
+      "width": 1064,
+      "height": 1478,
+      "aspect_ratio": 0.7199,
+      "recommended_usage": "Thumbnail dọc khoảng 0.72:1; crop trung tâm huy hiệu."
+    },
+    {
+      "file": "background_ui_hoat_dong_ganh_team_1064x1478.png",
+      "role": "Ảnh hoạt động gần đây: Gánh team",
+      "width": 1064,
+      "height": 1478,
+      "aspect_ratio": 0.7199,
+      "recommended_usage": "Thumbnail dọc khoảng 0.72:1; crop nhân vật chính ở trung tâm."
+    },
+    {
+      "file": "background_ui_hoat_dong_chuoi_4_win_1064x1478.png",
+      "role": "Ảnh hoạt động gần đây: Chuỗi 4 win",
+      "width": 1064,
+      "height": 1478,
+      "aspect_ratio": 0.7199,
+      "recommended_usage": "Thumbnail dọc khoảng 0.72:1; giữ đường chuyển động đỏ/tím."
+    },
+    {
+      "file": "background_ui_hoat_dong_chill_cung_nhau_1064x1478.png",
+      "role": "Ảnh hoạt động gần đây: Buổi tối chill cùng nhau",
+      "width": 1064,
+      "height": 1478,
+      "aspect_ratio": 0.7199,
+      "recommended_usage": "Thumbnail dọc khoảng 0.72:1; giữ cặp đôi và trăng ở trung tâm."
+    },
+    {
+      "file": "avatar_ui_nu_tri_ki_1254x1254.png",
+      "role": "Avatar nữ dùng cho cặp Tri Kỉ / Phòng đôi",
+      "width": 1254,
+      "height": 1254,
+      "aspect_ratio": 1.0,
+      "recommended_usage": "Ảnh vuông 1:1; crop hình tròn, giữ khuôn mặt lệch nhẹ sang trái."
+    },
+    {
+      "file": "avatar_ui_nam_tri_ki_1254x1254.png",
+      "role": "Avatar nam dùng cho cặp Tri Kỉ / Phòng đôi",
+      "width": 1254,
+      "height": 1254,
+      "aspect_ratio": 1.0,
+      "recommended_usage": "Ảnh vuông 1:1; crop hình tròn, giữ khuôn mặt lệch nhẹ sang phải."
+    }
+  ]
+}

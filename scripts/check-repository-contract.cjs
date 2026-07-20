@@ -44,6 +44,10 @@ const scripts = packageJson.scripts || {};
 const expectedScripts = {
   'repo:context': 'node scripts/repository-context.cjs',
   'repository:check': 'node scripts/check-repository-contract.cjs',
+  'design:new-screen': 'node scripts/design/create-liqi-screen.cjs',
+  'design-system:self-test':
+    'node --test scripts/design/design-governance.test.cjs',
+  'design-system:check': 'node scripts/check-design-system.cjs',
   'migration-history:check':
     'node scripts/contracts/check-migration-history-v1.cjs',
   'task:start': 'node scripts/worktree/worktree-cli.cjs create',
@@ -57,6 +61,16 @@ for (const [name, expected] of Object.entries(expectedScripts)) {
   requireScript(scripts, name, expected);
 }
 
+if (!scripts['architecture:check']?.includes('design-system:self-test')) {
+  failures.push(
+    'package.json: architecture:check must include design-system:self-test',
+  );
+}
+if (!scripts['architecture:check']?.includes('design-system:check')) {
+  failures.push(
+    'package.json: architecture:check must include design-system:check',
+  );
+}
 if (!scripts['task:check']?.includes('repository:check')) {
   failures.push('package.json: task:check must include repository:check');
 }
@@ -74,9 +88,13 @@ if (!scripts['repo:setup']?.includes('core.hooksPath .githooks')) {
 
 requireText('README.md', [
   /CONTRIBUTING\.md/,
+  /DESIGN\.md/,
+  /docs\/design\/LIQI_DESIGN_SYSTEM\.md/,
   /docs\/architecture\/README\.md/,
   /npm ci/,
   /npm run repo:context/,
+  /npm run design:new-screen/,
+  /npm run design-system:check/,
   /npm run task:check/,
 ]);
 const readme = read('README.md');
@@ -89,6 +107,9 @@ requireText('CONTRIBUTING.md', [
   /primary workspace/i,
   /managed task worktree/i,
   /normal Git branch or worktree/i,
+  /Home- and Messages-derived shared UI contract/i,
+  /npm run design:new-screen/,
+  /design-system-legacy-baseline\.json/,
   /npm run task:check/,
   /Liqi-Snapshot: true/,
 ]);
@@ -96,10 +117,14 @@ requireText('AGENTS.md', [
   /npm run repo:context/,
   /managed task worktree/i,
   /normal clean Git worktree/i,
+  /DESIGN\.md/,
+  /design:new-screen/,
+  /liqi-screen-host/,
   /local-only/i,
 ]);
 requireText('docs/architecture/README.md', [
   /Change ownership map/,
+  /LiQi UI contract/,
   /mobile-frontend\.md/,
   /backend\.md/,
   /testing\.md/,
@@ -110,20 +135,54 @@ requireText('scripts/worktree/README.md', [
   /self-test\.cjs/,
 ]);
 requireText('.github/pull_request_template.md', [
+  /## Design language/,
+  /DESIGN\.md/,
+  /legacy UI baseline/i,
   /npm run task:check/,
   /Liqi-Snapshot: true/,
 ]);
-requireText('.github/workflows/ci.yml', [/npm run repository:check/]);
+requireText('.github/workflows/ci.yml', [
+  /npm run repository:check/,
+  /shared UI language/,
+]);
 requireText('.vscode/tasks.json', [
   /Liqi: Show repository context/,
   /Liqi: Start managed task/,
+  /Liqi: Check design language/,
+  /Liqi: Create canonical screen/,
   /Liqi: Review task overlay/,
 ]);
 requireText('.githooks/pre-commit', [
   /LIQI_ALLOW_PRIMARY_COMMIT/,
   /Primary review workspace/,
+  /Checking LiQi shared UI contract/,
+  /check-design-system\.cjs/,
 ]);
 requireText('.githooks/pre-push', [/local snapshot worktree branch/]);
+
+requireText('DESIGN.md', [
+  /Home- and Messages-derived shared UI language/,
+  /design:new-screen/,
+  /design-system:check/,
+  /design-system-legacy-baseline\.json/,
+]);
+requireText('docs/design/LIQI_DESIGN_SYSTEM.md', [
+  /## Enforcement/,
+  /design-system:self-test/,
+  /design:new-screen/,
+]);
+requireText('docs/adr/0009-home-derived-design-language-governance.md', [
+  /Status:\*\* Accepted/,
+  /checksum baseline/i,
+]);
+requireText('scripts/repository-context.cjs', [
+  /Home and Messages shared UI language v1/,
+  /design:new-screen/,
+]);
+requireText('scripts/check-design-system.cjs', [
+  /design-system-legacy-paths\.lock\.json/,
+  /new design debt is forbidden/,
+]);
 
 const worktreeConfig = JSON.parse(read('worktree.config.json') || '{}');
 if (!worktreeConfig.source?.allow?.includes('.vscode/**')) {

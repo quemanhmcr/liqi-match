@@ -1,4 +1,5 @@
-import { ReputationLedgerScreen } from '@/features/trust-outcomes/screens/ReputationLedgerScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+
 export default function OwnReputationRoute() {
-  return <ReputationLedgerScreen />;
+  return <ResetRouteScreen routeId="profile-reputation" />;
 }

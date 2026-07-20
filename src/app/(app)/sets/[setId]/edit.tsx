@@ -1,10 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { MatchSetEditorScreen } from '@/features/match-set/screens/MatchSetEditorScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+
 export default function EditSetRoute() {
-  const params = useLocalSearchParams<{ setId?: string | string[] }>();
-  return (
-    <MatchSetEditorScreen
-      setId={Array.isArray(params.setId) ? params.setId[0] : params.setId}
-    />
-  );
+  return <ResetRouteScreen routeId="set-edit" />;
 }

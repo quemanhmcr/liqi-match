@@ -1,5 +1,5 @@
-import { ExploreScreen } from '@/features/discover/screens/ExploreScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function ExploreRoute() {
-  return <ExploreScreen />;
+  return <ResetRouteScreen routeId="explore" />;
 }

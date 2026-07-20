@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import type { ReactNode } from 'react';
 import { View } from 'react-native';
 
-import { LiquidCard, LiquidChip } from '@/shared/components/liquid';
+import { LiqiCard, LiqiChip } from '@/shared/components/liqi';
 
 import { ProfileText } from '../../components/ProfileShared';
 import { profileEditStyles as styles } from './profile-edit-styles';
@@ -24,11 +24,7 @@ export function ProfileEditSection({
   title: string;
 }) {
   return (
-    <LiquidCard
-      density="regular"
-      glowIntensity="low"
-      style={styles.sectionCard}
-    >
+    <LiqiCard density="regular" emphasis="low" style={styles.sectionCard}>
       <View style={styles.sectionHeader}>
         <View style={styles.sectionIcon}>
           <Ionicons color="rgba(178,235,255,0.82)" name={icon} size={16} />
@@ -41,7 +37,7 @@ export function ProfileEditSection({
         </View>
       </View>
       {children}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -76,7 +72,7 @@ export function ProfileEditOptionGroup<Id extends string | number>({
       <ProfileEditFieldLabel label={label} />
       <View style={styles.chipWrap}>
         {options.map((option) => (
-          <LiquidChip
+          <LiqiChip
             accessibilityLabel={`${label} ${option.label}`}
             accessibilityState={{ selected: selectedId === option.id }}
             density="compact"
@@ -87,7 +83,7 @@ export function ProfileEditOptionGroup<Id extends string | number>({
             variant="cyan"
           >
             {option.label}
-          </LiquidChip>
+          </LiqiChip>
         ))}
       </View>
     </>
@@ -110,7 +106,7 @@ export function ProfileEditCatalogSingleGroup<Id extends string | number>({
       <ProfileEditFieldLabel label={label} />
       <View style={styles.chipWrap}>
         {options.map((option) => (
-          <LiquidChip
+          <LiqiChip
             accessibilityLabel={`${label} ${option.label}`}
             accessibilityState={{ selected: selectedId === option.id }}
             density="compact"
@@ -121,7 +117,7 @@ export function ProfileEditCatalogSingleGroup<Id extends string | number>({
             variant="purple"
           >
             {option.label}
-          </LiquidChip>
+          </LiqiChip>
         ))}
       </View>
     </>
@@ -152,7 +148,7 @@ export function ProfileEditCatalogMultiGroup<Id extends string | number>({
           const isSelected = selectedIds.includes(option.id);
           const disabled = !isSelected && selectedIds.length >= limit;
           return (
-            <LiquidChip
+            <LiqiChip
               accessibilityLabel={`${label} ${option.label}`}
               accessibilityState={{ disabled, selected: isSelected }}
               density="compact"
@@ -164,7 +160,7 @@ export function ProfileEditCatalogMultiGroup<Id extends string | number>({
               variant="purple"
             >
               {option.label}
-            </LiquidChip>
+            </LiqiChip>
           );
         })}
       </View>

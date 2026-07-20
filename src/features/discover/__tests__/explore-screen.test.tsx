@@ -17,8 +17,6 @@ import { resetDiscoverState } from '../model/discover-store';
 import { renderDiscoverScreen } from './discover-test-utils';
 import { ExploreScreen } from '../screens/ExploreScreen';
 
-jest.mock('expo-blur', () => ({ BlurView: 'BlurView' }));
-
 jest.mock('expo-router', () => ({
   router: {
     push: jest.fn(),

@@ -2,9 +2,8 @@ import { useMemo, type PropsWithChildren } from 'react';
 import { KeyboardStickyView } from 'react-native-keyboard-controller';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { liqiComponentColors } from '@/shared/theme/liqi-design-system';
-
 import { resolveChatKeyboardGeometry } from '../model/chat-keyboard-ownership';
+import { messagesUi } from '../ui/messages-ui';
 
 type ChatComposerDockProps = PropsWithChildren<{
   bottomInset: number;
@@ -43,8 +42,8 @@ export function ChatComposerDock({
 
 const styles = StyleSheet.create({
   content: {
-    backgroundColor: liqiComponentColors.messages.composerDock,
-    borderTopColor: liqiComponentColors.messages.composerStroke,
+    backgroundColor: messagesUi.colors.composerDock,
+    borderTopColor: messagesUi.colors.composerStroke,
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   dock: {

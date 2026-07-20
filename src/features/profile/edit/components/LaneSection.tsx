@@ -7,7 +7,7 @@ import {
   type LaneSelection,
   type LaneSlug,
 } from '@/entities/player-profile';
-import { LiquidChip } from '@/shared/components/liquid';
+import { LiqiChip } from '@/shared/components/liqi';
 
 import { ProfileText } from '../../components/ProfileShared';
 import {
@@ -88,7 +88,7 @@ export function LaneSection({
           const disabled =
             !isSelected && selected.length >= PROFILE_LIMITS.lanes;
           return (
-            <LiquidChip
+            <LiqiChip
               accessibilityLabel={`Vai trò ${lane.label}`}
               accessibilityState={{ disabled, selected: isSelected }}
               density="compact"
@@ -100,7 +100,7 @@ export function LaneSection({
               variant="cyan"
             >
               {lane.label}
-            </LiquidChip>
+            </LiqiChip>
           );
         })}
       </View>

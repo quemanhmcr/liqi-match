@@ -1,60 +1,56 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { LiquidCard, LiquidChip } from '@/shared/components/liquid';
+import {
+  liqiColors,
+  liqiSpacing,
+  liqiTypography,
+} from '@/shared/theme/liqi-design-system';
 
+import {
+  ProfilePill,
+  ProfileSurface,
+  type ProfilePillTone,
+} from './ProfilePresentationPrimitives';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
+import { ProfileText } from './ProfileShared';
 
-export function ProfilePlayStyle({ tags }: { tags: string[] }) {
-  const visibleTags = buildVisibleTags(tags);
+export function ProfilePlayStyle({
+  compact,
+  style,
+  tags,
+}: {
+  compact: boolean;
+  style?: StyleProp<ViewStyle>;
+  tags: string[];
+}) {
+  const visibleTags = buildVisibleTags(tags).slice(0, 4);
 
   return (
-    <LiquidCard
-      baseStrokeColor="rgba(103,232,255,0.16)"
-      baseStrokeOpacity={0.075}
-      blurIntensity={28}
-      contentStyle={styles.sectionSurface}
-      density="regular"
-      frameColors={[
-        'rgba(106,101,255,0.13)',
-        'rgba(255,255,255,0.030)',
-        'rgba(103,232,255,0.12)',
-      ]}
-      glassIntensity="low"
-      glowIntensity="low"
-      radius={26}
-      style={styles.sectionFrame}
-      surfaceBackground="rgba(8,12,28,0.37)"
-      withInnerReflection
-      withShadow={false}
-    >
+    <ProfileSurface compact={compact} style={[styles.frame, style]}>
       <ProfileSectionHeader
-        icon="radio-button-on-outline"
-        title="Phong cách chơi"
+        compact={compact}
+        title="Sở thích"
         withChevron={false}
       />
-      <View style={styles.chipWrap}>
-        {visibleTags.map((tag, index) => (
-          <LiquidChip
-            contentStyle={styles.chip}
-            density="compact"
-            icon={
-              <Ionicons
-                color={iconColor(index)}
-                name={iconForTag(tag)}
-                size={12}
-              />
-            }
-            key={`${tag}-${index}`}
-            selected={index === 0}
-            textStyle={styles.chipText}
-            variant={index === 0 ? 'selected' : index === 3 ? 'cyan' : 'purple'}
-          >
-            {tag}
-          </LiquidChip>
-        ))}
-      </View>
-    </LiquidCard>
+      {visibleTags.length ? (
+        <View style={styles.pillGrid}>
+          {visibleTags.map((tag, index) => (
+            <ProfilePill
+              icon={iconForTag(tag)}
+              key={`${tag}-${index}`}
+              label={tag}
+              style={styles.pill}
+              tone={toneForTag(tag, index)}
+            />
+          ))}
+        </View>
+      ) : (
+        <ProfileText style={styles.emptyText}>
+          Chưa cập nhật sở thích.
+        </ProfileText>
+      )}
+    </ProfileSurface>
   );
 }
 
@@ -62,11 +58,10 @@ function buildVisibleTags(tags: string[]) {
   const normalized = tags.map(normalizeTag).filter(Boolean);
   const unique = Array.from(new Set(normalized));
   const preferred = ['Cân bằng', 'Mic on', 'Buổi tối', 'Rank', 'Teamplay'];
-  const ordered = [
+  return [
     ...preferred.filter((tag) => unique.includes(tag)),
     ...unique.filter((tag) => !preferred.includes(tag)),
-  ];
-  return ordered.slice(0, 5);
+  ].slice(0, 4);
 }
 
 function normalizeTag(tag: string) {
@@ -83,43 +78,45 @@ function normalizeTag(tag: string) {
     return 'Teamplay';
   if (lower.includes('ping') || lower.includes('chat')) return 'Ping/chat';
   if (lower.includes('toxic')) return 'Không toxic';
-  return tag.length > 12 ? `${tag.slice(0, 10)}…` : tag;
+  return tag.length > 14 ? `${tag.slice(0, 12)}…` : tag;
 }
 
-function iconColor(index: number) {
-  return index === 0 ? 'rgba(194,205,255,0.78)' : 'rgba(185,239,255,0.58)';
+function toneForTag(tag: string, index: number): ProfilePillTone {
+  const lower = tag.toLowerCase();
+  if (lower.includes('rank')) return 'amber';
+  if (lower.includes('mic')) return 'cyan';
+  if (lower.includes('tối')) return 'purple';
+  if (lower.includes('toxic')) return 'pink';
+  return index % 2 === 0 ? 'purple' : 'neutral';
 }
 
 function iconForTag(tag: string): keyof typeof Ionicons.glyphMap {
   const lower = tag.toLowerCase();
-  if (lower.includes('mic') || lower.includes('voice')) return 'mic-outline';
+  if (lower.includes('mic')) return 'mic-outline';
   if (lower.includes('tối')) return 'moon-outline';
-  if (lower.includes('team') || lower.includes('phối')) return 'people-outline';
+  if (lower.includes('rank')) return 'trophy-outline';
+  if (lower.includes('team')) return 'people-outline';
   if (lower.includes('toxic')) return 'happy-outline';
-  return 'disc-outline';
+  return 'game-controller-outline';
 }
 
 const styles = StyleSheet.create({
-  chip: {
-    minHeight: 27,
-    paddingHorizontal: 8,
+  emptyText: {
+    ...liqiTypography.caption,
+    color: liqiColors.text.muted,
+    marginTop: liqiSpacing.xl,
   },
-  chipText: {
-    fontSize: 11,
-    fontWeight: '600',
-    letterSpacing: -0.02,
+  frame: { flex: 1, minHeight: 154, minWidth: 0 },
+  pill: {
+    flexBasis: '46%',
+    flexGrow: 1,
+    justifyContent: 'flex-start',
+    minWidth: 0,
   },
-  chipWrap: {
+  pillGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 10,
-  },
-  sectionFrame: {
-    marginTop: 10,
-  },
-  sectionSurface: {
-    borderRadius: 25,
-    padding: 12,
+    gap: liqiSpacing.md,
+    marginTop: liqiSpacing.xl,
   },
 });

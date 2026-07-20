@@ -1,11 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-
-import { SessionFeedbackScreen } from '@/features/trust-outcomes/screens/SessionFeedbackScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function SessionFeedbackRoute() {
-  const { sessionId } = useLocalSearchParams<{
-    sessionId?: string | string[];
-  }>();
-  const resolved = Array.isArray(sessionId) ? sessionId[0] : sessionId;
-  return <SessionFeedbackScreen sessionId={resolved ?? ''} />;
+  return <ResetRouteScreen routeId="session-feedback" />;
 }

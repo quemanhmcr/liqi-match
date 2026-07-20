@@ -7,8 +7,8 @@ import {
   type TextProps,
 } from 'react-native';
 
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiButton, LiqiCard } from '@/shared/components/liqi';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 import { DiscoverResolvedImage } from './DiscoverResolvedImage';
 import type {
@@ -88,15 +88,15 @@ export function DiscoverSetCard({
       style={inset ? styles.insetCard : undefined}
       testID={`discover-set-card-${card.id}`}
     >
-      <LiquidCard
-        baseStrokeOpacity={listPresentation ? 0.16 : 0.14}
+      <LiqiCard
+        borderOpacity={listPresentation ? 0.16 : 0.14}
         contentStyle={[
           styles.cardContent,
           compact && styles.cardContentCompact,
           listPresentation && styles.cardContentList,
         ]}
         density="compact"
-        glowIntensity={
+        emphasis={
           listPresentation
             ? 'low'
             : card.actionTone === 'cyan'
@@ -105,13 +105,13 @@ export function DiscoverSetCard({
         }
         radius={listPresentation ? 25 : 23}
         style={selected ? styles.cardSelected : undefined}
-        surfaceBackground={
+        backgroundColor={
           card.actionTone === 'cyan'
             ? 'rgba(8,23,42,0.62)'
             : 'rgba(16,14,36,0.64)'
         }
         variant={card.actionTone}
-        withInnerReflection={false}
+        withHighlight={false}
         withShadow={false}
       >
         {listPresentation ? (
@@ -209,7 +209,7 @@ export function DiscoverSetCard({
             </View>
           </View>
         )}
-      </LiquidCard>
+      </LiqiCard>
     </View>
   );
 }
@@ -267,14 +267,14 @@ function SetAction({
   requested: boolean;
 }) {
   return (
-    <LiquidButton
+    <LiqiButton
       accessibilityLabel={`${card.actionLabel} ${card.title}`}
       contentStyle={[
         styles.buttonContent,
         listPresentation && styles.buttonContentList,
       ]}
       disabled={card.actionKind === 'request' && requested}
-      glowIntensity={card.actionKind === 'view' ? 'none' : 'low'}
+      emphasis={card.actionKind === 'view' ? 'none' : 'low'}
       onPress={onPress}
       radius={listPresentation ? 18 : 17}
       style={[styles.actionButton, listPresentation && styles.actionButtonList]}
@@ -293,7 +293,7 @@ function SetAction({
       >
         {actionText}
       </DiscoverText>
-    </LiquidButton>
+    </LiqiButton>
   );
 }
 
@@ -457,11 +457,11 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   meta: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 11,
     fontWeight: '600',
   },
-  metaDot: { color: liquidColors.text.muted, fontSize: 12 },
+  metaDot: { color: liqiColors.text.muted, fontSize: 12 },
   metaRow: {
     alignItems: 'center',
     flexDirection: 'row',
@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 7,
   },
   stackSurplusText: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 9.5,
     fontWeight: '800',
   },
@@ -532,7 +532,7 @@ const styles = StyleSheet.create({
   },
   tinyTagText: { fontSize: 9.5, fontWeight: '700' },
   title: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flex: 1,
     flexShrink: 1,
     fontSize: 13.5,

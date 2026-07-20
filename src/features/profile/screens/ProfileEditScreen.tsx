@@ -7,7 +7,7 @@ import { Alert, Platform, ToastAndroid } from 'react-native';
 
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { useAuth } from '@/shared/auth/auth-context';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 import { ProfileText } from '../components/ProfileShared';
 import { profileMediaUrl } from '../services/profile-service';
@@ -66,7 +66,7 @@ export function ProfileEditScreen() {
   });
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.scrollContent}
       withBottomNavPadding={false}
       withHeader={false}
@@ -83,7 +83,7 @@ export function ProfileEditScreen() {
           session={session}
         />
       ) : null}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 

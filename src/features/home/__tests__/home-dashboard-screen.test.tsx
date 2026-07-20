@@ -47,6 +47,15 @@ const mockExpoRouter = jest.requireMock('expo-router') as {
   router: { push: ReturnType<typeof jest.fn> };
 };
 
+async function settleHomeQueries(
+  result: Awaited<ReturnType<typeof renderWithProviders>>,
+) {
+  await waitFor(() => expect(result.queryClient.isFetching()).toBe(0));
+  await act(async () => {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  });
+}
+
 const syncedDashboard: HomeDashboard = {
   activeMatchCount: 1,
   currentProfile: {
@@ -89,8 +98,8 @@ async function renderHomeDashboard(
     },
   });
   if (waitForSuccess) {
-    await result.findByText('Synced');
-    await waitFor(() => expect(result.queryClient.isFetching()).toBe(0));
+    await result.findByText(/Chào Synced/);
+    await settleHomeQueries(result);
   }
   return result;
 }
@@ -101,9 +110,9 @@ describe('HomeDashboardScreen', () => {
     mockNotificationUnseenCount = 3;
   });
 
-  it('renders a compact decision-first dashboard with explicit semantics', async () => {
+  it('renders the reference hero, mode order, room cards and recent activity', async () => {
     const {
-      getAllByText,
+      getAllByRole,
       getByLabelText,
       getByTestId,
       getByText,
@@ -111,60 +120,69 @@ describe('HomeDashboardScreen', () => {
     } = await renderHomeDashboard();
 
     expect(getByTestId('home-notification-unread-dot')).toBeTruthy();
-    expect(getByText('Xin chào,')).toBeTruthy();
-    expect(getByText('1 match mới')).toBeTruthy();
-    expect(getByText('Tìm người vào set?')).toBeTruthy();
-    expect(getByText('Chưa tìm đội')).toBeTruthy();
-    expect(getByText('Mood · Set Love')).toBeTruthy();
-    expect(getByText('Những người đã match')).toBeTruthy();
-    expect(getAllByText('Tri kỉ').length).toBeGreaterThan(0);
-    expect(getByText('Thường')).toBeTruthy();
-    expect(getByText('Xếp hạng')).toBeTruthy();
+    expect(getByText(/Chào Synced/)).toBeTruthy();
+    expect(getByText('Tự động ghép')).toBeTruthy();
+    const heroTitle = getByText('Tìm Tri kỉ');
+    expect(heroTitle.props.numberOfLines).toBe(1);
+    expect(getByTestId('home-ready-hero-icon-heart-outline')).toBeTruthy();
+    expect(
+      StyleSheet.flatten(getByTestId('home-ready-hero-shell').props.style),
+    ).toMatchObject({ height: 272 });
+    expect(getByText('Bắt đầu ghép')).toBeTruthy();
+    expect(getByText('Phòng của bạn')).toBeTruthy();
+    expect(getByText('Buổi chơi sắp tới')).toBeTruthy();
+    expect(getByText('Hoạt động gần đây')).toBeTruthy();
+    expect(
+      getByLabelText('Thành phố LiQi cho tính năng tìm Tri kỉ'),
+    ).toBeTruthy();
+
     expect(getByTestId('home-ready-mode-grid')).toBeTruthy();
+    const modeLabels = ['Tri kỉ', 'Love', 'Normal', 'Rank', 'Team'];
+    const modeButtons = getAllByRole('button').filter((button) =>
+      modeLabels.includes(button.props.accessibilityLabel),
+    );
     expect(
-      getByTestId('home-ready-mode-icon-setlove-heart-outline'),
-    ).toBeTruthy();
+      modeButtons.map((button) => button.props.accessibilityLabel),
+    ).toEqual(['Tri kỉ', 'Love', 'Normal', 'Rank', 'Team']);
+    expect(getByLabelText('Tri kỉ').props.accessibilityState).toEqual({
+      disabled: false,
+      selected: true,
+    });
     expect(
-      getByTestId('home-ready-mode-icon-soulmate-handshake-outline'),
+      getByTestId('home-ready-mode-icon-soulmate-heart-circle'),
     ).toBeTruthy();
-    expect(
-      getByTestId('home-match-kind-icon-Tri kỉ-handshake-outline'),
-    ).toBeTruthy();
-    const heroBackgroundImage = getByTestId('home-ready-hero-background');
-    expect(getByLabelText('Nền sẵn sàng trung tính')).toBeTruthy();
+    expect(getByTestId('home-ready-mode-icon-setlove-heart')).toBeTruthy();
+    expect(getByTestId('home-ready-mode-icon-normal-happy')).toBeTruthy();
+    expect(getByTestId('home-ready-mode-icon-rank-trophy')).toBeTruthy();
+    expect(getByTestId('home-ready-mode-icon-team-people')).toBeTruthy();
+
     const heroBackgroundStyle = StyleSheet.flatten(
-      heroBackgroundImage.props.style,
+      getByTestId('home-ready-hero-background').props.style,
     );
     expect(heroBackgroundStyle).toMatchObject({
       height: '100%',
-      left: 0,
-      opacity: 0.72,
-      position: 'absolute',
-      top: 0,
-      transform: [{ scale: 1.18 }, { translateX: -18 }],
       width: '100%',
     });
-    expect(heroBackgroundStyle.bottom).toBeUndefined();
-    expect(heroBackgroundStyle.right).toBeUndefined();
     expect(
       StyleSheet.flatten(getByTestId('home-ready-hero-content').props.style),
     ).toMatchObject({
-      minHeight: 166,
-      padding: 12,
-      position: 'relative',
+      height: '100%',
+      paddingBottom: 14,
+      paddingLeft: 16,
+      paddingTop: 17,
+      width: '54%',
     });
-    expect(queryByText('Đội xếp hạng')).toBeNull();
-    expect(getAllByText('Minh Anh').length).toBeGreaterThan(0);
-    expect(getByText('+1')).toBeTruthy();
-    expect(getByLabelText('Nhắn tin với Minh Anh, 1 tin mới')).toBeTruthy();
-    expect(getByText('Tối · Có voice').props).toMatchObject({
-      adjustsFontSizeToFit: true,
-      minimumFontScale: 0.86,
-      numberOfLines: 1,
-    });
-    expect(queryByText('Idle')).toBeNull();
-    expect(queryByText('Normal')).toBeNull();
-    expect(queryByText('Đã match thành công')).toBeNull();
+
+    expect(getByLabelText('Mở hồ sơ Minh Anh')).toBeTruthy();
+    expect(getByLabelText('Mở Phòng của bạn')).toBeTruthy();
+    expect(getByLabelText('Tạo phòng từ match')).toBeTruthy();
+    expect(getByLabelText('Xem tất cả hoạt động')).toBeTruthy();
+    expect(getByLabelText('Chiến thắng, 12/07 · 3 trận')).toBeTruthy();
+    expect(getByLabelText('Gánh team, 10/07 · 2 trận')).toBeTruthy();
+    expect(getByLabelText('Chuỗi 4 win, 08/07 · 4 trận')).toBeTruthy();
+    expect(getByLabelText('Chill cùng nhau, 06/07 · 2 trận')).toBeTruthy();
+    expect(queryByText('Xin chào,')).toBeNull();
+    expect(queryByText('Những người đã match')).toBeNull();
   });
 
   it('renders authoritative post-session activity on the real Home screen', async () => {
@@ -202,7 +220,7 @@ describe('HomeDashboardScreen', () => {
     });
 
     expect(await screen.findByText('Hoạt động của bạn')).toBeTruthy();
-    await waitFor(() => expect(screen.queryClient.isFetching()).toBe(0));
+    await settleHomeQueries(screen);
     expect(await screen.findByText('Hoàn tất phản hồi buổi chơi')).toBeTruthy();
     await fireEvent.press(screen.getByText('Phản hồi'));
     expect(mockExpoRouter.router.push).toHaveBeenCalledWith(
@@ -220,22 +238,23 @@ describe('HomeDashboardScreen', () => {
     );
   });
 
-  it('uses one explicit ready action and keeps the selected mood visible', async () => {
+  it('uses one authoritative ready action and keeps the selected mode visible', async () => {
     const { getByLabelText, getByText } = await renderHomeDashboard();
 
     await fireEvent.press(getByLabelText('Bật tìm đội'));
 
     await waitFor(() => {
       expect(getByLabelText('Tắt tìm đội')).toBeTruthy();
-      expect(getByText('Đang tìm đội')).toBeTruthy();
-      expect(getByText('Đang bật · Set Love')).toBeTruthy();
+      expect(getByText('Tạm dừng ghép')).toBeTruthy();
+      expect(getByText(/Đang tìm kết nối/)).toBeTruthy();
     });
 
-    await fireEvent.press(getByLabelText('Xếp hạng'));
+    await fireEvent.press(getByLabelText('Rank'));
 
     await waitFor(() => {
-      expect(getByText('Đang bật · Xếp hạng')).toBeTruthy();
-      expect(getByLabelText('Xếp hạng').props.accessibilityState).toEqual({
+      expect(getByText('Tìm đồng đội')).toBeTruthy();
+      expect(getByLabelText('Rank').props.accessibilityState).toEqual({
+        disabled: false,
         selected: true,
       });
     });
@@ -325,6 +344,6 @@ describe('HomeDashboardScreen', () => {
         ),
       ).toBeTruthy();
     });
-    expect(result.getAllByText('Minh Anh').length).toBeGreaterThan(0);
+    expect(result.getByLabelText('Mở hồ sơ Minh Anh')).toBeTruthy();
   });
 });

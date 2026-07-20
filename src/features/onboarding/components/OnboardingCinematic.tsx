@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { LiquidButton, LiquidGlassSurface } from '@/shared/components/liquid';
+import { LiqiButton, LiqiSurface } from '@/shared/components/liqi';
 
 const profileBackground =
   require('../../../../assets/anh_mau_4/background-chon-ho-so.png') as number;
@@ -189,10 +189,10 @@ export function OnboardingPrimaryButton({
   style,
 }: OnboardingPrimaryButtonProps) {
   return (
-    <LiquidButton
+    <LiqiButton
       accessibilityLabel={accessibilityLabel}
       disabled={disabled}
-      glowIntensity="low"
+      emphasis="low"
       gradientColors={[
         'rgba(162,70,236,0.76)',
         'rgba(111,70,204,0.74)',
@@ -213,7 +213,7 @@ export function OnboardingPrimaryButton({
         )}
         {showArrow ? <Text style={styles.primaryButtonArrow}>→</Text> : null}
       </View>
-    </LiquidButton>
+    </LiqiButton>
   );
 }
 
@@ -273,14 +273,12 @@ export function OnboardingOptionRow({
         disabled && styles.disabled,
       ]}
     >
-      <LiquidGlassSurface
-        baseStrokeOpacity={selected ? 0.075 : 0.035}
-        glowIntensity="none"
-        glassIntensity="low"
+      <LiqiSurface
+        borderOpacity={selected ? 0.075 : 0.035}
+        emphasis="none"
+        surfaceTone="low"
         radius={18}
-        surfaceBackground={
-          selected ? 'rgba(20,16,42,0.34)' : 'rgba(4,8,19,0.28)'
-        }
+        backgroundColor={selected ? 'rgba(20,16,42,0.34)' : 'rgba(4,8,19,0.28)'}
         variant="card"
         withShadow={false}
         contentStyle={styles.optionContent}
@@ -292,7 +290,7 @@ export function OnboardingOptionRow({
         {trailing ? (
           <View style={styles.optionTrailing}>{trailing}</View>
         ) : null}
-      </LiquidGlassSurface>
+      </LiqiSurface>
     </Pressable>
   );
 }
@@ -313,12 +311,12 @@ export function OnboardingSection({
   title,
 }: OnboardingSectionProps) {
   return (
-    <LiquidGlassSurface
-      baseStrokeOpacity={0.06}
-      glowIntensity="none"
-      glassIntensity="low"
+    <LiqiSurface
+      borderOpacity={0.06}
+      emphasis="none"
+      surfaceTone="low"
       radius={24}
-      surfaceBackground="rgba(5,10,24,0.40)"
+      backgroundColor="rgba(5,10,24,0.40)"
       variant="card"
       withShadow={false}
       contentStyle={[styles.sectionContent, style]}
@@ -333,7 +331,7 @@ export function OnboardingSection({
         {meta ? <Text style={styles.sectionMeta}>{meta}</Text> : null}
       </View>
       {children}
-    </LiquidGlassSurface>
+    </LiqiSurface>
   );
 }
 
@@ -387,19 +385,19 @@ export function OnboardingChip({
 
 export function OnboardingInfoCard({ children }: { children: ReactNode }) {
   return (
-    <LiquidGlassSurface
-      baseStrokeColor="rgba(103,232,255,0.34)"
-      baseStrokeOpacity={0.08}
-      glowIntensity="none"
-      glassIntensity="low"
+    <LiqiSurface
+      borderColor="rgba(103,232,255,0.34)"
+      borderOpacity={0.08}
+      emphasis="none"
+      surfaceTone="low"
       radius={22}
-      surfaceBackground="rgba(38,159,218,0.045)"
+      backgroundColor="rgba(38,159,218,0.045)"
       variant="card"
       withShadow={false}
       contentStyle={styles.infoCard}
     >
       {children}
-    </LiquidGlassSurface>
+    </LiqiSurface>
   );
 }
 

@@ -1,14 +1,20 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Pressable, StyleSheet, View } from 'react-native';
 
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import {
+  liqiColors,
+  liqiComponentColors,
+  liqiOpacity,
+  liqiSpacing,
+  liqiTypography,
+} from '@/shared/theme/liqi-design-system';
 
 import { ProfileText } from './ProfileShared';
 
 export type ProfileSectionHeaderProps = {
   accessibilityLabel?: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  compact?: boolean;
+  icon?: keyof typeof Ionicons.glyphMap;
   onPress?: () => void;
   title: string;
   withChevron?: boolean;
@@ -16,6 +22,7 @@ export type ProfileSectionHeaderProps = {
 
 export function ProfileSectionHeader({
   accessibilityLabel,
+  compact = false,
   icon,
   onPress,
   title,
@@ -24,21 +31,27 @@ export function ProfileSectionHeader({
   const content = (
     <>
       <View style={styles.titleRow}>
-        <LinearGradient
-          colors={['rgba(106,101,255,0.22)', 'rgba(103,232,255,0.12)']}
-          end={{ x: 1, y: 1 }}
-          start={{ x: 0, y: 0 }}
-          style={styles.iconSlot}
+        {icon ? (
+          <Ionicons
+            color={liqiComponentColors.profile.interestIcon}
+            name={icon}
+            size={16}
+          />
+        ) : null}
+        <ProfileText
+          adjustsFontSizeToFit
+          minimumFontScale={0.88}
+          numberOfLines={1}
+          style={[styles.title, compact && styles.titleCompact]}
         >
-          <Ionicons color="rgba(205,244,255,0.82)" name={icon} size={12} />
-        </LinearGradient>
-        <ProfileText style={styles.title}>{title}</ProfileText>
+          {title}
+        </ProfileText>
       </View>
       {withChevron ? (
         <Ionicons
-          color="rgba(218,225,255,0.48)"
+          color={liqiComponentColors.profile.subtleIcon}
           name="chevron-forward"
-          size={17}
+          size={18}
         />
       ) : null}
     </>
@@ -50,6 +63,7 @@ export function ProfileSectionHeader({
     <Pressable
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityRole="button"
+      hitSlop={8}
       onPress={onPress}
       style={({ pressed }) => [styles.shell, pressed && styles.pressed]}
     >
@@ -59,33 +73,26 @@ export function ProfileSectionHeader({
 }
 
 const styles = StyleSheet.create({
-  iconSlot: {
-    alignItems: 'center',
-    borderColor: 'rgba(103,232,255,0.14)',
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 23,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 23,
-  },
-  pressed: { opacity: 0.76 },
+  pressed: { opacity: liqiOpacity.pressed },
   shell: {
     alignItems: 'center',
     flexDirection: 'row',
+    gap: liqiSpacing.sm,
     justifyContent: 'space-between',
+    minHeight: 24,
   },
   title: {
-    color: liquidColors.text.primary,
-    fontSize: 14.5,
-    fontWeight: '600',
-    letterSpacing: -0.22,
+    ...liqiTypography.sectionTitle,
+    color: liqiColors.text.onAccent,
+    flex: 1,
+    minWidth: 0,
   },
+  titleCompact: { ...liqiTypography.sectionTitleCompact },
   titleRow: {
     alignItems: 'center',
     flex: 1,
     flexDirection: 'row',
-    gap: 7,
+    gap: liqiSpacing.sm,
     minWidth: 0,
   },
 });

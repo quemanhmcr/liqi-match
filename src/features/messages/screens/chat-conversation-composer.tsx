@@ -17,14 +17,13 @@ import {
 } from 'react-native';
 import { KeyboardController } from 'react-native-keyboard-controller';
 
-import { LiqiChip, LiqiOrbButton, LiqiSurface } from '@/shared/components/liqi';
 import {
-  isCompactLiqiViewport,
-  liqiColors,
-  liqiComponentColors,
-  liqiComponentGradients,
-  liqiComponents,
-} from '@/shared/theme/liqi-design-system';
+  AppChip,
+  AppIconButton,
+  AppSurface,
+  isCompactViewport,
+  appColors,
+} from '@/shared/ui';
 
 import {
   clearChatDraft,
@@ -44,6 +43,7 @@ import {
 } from '../services/chat-message-transport';
 import { lightImpact, selectionImpact } from './chat-conversation-haptics';
 import { chatConversationStyles as styles } from './chat-conversation.styles';
+import { messagesUi } from '../ui/messages-ui';
 
 type ComposerTray = 'attachments' | 'emoji';
 
@@ -66,10 +66,10 @@ export function ChatComposer({
   placeholder: string;
 }) {
   const { width } = useWindowDimensions();
-  const compact = isCompactLiqiViewport(width);
+  const compact = isCompactViewport(width);
   const composerControlSize = compact
-    ? liqiComponents.messages.chat.composerControlCompact
-    : liqiComponents.messages.chat.composerControl;
+    ? messagesUi.metrics.chat.composerControlCompact
+    : messagesUi.metrics.chat.composerControl;
   const inputRef = useRef<TextInput>(null);
   const draft = useChatRuntimeStore(
     (state) => state.draftsByConversation[conversationId] ?? '',
@@ -300,7 +300,7 @@ export function ChatComposer({
                 ) : (
                   <View style={styles.selectedMediaVideoIcon}>
                     <Ionicons
-                      color={liqiColors.icon.inactive}
+                      color={appColors.icon.inactive}
                       name="videocam"
                       size={18}
                     />
@@ -309,7 +309,7 @@ export function ChatComposer({
                 {selectedMediaPhase === 'processing' ? (
                   <View style={styles.selectedMediaProcessingOverlay}>
                     <ActivityIndicator
-                      color={liqiColors.text.onAccent}
+                      color={appColors.text.onAccent}
                       size="small"
                     />
                   </View>
@@ -342,7 +342,7 @@ export function ChatComposer({
                 }}
               >
                 <Ionicons
-                  color={liqiColors.icon.inactive}
+                  color={appColors.icon.inactive}
                   name="close"
                   size={18}
                 />
@@ -399,29 +399,29 @@ export function ChatComposer({
       ) : null}
 
       <View accessibilityLabel="Hành động nhanh" style={styles.quickActionRow}>
-        <LiqiChip
+        <AppChip
           accessibilityLabel="Chèn 💜"
           density="compact"
           onPress={() => insertEmoji('💜')}
           variant="purple"
         >
           💜
-        </LiqiChip>
-        <LiqiChip
+        </AppChip>
+        <AppChip
           accessibilityLabel="Chèn ✨"
           density="compact"
           onPress={() => insertEmoji('✨')}
           variant="purple"
         >
           ✨
-        </LiqiChip>
+        </AppChip>
         {actionState('image') === 'available' ? (
-          <LiqiChip
+          <AppChip
             accessibilityLabel="Gửi ảnh hoặc video"
             density="compact"
             icon={
               <Ionicons
-                color={liqiColors.icon.inactive}
+                color={appColors.icon.inactive}
                 name="images-outline"
                 size={16}
               />
@@ -430,15 +430,15 @@ export function ChatComposer({
             variant="default"
           >
             Ảnh
-          </LiqiChip>
+          </AppChip>
         ) : null}
         {actionState('camera') === 'available' ? (
-          <LiqiChip
+          <AppChip
             accessibilityLabel="Chụp ảnh"
             density="compact"
             icon={
               <Ionicons
-                color={liqiColors.icon.inactive}
+                color={appColors.icon.inactive}
                 name="camera-outline"
                 size={16}
               />
@@ -447,13 +447,13 @@ export function ChatComposer({
             variant="default"
           >
             Camera
-          </LiqiChip>
+          </AppChip>
         ) : null}
       </View>
 
       <View style={styles.composerRow}>
         {hasVisibleAttachmentAction ? (
-          <LiqiOrbButton
+          <AppIconButton
             accessibilityLabel="Thêm nội dung"
             surfaceTone="low"
             emphasis="none"
@@ -461,16 +461,16 @@ export function ChatComposer({
             size={composerControlSize}
           >
             <Ionicons
-              color={liqiColors.icon.inactive}
+              color={appColors.icon.inactive}
               name={activeTray === 'attachments' ? 'close' : 'add'}
               size={19}
             />
-          </LiqiOrbButton>
+          </AppIconButton>
         ) : null}
 
-        <LiqiSurface
-          backgroundColor={liqiComponentColors.messages.composerInput}
-          borderColor={liqiComponentColors.messages.composerStroke}
+        <AppSurface
+          backgroundColor={messagesUi.colors.composerInput}
+          borderColor={messagesUi.colors.composerStroke}
           borderOpacity={0.9}
           borderWidth={StyleSheet.hairlineWidth}
           contentStyle={styles.inputSurface}
@@ -496,7 +496,7 @@ export function ChatComposer({
               onFocus={onFocus}
               onSelectionChange={handleSelectionChange}
               placeholder={placeholder}
-              placeholderTextColor={liqiColors.text.muted}
+              placeholderTextColor={appColors.text.muted}
               ref={inputRef}
               scrollEnabled
               testID="chat-composer-input"
@@ -522,24 +522,24 @@ export function ChatComposer({
             onPress={() => openTray('emoji')}
           >
             <Ionicons
-              color={liqiColors.icon.inactive}
+              color={appColors.icon.inactive}
               name={activeTray === 'emoji' ? 'close-circle' : 'happy-outline'}
               size={21}
             />
           </Pressable>
-        </LiqiSurface>
+        </AppSurface>
 
-        <LiqiOrbButton
+        <AppIconButton
           accessibilityLabel="Gửi tin nhắn"
           backgroundSlot={
             <LinearGradient
-              colors={liqiComponentGradients.messages.send}
+              colors={messagesUi.gradients.send}
               end={{ x: 1, y: 1 }}
               start={{ x: 0, y: 0 }}
               style={StyleSheet.absoluteFill}
             />
           }
-          borderColor={liqiComponentColors.messages.avatarStroke}
+          borderColor={messagesUi.colors.avatarStroke}
           disabled={!canSend}
           emphasis="high"
           onPress={send}
@@ -548,11 +548,11 @@ export function ChatComposer({
           withHighlight
         >
           <Ionicons
-            color={liqiColors.text.onAccent}
+            color={appColors.text.onAccent}
             name="paper-plane"
             size={20}
           />
-        </LiqiOrbButton>
+        </AppIconButton>
       </View>
     </View>
   );
@@ -578,7 +578,7 @@ function ComposerAction({
       ]}
     >
       <View style={styles.composerActionIcon}>
-        <Ionicons color={liqiColors.icon.inactive} name={icon} size={18} />
+        <Ionicons color={appColors.icon.inactive} name={icon} size={18} />
       </View>
       <Text numberOfLines={1} style={styles.composerActionText}>
         {label}
@@ -595,7 +595,7 @@ export function ReadOnlyComposer({ reason }: { reason?: string }) {
       style={styles.readOnlyComposer}
     >
       <Ionicons
-        color={liqiColors.icon.inactive}
+        color={appColors.icon.inactive}
         name="lock-closed-outline"
         size={17}
       />

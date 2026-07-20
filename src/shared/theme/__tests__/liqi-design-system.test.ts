@@ -41,6 +41,20 @@ describe('LiQi design system foundation', () => {
     expect(liqiComponents.navigation.centerOrb).toBe(72);
   });
 
+  it('keeps Notifications dense, opaque and responsive', () => {
+    expect(liqiComponents.notifications.headerAction).toBeGreaterThanOrEqual(
+      liqiTouch.minimum,
+    );
+    expect(liqiComponents.notifications.row.minHeightCompact).toBeLessThan(
+      liqiComponents.notifications.row.minHeight,
+    );
+    expect(liqiComponents.notifications.scene.widthCompact).toBeLessThan(
+      liqiComponents.notifications.scene.width,
+    );
+    expect(liqiComponentColors.notifications.unreadBackground).toMatch(/^#/);
+    expect(liqiComponentColors.notifications.readBackground).toMatch(/^#/);
+  });
+
   it('keeps Profile on the Home-derived solid presentation contract', () => {
     expect(liqiComponents.home.header.avatar).toBe(
       liqiComponents.identityHeader.avatar,

@@ -19,8 +19,8 @@ import {
   type HeroId,
 } from '@/entities/hero';
 import { PROFILE_LIMITS } from '@/entities/player-profile';
-import { LiquidButton, LiquidOrbButton } from '@/shared/components/liquid';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiButton, LiqiOrbButton } from '@/shared/components/liqi';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 import { ProfileText } from '../../components/ProfileShared';
 import type { ProfileEditHero } from '../model/profile-edit-model';
@@ -112,16 +112,16 @@ export function HeroSection({
                   )}
                 </View>
                 <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                  <LiquidButton
+                  <LiqiButton
                     accessibilityLabel={`Đổi tướng tủ slot ${index + 1}`}
-                    glowIntensity="none"
+                    emphasis="none"
                     onPress={() => setPickerSlot(index)}
                     radius={16}
                     variant="ghost"
                     withShadow={false}
                   >
                     <ProfileText style={styles.fieldLabel}>Đổi</ProfileText>
-                  </LiquidButton>
+                  </LiqiButton>
                   {hero && definition ? (
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <Pressable
@@ -269,17 +269,17 @@ function HeroPickerModal({
                 Không thể chọn trùng ở nhiều priority.
               </ProfileText>
             </View>
-            <LiquidOrbButton
+            <LiqiOrbButton
               accessibilityLabel="Đóng chọn tướng"
               onPress={onClose}
               size={36}
             >
               <Ionicons
-                color={liquidColors.text.primary}
+                color={liqiColors.text.primary}
                 name="close"
                 size={18}
               />
-            </LiquidOrbButton>
+            </LiqiOrbButton>
           </View>
           <View style={styles.searchBox}>
             <Ionicons color="rgba(205,216,245,0.62)" name="search" size={16} />

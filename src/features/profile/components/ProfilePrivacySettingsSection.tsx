@@ -2,13 +2,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Modal, Pressable, StyleSheet, View } from 'react-native';
 
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-} from '@/shared/components/liquid';
+import { LiqiButton, LiqiCard, LiqiChip } from '@/shared/components/liqi';
 import type { PlayerPrivacySettingsV2 } from '@/shared/contracts/core-v2';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 import { ProfileText } from './ProfileShared';
 
@@ -189,10 +185,10 @@ export function ProfilePrivacySettingsSection({
 
   if (!privacy) {
     return (
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.unavailableContent}
         density="list"
-        glowIntensity="none"
+        emphasis="none"
         style={styles.card}
         withShadow={false}
       >
@@ -214,17 +210,17 @@ export function ProfilePrivacySettingsSection({
           </ProfileText>
         </View>
         {!loading && error && onRetry ? (
-          <LiquidButton
+          <LiqiButton
             accessibilityLabel="Thử tải lại quyền riêng tư"
-            glowIntensity="none"
+            emphasis="none"
             onPress={onRetry}
             variant="secondary"
             withShadow={false}
           >
             Thử lại
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
-      </LiquidCard>
+      </LiqiCard>
     );
   }
 
@@ -247,9 +243,9 @@ export function ProfilePrivacySettingsSection({
               onPress={() => setSelectedKey(key)}
               style={({ pressed }) => [pressed && !disabled && styles.pressed]}
             >
-              <LiquidCard
+              <LiqiCard
                 density="list"
-                glowIntensity="none"
+                emphasis="none"
                 style={styles.card}
                 withShadow={false}
               >
@@ -269,20 +265,20 @@ export function ProfilePrivacySettingsSection({
                       {definition.subtitle}
                     </ProfileText>
                   </View>
-                  <LiquidChip
+                  <LiqiChip
                     density="compact"
                     selected
                     variant={pending ? 'orange' : 'purple'}
                   >
                     {pending ? 'Đang lưu…' : (option?.label ?? value)}
-                  </LiquidChip>
+                  </LiqiChip>
                   <Ionicons
                     color="rgba(219,226,255,0.38)"
                     name="chevron-forward"
                     size={17}
                   />
                 </View>
-              </LiquidCard>
+              </LiqiCard>
             </Pressable>
           );
         })}
@@ -296,11 +292,11 @@ export function ProfilePrivacySettingsSection({
       >
         <View style={styles.modalBackdrop}>
           {selectedKey && selectedDefinition ? (
-            <LiquidCard
+            <LiqiCard
               density="large"
-              glowIntensity="low"
+              emphasis="low"
               style={styles.modalCard}
-              surfaceBackground="rgba(20, 16, 42, 0.94)"
+              backgroundColor="rgba(20, 16, 42, 0.94)"
               variant="purple"
             >
               <ProfileText style={styles.modalEyebrow}>
@@ -330,9 +326,9 @@ export function ProfilePrivacySettingsSection({
                         pressed && !disabled && styles.pressed,
                       ]}
                     >
-                      <LiquidCard
+                      <LiqiCard
                         density="list"
-                        glowIntensity={selected ? 'low' : 'none'}
+                        emphasis={selected ? 'low' : 'none'}
                         style={styles.optionCard}
                         variant={selected ? 'cyan' : 'purple'}
                         withShadow={false}
@@ -358,22 +354,22 @@ export function ProfilePrivacySettingsSection({
                             size={21}
                           />
                         </View>
-                      </LiquidCard>
+                      </LiqiCard>
                     </Pressable>
                   );
                 })}
               </View>
-              <LiquidButton
+              <LiqiButton
                 accessibilityLabel="Đóng lựa chọn quyền riêng tư"
                 disabled={disabled}
-                glowIntensity="none"
+                emphasis="none"
                 onPress={() => setSelectedKey(null)}
                 variant="secondary"
                 withShadow={false}
               >
                 Huỷ
-              </LiquidButton>
-            </LiquidCard>
+              </LiqiButton>
+            </LiqiCard>
           ) : null}
         </View>
       </Modal>
@@ -411,7 +407,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   modalTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 19,
     fontWeight: '900',
     marginTop: 5,
@@ -420,7 +416,7 @@ const styles = StyleSheet.create({
   optionCard: { marginTop: 8 },
   optionCopy: { flex: 1, minWidth: 0 },
   optionDescription: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     fontSize: 11.5,
     lineHeight: 16,
     marginTop: 3,
@@ -433,7 +429,7 @@ const styles = StyleSheet.create({
     minHeight: 54,
   },
   optionTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 13.5,
     fontWeight: '800',
   },
@@ -446,13 +442,13 @@ const styles = StyleSheet.create({
   },
   rows: { marginTop: 2 },
   subtitle: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     fontSize: 11.5,
     lineHeight: 16,
     marginTop: 3,
   },
   title: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 13.5,
     fontWeight: '800',
   },

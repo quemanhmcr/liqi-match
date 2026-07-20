@@ -1,9 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+import { liqiColors, liqiTypography } from '@/shared/theme/liqi-design-system';
 
 export const profileEditStyles = StyleSheet.create({
   trustedStatsNotice: {
@@ -83,7 +80,7 @@ export const profileEditStyles = StyleSheet.create({
     marginTop: 3,
   },
   coverEditorTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -195,7 +192,7 @@ export const profileEditStyles = StyleSheet.create({
     marginTop: 2,
   },
   heroEditName: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 13.5,
     fontWeight: '900',
   },
@@ -244,7 +241,7 @@ export const profileEditStyles = StyleSheet.create({
     marginTop: 3,
   },
   heroPickerName: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 14,
     fontWeight: '900',
   },
@@ -442,7 +439,7 @@ export const profileEditStyles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchInput: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flex: 1,
     fontSize: 14,
     fontWeight: '700',
@@ -471,7 +468,7 @@ export const profileEditStyles = StyleSheet.create({
     marginTop: 3,
   },
   sectionTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: -0.25,
@@ -498,7 +495,7 @@ export const profileEditStyles = StyleSheet.create({
     marginTop: 3,
   },
   sheetTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 20,
     fontWeight: '900',
   },
@@ -548,8 +545,8 @@ export const profileEditStyles = StyleSheet.create({
     textAlign: 'center',
   },
   title: {
-    ...liquidTypography.sectionTitle,
-    color: liquidColors.text.primary,
+    ...liqiTypography.sectionTitle,
+    color: liqiColors.text.primary,
     fontSize: 18,
     fontWeight: '900',
   },

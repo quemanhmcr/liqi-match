@@ -1,82 +1,137 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Image, StyleSheet, View } from 'react-native';
+import {
+  Image,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 
 import { useAssetResolver, type AssetKey } from '@/entities/media-asset';
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
+import {
+  liqiColors,
+  liqiComponentColors,
+  liqiComponents,
+  liqiRadius,
+  liqiSpacing,
+  liqiTypography,
+} from '@/shared/theme/liqi-design-system';
 
 import { resolveProfileMedia } from '../model/profile-media';
+import {
+  ProfileActionButton,
+  ProfileSurface,
+} from './ProfilePresentationPrimitives';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
 import { ProfileText } from './ProfileShared';
 
 export function ProfileHighlights({
+  compact,
+  coverAssetKey,
+  coverUrl,
   mode,
   onManage,
+  style,
   wallAssetKeys = [],
   wallUrls = [],
 }: {
+  compact: boolean;
+  coverAssetKey?: AssetKey;
+  coverUrl?: string;
   mode: 'self' | 'other';
   onManage?: () => void;
+  style?: StyleProp<ViewStyle>;
   wallAssetKeys?: readonly AssetKey[];
   wallUrls?: readonly string[];
 }) {
   const resolver = useAssetResolver();
-  const remoteItems = wallUrls.slice(0, 4).map((uri) => ({
-    key: uri,
+  const coverItem = coverUrl
+    ? {
+        key: `cover:${coverUrl}`,
+        kind: 'cover' as const,
+        source: { uri: coverUrl },
+        state: 'ready' as const,
+      }
+    : coverAssetKey
+      ? (() => {
+          const media = resolveProfileMedia(resolver, {
+            assetKey: coverAssetKey,
+          });
+          return {
+            key: `cover:${coverAssetKey}`,
+            kind: 'cover' as const,
+            source: media.source,
+            state: media.state,
+          };
+        })()
+      : undefined;
+  const remoteItems = wallUrls.map((uri) => ({
+    key: `wall:${uri}`,
+    kind: 'wall' as const,
     source: { uri },
     state: 'ready' as const,
   }));
-  const assetItems = wallAssetKeys
-    .slice(0, 4 - remoteItems.length)
-    .map((assetKey) => {
-      const media = resolveProfileMedia(resolver, { assetKey });
-      return { key: assetKey, source: media.source, state: media.state };
-    });
-  const items = [...remoteItems, ...assetItems];
+  const assetItems = wallAssetKeys.map((assetKey) => {
+    const media = resolveProfileMedia(resolver, { assetKey });
+    return {
+      key: `wall:${assetKey}`,
+      kind: 'wall' as const,
+      source: media.source,
+      state: media.state,
+    };
+  });
+  const items = [
+    ...(coverItem ? [coverItem] : []),
+    ...remoteItems,
+    ...assetItems,
+  ].slice(0, 4);
 
   if (items.length === 0 && mode === 'other') return null;
 
   return (
-    <LiquidCard
-      baseStrokeColor="rgba(103,232,255,0.16)"
-      baseStrokeOpacity={0.075}
-      blurIntensity={28}
-      contentStyle={styles.sectionSurface}
-      density="regular"
-      frameColors={[
-        'rgba(106,101,255,0.13)',
-        'rgba(255,255,255,0.030)',
-        'rgba(103,232,255,0.12)',
-      ]}
-      glassIntensity="low"
-      glowIntensity="low"
-      radius={26}
-      style={styles.sectionFrame}
-      surfaceBackground="rgba(8,12,28,0.38)"
-      withInnerReflection
-      withShadow={false}
-    >
+    <ProfileSurface compact={compact} style={style}>
       <ProfileSectionHeader
-        icon={mode === 'self' ? 'images-outline' : 'sparkles-outline'}
-        title="Khoảnh khắc nổi bật"
+        accessibilityLabel="Quản lý khoảnh khắc"
+        compact={compact}
+        onPress={onManage}
+        title="Khoảnh khắc"
+        withChevron={Boolean(onManage)}
       />
       {items.length ? (
         <View style={styles.grid}>
           {items.map((item, index) =>
             item.source ? (
               <Image
-                accessibilityLabel={`Khoảnh khắc hồ sơ ${index + 1}`}
+                accessibilityLabel={
+                  item.kind === 'cover'
+                    ? 'Ảnh bìa hồ sơ'
+                    : `Khoảnh khắc hồ sơ ${index + 1}`
+                }
                 key={item.key}
                 resizeMode="cover"
                 source={item.source}
-                style={styles.media}
+                style={[styles.media, compact && styles.mediaCompact]}
               />
             ) : (
               <View
-                accessibilityLabel={`Khoảnh khắc hồ sơ ${item.state}`}
+                accessibilityLabel={
+                  item.kind === 'cover'
+                    ? `Ảnh bìa hồ sơ ${item.state}`
+                    : `Khoảnh khắc hồ sơ ${item.state}`
+                }
                 key={item.key}
-                style={[styles.media, styles.fallback]}
+                style={[
+                  styles.media,
+                  compact && styles.mediaCompact,
+                  styles.fallback,
+                ]}
               >
-                <ProfileText style={styles.fallbackText}>
+                <Ionicons
+                  color={liqiComponentColors.profile.subtleIcon}
+                  name="image-outline"
+                  size={18}
+                />
+                <ProfileText numberOfLines={2} style={styles.fallbackText}>
                   {item.state === 'uploaded-but-unassociated'
                     ? 'Đang liên kết'
                     : 'Chưa sẵn sàng'}
@@ -84,12 +139,33 @@ export function ProfileHighlights({
               </View>
             ),
           )}
+          {mode === 'self'
+            ? Array.from({ length: Math.max(0, 4 - items.length) }).map(
+                (_, index) => (
+                  <View
+                    accessibilityLabel="Khoảnh khắc chưa thêm"
+                    key={`empty-${index}`}
+                    style={[
+                      styles.media,
+                      compact && styles.mediaCompact,
+                      styles.emptyMedia,
+                    ]}
+                  >
+                    <Ionicons
+                      color={liqiColors.text.disabled}
+                      name="add"
+                      size={20}
+                    />
+                  </View>
+                ),
+              )
+            : null}
         </View>
       ) : (
         <View style={styles.emptyState}>
           <View style={styles.emptyIcon}>
             <Ionicons
-              color="rgba(178,235,255,0.84)"
+              color={liqiComponentColors.profile.interestIcon}
               name="images-outline"
               size={22}
             />
@@ -99,87 +175,85 @@ export function ProfileHighlights({
               Kể câu chuyện chơi game của bạn
             </ProfileText>
             <ProfileText style={styles.emptyBody}>
-              Thêm tối đa 4 khoảnh khắc để hồ sơ có chiều sâu hơn mà không biến
-              thành một feed phức tạp.
+              Thêm tối đa 4 khoảnh khắc để hồ sơ có chiều sâu hơn.
             </ProfileText>
           </View>
           {onManage ? (
-            <LiquidButton
-              accessibilityLabel="Quản lý khoảnh khắc nổi bật"
-              glowIntensity="low"
+            <ProfileActionButton
+              icon="add"
+              label="Thêm ảnh"
               onPress={onManage}
+              style={styles.addButton}
               variant="secondary"
-              withShadow={false}
-            >
-              Thêm ảnh
-            </LiquidButton>
+            />
           ) : null}
         </View>
       )}
-      {items.length && mode === 'self' && onManage ? (
-        <LiquidButton
-          accessibilityLabel="Quản lý khoảnh khắc nổi bật"
-          glowIntensity="none"
-          onPress={onManage}
-          style={styles.manageButton}
-          variant="ghost"
-          withShadow={false}
-        >
-          Quản lý tường ảnh
-        </LiquidButton>
-      ) : null}
-    </LiquidCard>
+    </ProfileSurface>
   );
 }
 
 const styles = StyleSheet.create({
+  addButton: { minWidth: 104 },
   emptyBody: {
-    color: 'rgba(219,226,255,0.56)',
-    fontSize: 11.5,
-    lineHeight: 17,
-    marginTop: 3,
+    ...liqiTypography.caption,
+    color: liqiColors.text.muted,
+    marginTop: liqiSpacing.xs,
   },
   emptyCopy: { flex: 1, minWidth: 0 },
   emptyIcon: {
     alignItems: 'center',
-    backgroundColor: 'rgba(103,232,255,0.08)',
-    borderRadius: 20,
+    backgroundColor: liqiComponentColors.profile.statusSurface,
+    borderRadius: liqiRadius.pill,
     height: 40,
     justifyContent: 'center',
     width: 40,
+  },
+  emptyMedia: {
+    alignItems: 'center',
+    backgroundColor: liqiComponentColors.profile.actions.ghost.background,
+    borderColor: liqiComponentColors.profile.actions.ghost.border,
+    borderStyle: 'dashed',
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: 'center',
   },
   emptyState: {
     alignItems: 'center',
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 11,
-    marginTop: 9,
+    gap: liqiSpacing.lg,
+    marginTop: liqiSpacing.xl,
   },
   emptyTitle: {
-    color: 'rgba(245,249,255,0.92)',
-    fontSize: 13,
-    fontWeight: '900',
+    ...liqiTypography.label,
+    color: liqiColors.text.primary,
   },
   fallback: {
     alignItems: 'center',
-    backgroundColor: 'rgba(122,132,171,0.14)',
+    backgroundColor: liqiComponentColors.profile.mediaFallback,
+    gap: liqiSpacing.xs,
     justifyContent: 'center',
   },
   fallbackText: {
-    color: 'rgba(219,226,255,0.56)',
-    fontSize: 11,
-    fontWeight: '600',
+    ...liqiTypography.caption,
+    color: liqiColors.text.muted,
+    fontSize: 8.5,
+    lineHeight: 11,
+    textAlign: 'center',
   },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
-  manageButton: { marginTop: 10 },
+  grid: {
+    flexDirection: 'row',
+    gap: liqiSpacing.md,
+    marginTop: liqiSpacing.xl,
+  },
   media: {
-    aspectRatio: 1.35,
-    borderRadius: 16,
-    flexBasis: '47%',
-    flexGrow: 1,
-    minWidth: 120,
+    borderColor: liqiColors.border.image,
+    borderRadius: liqiRadius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    height: liqiComponents.profile.highlightHeight,
+    minWidth: 0,
     overflow: 'hidden',
   },
-  sectionFrame: { marginTop: 10 },
-  sectionSurface: { borderRadius: 25, padding: 12 },
+  mediaCompact: { height: liqiComponents.profile.highlightHeightCompact },
 });

@@ -1,5 +1,5 @@
-import { ProfileBlockedUsersScreen } from '@/features/profile/screens/ProfileBlockedUsersScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function ProfileBlockedUsersRoute() {
-  return <ProfileBlockedUsersScreen />;
+  return <ResetRouteScreen routeId="profile-blocked" />;
 }

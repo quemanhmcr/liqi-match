@@ -1,4 +1,4 @@
-# Liquid Glass screenshot references
+# LiQi screenshot references
 
 Place the Android reference screenshot for `/home` here as:
 

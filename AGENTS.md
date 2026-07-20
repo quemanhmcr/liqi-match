@@ -10,6 +10,7 @@ This repository is an Expo SDK 56 React Native app using Expo Router, Continuous
 - Preserve and attribute unexpected local changes before reset, clean, rollback or worktree removal.
 - Keep each change focused enough that ownership and review remain clear.
 - Read `docs/architecture/README.md` and the nearest owning document as design context. Explain intentional deviations rather than following text mechanically.
+- For any mobile UI work, read `DESIGN.md` before copying nearby code. Use `npm run design:new-screen -- <feature> <PascalCaseName>` for a new page and run `npm run design-system:check` before handoff.
 - Run checks appropriate to the change; `npm run task:check` is the broad handoff suite.
 - Managed snapshot branches are local-only and cannot be pushed. Never push `refs/liqi/*`.
 - Do not copy or junction `node_modules` between worktrees.
@@ -27,6 +28,8 @@ This repository is an Expo SDK 56 React Native app using Expo Router, Continuous
 - Use `npm run dev:android` for the local Windows Android emulator workflow; use `npm run dev:android:cold` when the emulator snapshot is stale or black.
 - Do not add secrets, credentials, certificates, provisioning profiles, `.jks`, `.keystore` or `.p12` files.
 - Do not add Firebase, Supabase, Sentry, backend SDKs or large UI frameworks unless the task explicitly requires an approved architecture change.
+- New or materially changed UI imports only from `@/shared/ui` or an owned `*-ui.ts` recipe. Do not add component-local color literals, parallel design scales, backdrop blur, liquid/glass terminology or custom edge effects.
+- A full screen uses `AppScreen`; an embedded/modal host requires the documented `liqi-screen-host` reason marker. Existing checksum-baseline entries are migration triggers, not examples to copy or hashes to refresh.
 - Treat `APP_VARIANT` and `EXPO_PUBLIC_APPLICATION_RUNTIME_MODE` as separate authorities. Never claim remote backend behavior from a simulation runtime.
 - `simulation` may use only local Supabase; every remote Supabase project requires `api` mode and a real publishable key. Preserve the fail-closed validation in `src/shared/config/env.ts`.
 - Auth success is not backend integration evidence. Verify project ref, migration parity, RPC signatures/dependencies, feature flags and an authenticated persisted-or-rollback smoke on the same target.

@@ -10,6 +10,15 @@ Liqi Match supports several Git working styles. The repository tools are there t
 npm run repo:context
 ```
 
+For every mobile UI task, read the [LiQi UI contract](DESIGN.md) before copying nearby page code. Start a new page through the canonical scaffold:
+
+```bash
+npm run design:new-screen -- <feature> <PascalCaseName>
+npm run design-system:check
+```
+
+The repository freezes pre-governance UI by checksum: new visual debt fails immediately, and materially edited legacy UI must migrate to the Home- and Messages-derived shared UI language instead of extending the previous page style.
+
 This command reports what kind of checkout you are in and which tools are available. A typical setup has:
 
 - a **primary workspace**, usually kept near the latest `origin/main` for reading, smoke testing and temporary review;
@@ -252,6 +261,8 @@ Build IDs and artifact URLs are operational outputs and intentionally do not liv
 ## Documentation map
 
 - [Contribution guidance](CONTRIBUTING.md)
+- [LiQi UI contract](DESIGN.md)
+- [Full design-system specification](docs/design/LIQI_DESIGN_SYSTEM.md)
 - [Repository architecture map](docs/architecture/README.md)
 - [Mobile frontend architecture](docs/architecture/mobile-frontend.md)
 - [Backend architecture](docs/architecture/backend.md)

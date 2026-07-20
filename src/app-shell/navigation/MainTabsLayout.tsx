@@ -1,6 +1,7 @@
-import { Tabs } from 'expo-router';
+import { router, Tabs } from 'expo-router';
 import type { ComponentProps } from 'react';
 
+import { appRoutes } from './routes';
 import { MainTabBar } from './MainTabBar';
 import { MAIN_TABS, type MainTabKey } from './main-tabs';
 
@@ -81,6 +82,7 @@ function ExpoMainTabBar({ insets, navigation, state }: ExpoTabBarProps) {
       activeRouteName={activeRoute?.name}
       bottomInset={insets.bottom}
       horizontalInset={Math.max(insets.left, insets.right)}
+      onOpenSessions={() => router.push(appRoutes.sessions.list)}
       onLongSelect={(key) =>
         longPressMainTab(
           { actions, activeRouteKey: activeRoute?.key, routes: state.routes },

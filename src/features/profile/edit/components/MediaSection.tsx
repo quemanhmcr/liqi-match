@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 
-import { LiquidButton } from '@/shared/components/liquid';
+import { LiqiButton } from '@/shared/components/liqi';
 
 import { ProfileText } from '../../components/ProfileShared';
 import type {
@@ -42,10 +42,10 @@ export function MediaSection({
             size={68}
             uri={avatarUrl}
           />
-          <LiquidButton
+          <LiqiButton
             accessibilityLabel="Đổi ảnh đại diện"
             disabled={disabled}
-            glowIntensity="low"
+            emphasis="low"
             onPress={() => onPick('avatar')}
             radius={18}
             style={styles.mediaButton}
@@ -60,7 +60,7 @@ export function MediaSection({
             <ProfileText style={styles.mediaButtonText}>
               Ảnh đại diện
             </ProfileText>
-          </LiquidButton>
+          </LiqiButton>
           {avatar ? <MediaStageStatus item={avatar} /> : null}
         </View>
         <Pressable

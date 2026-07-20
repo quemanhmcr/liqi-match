@@ -10,12 +10,8 @@ import {
   useCurrentMatchIntentQuery,
 } from '@/entities/match-intent';
 import { env } from '@/shared/config/env';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidGlassSurface,
-} from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiButton, LiqiCard, LiqiSurface } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 export function DiscoverMatchIntentGate({ children }: PropsWithChildren) {
   const currentQuery = useCurrentMatchIntentQuery();
@@ -40,7 +36,7 @@ export function DiscoverMatchIntentGate({ children }: PropsWithChildren) {
   };
 
   return (
-    <LiquidScreen contentContainerStyle={styles.screen} withHeader={false}>
+    <LiqiScreen contentContainerStyle={styles.screen} withHeader={false}>
       <View style={styles.gate} testID="discover-match-intent-gate">
         <LinearGradient
           colors={[
@@ -51,28 +47,27 @@ export function DiscoverMatchIntentGate({ children }: PropsWithChildren) {
           pointerEvents="none"
           style={styles.glow}
         />
-        <LiquidCard
-          blurIntensity={34}
+        <LiqiCard
           contentStyle={styles.card}
-          glowIntensity="medium"
+          emphasis="medium"
           radius={30}
           style={styles.cardFrame}
           variant="purple"
-          withInnerReflection
+          withHighlight
           withShadow={false}
         >
-          <LiquidGlassSurface
+          <LiqiSurface
             contentStyle={styles.iconSurface}
-            glowIntensity="medium"
+            emphasis="medium"
             height={68}
             radius={34}
-            surfaceBackground="rgba(113,72,255,0.20)"
+            backgroundColor="rgba(113,72,255,0.20)"
             variant="button"
             width={68}
             withShadow={false}
           >
             <Ionicons color="#E4D4FF" name="sparkles" size={30} />
-          </LiquidGlassSurface>
+          </LiqiSurface>
           <View style={styles.copy}>
             <Text accessibilityRole="header" style={styles.title}>
               Bật trạng thái để bắt đầu khám phá
@@ -88,7 +83,7 @@ export function DiscoverMatchIntentGate({ children }: PropsWithChildren) {
               <Text style={styles.loadingText}>Đang kiểm tra trạng thái…</Text>
             </View>
           ) : (
-            <LiquidButton
+            <LiqiButton
               accessibilityLabel="Bật trạng thái Set Love và bắt đầu khám phá"
               disabled={activateMutation.isPending}
               onPress={activate}
@@ -96,7 +91,7 @@ export function DiscoverMatchIntentGate({ children }: PropsWithChildren) {
               variant="primary"
             >
               {activateMutation.isPending ? 'Đang bật…' : 'Bật Set Love'}
-            </LiquidButton>
+            </LiqiButton>
           )}
           {currentQuery.error || activateMutation.error ? (
             <Text accessibilityRole="alert" style={styles.error}>
@@ -107,9 +102,9 @@ export function DiscoverMatchIntentGate({ children }: PropsWithChildren) {
           <Text style={styles.hint}>
             Bạn có thể đổi mood hoặc tắt trạng thái bất cứ lúc nào ở Trang chủ.
           </Text>
-        </LiquidCard>
+        </LiqiCard>
       </View>
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 

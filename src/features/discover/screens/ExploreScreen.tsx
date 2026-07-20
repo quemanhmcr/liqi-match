@@ -16,12 +16,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidGlassSurface,
-} from '@/shared/components/liquid';
-import { liquidLayout } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiButton, LiqiCard, LiqiSurface } from '@/shared/components/liqi';
+import { liqiComponents } from '@/shared/theme/liqi-design-system';
 
 import { DiscoverSetCard } from '../components/DiscoverSetCard';
 import { DiscoverMatchIntentGate } from '../components/DiscoverMatchIntentGate';
@@ -171,7 +167,8 @@ function ExploreContent() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingBottom: liquidLayout.bottomNavSpacer + insets.bottom + 32,
+            paddingBottom:
+              liqiComponents.screen.bottomNavSpacer + insets.bottom + 32,
             paddingTop: Math.max(insets.top + 4, 20),
           },
         ]}
@@ -393,15 +390,14 @@ function SearchAndFilters({
 }) {
   return (
     <View style={[styles.searchRow, { paddingHorizontal: horizontalPadding }]}>
-      <LiquidGlassSurface
-        baseStrokeOpacity={0.13}
-        blurIntensity={18}
+      <LiqiSurface
+        borderOpacity={0.13}
         contentStyle={styles.searchSurface}
-        glowIntensity="low"
+        emphasis="low"
         radius={18}
         style={styles.searchShell}
         variant="card"
-        withInnerReflection={false}
+        withHighlight={false}
         withShadow={false}
       >
         <Ionicons
@@ -441,7 +437,7 @@ function SearchAndFilters({
             />
           </Pressable>
         ) : null}
-      </LiquidGlassSurface>
+      </LiqiSurface>
       <Pressable
         accessibilityHint="Mở hoặc thu gọn các tiêu chí lọc"
         accessibilityLabel={
@@ -460,19 +456,18 @@ function SearchAndFilters({
         testID="discover-filter-toggle"
       >
         <View pointerEvents="none">
-          <LiquidGlassSurface
-            baseStrokeOpacity={filtersExpanded ? 0.32 : 0.13}
-            blurIntensity={18}
+          <LiqiSurface
+            borderOpacity={filtersExpanded ? 0.32 : 0.13}
             contentStyle={styles.sliderSurface}
-            glowIntensity={filtersExpanded ? 'medium' : 'low'}
+            emphasis={filtersExpanded ? 'medium' : 'low'}
             height={40}
             radius={18}
-            surfaceBackground={
+            backgroundColor={
               filtersExpanded ? 'rgba(78,45,142,0.46)' : 'rgba(13,18,37,0.62)'
             }
             variant="card"
             width={40}
-            withInnerReflection={false}
+            withHighlight={false}
             withShadow={false}
           >
             <Ionicons
@@ -480,7 +475,7 @@ function SearchAndFilters({
               name="options-outline"
               size={21}
             />
-          </LiquidGlassSurface>
+          </LiqiSurface>
         </View>
         {activeFilterCount > 0 ? (
           <View
@@ -782,23 +777,23 @@ function ProfileMatchCard({
   };
 
   return (
-    <LiquidCard
-      baseStrokeOpacity={0.11}
+    <LiqiCard
+      borderOpacity={0.11}
       contentStyle={[
         styles.profileCardContent,
         compact && styles.profileCardContentCompact,
       ]}
       density="compact"
-      glowIntensity="low"
+      emphasis="low"
       radius={22}
       style={[styles.fullCard, selected && styles.fullCardSelected]}
-      surfaceBackground={
+      backgroundColor={
         card.actionTone === 'cyan'
           ? 'rgba(6,25,44,0.56)'
           : 'rgba(15,16,42,0.58)'
       }
       variant={card.actionTone}
-      withInnerReflection={false}
+      withHighlight={false}
       withShadow={false}
     >
       <View style={styles.profileAvatarShell}>
@@ -861,11 +856,11 @@ function ProfileMatchCard({
               size={17}
             />
           </Pressable>
-          <LiquidButton
+          <LiqiButton
             accessibilityLabel={`${card.actionLabel} ${card.name}`}
             contentStyle={styles.profileButtonContent}
             disabled={card.actionKind === 'invite' && invited}
-            glowIntensity="low"
+            emphasis="low"
             onPress={onAction}
             radius={16}
             style={styles.profileButton}
@@ -875,10 +870,10 @@ function ProfileMatchCard({
             <DiscoverText numberOfLines={1} style={styles.profileButtonText}>
               {actionText}
             </DiscoverText>
-          </LiquidButton>
+          </LiqiButton>
         </View>
       </View>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -899,10 +894,10 @@ function DiscoverEmptyState({
     .join(' · ');
 
   return (
-    <LiquidCard
+    <LiqiCard
       contentStyle={styles.emptyContent}
       density="compact"
-      glowIntensity="low"
+      emphasis="low"
       radius={22}
       style={styles.emptyCard}
       withShadow={false}
@@ -924,22 +919,22 @@ function DiscoverEmptyState({
       >
         <DiscoverText style={styles.emptyResetText}>Đặt lại</DiscoverText>
       </Pressable>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
 function MetricCard({ metric }: { metric: DiscoverMetricCard }) {
   const tone = toneColors[metric.accent];
   return (
-    <LiquidCard
-      baseStrokeOpacity={0.09}
+    <LiqiCard
+      borderOpacity={0.09}
       contentStyle={styles.metricCardContent}
       density="compact"
-      glowIntensity="low"
+      emphasis="low"
       radius={22}
       style={styles.metricCard}
-      surfaceBackground="rgba(10,18,36,0.56)"
-      withInnerReflection={false}
+      backgroundColor="rgba(10,18,36,0.56)"
+      withHighlight={false}
       withShadow={false}
     >
       <View
@@ -970,7 +965,7 @@ function MetricCard({ metric }: { metric: DiscoverMetricCard }) {
           {metric.label}
         </DiscoverText>
       </View>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 

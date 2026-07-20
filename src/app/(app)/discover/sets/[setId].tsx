@@ -1,12 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-
-import { MatchSetDetailScreen } from '@/features/discover/screens/MatchSetDetailScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function MatchSetDetailRoute() {
-  const params = useLocalSearchParams<{ setId?: string | string[] }>();
-  return (
-    <MatchSetDetailScreen
-      setId={Array.isArray(params.setId) ? params.setId[0] : params.setId}
-    />
-  );
+  return <ResetRouteScreen routeId="discover-set-detail" />;
 }

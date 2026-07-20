@@ -5,8 +5,8 @@ import { Image, StyleSheet, Text, View } from 'react-native';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { useHomeMatchFactQuery } from '@/entities/home-match-facts';
 import { MatchIdSchema } from '@/shared/contracts/core-v1';
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiButton, LiqiCard } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 export function MatchDetailScreen({ matchId }: { matchId?: string }) {
   const parsed = MatchIdSchema.safeParse(matchId);
@@ -50,16 +50,16 @@ export function MatchDetailScreen({ matchId }: { matchId?: string }) {
 
   const opponent = match.opponent;
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screen}
       subtitle={matchStatusCopy(match.status)}
       title="Kết nối của bạn"
     >
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.hero}
         radius={30}
         variant="purple"
-        withInnerReflection
+        withHighlight
       >
         <View style={styles.avatarWrap}>
           {opponent.avatarUrl ? (
@@ -83,9 +83,9 @@ export function MatchDetailScreen({ matchId }: { matchId?: string }) {
               .join(' · ') || 'Người chơi LIQI'}
           </Text>
         </View>
-      </LiquidCard>
+      </LiqiCard>
 
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.details}
         radius={24}
         variant="cyan"
@@ -106,29 +106,29 @@ export function MatchDetailScreen({ matchId }: { matchId?: string }) {
           label="Trạng thái"
           value={matchStatusCopy(match.status)}
         />
-      </LiquidCard>
+      </LiqiCard>
 
       <View style={styles.actions}>
         {match.canMessage && match.conversationId ? (
-          <LiquidButton
+          <LiqiButton
             onPress={() =>
               router.push(appRoutes.messages.detail(match.conversationId!))
             }
             variant="primary"
           >
             Nhắn tin
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
-        <LiquidButton
+        <LiqiButton
           onPress={() =>
             router.push(appRoutes.profile.playerDetail(opponent.playerId))
           }
           variant="ghost"
         >
           Xem hồ sơ
-        </LiquidButton>
+        </LiqiButton>
       </View>
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -166,12 +166,12 @@ function DestinationState({
   title: string;
 }) {
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.stateScreen}
       title={title}
       withBottomNavPadding={false}
     >
-      <LiquidCard contentStyle={styles.stateCard} radius={28} variant="purple">
+      <LiqiCard contentStyle={styles.stateCard} radius={28} variant="purple">
         <Ionicons
           color="#CCB5FF"
           name={loading ? 'hourglass-outline' : 'link-outline'}
@@ -179,18 +179,18 @@ function DestinationState({
         />
         <Text style={styles.stateDescription}>{description}</Text>
         {onRetry ? (
-          <LiquidButton onPress={onRetry} variant="ghost">
+          <LiqiButton onPress={onRetry} variant="ghost">
             Thử lại
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
-        <LiquidButton
+        <LiqiButton
           onPress={() => router.replace(appRoutes.discover.matches)}
           variant="secondary"
         >
           Về danh sách kết nối
-        </LiquidButton>
-      </LiquidCard>
-    </LiquidScreen>
+        </LiqiButton>
+      </LiqiCard>
+    </LiqiScreen>
   );
 }
 

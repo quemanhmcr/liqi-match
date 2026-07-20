@@ -2,20 +2,24 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   Image,
-  ScrollView,
   StyleSheet,
   View,
   type ImageSourcePropType,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 
 import { HEROES } from '@/entities/hero';
-import { LiquidCard } from '@/shared/components/liquid';
 import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+  liqiColors,
+  liqiComponentColors,
+  liqiComponentGradients,
+  liqiSpacing,
+  liqiTypography,
+} from '@/shared/theme/liqi-design-system';
 
 import type { ProfileFavoriteHero } from '../services/profile-service';
+import { ProfileSurface } from './ProfilePresentationPrimitives';
 import { ProfileSectionHeader } from './ProfileSectionHeader';
 import { ProfileText } from './ProfileShared';
 
@@ -29,141 +33,102 @@ const heroImageByKey = HEROES.reduce<Record<string, ImageSourcePropType>>(
 );
 
 export function ProfileFavoriteHeroes({
+  compact,
   heroes,
   onOpen,
-  showWinRate = true,
+  style,
 }: {
+  compact: boolean;
   heroes: ProfileFavoriteHero[];
   onOpen?: () => void;
   showWinRate?: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
   const items = heroes.slice(0, 3);
+  const avatarSize = compact ? 56 : 44;
 
   return (
-    <LiquidCard
-      baseStrokeColor="rgba(103,232,255,0.18)"
-      baseStrokeOpacity={0.08}
-      blurIntensity={26}
-      contentStyle={styles.sectionSurface}
-      density="regular"
-      frameColors={[
-        'rgba(106,101,255,0.13)',
-        'rgba(255,255,255,0.028)',
-        'rgba(103,232,255,0.12)',
-      ]}
-      glassIntensity="low"
-      glowIntensity="low"
-      radius={25}
-      style={styles.sectionFrame}
-      surfaceBackground="rgba(8,12,28,0.36)"
-      withInnerReflection
-      withShadow={false}
-    >
+    <ProfileSurface compact={compact} style={[styles.frame, style]}>
       <ProfileSectionHeader
-        accessibilityLabel="Chỉnh sửa tướng tủ"
-        icon="shield-checkmark-outline"
-        title="Tướng tủ"
-        withChevron={Boolean(onOpen)}
+        accessibilityLabel="Chỉnh sửa tướng yêu thích"
+        compact={compact}
         onPress={onOpen}
+        title="Tướng yêu thích"
+        withChevron={Boolean(onOpen)}
       />
-      <ScrollView
-        contentContainerStyle={styles.heroGrid}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-      >
+      <View style={styles.heroGrid}>
         {items.length ? (
-          items.map((hero, index) => (
-            <LiquidCard
-              contentStyle={styles.heroMiniSurface}
-              density="list"
-              frameColors={[
-                'rgba(106,101,255,0.10)',
-                'rgba(255,255,255,0.026)',
-                'rgba(103,232,255,0.09)',
-              ]}
-              glassIntensity="low"
-              glowIntensity="low"
-              key={`${hero.name}-${index}`}
-              radius={18}
-              style={styles.heroMiniFrame}
-              surfaceBackground="rgba(11,15,32,0.28)"
-              withInnerReflection={false}
-              withShadow={false}
-            >
-              <LinearGradient
-                colors={['rgba(255,255,255,0.09)', 'rgba(255,255,255,0.00)']}
-                end={{ x: 1, y: 0 }}
-                pointerEvents="none"
-                start={{ x: 0, y: 0 }}
-                style={styles.heroMiniHighlight}
-              />
-              <View style={styles.heroAvatarWrap}>
+          items.map((hero, index) => {
+            const source = heroImage(hero);
+            return (
+              <View key={`${hero.name}-${index}`} style={styles.heroItem}>
                 <LinearGradient
-                  colors={['rgba(142,92,255,0.60)', 'rgba(103,232,255,0.52)']}
-                  end={{ x: 1, y: 1 }}
-                  start={{ x: 0, y: 0 }}
-                  style={styles.heroAvatarRing}
+                  colors={liqiComponentGradients.profile.avatarRing}
+                  style={[
+                    styles.heroRing,
+                    {
+                      borderRadius: (avatarSize + 4) / 2,
+                      height: avatarSize + 4,
+                      width: avatarSize + 4,
+                    },
+                  ]}
                 >
-                  {heroImage(hero) ? (
-                    <Image source={heroImage(hero)} style={styles.heroAvatar} />
+                  {source ? (
+                    <Image
+                      accessibilityLabel={`Tướng ${hero.name}`}
+                      resizeMode="cover"
+                      source={source}
+                      style={{
+                        borderRadius: avatarSize / 2,
+                        height: avatarSize,
+                        width: avatarSize,
+                      }}
+                    />
                   ) : (
                     <View
                       accessibilityLabel={`Ảnh tướng ${hero.name} không khả dụng`}
-                      style={[styles.heroAvatar, styles.heroAvatarFallback]}
+                      style={[
+                        styles.heroFallback,
+                        {
+                          borderRadius: avatarSize / 2,
+                          height: avatarSize,
+                          width: avatarSize,
+                        },
+                      ]}
                     >
                       <Ionicons
-                        color="rgba(205,244,255,0.72)"
+                        color={liqiComponentColors.profile.subtleIcon}
                         name="shield-outline"
                         size={18}
                       />
                     </View>
                   )}
                 </LinearGradient>
-                <View style={styles.roleBadge}>
-                  <Ionicons
-                    color="rgba(205,244,255,0.86)"
-                    name="sparkles"
-                    size={10}
-                  />
-                </View>
-              </View>
-              <View style={styles.heroMiniCopy}>
                 <ProfileText numberOfLines={1} style={styles.heroName}>
                   {hero.name}
                 </ProfileText>
-                {heroStatsLabel(hero, showWinRate) ? (
-                  <ProfileText numberOfLines={1} style={styles.heroMeta}>
-                    {heroStatsLabel(hero, showWinRate)}
-                  </ProfileText>
-                ) : null}
               </View>
-            </LiquidCard>
-          ))
+            );
+          })
         ) : (
-          <View style={styles.emptyHeroes}>
+          <View style={styles.emptyState}>
+            <Ionicons
+              color={liqiComponentColors.profile.subtleIcon}
+              name="shield-outline"
+              size={22}
+            />
             <ProfileText style={styles.emptyText}>
-              Chưa chọn tướng tủ.
+              Chưa chọn tướng yêu thích.
             </ProfileText>
           </View>
         )}
-      </ScrollView>
-    </LiquidCard>
+      </View>
+    </ProfileSurface>
   );
 }
 
-function heroStatsLabel(hero: ProfileFavoriteHero, showWinRate: boolean) {
-  if (hero.matches !== undefined && hero.winRate !== undefined && showWinRate) {
-    return `${hero.matches} trận · ${hero.winRate}% win`;
-  }
-
-  if (hero.matches !== undefined) return `${hero.matches} trận`;
-  if (hero.winRate !== undefined && showWinRate) return `${hero.winRate}% win`;
-  return undefined;
-}
-
 function heroImage(hero: ProfileFavoriteHero) {
-  const key = normalizeKey(hero.slug ?? hero.name);
-  return heroImageByKey[key];
+  return heroImageByKey[normalizeKey(hero.slug ?? hero.name)];
 }
 
 function normalizeKey(value: string) {
@@ -175,101 +140,41 @@ function normalizeKey(value: string) {
 }
 
 const styles = StyleSheet.create({
-  emptyHeroes: {
+  emptyState: {
     alignItems: 'center',
-    minHeight: 54,
+    flex: 1,
+    gap: liqiSpacing.md,
     justifyContent: 'center',
-    paddingHorizontal: 10,
+    minHeight: 82,
   },
   emptyText: {
-    color: 'rgba(205,216,245,0.54)',
-    fontSize: 11,
-    fontWeight: '600',
+    ...liqiTypography.caption,
+    color: liqiColors.text.muted,
+    textAlign: 'center',
   },
-  heroAvatar: {
-    borderRadius: 19,
-    height: 38,
-    width: 38,
-  },
-  heroAvatarFallback: {
+  frame: { flex: 1, minHeight: 154, minWidth: 0 },
+  heroFallback: {
     alignItems: 'center',
-    backgroundColor: 'rgba(38,44,78,0.26)',
+    backgroundColor: liqiComponentColors.profile.mediaFallback,
     justifyContent: 'center',
-  },
-  heroAvatarRing: {
-    alignItems: 'center',
-    borderRadius: 21,
-    height: 42,
-    justifyContent: 'center',
-    width: 42,
-  },
-  heroAvatarWrap: {
-    height: 44,
-    position: 'relative',
-    width: 44,
   },
   heroGrid: {
-    gap: 8,
-    marginTop: 10,
-    paddingRight: 2,
-  },
-  heroMeta: {
-    color: 'rgba(186,239,255,0.58)',
-    fontSize: 9.4,
-    fontWeight: '600',
-    marginTop: 3,
-  },
-  heroMiniHighlight: {
-    height: 1,
-    left: 13,
-    opacity: 0.54,
-    position: 'absolute',
-    right: 13,
-    top: 1,
-  },
-  heroMiniFrame: {
-    minWidth: 120,
-    width: 122,
-  },
-  heroMiniCopy: {
-    flex: 1,
-    minWidth: 0,
-  },
-  heroMiniSurface: {
-    alignItems: 'center',
-    borderRadius: 17,
+    alignItems: 'flex-start',
     flexDirection: 'row',
-    gap: 8,
-    minHeight: 54,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    gap: liqiSpacing.sm,
+    justifyContent: 'space-between',
+    marginTop: liqiSpacing.xl,
   },
+  heroItem: { alignItems: 'center', flex: 1, minWidth: 0 },
   heroName: {
-    ...liquidTypography.chip,
-    color: liquidColors.text.primary,
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 0,
+    ...liqiTypography.caption,
+    color: liqiColors.text.secondary,
+    fontSize: 10.5,
+    fontWeight: '700',
+    lineHeight: 14,
+    marginTop: liqiSpacing.sm,
     maxWidth: '100%',
+    textAlign: 'center',
   },
-  roleBadge: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(45,28,88,0.86)',
-    borderColor: 'rgba(103,232,255,0.24)',
-    borderRadius: 9,
-    borderWidth: StyleSheet.hairlineWidth,
-    bottom: -1,
-    height: 17,
-    justifyContent: 'center',
-    left: -2,
-    position: 'absolute',
-    width: 17,
-  },
-  sectionFrame: {
-    marginTop: 10,
-  },
-  sectionSurface: {
-    borderRadius: 25,
-    padding: 12,
-  },
+  heroRing: { alignItems: 'center', justifyContent: 'center' },
 });

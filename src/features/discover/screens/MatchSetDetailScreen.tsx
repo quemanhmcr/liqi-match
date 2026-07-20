@@ -17,8 +17,8 @@ import {
 } from '@/entities/play-session';
 import { useAuth } from '@/shared/auth/auth-context';
 import { SetIdSchema } from '@/shared/contracts/core-v1';
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiButton, LiqiCard } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 export function MatchSetDetailScreen({ setId }: { setId?: string }) {
   const parsed = SetIdSchema.safeParse(setId);
@@ -101,16 +101,16 @@ export function MatchSetDetailScreen({ setId }: { setId?: string }) {
     !isMember && set.state === 'open' && activeMembers.length < set.capacity;
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screen}
       subtitle={setStateCopy(set.state)}
       title={set.title}
     >
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.hero}
         radius={30}
         variant="purple"
-        withInnerReflection
+        withHighlight
       >
         <View style={styles.heroIcon}>
           <Ionicons color="#D9C6FF" name="people" size={30} />
@@ -128,10 +128,10 @@ export function MatchSetDetailScreen({ setId }: { setId?: string }) {
                 : 'Set đang tìm thêm đồng đội'}
           </Text>
         </View>
-      </LiquidCard>
+      </LiqiCard>
 
       <Text style={styles.sectionTitle}>Thành viên</Text>
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.members}
         radius={24}
         variant="cyan"
@@ -155,22 +155,22 @@ export function MatchSetDetailScreen({ setId }: { setId?: string }) {
               </Text>
             </View>
             {member.playerId !== viewerId ? (
-              <LiquidButton
+              <LiqiButton
                 onPress={() =>
                   router.push(appRoutes.profile.playerDetail(member.playerId))
                 }
                 variant="ghost"
               >
                 Hồ sơ
-              </LiquidButton>
+              </LiqiButton>
             ) : null}
           </View>
         ))}
-      </LiquidCard>
+      </LiqiCard>
 
       <View style={styles.actions}>
         {canCreateSession ? (
-          <LiquidButton
+          <LiqiButton
             disabled={createSession.isPending}
             onPress={() => createSession.mutate()}
             variant="primary"
@@ -178,10 +178,10 @@ export function MatchSetDetailScreen({ setId }: { setId?: string }) {
             {createSession.isPending
               ? 'Đang tạo phiên chơi…'
               : 'Tạo phiên chơi'}
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
         {canRequestJoin ? (
-          <LiquidButton
+          <LiqiButton
             disabled={join.isPending}
             onPress={() =>
               join.mutate({ expectedSetVersion: set.version, setId: set.setId })
@@ -189,14 +189,14 @@ export function MatchSetDetailScreen({ setId }: { setId?: string }) {
             variant="rank"
           >
             {join.isPending ? 'Đang gửi…' : 'Xin tham gia Set'}
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
-        <LiquidButton
+        <LiqiButton
           onPress={() => router.replace(appRoutes.discover.sets)}
           variant="ghost"
         >
           Xem các Set khác
-        </LiquidButton>
+        </LiqiButton>
       </View>
       {join.error || createSession.error ? (
         <Text accessibilityRole="alert" style={styles.error}>
@@ -204,7 +204,7 @@ export function MatchSetDetailScreen({ setId }: { setId?: string }) {
           lại.
         </Text>
       ) : null}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -218,27 +218,27 @@ function SetState({
   title: string;
 }) {
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.stateScreen}
       title={title}
       withBottomNavPadding={false}
     >
-      <LiquidCard contentStyle={styles.stateCard} radius={28} variant="purple">
+      <LiqiCard contentStyle={styles.stateCard} radius={28} variant="purple">
         <Ionicons color="#CCB5FF" name="people-outline" size={34} />
         <Text style={styles.stateDescription}>{description}</Text>
         {onRetry ? (
-          <LiquidButton onPress={onRetry} variant="ghost">
+          <LiqiButton onPress={onRetry} variant="ghost">
             Thử lại
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
-        <LiquidButton
+        <LiqiButton
           onPress={() => router.replace(appRoutes.discover.sets)}
           variant="secondary"
         >
           Về danh sách Set
-        </LiquidButton>
-      </LiquidCard>
-    </LiquidScreen>
+        </LiqiButton>
+      </LiqiCard>
+    </LiqiScreen>
   );
 }
 function setStateCopy(state: string) {

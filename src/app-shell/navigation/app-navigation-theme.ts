@@ -1,6 +1,6 @@
 import { DarkTheme } from 'expo-router';
 
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { appColors } from '@/shared/ui';
 
 /**
  * Liqi currently has one dark visual system. Keeping the navigator on an
@@ -11,8 +11,8 @@ export const appNavigationTheme = {
   ...DarkTheme,
   colors: {
     ...DarkTheme.colors,
-    background: liquidColors.background.base,
+    background: appColors.background.base,
     border: 'transparent',
-    card: liquidColors.background.base,
+    card: appColors.background.base,
   },
 };

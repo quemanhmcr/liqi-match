@@ -22,14 +22,14 @@ import {
 } from '@/entities/social-relationship';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
+  LiqiButton,
+  LiqiCard,
+  LiqiChip,
+  LiqiOrbButton,
+} from '@/shared/components/liqi';
 import type { SocialRelationshipSnapshotV2 } from '@/shared/contracts/core-v2';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 type HubFilter = 'friends' | 'incoming' | 'outgoing';
 type SocialAction =
@@ -178,41 +178,41 @@ export function SocialHubScreen() {
   };
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.content}
       withBottomNavPadding={false}
       withHeader={false}
     >
       <View style={styles.header}>
-        <LiquidOrbButton
+        <LiqiOrbButton
           accessibilityLabel="Quay lại"
           onPress={() => router.back()}
           size={42}
         >
           <Ionicons
-            color={liquidColors.text.primary}
+            color={liqiColors.text.primary}
             name="chevron-back"
             size={20}
           />
-        </LiquidOrbButton>
+        </LiqiOrbButton>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>KẾT NỐI</Text>
           <Text style={styles.title}>Bạn bè & lời mời</Text>
         </View>
-        <LiquidOrbButton
+        <LiqiOrbButton
           accessibilityLabel="Cài đặt quyền riêng tư"
           onPress={() => router.push(appRoutes.profile.settings)}
           size={42}
         >
           <Ionicons
-            color={liquidColors.text.primary}
+            color={liqiColors.text.primary}
             name="shield-checkmark-outline"
             size={18}
           />
-        </LiquidOrbButton>
+        </LiqiOrbButton>
       </View>
 
-      <LiquidCard density="regular" style={styles.heroCard} variant="purple">
+      <LiqiCard density="regular" style={styles.heroCard} variant="purple">
         <View style={styles.heroIcon}>
           <Ionicons color="#BFEFFF" name="people" size={25} />
         </View>
@@ -223,11 +223,11 @@ export function SocialHubScreen() {
             chọn mới nhất của bạn.
           </Text>
         </View>
-      </LiquidCard>
+      </LiqiCard>
 
       <View style={styles.filters}>
         {filters.map((item) => (
-          <LiquidChip
+          <LiqiChip
             accessibilityLabel={`${item.label}, ${counts[item.key]} mục`}
             density="compact"
             key={item.key}
@@ -239,7 +239,7 @@ export function SocialHubScreen() {
             variant={filter === item.key ? 'cyan' : 'default'}
           >
             {item.label} · {counts[item.key]}
-          </LiquidChip>
+          </LiqiChip>
         ))}
       </View>
 
@@ -265,7 +265,7 @@ export function SocialHubScreen() {
               actionMutation.variables?.relationship.relationshipId ===
                 relationship.relationshipId;
             return (
-              <LiquidCard
+              <LiqiCard
                 density="list"
                 key={relationship.relationshipId}
                 style={styles.personCard}
@@ -301,9 +301,9 @@ export function SocialHubScreen() {
                     </Text>
                   </View>
                   {relationship.mute.viewerMutedTarget ? (
-                    <LiquidChip density="compact" variant="orange">
+                    <LiqiChip density="compact" variant="orange">
                       Đã ẩn
-                    </LiquidChip>
+                    </LiqiChip>
                   ) : null}
                   {relationship.capabilities.canViewProfile ? (
                     <Ionicons
@@ -315,17 +315,17 @@ export function SocialHubScreen() {
                 </Pressable>
                 <View style={styles.actions}>
                   {relationship.capabilities.canAcceptFriendship ? (
-                    <LiquidButton
+                    <LiqiButton
                       disabled={busy}
                       onPress={() =>
                         actionMutation.mutate({ kind: 'accept', relationship })
                       }
                     >
                       Chấp nhận
-                    </LiquidButton>
+                    </LiqiButton>
                   ) : null}
                   {relationship.capabilities.canDeclineFriendship ? (
-                    <LiquidButton
+                    <LiqiButton
                       disabled={busy}
                       onPress={() =>
                         actionMutation.mutate({ kind: 'decline', relationship })
@@ -333,10 +333,10 @@ export function SocialHubScreen() {
                       variant="secondary"
                     >
                       Từ chối
-                    </LiquidButton>
+                    </LiqiButton>
                   ) : null}
                   {relationship.capabilities.canCancelFriendship ? (
-                    <LiquidButton
+                    <LiqiButton
                       disabled={busy}
                       onPress={() =>
                         actionMutation.mutate({ kind: 'cancel', relationship })
@@ -344,10 +344,10 @@ export function SocialHubScreen() {
                       variant="secondary"
                     >
                       Thu hồi
-                    </LiquidButton>
+                    </LiqiButton>
                   ) : null}
                   {relationship.capabilities.canMute ? (
-                    <LiquidButton
+                    <LiqiButton
                       disabled={busy}
                       onPress={() =>
                         actionMutation.mutate({ kind: 'mute', relationship })
@@ -355,10 +355,10 @@ export function SocialHubScreen() {
                       variant="secondary"
                     >
                       Ẩn thông báo
-                    </LiquidButton>
+                    </LiqiButton>
                   ) : null}
                   {relationship.capabilities.canUnmute ? (
-                    <LiquidButton
+                    <LiqiButton
                       disabled={busy}
                       onPress={() =>
                         actionMutation.mutate({ kind: 'unmute', relationship })
@@ -366,27 +366,27 @@ export function SocialHubScreen() {
                       variant="secondary"
                     >
                       Bỏ ẩn
-                    </LiquidButton>
+                    </LiqiButton>
                   ) : null}
                   {relationship.capabilities.canRemoveFriendship ? (
-                    <LiquidButton
+                    <LiqiButton
                       disabled={busy}
                       onPress={() => confirmRemove(relationship, displayName)}
                       variant="ghost"
                     >
                       Xoá bạn
-                    </LiquidButton>
+                    </LiqiButton>
                   ) : null}
                   {busy ? (
                     <ActivityIndicator color="#67E8FF" size="small" />
                   ) : null}
                 </View>
-              </LiquidCard>
+              </LiqiCard>
             );
           })}
         </View>
       )}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -414,7 +414,7 @@ function StateCard({
   title: string;
 }) {
   return (
-    <LiquidCard density="regular" style={styles.stateCard}>
+    <LiqiCard density="regular" style={styles.stateCard}>
       {loading ? (
         <ActivityIndicator color="#67E8FF" />
       ) : (
@@ -422,11 +422,11 @@ function StateCard({
       )}
       <Text style={styles.stateTitle}>{title}</Text>
       {onRetry ? (
-        <LiquidButton onPress={onRetry} variant="secondary">
+        <LiqiButton onPress={onRetry} variant="secondary">
           Tải lại
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -458,7 +458,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarInitial: { color: '#EAFDFF', fontSize: 18, fontWeight: '900' },
-  body: { color: liquidColors.text.secondary, fontSize: 12.5, lineHeight: 18 },
+  body: { color: liqiColors.text.secondary, fontSize: 12.5, lineHeight: 18 },
   content: { gap: 14, paddingBottom: 36, paddingHorizontal: 16, paddingTop: 8 },
   eyebrow: {
     color: 'rgba(103,232,255,0.66)',
@@ -480,7 +480,7 @@ const styles = StyleSheet.create({
     width: 44,
   },
   heroTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -488,9 +488,9 @@ const styles = StyleSheet.create({
   list: { gap: 10 },
   personCard: { overflow: 'hidden' },
   personCopy: { flex: 1, minWidth: 0 },
-  personMeta: { color: liquidColors.text.muted, fontSize: 11.5, marginTop: 3 },
+  personMeta: { color: liqiColors.text.muted, fontSize: 11.5, marginTop: 3 },
   personName: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -502,10 +502,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   stateTitle: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 13,
     lineHeight: 19,
     textAlign: 'center',
   },
-  title: { color: liquidColors.text.primary, fontSize: 17, fontWeight: '900' },
+  title: { color: liqiColors.text.primary, fontSize: 17, fontWeight: '900' },
 });

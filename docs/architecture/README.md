@@ -16,13 +16,14 @@ The command tells you whether the current checkout is primary, a managed task wo
 npm run task:start -- <type/descriptive-name>
 ```
 
-General contribution guidance is in [CONTRIBUTING.md](../../CONTRIBUTING.md). Worktree choices, transaction details and recovery notes are in the [worktree toolbox](worktree-workflow.md).
+General contribution guidance is in [CONTRIBUTING.md](../../CONTRIBUTING.md). Every mobile UI change also starts with the [LiQi UI contract](../../DESIGN.md). Worktree choices, transaction details and recovery notes are in the [worktree toolbox](worktree-workflow.md).
 
 ## Change ownership map
 
 | Change                                                   | Primary location                                                         | Read before editing                                                                                                     |
 | -------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | Route, screen, feature state, client service             | `src/app`, `src/app-shell`, `src/features`, `src/entities`, `src/shared` | [Mobile frontend architecture](mobile-frontend.md)                                                                      |
+| Mobile visual language, recipes, primitives, new screens | `DESIGN.md`, `src/shared/ui`, feature/app-shell `*-ui.ts` recipes        | [LiQi UI contract](../../DESIGN.md) and [full design specification](../design/LIQI_DESIGN_SYSTEM.md)                    |
 | Test lane, test placement, mocks, providers              | colocated `__tests__`, `src/test`, Jest configs                          | [Testing architecture](testing.md)                                                                                      |
 | Supabase Edge Function, shared backend kernel, migration | `supabase/functions`, `supabase/migrations`                              | [Backend architecture](backend.md)                                                                                      |
 | Media authorization, processing or delivery              | `cloudflare/media-worker`                                                | [Backend architecture](backend.md) and [media flow](media-flow.md)                                                      |

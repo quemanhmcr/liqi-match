@@ -49,12 +49,7 @@ import {
   PlayerIdSchema,
 } from '@/shared/contracts/core-v1';
 import type { ReportCategoryV2 } from '@/shared/contracts/core-v2';
-import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
-import {
-  liqiColors,
-  liqiComponentColors,
-  liqiComponentGradients,
-} from '@/shared/theme/liqi-design-system';
+import { AppScreen, appColors } from '@/shared/ui';
 import { chatConversationStyles as styles } from './chat-conversation.styles';
 import {
   authoritativeSequence,
@@ -130,6 +125,7 @@ import {
   type ChatRepository,
 } from '../services/chat-repository';
 import { MessageReportEvidenceWorkflow } from '../services/message-report-evidence';
+import { messagesUi } from '../ui/messages-ui';
 
 export type ChatConversationScreenProps = {
   conversationId?: string;
@@ -1218,7 +1214,7 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
   }
 
   return (
-    <LiqiScreen
+    <AppScreen
       contentContainerStyle={styles.screenContent}
       scroll={false}
       withBottomNavPadding={false}
@@ -1246,7 +1242,7 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
           />
         </View>
         <LinearGradient
-          colors={liqiComponentGradients.messages.wallpaperScrim}
+          colors={messagesUi.gradients.wallpaperScrim}
           locations={[0, 0.52, 1]}
           pointerEvents="none"
           style={StyleSheet.absoluteFill}
@@ -1334,7 +1330,7 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
                     testID={`report-message-${message.id}`}
                   >
                     <Ionicons
-                      color={liqiComponentColors.messages.chat.messageReport}
+                      color={messagesUi.colors.chat.messageReport}
                       name="flag-outline"
                       size={12}
                     />
@@ -1370,7 +1366,7 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
             ]}
           >
             <Ionicons
-              color={liqiColors.text.onAccent}
+              color={appColors.text.onAccent}
               name="arrow-down"
               size={14}
             />
@@ -1380,7 +1376,7 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
           </Pressable>
         ) : null}
         <LinearGradient
-          colors={liqiComponentGradients.messages.chat.viewportTopScrim}
+          colors={messagesUi.gradients.chat.viewportTopScrim}
           pointerEvents="none"
           style={styles.messageTopScrim}
         />
@@ -1446,6 +1442,6 @@ function ChatConversationSession(props: ChatConversationScreenProps) {
         pending={reportMessageMutation.isPending}
         visible={Boolean(messageReportTarget)}
       />
-    </LiqiScreen>
+    </AppScreen>
   );
 }

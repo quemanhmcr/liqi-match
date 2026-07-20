@@ -23,22 +23,18 @@ import {
 } from '@/entities/notifications';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-  LiquidGlassSurface,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
-import type { EdgeGlowSegment } from '@/shared/components/liquid';
+  LiqiButton,
+  LiqiCard,
+  LiqiChip,
+  LiqiSurface,
+  LiqiOrbButton,
+} from '@/shared/components/liqi';
 import {
   classifyApplicationError,
   type ApplicationErrorKind,
 } from '@/shared/errors/application-error';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors, liqiTypography } from '@/shared/theme/liqi-design-system';
 
 import { NotificationResolvedImage } from '../components/NotificationResolvedImage';
 import {
@@ -60,118 +56,16 @@ type NotificationToneSpec = {
   actionGradient: readonly [string, string];
   background: string;
   border: string;
-  glow: readonly EdgeGlowSegment[];
   halo: string;
   icon: string;
   text: string;
 };
-
-const pinkGlowSegments = [
-  {
-    bloomOpacity: 0.18,
-    bloomWidth: 5.2,
-    blur: 12,
-    color: 'rgba(255,104,174,0.66)',
-    end: 0.08,
-    id: 'notification-pink-top-left',
-    lineOpacity: 0.42,
-    lineWidth: 0.76,
-    start: 0,
-  },
-  {
-    bloomOpacity: 0.2,
-    bloomWidth: 5.4,
-    blur: 12,
-    color: 'rgba(255,128,190,0.78)',
-    end: 0.5,
-    id: 'notification-pink-right',
-    lineOpacity: 0.42,
-    lineWidth: 0.78,
-    start: 0.39,
-  },
-] as const satisfies readonly EdgeGlowSegment[];
-
-const purpleGlowSegments = [
-  {
-    bloomOpacity: 0.13,
-    bloomWidth: 4.8,
-    blur: 11,
-    color: 'rgba(188,111,255,0.62)',
-    end: 0.075,
-    id: 'notification-purple-top-left',
-    lineOpacity: 0.32,
-    lineWidth: 0.72,
-    start: 0,
-  },
-  {
-    bloomOpacity: 0.16,
-    bloomWidth: 5.1,
-    blur: 12,
-    color: 'rgba(131,132,255,0.56)',
-    end: 0.52,
-    id: 'notification-purple-right',
-    lineOpacity: 0.34,
-    lineWidth: 0.74,
-    start: 0.405,
-  },
-] as const satisfies readonly EdgeGlowSegment[];
-
-const blueGlowSegments = [
-  {
-    bloomOpacity: 0.11,
-    bloomWidth: 4.6,
-    blur: 11,
-    color: 'rgba(105,156,255,0.52)',
-    end: 0.072,
-    id: 'notification-blue-top-left',
-    lineOpacity: 0.28,
-    lineWidth: 0.72,
-    start: 0,
-  },
-  {
-    bloomOpacity: 0.14,
-    bloomWidth: 5,
-    blur: 12,
-    color: 'rgba(120,157,255,0.60)',
-    end: 0.515,
-    id: 'notification-blue-right',
-    lineOpacity: 0.3,
-    lineWidth: 0.74,
-    start: 0.402,
-  },
-] as const satisfies readonly EdgeGlowSegment[];
-
-const cyanGlowSegments = [
-  {
-    bloomOpacity: 0.1,
-    bloomWidth: 4.4,
-    blur: 11,
-    color: 'rgba(68,211,255,0.48)',
-    end: 0.07,
-    id: 'notification-cyan-top-left',
-    lineOpacity: 0.26,
-    lineWidth: 0.7,
-    start: 0,
-  },
-  {
-    bloomOpacity: 0.17,
-    bloomWidth: 5.2,
-    blur: 12,
-    color: 'rgba(80,227,255,0.68)',
-    end: 0.51,
-    id: 'notification-cyan-right',
-    lineOpacity: 0.34,
-    lineWidth: 0.76,
-    start: 0.4,
-  },
-] as const satisfies readonly EdgeGlowSegment[];
 
 const toneSpecs: Record<NotificationTone, NotificationToneSpec> = {
   blue: {
     actionGradient: ['rgba(45,61,120,0.82)', 'rgba(94,108,190,0.74)'],
     background: 'rgba(9,15,35,0.50)',
     border: 'rgba(126,159,255,0.15)',
-    glow: blueGlowSegments,
     halo: 'rgba(82,126,255,0.08)',
     icon: '#AFC2FF',
     text: '#C8D4FF',
@@ -180,7 +74,6 @@ const toneSpecs: Record<NotificationTone, NotificationToneSpec> = {
     actionGradient: ['rgba(13,72,98,0.92)', 'rgba(35,172,210,0.82)'],
     background: 'rgba(7,20,35,0.50)',
     border: 'rgba(84,222,255,0.14)',
-    glow: cyanGlowSegments,
     halo: 'rgba(64,215,255,0.07)',
     icon: '#55E7FF',
     text: '#B7F2FF',
@@ -189,7 +82,6 @@ const toneSpecs: Record<NotificationTone, NotificationToneSpec> = {
     actionGradient: ['rgba(128,42,92,0.84)', 'rgba(188,78,133,0.76)'],
     background: 'rgba(28,10,31,0.46)',
     border: 'rgba(255,119,184,0.14)',
-    glow: pinkGlowSegments,
     halo: 'rgba(255,92,168,0.09)',
     icon: '#FF7BBC',
     text: '#FFACD6',
@@ -198,7 +90,6 @@ const toneSpecs: Record<NotificationTone, NotificationToneSpec> = {
     actionGradient: ['rgba(88,58,178,0.84)', 'rgba(84,98,190,0.76)'],
     background: 'rgba(18,12,36,0.48)',
     border: 'rgba(183,122,255,0.13)',
-    glow: purpleGlowSegments,
     halo: 'rgba(156,90,255,0.09)',
     icon: '#C891FF',
     text: '#E0C5FF',
@@ -273,7 +164,7 @@ export function NotificationsScreen() {
   const inboxFailure = classifyApplicationError(inboxQuery.error);
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.content}
       withBottomNavPadding={false}
       withHeader={false}
@@ -340,7 +231,7 @@ export function NotificationsScreen() {
       )}
       {hasResolvedFeed ? (
         inboxQuery.hasNextPage ? (
-          <LiquidButton
+          <LiqiButton
             accessibilityLabel={
               inboxQuery.isFetchNextPageError
                 ? 'Thử tải thêm thông báo'
@@ -348,7 +239,7 @@ export function NotificationsScreen() {
             }
             contentStyle={styles.loadMoreButtonContent}
             disabled={inboxQuery.isFetchingNextPage}
-            glowIntensity="low"
+            emphasis="low"
             onPress={() => void inboxQuery.fetchNextPage()}
             radius={17}
             style={styles.loadMoreButton}
@@ -361,24 +252,24 @@ export function NotificationsScreen() {
               : inboxQuery.isFetchNextPageError
                 ? 'Thử tải thêm'
                 : 'Tải thêm'}
-          </LiquidButton>
+          </LiqiButton>
         ) : (
           <NotificationText style={styles.endText}>
             Đã tải hết thông báo
           </NotificationText>
         )
       ) : null}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
 function NotificationTopBar() {
   return (
     <View style={styles.topBar}>
-      <LiquidOrbButton
+      <LiqiOrbButton
         accessibilityLabel="Quay lại"
-        glassIntensity="low"
-        glowIntensity="low"
+        surfaceTone="low"
+        emphasis="low"
         onPress={() => {
           selectionImpact();
           if (router.canGoBack()) {
@@ -390,11 +281,11 @@ function NotificationTopBar() {
         size={36}
       >
         <Ionicons
-          color={liquidColors.text.primary}
+          color={liqiColors.text.primary}
           name="chevron-back"
           size={15}
         />
-      </LiquidOrbButton>
+      </LiqiOrbButton>
       <NotificationText numberOfLines={1} style={styles.screenTitle}>
         Thông báo
       </NotificationText>
@@ -428,22 +319,21 @@ function NotificationSummaryCard({
         : 'Bạn đã xử lý xong các cập nhật gần nhất.';
 
   return (
-    <LiquidCard
-      baseStrokeOpacity={0.08}
-      baseStrokeWidth={0.42}
+    <LiqiCard
+      borderOpacity={0.08}
+      borderWidth={0.42}
       contentStyle={styles.summaryContent}
       density="large"
-      frameColors={[
+      frameGradient={[
         'rgba(255,113,181,0.16)',
         'rgba(255,255,255,0.050)',
         'rgba(115,121,255,0.08)',
       ]}
-      glassIntensity="low"
-      glowIntensity="low"
-      glowPreset={pinkGlowSegments}
+      surfaceTone="low"
+      emphasis="low"
       radius={26}
       style={styles.summaryCard}
-      surfaceBackground="rgba(18,12,32,0.38)"
+      backgroundColor="rgba(18,12,32,0.38)"
     >
       <View style={styles.summaryIconOuter}>
         <LinearGradient
@@ -463,7 +353,7 @@ function NotificationSummaryCard({
         name="chevron-forward"
         size={15}
       />
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -487,7 +377,7 @@ function NotificationFilterBar({
         const selected = filter.id === activeFilter;
         const showBadge = filter.id === 'unread' && unreadCount > 0;
         return (
-          <LiquidChip
+          <LiqiChip
             accessibilityLabel={`Lọc ${filter.label}`}
             accessibilityState={{ selected }}
             contentStyle={[
@@ -519,7 +409,7 @@ function NotificationFilterBar({
                 </View>
               ) : null}
             </View>
-          </LiquidChip>
+          </LiqiChip>
         );
       })}
     </ScrollView>
@@ -541,24 +431,23 @@ function NotificationCard({
   return (
     <View style={styles.timelineRow}>
       {item.group === 'Hôm nay' ? <View style={styles.timelineDot} /> : null}
-      <LiquidCard
-        baseStrokeColor={tone.border}
-        baseStrokeOpacity={0.075}
-        baseStrokeWidth={0.42}
+      <LiqiCard
+        borderColor={tone.border}
+        borderOpacity={0.075}
+        borderWidth={0.42}
         contentStyle={[
           styles.cardContent,
           isCompact && styles.cardContentCompact,
           isSystem && styles.cardContentSystem,
         ]}
         density="list"
-        frameColors={cardFrameColors(tone)}
-        glassIntensity="low"
-        glowIntensity="low"
-        glowPreset={tone.glow}
+        frameGradient={cardFrameColors(tone)}
+        surfaceTone="low"
+        emphasis="low"
         radius={isCompact ? 16 : 18}
         style={[styles.notificationCard, item.isSeen && styles.readCard]}
-        surfaceBackground={tone.background}
-        withInnerReflection
+        backgroundColor={tone.background}
+        withHighlight
       >
         <View style={[styles.cardHalo, { backgroundColor: tone.halo }]} />
         <NotificationVisual compact={isCompact} visual={item.visual} />
@@ -579,7 +468,7 @@ function NotificationCard({
           size={13}
           style={styles.chevron}
         />
-      </LiquidCard>
+      </LiqiCard>
     </View>
   );
 }
@@ -680,17 +569,16 @@ function NotificationVisual({
   }
 
   return (
-    <LiquidGlassSurface
-      baseStrokeColor={tone.border}
-      baseStrokeOpacity={0.08}
+    <LiqiSurface
+      borderColor={tone.border}
+      borderOpacity={0.08}
       contentStyle={styles.symbolContent}
-      frameColors={[tone.border, 'rgba(255,255,255,0.016)']}
-      glassIntensity="low"
-      glowIntensity="low"
-      glowPreset={tone.glow}
+      frameGradient={[tone.border, 'rgba(255,255,255,0.016)']}
+      surfaceTone="low"
+      emphasis="low"
       height={symbolSize}
       radius={symbolSize / 2}
-      surfaceBackground="rgba(9,12,28,0.52)"
+      backgroundColor="rgba(9,12,28,0.52)"
       variant="button"
       width={symbolSize}
       withShadow={false}
@@ -700,7 +588,7 @@ function NotificationVisual({
         name={visual.icon as IconName}
         size={symbolIconSize}
       />
-    </LiquidGlassSurface>
+    </LiqiSurface>
   );
 }
 
@@ -716,7 +604,7 @@ function NotificationAccessory({
   if (item.action) {
     const tone = toneSpecs[item.action.tone];
     return (
-      <LiquidButton
+      <LiqiButton
         accessibilityLabel={[item.action.label, item.title]
           .filter(Boolean)
           .join(' ')}
@@ -724,8 +612,7 @@ function NotificationAccessory({
           styles.actionButtonContent,
           compact && styles.actionButtonContentCompact,
         ]}
-        glowIntensity="low"
-        glowPreset={tone.glow}
+        emphasis="low"
         gradientColors={tone.actionGradient}
         onPress={() => {
           selectionImpact();
@@ -738,7 +625,7 @@ function NotificationAccessory({
         withShadow={false}
       >
         {item.action.label}
-      </LiquidButton>
+      </LiqiButton>
     );
   }
 
@@ -823,13 +710,13 @@ function navigateNotificationDestination(destination: NotificationDestination) {
 
 function NotificationLoadingState() {
   return (
-    <LiquidCard
+    <LiqiCard
       contentStyle={styles.emptyContent}
       density="large"
-      glowIntensity="low"
+      emphasis="low"
       radius={24}
       style={styles.emptyCard}
-      withInnerReflection={false}
+      withHighlight={false}
     >
       <Ionicons
         color="rgba(220,226,255,0.70)"
@@ -842,7 +729,7 @@ function NotificationLoadingState() {
       <NotificationText style={styles.emptyBody}>
         LiQi đang đồng bộ inbox mới nhất của bạn.
       </NotificationText>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -860,13 +747,13 @@ function NotificationErrorState({
         ? 'Dữ liệu tạm thời chưa sẵn sàng. Hãy thử lại.'
         : 'Yêu cầu thông báo không thể hoàn tất.';
   return (
-    <LiquidCard
+    <LiqiCard
       contentStyle={styles.emptyContent}
       density="large"
-      glowIntensity="low"
+      emphasis="low"
       radius={24}
       style={styles.emptyCard}
-      withInnerReflection={false}
+      withHighlight={false}
     >
       <Ionicons
         color="rgba(255,184,107,0.82)"
@@ -880,7 +767,7 @@ function NotificationErrorState({
         {description}
       </NotificationText>
       {onRetry ? (
-        <LiquidButton
+        <LiqiButton
           accessibilityLabel="Thử tải lại thông báo"
           contentStyle={styles.retryButtonContent}
           onPress={onRetry}
@@ -891,21 +778,21 @@ function NotificationErrorState({
           withShadow={false}
         >
           Thử lại
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
 function NotificationEmptyState() {
   return (
-    <LiquidCard
+    <LiqiCard
       contentStyle={styles.emptyContent}
       density="large"
-      glowIntensity="low"
+      emphasis="low"
       radius={24}
       style={styles.emptyCard}
-      withInnerReflection={false}
+      withHighlight={false}
     >
       <Ionicons
         color="rgba(220,226,255,0.70)"
@@ -918,7 +805,7 @@ function NotificationEmptyState() {
       <NotificationText style={styles.emptyBody}>
         Các cập nhật mới sẽ xuất hiện ở đây.
       </NotificationText>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -1068,7 +955,7 @@ const styles = StyleSheet.create({
     paddingTop: 4,
   },
   emptyBody: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     fontSize: 13,
     fontWeight: '600',
     marginTop: 6,
@@ -1081,7 +968,7 @@ const styles = StyleSheet.create({
     paddingVertical: 24,
   },
   emptyTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 15,
     fontWeight: '700',
     marginTop: 10,
@@ -1188,7 +1075,7 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   messageStrong: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontWeight: '600',
   },
   systemTitle: {
@@ -1256,7 +1143,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 5,
   },
   screenTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     bottom: 0,
     fontSize: 16,
     fontWeight: '600',
@@ -1301,8 +1188,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   summaryTitle: {
-    ...liquidTypography.cardTitle,
-    color: liquidColors.text.primary,
+    ...liqiTypography.cardTitle,
+    color: liqiColors.text.primary,
     fontSize: 13,
     fontWeight: '600',
   },

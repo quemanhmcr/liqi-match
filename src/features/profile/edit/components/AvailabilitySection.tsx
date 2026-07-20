@@ -8,7 +8,7 @@ import {
   type RecurringAvailability,
   type TimePreferenceId,
 } from '@/entities/player-profile';
-import { LiquidChip } from '@/shared/components/liquid';
+import { LiqiChip } from '@/shared/components/liqi';
 
 import { ProfileText } from '../../components/ProfileShared';
 import type { ProfileEditForm } from '../model/profile-edit-model';
@@ -117,7 +117,7 @@ export function AvailabilitySection({
       )}
 
       {(selectedDays.length > 0 || selectedPreferences.length > 0) && (
-        <LiquidChip
+        <LiqiChip
           accessibilityLabel="Xóa lịch chơi"
           density="compact"
           onPress={() => updateSelection([], [])}
@@ -125,7 +125,7 @@ export function AvailabilitySection({
           variant="purple"
         >
           Xóa lịch
-        </LiquidChip>
+        </LiqiChip>
       )}
     </ProfileEditSection>
   );

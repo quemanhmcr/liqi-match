@@ -13,8 +13,6 @@ import { resetDiscoverState, useDiscoverStore } from '../model/discover-store';
 import { renderDiscoverScreen } from './discover-test-utils';
 import { DiscoverSetsScreen } from '../screens/DiscoverSetsScreen';
 
-jest.mock('expo-blur', () => ({ BlurView: 'BlurView' }));
-
 jest.mock('expo-status-bar', () => {
   const React = jest.requireActual<typeof import('react')>('react');
   const { View } =

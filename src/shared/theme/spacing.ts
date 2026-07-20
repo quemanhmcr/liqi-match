@@ -1,7 +1,10 @@
+import { liqiSpacing } from './liqi-design-system';
+
+/** @deprecated Import liqiSpacing from liqi-design-system. */
 export const spacing = {
-  xs: 4,
-  sm: 8,
-  md: 16,
-  lg: 24,
-  xl: 32,
+  lg: liqiSpacing['6xl'],
+  md: liqiSpacing['3xl'],
+  sm: liqiSpacing.md,
+  xl: liqiSpacing['8xl'],
+  xs: liqiSpacing.xs,
 } as const;

@@ -23,13 +23,14 @@ import {
   deleteOwnAccount,
 } from '@/shared/auth/account-deletion-service';
 import { env } from '@/shared/config/env';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { appColors } from '@/shared/ui';
 
 import {
   resolvePlayerAccessMode,
   type AccessArea,
   type PlayerAccessMode,
 } from './access-policy';
+import { routeAccessGateUi } from './route-access-gate-ui';
 import { appRoutes } from '../navigation/routes';
 
 export type RouteAccessGateProps = PropsWithChildren<{
@@ -328,7 +329,7 @@ function routeForOnboardingStep(step: OnboardingStep) {
 function RouteAccessLoading() {
   return (
     <View accessibilityLabel="Đang kiểm tra phiên" style={styles.centered}>
-      <ActivityIndicator color={liquidColors.text.primary} />
+      <ActivityIndicator color={appColors.text.primary} />
     </View>
   );
 }
@@ -388,7 +389,10 @@ function RouteLifecycleStatus({
           style={styles.retry}
         >
           {actionPending ? (
-            <ActivityIndicator color="#F8F4FF" size="small" />
+            <ActivityIndicator
+              color={routeAccessGateUi.colors.retryText}
+              size="small"
+            />
           ) : (
             <Text style={styles.retryText}>{actionLabel}</Text>
           )}
@@ -406,7 +410,7 @@ function formatDeletionRetryError(error: AccountDeletionClientError) {
 
 const styles = StyleSheet.create({
   body: {
-    color: 'rgba(220,226,248,0.64)',
+    color: routeAccessGateUi.colors.body,
     fontSize: 13,
     lineHeight: 19,
     marginTop: 8,
@@ -414,7 +418,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   errorText: {
-    color: 'rgba(255,190,196,0.92)',
+    color: routeAccessGateUi.colors.error,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 12,
@@ -423,20 +427,24 @@ const styles = StyleSheet.create({
   },
   centered: {
     alignItems: 'center',
-    backgroundColor: liquidColors.background.base,
+    backgroundColor: appColors.background.base,
     flex: 1,
     justifyContent: 'center',
     padding: 24,
   },
   retry: {
-    backgroundColor: 'rgba(157,82,255,0.25)',
-    borderColor: 'rgba(214,181,255,0.36)',
+    backgroundColor: routeAccessGateUi.colors.retryBackground,
+    borderColor: routeAccessGateUi.colors.retryBorder,
     borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     marginTop: 20,
     paddingHorizontal: 18,
     paddingVertical: 10,
   },
-  retryText: { color: '#F8F4FF', fontSize: 13, fontWeight: '700' },
-  title: { color: liquidColors.text.primary, fontSize: 17, fontWeight: '700' },
+  retryText: {
+    color: routeAccessGateUi.colors.retryText,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  title: { color: appColors.text.primary, fontSize: 17, fontWeight: '700' },
 });

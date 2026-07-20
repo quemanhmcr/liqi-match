@@ -14,6 +14,23 @@ Prefer workflows that keep changes:
 
 These principles matter more than following one exact command sequence.
 
+## Mobile UI design contract
+
+All new or materially changed mobile UI follows the [Home- and Messages-derived shared UI contract](DESIGN.md). Do not treat a nearby legacy page as design authority.
+
+Use the paved road for a new screen:
+
+```bash
+npm run design:new-screen -- <feature> <PascalCaseName>
+npm run design-system:check
+```
+
+The required public API is `@/shared/ui`. Reusable behavior lives there; exact feature-only values live in an owned `src/features/<feature>/ui/<feature>-ui.ts` or app-shell `*-ui.ts` recipe. Full pages use `AppScreen`, and semantic hierarchy uses `AppText`.
+
+New component implementations must not introduce raw color literals, local typography/palette systems or the removed liquid/glass/blur effect vocabulary. Existing exceptions are checksum-frozen in `config/design-system-legacy-baseline.json`; editing one requires migration rather than refreshing its hash in an ordinary feature patch.
+
+A canonical design change updates tokens/primitives, documentation, enforcement and focused tests together. A feature task does not silently redefine the product-wide language.
+
 ## Choose a checkout strategy
 
 Start by inspecting the checkout:
@@ -79,6 +96,8 @@ Read the architecture map and the document nearest to the code you are changing:
 
 - [Repository architecture map](docs/architecture/README.md)
 - [Mobile frontend architecture](docs/architecture/mobile-frontend.md)
+- [LiQi UI contract](DESIGN.md)
+- [Full design-system specification](docs/design/LIQI_DESIGN_SYSTEM.md)
 - [Backend architecture](docs/architecture/backend.md)
 - [Testing architecture](docs/architecture/testing.md)
 - [Worktree toolbox](docs/architecture/worktree-workflow.md)

@@ -7,7 +7,7 @@ import {
   RANK_CATALOG,
   catalogOptionById,
 } from '@/entities/player-profile';
-import { LiquidCard } from '@/shared/components/liquid';
+import { LiqiCard } from '@/shared/components/liqi';
 
 import { ProfileText } from '../../components/ProfileShared';
 import type {
@@ -52,10 +52,10 @@ export function ProfileEditPreview({
       : (cover?.asset.uri ?? form.media.coverUrl);
 
   return (
-    <LiquidCard
+    <LiqiCard
       contentStyle={styles.previewSurface}
       density="regular"
-      glowIntensity="low"
+      emphasis="low"
       style={styles.previewCard}
     >
       {coverUrl ? (
@@ -118,6 +118,6 @@ export function ProfileEditPreview({
       <ProfileText numberOfLines={2} style={styles.previewBio}>
         “{form.identity.bio.trim() || 'Chưa có giới thiệu.'}”
       </ProfileText>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
