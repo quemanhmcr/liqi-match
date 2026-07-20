@@ -4,6 +4,8 @@ import { canonicalAssetKey, type AssetResolver } from '@/entities/media-asset';
 import type {
   MessageAssetRef,
   MessageConversationDetail,
+  MessageConversationKind,
+  MessageConversationSource,
   MessageConversationSummary,
   MessageRelationship,
   MessageTimelineItem,
@@ -24,14 +26,18 @@ type IoniconName = ComponentProps<
 
 export type MessageConversationTone = 'cyan' | 'muted' | 'orange' | 'purple';
 
+export type MessageInboxArtworkVariant = 'love' | 'pair' | 'party' | 'rank';
+
 export type MessageInboxConversationViewModel = {
   activityAt?: string;
+  artworkVariant?: MessageInboxArtworkVariant;
   avatar?: MessageResolvedMedia;
   canMessage: boolean;
   icon?: IoniconName;
   id: string;
   isDraft: boolean;
   isGroup: boolean;
+  kind: MessageConversationKind;
   isMuted: boolean;
   isOnline: boolean;
   isPinned: boolean;
@@ -39,10 +45,13 @@ export type MessageInboxConversationViewModel = {
   latestDeliveryStatus?: ChatDeliveryStatus;
   latestDirection?: 'incoming' | 'outgoing';
   name: string;
+  participantAvatars: readonly MessageResolvedMedia[];
+  participantCount: number;
   presenceLabel: string;
   previewPrefix?: string;
   relationship: MessageRelationship;
   relationshipLabel: string;
+  sourceType?: MessageConversationSource['type'];
   time: string;
   tone: MessageConversationTone;
   unreadCount?: number;
@@ -75,6 +84,33 @@ const toneByRelationship: Record<MessageRelationship, MessageConversationTone> =
     system: 'purple',
     team: 'orange',
   };
+
+const directMatchArtworkVariants = ['love', 'pair', 'rank'] as const;
+
+function stableDecorationIndex(value: string, modulo: number) {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (Math.imul(hash, 31) + value.charCodeAt(index)) >>> 0;
+  }
+  return hash % modulo;
+}
+
+function inboxArtworkVariant(
+  conversation: MessageConversationSummary,
+): MessageInboxArtworkVariant | undefined {
+  if (conversation.source?.type === 'play_session') return 'party';
+  if (conversation.relationship === 'team') return 'rank';
+  if (conversation.relationship === 'soulmate') return 'pair';
+  if (conversation.relationship !== 'match') return undefined;
+
+  const decorationKey =
+    conversation.source?.type === 'direct_match'
+      ? conversation.source.id
+      : conversation.id;
+  return directMatchArtworkVariants[
+    stableDecorationIndex(decorationKey, directMatchArtworkVariants.length)
+  ];
+}
 
 function fallbackDeliveryStatus(
   message: MessageTimelineItem,
@@ -195,10 +231,19 @@ export function presentConversationThread(
     });
   }
 
+  const participantAvatars = conversation.participants.preview.flatMap(
+    (participant) =>
+      participant.avatar
+        ? [resolveMessageMedia(participant.avatar, assetResolver)]
+        : [],
+  );
+
   return {
     avatar: conversation.avatar
       ? resolveMessageMedia(conversation.avatar, assetResolver)
-      : undefined,
+      : participantAvatars[0],
+    participantAvatars,
+    participantCount: conversation.participants.totalCount,
     firstUnreadMessageId: conversation.viewerState.firstUnreadMessageId,
     icon: conversation.fallbackIcon as IoniconName | undefined,
     id: conversation.id,
@@ -251,16 +296,25 @@ export function presentInboxConversation({
       ? conversation.latestActivity?.senderDisplayName
       : undefined;
 
+  const participantAvatars = conversation.participants.preview.flatMap(
+    (participant) =>
+      participant.avatar
+        ? [resolveMessageMedia(participant.avatar, assetResolver)]
+        : [],
+  );
+
   return {
     activityAt,
+    artworkVariant: inboxArtworkVariant(conversation),
     avatar: conversation.avatar
       ? resolveMessageMedia(conversation.avatar, assetResolver)
-      : undefined,
+      : participantAvatars[0],
     canMessage: conversation.capabilities.canMessage,
     icon: conversation.fallbackIcon as IoniconName | undefined,
     id: conversation.id,
     isDraft,
     isGroup: conversation.kind === 'group',
+    kind: conversation.kind,
     isMuted: conversation.viewerState.isMuted,
     isOnline: conversation.presence.state === 'online',
     isPinned: conversation.viewerState.isPinned,
@@ -268,6 +322,8 @@ export function presentInboxConversation({
     latestDeliveryStatus: isDraft ? undefined : latestActivity?.deliveryStatus,
     latestDirection,
     name: conversation.title,
+    participantAvatars,
+    participantCount: conversation.participants.totalCount,
     presenceLabel: conversation.presence.label,
     previewPrefix: isDraft
       ? 'Bản nháp:'
@@ -278,6 +334,7 @@ export function presentInboxConversation({
           : undefined,
     relationship: conversation.relationship,
     relationshipLabel: relationshipLabelByKind[conversation.relationship],
+    sourceType: conversation.source?.type,
     time: activityAt ? formatInboxTimestamp(activityAt, referenceDate) : '',
     tone: toneByRelationship[conversation.relationship],
     unreadCount:

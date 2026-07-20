@@ -128,6 +128,8 @@ export type ChatMessage =
 
 export type ChatThread = {
   avatar?: MessageResolvedMedia;
+  participantAvatars?: readonly MessageResolvedMedia[];
+  participantCount?: number;
   icon?: IoniconName;
   firstUnreadMessageId?: string;
   id: string;

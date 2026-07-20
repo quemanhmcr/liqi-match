@@ -789,6 +789,10 @@ function toConversationSummary(
     },
     presence: { label: 'Đã ghép đôi', state: 'hidden' },
     relationship: 'match',
+    source: {
+      id: surface.conversation.matchId,
+      type: 'direct_match',
+    },
     title: peer.displayName,
     viewerState: {
       firstUnreadMessageId: surface.viewer.firstUnreadMessageId ?? undefined,

@@ -30,6 +30,7 @@ export type LiqiCardProps = Readonly<{
   radius?: number;
   style?: StyleProp<ViewStyle>;
   surfaceTone?: LiqiSurfaceTone;
+  testID?: string;
   variant?: LiqiCardVariant;
   withHighlight?: boolean;
   withShadow?: boolean;
@@ -49,6 +50,7 @@ export function LiqiCard({
   radius = liqiComponents.card.defaultRadius,
   style,
   surfaceTone,
+  testID,
   variant = 'default',
   withHighlight = false,
   withShadow = true,
@@ -69,6 +71,7 @@ export function LiqiCard({
       radius={radius}
       style={style}
       surfaceTone={surfaceTone ?? (density === 'list' ? 'low' : 'medium')}
+      testID={testID}
       variant="card"
       withHighlight={withHighlight}
       withShadow={withShadow}

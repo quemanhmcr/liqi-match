@@ -18,41 +18,60 @@ import {
 
 export type LiqiOrbButtonProps = Readonly<{
   accessibilityLabel: string;
+  backgroundColor?: string;
+  backgroundSlot?: ReactNode;
   badge?: ReactNode;
   badgeStyle?: StyleProp<ViewStyle>;
+  borderColor?: string;
   children: ReactNode;
+  disabled?: boolean;
   emphasis?: LiqiEmphasis;
   onPress?: (event: GestureResponderEvent) => void;
   size?: number;
   style?: StyleProp<ViewStyle>;
   surfaceTone?: LiqiSurfaceTone;
+  testID?: string;
+  withHighlight?: boolean;
 }>;
 
 export function LiqiOrbButton({
   accessibilityLabel,
+  backgroundColor,
+  backgroundSlot,
   badge,
   badgeStyle,
+  borderColor,
   children,
+  disabled = false,
   emphasis = 'medium',
   onPress,
   size = 52,
   style,
   surfaceTone = 'medium',
+  testID,
+  withHighlight = true,
 }: LiqiOrbButtonProps) {
   return (
     <Pressable
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
       android_ripple={null}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.pressable,
         { borderRadius: size / 2, height: size, width: size },
-        pressed && styles.pressed,
+        disabled && styles.disabled,
+        pressed && !disabled && styles.pressed,
         style,
       ]}
+      testID={testID}
     >
       <LiqiSurface
+        backgroundColor={backgroundColor}
+        backgroundSlot={backgroundSlot}
+        borderColor={borderColor}
         contentStyle={styles.content}
         emphasis={emphasis}
         height={size}
@@ -60,7 +79,7 @@ export function LiqiOrbButton({
         surfaceTone={surfaceTone}
         variant="button"
         width={size}
-        withHighlight
+        withHighlight={withHighlight}
         withShadow={false}
       >
         <View style={styles.icon}>{children}</View>
@@ -82,6 +101,7 @@ const styles = StyleSheet.create({
     top: 5,
     zIndex: 20,
   },
+  disabled: { opacity: liqiOpacity.disabled },
   content: {
     alignItems: 'center',
     justifyContent: 'center',

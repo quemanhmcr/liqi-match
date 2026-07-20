@@ -10,16 +10,21 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
   type NativeSyntheticEvent,
   type TextInputSelectionChangeEventData,
 } from 'react-native';
 import { KeyboardController } from 'react-native-keyboard-controller';
 
+import { LiqiChip, LiqiOrbButton, LiqiSurface } from '@/shared/components/liqi';
 import {
-  LiquidGlassSurface,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
+  isCompactLiqiViewport,
+  liqiColors,
+  liqiComponentColors,
+  liqiComponentGradients,
+  liqiComponents,
+} from '@/shared/theme/liqi-design-system';
 
 import {
   clearChatDraft,
@@ -60,6 +65,11 @@ export function ChatComposer({
   }) => boolean;
   placeholder: string;
 }) {
+  const { width } = useWindowDimensions();
+  const compact = isCompactLiqiViewport(width);
+  const composerControlSize = compact
+    ? liqiComponents.messages.chat.composerControlCompact
+    : liqiComponents.messages.chat.composerControl;
   const inputRef = useRef<TextInput>(null);
   const draft = useChatRuntimeStore(
     (state) => state.draftsByConversation[conversationId] ?? '',
@@ -290,7 +300,7 @@ export function ChatComposer({
                 ) : (
                   <View style={styles.selectedMediaVideoIcon}>
                     <Ionicons
-                      color="rgba(223,232,255,0.78)"
+                      color={liqiColors.icon.inactive}
                       name="videocam"
                       size={18}
                     />
@@ -298,7 +308,10 @@ export function ChatComposer({
                 )}
                 {selectedMediaPhase === 'processing' ? (
                   <View style={styles.selectedMediaProcessingOverlay}>
-                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <ActivityIndicator
+                      color={liqiColors.text.onAccent}
+                      size="small"
+                    />
                   </View>
                 ) : null}
               </View>
@@ -329,7 +342,7 @@ export function ChatComposer({
                 }}
               >
                 <Ionicons
-                  color="rgba(223,232,255,0.58)"
+                  color={liqiColors.icon.inactive}
                   name="close"
                   size={18}
                 />
@@ -361,7 +374,7 @@ export function ChatComposer({
             <View accessibilityLabel="Biểu cảm nhanh" style={styles.emojiTray}>
               {quickEmojis.map((emoji) => (
                 <Pressable
-                  accessibilityLabel={`Chèn ${emoji}`}
+                  accessibilityLabel={`Chọn ${emoji} từ bảng biểu cảm`}
                   key={emoji}
                   onPress={() => insertEmoji(emoji)}
                   style={({ pressed }) => [
@@ -385,34 +398,87 @@ export function ChatComposer({
         </View>
       ) : null}
 
+      <View accessibilityLabel="Hành động nhanh" style={styles.quickActionRow}>
+        <LiqiChip
+          accessibilityLabel="Chèn 💜"
+          density="compact"
+          onPress={() => insertEmoji('💜')}
+          variant="purple"
+        >
+          💜
+        </LiqiChip>
+        <LiqiChip
+          accessibilityLabel="Chèn ✨"
+          density="compact"
+          onPress={() => insertEmoji('✨')}
+          variant="purple"
+        >
+          ✨
+        </LiqiChip>
+        {actionState('image') === 'available' ? (
+          <LiqiChip
+            accessibilityLabel="Gửi ảnh hoặc video"
+            density="compact"
+            icon={
+              <Ionicons
+                color={liqiColors.icon.inactive}
+                name="images-outline"
+                size={16}
+              />
+            }
+            onPress={() => void chooseMedia('library')}
+            variant="default"
+          >
+            Ảnh
+          </LiqiChip>
+        ) : null}
+        {actionState('camera') === 'available' ? (
+          <LiqiChip
+            accessibilityLabel="Chụp ảnh"
+            density="compact"
+            icon={
+              <Ionicons
+                color={liqiColors.icon.inactive}
+                name="camera-outline"
+                size={16}
+              />
+            }
+            onPress={() => void chooseMedia('camera')}
+            variant="default"
+          >
+            Camera
+          </LiqiChip>
+        ) : null}
+      </View>
+
       <View style={styles.composerRow}>
         {hasVisibleAttachmentAction ? (
-          <LiquidOrbButton
+          <LiqiOrbButton
             accessibilityLabel="Thêm nội dung"
-            glassIntensity="low"
-            glowIntensity="none"
+            surfaceTone="low"
+            emphasis="none"
             onPress={() => openTray('attachments')}
-            size={36}
+            size={composerControlSize}
           >
             <Ionicons
-              color="rgba(214,222,244,0.60)"
+              color={liqiColors.icon.inactive}
               name={activeTray === 'attachments' ? 'close' : 'add'}
               size={19}
             />
-          </LiquidOrbButton>
+          </LiqiOrbButton>
         ) : null}
 
-        <LiquidGlassSurface
-          baseStrokeOpacity={0.05}
-          baseStrokeWidth={0.5}
-          blurIntensity={20}
+        <LiqiSurface
+          backgroundColor={liqiComponentColors.messages.composerInput}
+          borderColor={liqiComponentColors.messages.composerStroke}
+          borderOpacity={0.9}
+          borderWidth={StyleSheet.hairlineWidth}
           contentStyle={styles.inputSurface}
-          glowIntensity="none"
-          radius={21}
+          emphasis="none"
+          radius={composerControlSize / 2}
           style={styles.inputShell}
-          surfaceBackground="rgba(9,14,29,0.72)"
           variant="nav"
-          withInnerReflection={false}
+          withHighlight={false}
           withShadow={false}
         >
           <View style={styles.inputTextSlot}>
@@ -430,7 +496,7 @@ export function ChatComposer({
               onFocus={onFocus}
               onSelectionChange={handleSelectionChange}
               placeholder={placeholder}
-              placeholderTextColor="rgba(190,201,229,0.52)"
+              placeholderTextColor={liqiColors.text.muted}
               ref={inputRef}
               scrollEnabled
               testID="chat-composer-input"
@@ -456,33 +522,37 @@ export function ChatComposer({
             onPress={() => openTray('emoji')}
           >
             <Ionicons
-              color="rgba(205,216,243,0.64)"
+              color={liqiColors.icon.inactive}
               name={activeTray === 'emoji' ? 'close-circle' : 'happy-outline'}
               size={21}
             />
           </Pressable>
-        </LiquidGlassSurface>
+        </LiqiSurface>
 
-        <Pressable
+        <LiqiOrbButton
           accessibilityLabel="Gửi tin nhắn"
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSend }}
+          backgroundSlot={
+            <LinearGradient
+              colors={liqiComponentGradients.messages.send}
+              end={{ x: 1, y: 1 }}
+              start={{ x: 0, y: 0 }}
+              style={StyleSheet.absoluteFill}
+            />
+          }
+          borderColor={liqiComponentColors.messages.avatarStroke}
           disabled={!canSend}
+          emphasis="high"
           onPress={send}
-          style={({ pressed }) => [
-            styles.sendButton,
-            !canSend && styles.sendButtonDisabled,
-            pressed && styles.sendButtonPressed,
-          ]}
+          size={composerControlSize}
+          testID="chat-send-button"
+          withHighlight
         >
-          <LinearGradient
-            colors={['rgba(157,77,255,0.98)', 'rgba(57,120,220,0.94)']}
-            end={{ x: 1, y: 1 }}
-            start={{ x: 0, y: 0 }}
-            style={StyleSheet.absoluteFill}
+          <Ionicons
+            color={liqiColors.text.onAccent}
+            name="paper-plane"
+            size={20}
           />
-          <Ionicons color="#FFFFFF" name="paper-plane" size={17} />
-        </Pressable>
+        </LiqiOrbButton>
       </View>
     </View>
   );
@@ -508,7 +578,7 @@ function ComposerAction({
       ]}
     >
       <View style={styles.composerActionIcon}>
-        <Ionicons color="rgba(214,226,255,0.76)" name={icon} size={18} />
+        <Ionicons color={liqiColors.icon.inactive} name={icon} size={18} />
       </View>
       <Text numberOfLines={1} style={styles.composerActionText}>
         {label}
@@ -525,7 +595,7 @@ export function ReadOnlyComposer({ reason }: { reason?: string }) {
       style={styles.readOnlyComposer}
     >
       <Ionicons
-        color="rgba(201,211,238,0.52)"
+        color={liqiColors.icon.inactive}
         name="lock-closed-outline"
         size={17}
       />

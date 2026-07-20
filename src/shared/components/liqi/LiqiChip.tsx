@@ -22,6 +22,7 @@ import {
 
 type LiqiChipVariant = 'default' | 'selected' | 'purple' | 'cyan' | 'orange';
 type LiqiChipDensity = 'mode' | 'compact' | 'tag';
+type GradientColors = readonly [string, string, ...string[]];
 
 type ChipTone = { background: string; border: string; text: string };
 
@@ -40,8 +41,10 @@ export type LiqiChipProps = {
   icon?: ReactNode;
   onPress?: (event: GestureResponderEvent) => void;
   selected?: boolean;
+  selectedGradient?: GradientColors;
   style?: StyleProp<ViewStyle>;
   textStyle?: StyleProp<TextStyle>;
+  trailingIcon?: ReactNode;
   variant?: LiqiChipVariant;
   withSheen?: boolean;
 };
@@ -56,8 +59,10 @@ export function LiqiChip({
   icon,
   onPress,
   selected,
+  selectedGradient,
   style,
   textStyle,
+  trailingIcon,
   variant = 'default',
   withSheen,
 }: LiqiChipProps) {
@@ -66,6 +71,15 @@ export function LiqiChip({
   const shouldRenderSheen = withSheen ?? density !== 'tag';
   const content = (
     <>
+      {selected && selectedGradient ? (
+        <LinearGradient
+          colors={selectedGradient}
+          end={{ x: 1, y: 1 }}
+          pointerEvents="none"
+          start={{ x: 0, y: 0 }}
+          style={styles.background}
+        />
+      ) : null}
       {shouldRenderSheen ? (
         <LinearGradient
           colors={liqiComponents.chip.sheen}
@@ -90,6 +104,9 @@ export function LiqiChip({
       ) : (
         children
       )}
+      {trailingIcon ? (
+        <View style={styles.trailingSlot}>{trailingIcon}</View>
+      ) : null}
     </>
   );
 
@@ -138,6 +155,13 @@ function isTextOnlyChildren(children: ReactNode) {
 }
 
 const styles = StyleSheet.create({
+  background: {
+    bottom: 0,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
+  },
   compactShell: {
     minHeight: liqiComponents.chip.compactHeight,
     paddingHorizontal: liqiComponents.chip.paddingHorizontal - 2,
@@ -184,4 +208,5 @@ const styles = StyleSheet.create({
     color: liqiColors.text.secondary,
     zIndex: 2,
   },
+  trailingSlot: { zIndex: 2 },
 });

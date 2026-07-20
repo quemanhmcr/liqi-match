@@ -216,13 +216,31 @@ describe('MessagesScreen', () => {
 
     await waitFor(() => expect(screen.getByText('Cần bạn xử lý')).toBeTruthy());
     expect(screen.getByText('Tin nhắn')).toBeTruthy();
+    expect(screen.getByTestId('messages-identity-header')).toBeTruthy();
+    expect(
+      screen.getByText('Kết nối với những người bạn hợp vibe'),
+    ).toBeTruthy();
+    expect(screen.queryByText('KẾT NỐI')).toBeNull();
+    expect(
+      screen.queryByPlaceholderText('Tìm người hoặc trò chuyện...'),
+    ).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
     expect(
       screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
     ).toBeTruthy();
     expect(screen.getByText('Tất cả')).toBeTruthy();
-    expect(screen.getAllByText(/Chưa đọc/).length).toBeGreaterThan(0);
+    expect(screen.getByText('Chưa đọc')).toBeTruthy();
+    expect(screen.getByText('Phòng')).toBeTruthy();
+    expect(screen.getByText('Cá nhân')).toBeTruthy();
+    expect(screen.getByTestId('messages-unread-filter-indicator')).toBeTruthy();
     expect(screen.getAllByText('Minh Anh').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Mở chat với Minh Anh')).toBeTruthy();
+    expect(
+      screen.getByTestId('messages-conversation-card-minh-anh'),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId('messages-conversation-artwork-minh-anh'),
+    ).toBeTruthy();
     expect(screen.getByLabelText('Tin nhắn cuối: Bạn: 👊🏻')).toBeTruthy();
     expect(screen.getByText('20:33')).toBeTruthy();
     expect(screen.getAllByLabelText('Tin nhắn đã đọc').length).toBeGreaterThan(
@@ -269,7 +287,9 @@ describe('MessagesScreen', () => {
     );
 
     await fireEvent.press(screen.getByLabelText('Tạo cuộc trò chuyện'));
-    expect(await screen.findByText('Bắt đầu trò chuyện')).toBeTruthy();
+    expect(
+      (await screen.findAllByText('Bắt đầu trò chuyện')).length,
+    ).toBeGreaterThan(1);
     await fireEvent.press(await screen.findByLabelText('Chọn Người chơi 1'));
     await fireEvent.press(screen.getByText('Xác nhận'));
 
@@ -285,6 +305,7 @@ describe('MessagesScreen', () => {
     const listConversations = jest.fn(base.listConversations);
     const repository = { ...base, listConversations };
     const screen = await renderMessagesScreen({ repository });
+    await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
     await fireEvent.changeText(
       screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
       'Khoa',
@@ -308,7 +329,7 @@ describe('MessagesScreen', () => {
     const repository = { ...base, listConversations };
     const screen = await renderMessagesScreen({ repository });
 
-    await fireEvent.press(screen.getByLabelText('Lọc Team'));
+    await fireEvent.press(screen.getByLabelText('Lọc Phòng'));
 
     await waitFor(() =>
       expect(listConversations).toHaveBeenLastCalledWith(
@@ -421,6 +442,11 @@ describe('MessagesScreen', () => {
     expect(
       screen.getByLabelText('Tin nhắn cuối: Conversation mới từ repository'),
     ).toBeTruthy();
+    expect(
+      screen.queryByTestId(
+        'messages-conversation-artwork-new-repository-thread',
+      ),
+    ).toBeNull();
   });
 
   it('shows queued delivery instead of a false sent receipt', async () => {
