@@ -8,7 +8,7 @@ import {
   PROFILE_LIMITS,
   type GenderId,
 } from '@/entities/player-profile';
-import { LiquidChip } from '@/shared/components/liquid';
+import { LiqiChip } from '@/shared/components/liqi';
 
 import { ProfileText } from '../../components/ProfileShared';
 import type {
@@ -140,7 +140,7 @@ export function IdentitySection({
       ) : null}
       <View style={styles.chipWrap}>
         {statusOptions.map((option) => (
-          <LiquidChip
+          <LiqiChip
             accessibilityLabel={`Trạng thái ${option.label}`}
             accessibilityState={{ selected: identity.status === option.value }}
             density="compact"
@@ -151,7 +151,7 @@ export function IdentitySection({
             variant="purple"
           >
             {option.label}
-          </LiquidChip>
+          </LiqiChip>
         ))}
       </View>
 

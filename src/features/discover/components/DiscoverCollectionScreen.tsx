@@ -17,11 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidGlassSurface,
-} from '@/shared/components/liquid';
+import { LiqiButton, LiqiCard, LiqiSurface } from '@/shared/components/liqi';
 
 import { DiscoverQueryState, DiscoverStaleBanner } from './DiscoverQueryState';
 import { DiscoverResolvedImage } from './DiscoverResolvedImage';
@@ -434,15 +430,15 @@ function CollectionSearch({
 }) {
   return (
     <View style={[styles.searchRow, { paddingHorizontal: horizontalPadding }]}>
-      <LiquidGlassSurface
-        baseStrokeOpacity={0.12}
+      <LiqiSurface
+        borderOpacity={0.12}
         contentStyle={styles.searchSurfaceContent}
-        glowIntensity="low"
+        emphasis="low"
         radius={22}
         style={styles.searchSurface}
-        surfaceBackground="rgba(9,13,30,0.62)"
+        backgroundColor="rgba(9,13,30,0.62)"
         variant="card"
-        withInnerReflection={false}
+        withHighlight={false}
         withShadow={false}
       >
         <Ionicons color="rgba(202,211,242,0.62)" name="search" size={20} />
@@ -473,7 +469,7 @@ function CollectionSearch({
             <Ionicons color="rgba(213,221,247,0.62)" name="close" size={16} />
           </Pressable>
         ) : null}
-      </LiquidGlassSurface>
+      </LiqiSurface>
     </View>
   );
 }
@@ -614,12 +610,12 @@ function SortOptions({
     <View
       style={[styles.sortPanelWrap, { paddingHorizontal: horizontalPadding }]}
     >
-      <LiquidGlassSurface
+      <LiqiSurface
         contentStyle={styles.sortPanel}
-        glowIntensity="low"
+        emphasis="low"
         radius={18}
-        surfaceBackground="rgba(11,16,34,0.88)"
-        withInnerReflection={false}
+        backgroundColor="rgba(11,16,34,0.88)"
+        withHighlight={false}
         withShadow={false}
       >
         {sortOptions[kind]
@@ -653,7 +649,7 @@ function SortOptions({
               </Pressable>
             );
           })}
-      </LiquidGlassSurface>
+      </LiqiSurface>
     </View>
   );
 }
@@ -775,20 +771,20 @@ function CollectionSetCard({
     openSet(card.id);
   };
   return (
-    <LiquidCard
-      baseStrokeOpacity={0.12}
+    <LiqiCard
+      borderOpacity={0.12}
       contentStyle={styles.setCardContent}
       density="compact"
-      glowIntensity="low"
+      emphasis="low"
       radius={24}
       style={[styles.collectionCard, selected && styles.selectedCard]}
-      surfaceBackground={
+      backgroundColor={
         card.actionTone === 'cyan'
           ? 'rgba(8,23,42,0.66)'
           : 'rgba(16,14,36,0.66)'
       }
       variant={card.actionTone}
-      withInnerReflection={false}
+      withHighlight={false}
       withShadow={false}
     >
       <View style={styles.setTopRow}>
@@ -827,11 +823,11 @@ function CollectionSetCard({
       </View>
       <View style={styles.cardFooter}>
         <AvatarStack sources={card.avatarSources.slice(0, 4)} surplus="+1" />
-        <LiquidButton
+        <LiqiButton
           accessibilityLabel={`${card.actionLabel} ${card.title}`}
           contentStyle={styles.actionButtonContent}
           disabled={card.actionKind === 'request' && requested}
-          glowIntensity="low"
+          emphasis="low"
           onPress={onAction}
           radius={17}
           style={styles.actionButton}
@@ -841,9 +837,9 @@ function CollectionSetCard({
           <DiscoverText style={styles.actionButtonText}>
             {actionText}
           </DiscoverText>
-        </LiquidButton>
+        </LiqiButton>
       </View>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -904,20 +900,20 @@ function CollectionProfileCard({
     );
   };
   return (
-    <LiquidCard
-      baseStrokeOpacity={0.11}
+    <LiqiCard
+      borderOpacity={0.11}
       contentStyle={styles.profileCardContent}
       density="compact"
-      glowIntensity="low"
+      emphasis="low"
       radius={23}
       style={[styles.collectionCard, selected && styles.selectedCard]}
-      surfaceBackground={
+      backgroundColor={
         card.actionTone === 'cyan'
           ? 'rgba(6,25,44,0.62)'
           : 'rgba(15,16,42,0.64)'
       }
       variant={card.actionTone}
-      withInnerReflection={false}
+      withHighlight={false}
       withShadow={false}
     >
       <View style={styles.profileTopRow}>
@@ -1001,7 +997,7 @@ function CollectionProfileCard({
           ]}
           testID={`discover-profile-action-${card.id}`}
         >
-          <LiquidButton
+          <LiqiButton
             accessibilityLabel={`${card.actionLabel} ${card.name}`}
             contentStyle={styles.profileActionContent}
             disabled={
@@ -1009,7 +1005,7 @@ function CollectionProfileCard({
               card.actionKind === 'liked' ||
               deciding
             }
-            glowIntensity={
+            emphasis={
               card.actionKind === 'view' || card.actionKind === 'liked'
                 ? 'none'
                 : 'low'
@@ -1029,10 +1025,10 @@ function CollectionProfileCard({
             <DiscoverText style={styles.actionButtonText}>
               {actionText}
             </DiscoverText>
-          </LiquidButton>
+          </LiqiButton>
         </View>
       </View>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -1047,10 +1043,10 @@ function CollectionEmptyState({
 }) {
   return (
     <View style={{ paddingHorizontal: horizontalPadding }}>
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.emptyContent}
         density="compact"
-        glowIntensity="low"
+        emphasis="low"
         radius={22}
         style={styles.emptyCard}
         withShadow={false}
@@ -1077,7 +1073,7 @@ function CollectionEmptyState({
             <DiscoverText style={styles.emptyResetText}>Đặt lại</DiscoverText>
           </Pressable>
         ) : null}
-      </LiquidCard>
+      </LiqiCard>
     </View>
   );
 }

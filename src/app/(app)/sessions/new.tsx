@@ -1,2 +1,5 @@
-import { PlaySessionCreateScreen } from '@/features/play-session/screens/PlaySessionCreateScreen';
-export default PlaySessionCreateScreen;
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+
+export default function PlaySessionCreateRoute() {
+  return <ResetRouteScreen routeId="session-create" />;
+}

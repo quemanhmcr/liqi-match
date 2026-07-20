@@ -1,5 +1,5 @@
-import { DiscoverVibesScreen } from '@/features/discover/screens/DiscoverVibesScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function DiscoverVibesRoute() {
-  return <DiscoverVibesScreen />;
+  return <ResetRouteScreen routeId="discover-vibes" />;
 }

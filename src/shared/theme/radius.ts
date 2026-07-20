@@ -1,5 +1,8 @@
+import { liqiRadius } from './liqi-design-system';
+
+/** @deprecated Import liqiRadius from liqi-design-system. */
 export const radius = {
-  sm: 4,
-  md: 8,
-  lg: 12,
+  lg: liqiRadius.md,
+  md: liqiRadius.xs,
+  sm: liqiRadius.xs / 2,
 } as const;

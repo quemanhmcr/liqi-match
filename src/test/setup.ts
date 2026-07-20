@@ -3,22 +3,6 @@ import type { ReactNode } from 'react';
 
 jest.setTimeout(10_000);
 
-jest.mock('expo-blur', () => {
-  const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const { View: MockView } =
-    jest.requireActual<typeof import('react-native')>('react-native');
-  const MockBlurView = ReactActual.forwardRef(
-    ({ children, ...props }: { children?: ReactNode }, _ref) =>
-      ReactActual.createElement(MockView, props, children),
-  );
-
-  return {
-    __esModule: true,
-    BlurTargetView: MockBlurView,
-    BlurView: MockBlurView,
-  };
-});
-
 jest.mock('expo-video', () => {
   const ReactActual = jest.requireActual<typeof import('react')>('react');
   const { View: MockView } =
@@ -40,21 +24,6 @@ jest.mock('react-native-reanimated', () =>
 jest.mock('react-native-keyboard-controller', () =>
   jest.requireActual('react-native-keyboard-controller/jest'),
 );
-
-jest.mock('@shopify/react-native-skia', () => {
-  const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const { View: MockView } =
-    jest.requireActual<typeof import('react-native')>('react-native');
-  const MockSkiaNode = ({ children }: { children?: ReactNode }) =>
-    ReactActual.createElement(MockView, null, children);
-
-  return {
-    __esModule: true,
-    BlurMask: MockSkiaNode,
-    Canvas: MockSkiaNode,
-    Path: MockSkiaNode,
-  };
-});
 
 process.env.EXPO_PUBLIC_BACKEND_TARGET ??= 'local-simulation';
 process.env.EXPO_PUBLIC_EXPECTED_SUPABASE_PROJECT_REF ??= 'local';

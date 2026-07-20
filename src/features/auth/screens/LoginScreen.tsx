@@ -1,4 +1,3 @@
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { useState } from 'react';
@@ -18,10 +17,6 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import type { OAuthProvider } from '@/shared/auth/auth-service';
 import { useAuth } from '@/shared/auth/auth-context';
-import {
-  LiquidEdgeGlow,
-  type EdgeGlowSegment,
-} from '@/shared/components/liquid';
 
 type LoginProvider = OAuthProvider | 'tiktok';
 
@@ -34,82 +29,6 @@ const legalLinks = {
   privacy: 'https://liqimatch.app/privacy',
   terms: 'https://liqimatch.app/terms',
 };
-
-const providerGlowSegments: Record<LoginProvider, readonly EdgeGlowSegment[]> =
-  {
-    google: [
-      {
-        bloomOpacity: 0.11,
-        bloomWidth: 3.5,
-        blur: 9,
-        color: 'rgba(187,150,255,0.54)',
-        end: 0.18,
-        id: 'google-purple-top',
-        lineOpacity: 0.27,
-        lineWidth: 0.58,
-        start: 0.04,
-      },
-      {
-        bloomOpacity: 0.1,
-        bloomWidth: 3.4,
-        blur: 10,
-        color: 'rgba(83,214,255,0.52)',
-        end: 0.76,
-        id: 'google-cyan-bottom',
-        lineOpacity: 0.25,
-        lineWidth: 0.56,
-        start: 0.64,
-      },
-    ],
-    facebook: [
-      {
-        bloomOpacity: 0.12,
-        bloomWidth: 3.6,
-        blur: 9,
-        color: 'rgba(89,166,255,0.58)',
-        end: 0.87,
-        id: 'facebook-blue-bottom',
-        lineOpacity: 0.3,
-        lineWidth: 0.6,
-        start: 0.66,
-      },
-      {
-        bloomOpacity: 0.08,
-        bloomWidth: 3.1,
-        blur: 10,
-        color: 'rgba(170,211,255,0.42)',
-        end: 0.21,
-        id: 'facebook-ice-top',
-        lineOpacity: 0.2,
-        lineWidth: 0.5,
-        start: 0.08,
-      },
-    ],
-    tiktok: [
-      {
-        bloomOpacity: 0.12,
-        bloomWidth: 3.6,
-        blur: 9,
-        color: 'rgba(255,96,178,0.56)',
-        end: 0.94,
-        id: 'tiktok-pink-corner',
-        lineOpacity: 0.29,
-        lineWidth: 0.58,
-        start: 0.8,
-      },
-      {
-        bloomOpacity: 0.11,
-        bloomWidth: 3.4,
-        blur: 10,
-        color: 'rgba(58,230,255,0.56)',
-        end: 0.72,
-        id: 'tiktok-cyan-bottom',
-        lineOpacity: 0.28,
-        lineWidth: 0.56,
-        start: 0.58,
-      },
-    ],
-  };
 
 export default function LoginScreen() {
   const { loading, signIn } = useAuth();
@@ -397,21 +316,11 @@ function SocialAuthButton({
         disabled && !loading && styles.disabled,
       ]}
     >
-      <LiquidEdgeGlow
-        baseStrokeColor="rgba(232,238,255,0.46)"
-        baseStrokeOpacity={0.048}
-        baseStrokeWidth={0.36}
-        pad={7}
-        radius={buttonRadius}
-        segments={providerGlowSegments[provider]}
-      />
-      <BlurView
-        intensity={12}
+      <View
         style={[
-          styles.socialButtonBlur,
+          styles.socialButtonSurface,
           { borderRadius: buttonRadius, minHeight: buttonHeight },
         ]}
-        tint="dark"
       >
         <LinearGradient
           colors={[
@@ -453,7 +362,7 @@ function SocialAuthButton({
           </Text>
           <View style={styles.sideSlot} />
         </View>
-      </BlurView>
+      </View>
     </Pressable>
   );
 }
@@ -724,7 +633,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 38,
   },
-  socialButtonBlur: {
+  socialButtonSurface: {
     backgroundColor: 'rgba(8,14,32,0.18)',
     borderColor: 'rgba(255,255,255,0.058)',
     borderWidth: StyleSheet.hairlineWidth,

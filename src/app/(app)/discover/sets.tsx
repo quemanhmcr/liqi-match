@@ -1,5 +1,5 @@
-import { DiscoverSetsScreen } from '@/features/discover/screens/DiscoverSetsScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function DiscoverSetsRoute() {
-  return <DiscoverSetsScreen />;
+  return <ResetRouteScreen routeId="discover-sets" />;
 }

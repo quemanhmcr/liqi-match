@@ -18,6 +18,18 @@
       "problemMatcher": []
     },
     {
+      "label": "Liqi: Check design language",
+      "type": "shell",
+      "command": "npm run design-system:self-test && npm run design-system:check",
+      "problemMatcher": []
+    },
+    {
+      "label": "Liqi: Create canonical screen",
+      "type": "shell",
+      "command": "npm run design:new-screen -- ${input:designFeature} ${input:designScreenName}",
+      "problemMatcher": []
+    },
+    {
       "label": "Liqi: Check task",
       "type": "shell",
       "command": "npm run task:check",
@@ -52,6 +64,16 @@
       "id": "taskWorktreePath",
       "type": "promptString",
       "description": "Absolute managed worktree path"
+    },
+    {
+      "id": "designFeature",
+      "type": "promptString",
+      "description": "Existing feature folder, for example notifications"
+    },
+    {
+      "id": "designScreenName",
+      "type": "promptString",
+      "description": "PascalCase screen name without suffix, for example NotificationSettings"
     }
   ]
 }

@@ -21,19 +21,19 @@ import {
 import { usePlayerIdentities } from '@/entities/player-identity';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
+  LiqiButton,
+  LiqiCard,
+  LiqiChip,
+  LiqiOrbButton,
+} from '@/shared/components/liqi';
 import {
   EndorsementKindV2Schema,
   PlaySessionIdSchema,
   type EndorsementKindV2,
   type ParticipationDisputeReasonV2,
 } from '@/shared/contracts/core-v2';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 const endorsements: readonly Readonly<{
   kind: EndorsementKindV2;
@@ -179,34 +179,34 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
 
   if (!parsedSessionId.success) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.centered}
         withBottomNavPadding={false}
         withHeader={false}
       >
         <StateCard title="Liên kết feedback không hợp lệ" />
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.content}
       withBottomNavPadding={false}
       withHeader={false}
     >
       <View style={styles.header}>
-        <LiquidOrbButton
+        <LiqiOrbButton
           accessibilityLabel="Quay lại"
           onPress={() => router.back()}
           size={42}
         >
           <Ionicons
-            color={liquidColors.text.primary}
+            color={liqiColors.text.primary}
             name="chevron-back"
             size={20}
           />
-        </LiquidOrbButton>
+        </LiqiOrbButton>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>SESSION ĐÃ HOÀN TẤT</Text>
           <Text style={styles.title}>Xác nhận & ghi nhận đồng đội</Text>
@@ -223,7 +223,7 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
         />
       ) : (
         <>
-          <LiquidCard density="regular" style={styles.summaryCard}>
+          <LiqiCard density="regular" style={styles.summaryCard}>
             <View style={styles.summaryIcon}>
               <Ionicons color="#67E8FF" name="checkmark-done" size={24} />
             </View>
@@ -234,10 +234,10 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
                 trước {deadlineLabel}
               </Text>
             </View>
-          </LiquidCard>
+          </LiqiCard>
 
           {actorStatus === null ? (
-            <LiquidCard density="regular" style={styles.actionCard}>
+            <LiqiCard density="regular" style={styles.actionCard}>
               <Text style={styles.cardTitle}>
                 Bạn có tham gia buổi chơi này?
               </Text>
@@ -246,27 +246,27 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
                 đánh giá công khai.
               </Text>
               <View style={styles.buttonRow}>
-                <LiquidButton
+                <LiqiButton
                   disabled={pending}
                   onPress={() => void confirmParticipation()}
                   style={styles.flexButton}
                 >
                   {pending ? 'Đang gửi...' : 'Đã tham gia'}
-                </LiquidButton>
-                <LiquidButton
+                </LiqiButton>
+                <LiqiButton
                   disabled={pending}
                   onPress={() => setShowDispute((value) => !value)}
                   style={styles.flexButton}
                   variant="secondary"
                 >
                   Có vấn đề
-                </LiquidButton>
+                </LiqiButton>
               </View>
               {showDispute ? (
                 <View style={styles.disputePanel}>
                   <View style={styles.chips}>
                     {disputes.map((item) => (
-                      <LiquidChip
+                      <LiqiChip
                         density="compact"
                         key={item.reason}
                         onPress={() => setDisputeReason(item.reason)}
@@ -276,7 +276,7 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
                         }
                       >
                         {item.label}
-                      </LiquidChip>
+                      </LiqiChip>
                     ))}
                   </View>
                   <TextInput
@@ -288,22 +288,22 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
                     style={styles.noteInput}
                     value={disputeNote}
                   />
-                  <LiquidButton
+                  <LiqiButton
                     disabled={pending}
                     onPress={() => void disputeParticipation()}
                     variant="secondary"
                   >
                     Gửi xác minh
-                  </LiquidButton>
+                  </LiqiButton>
                 </View>
               ) : null}
-            </LiquidCard>
+            </LiqiCard>
           ) : actorStatus === 'disputed' ? (
             <StateCard title="Vấn đề đã được ghi nhận. Session này chưa tạo trust tích cực." />
           ) : waitingForOthers ? (
             <StateCard title="Bạn đã xác nhận. Đang chờ các thành viên còn lại." />
           ) : eligibleTargets.length ? (
-            <LiquidCard density="regular" style={styles.actionCard}>
+            <LiqiCard density="regular" style={styles.actionCard}>
               <Text style={styles.cardTitle}>Ghi nhận đồng đội</Text>
               <Text style={styles.body}>
                 Chỉ có lời khen tích cực. Phản hồi tiêu cực đi qua
@@ -312,7 +312,7 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
               <Text style={styles.label}>Đồng đội</Text>
               <View style={styles.chips}>
                 {eligibleTargets.map((playerId) => (
-                  <LiquidChip
+                  <LiqiChip
                     density="compact"
                     key={playerId}
                     onPress={() => setSelectedTarget(playerId)}
@@ -323,7 +323,7 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
                       (identitiesQuery.isPending
                         ? 'Đang tải đồng đội…'
                         : 'Người chơi Liqi')}
-                  </LiquidChip>
+                  </LiqiChip>
                 ))}
               </View>
               <Text style={styles.label}>Điểm tích cực</Text>
@@ -331,7 +331,7 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
                 {endorsements.map((item) => {
                   const selected = selectedKinds.includes(item.kind);
                   return (
-                    <LiquidChip
+                    <LiqiChip
                       density="compact"
                       key={item.kind}
                       onPress={() => {
@@ -347,17 +347,17 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
                       variant={selected ? 'purple' : 'default'}
                     >
                       {item.label}
-                    </LiquidChip>
+                    </LiqiChip>
                   );
                 })}
               </View>
-              <LiquidButton
+              <LiqiButton
                 disabled={!selectedKinds.length || pending}
                 onPress={() => void submitEndorsement()}
               >
                 {pending ? 'Đang lưu...' : 'Gửi lời khen'}
-              </LiquidButton>
-            </LiquidCard>
+              </LiqiButton>
+            </LiqiCard>
           ) : completed ? (
             <StateCard title="Feedback đã hoàn tất. Trust profile đã được cập nhật từ ledger." />
           ) : null}
@@ -369,7 +369,7 @@ export function SessionFeedbackScreen({ sessionId }: { sessionId: string }) {
           ) : null}
         </>
       )}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -383,15 +383,15 @@ function StateCard({
   title: string;
 }) {
   return (
-    <LiquidCard density="regular" style={styles.stateCard}>
+    <LiqiCard density="regular" style={styles.stateCard}>
       {loading ? <ActivityIndicator color="#67E8FF" /> : null}
       <Text style={styles.cardTitle}>{title}</Text>
       {onRetry ? (
-        <LiquidButton onPress={onRetry} variant="secondary">
+        <LiqiButton onPress={onRetry} variant="secondary">
           Tải lại
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -414,10 +414,10 @@ function formatDeadline(value: string | undefined) {
 
 const styles = StyleSheet.create({
   actionCard: { gap: 14 },
-  body: { color: liquidColors.text.secondary, fontSize: 13, lineHeight: 19 },
+  body: { color: liqiColors.text.secondary, fontSize: 13, lineHeight: 19 },
   buttonRow: { flexDirection: 'row', gap: 10 },
   cardTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 16,
     fontWeight: '800',
   },
@@ -452,7 +452,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     minHeight: 84,
     padding: 12,
     textAlignVertical: 'top',
@@ -469,7 +469,7 @@ const styles = StyleSheet.create({
     width: 44,
   },
   title: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 16,
     fontWeight: '900',
     textAlign: 'center',

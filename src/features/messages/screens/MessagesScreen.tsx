@@ -6,7 +6,6 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  ImageBackground,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,36 +22,28 @@ import {
   usePreloadAssetSurface,
 } from '@/entities/media-asset';
 import {
-  LiqiButton,
-  LiqiCard,
-  LiqiChip,
-  LiqiIdentityHeader,
-  LiqiSectionHeader,
-  LiqiSurface,
-} from '@/shared/components/liqi';
+  AppButton,
+  AppCard,
+  AppChip,
+  AppIdentityHeader,
+  AppSectionHeader,
+  AppSurface,
+  AppScreen,
+  isCompactViewport,
+  appColors,
+  appRadii,
+  appSpacing,
+  appTypography,
+} from '@/shared/ui';
 import type { PlayerId } from '@/shared/contracts/core-v1';
 import { classifyApplicationError } from '@/shared/errors/application-error';
-import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
-import {
-  isCompactLiqiViewport,
-  liqiColors,
-  liqiComponentColors,
-  liqiComponentGradients,
-  liqiComponents,
-  liqiMotion,
-  liqiOpacity,
-  liqiRadius,
-  liqiSpacing,
-  liqiTypography,
-} from '@/shared/theme/liqi-design-system';
 
-import { MessageAvatarStack } from '../components/MessageAvatarStack';
+import { ConversationCard } from '../components/ConversationCard';
 import type {
   MessageConversationSummary,
   MessageInboxFilter,
 } from '../contracts/messages-contracts';
 import { loadChatDraftIndex } from '../model/chat-draft-store';
-import type { ChatDeliveryStatus } from '../model/chat-message';
 import {
   presentInboxConversation,
   type MessageInboxConversationViewModel,
@@ -61,7 +52,7 @@ import { useChatRuntimeStore } from '../model/chat-runtime-store';
 import { useMessagesInboxQuery } from '../queries/messages-queries';
 import { useMessagesServices } from '../runtime/MessagesServicesProvider';
 import type { ChatRepository } from '../services/chat-repository';
-import { messagesChatAssets } from './messages-redesign-assets';
+import { messagesUi } from '../ui/messages-ui';
 
 const inboxFilters: readonly {
   id: MessageInboxFilter;
@@ -137,7 +128,7 @@ function findDirectConversation(
 export function MessagesScreen(props: MessagesScreenProps = {}) {
   const services = useMessagesServices();
   const { width: viewportWidth } = useWindowDimensions();
-  const compactLayout = isCompactLiqiViewport(viewportWidth);
+  const compactLayout = isCompactViewport(viewportWidth);
   const assetResolver = useAssetResolver();
   usePreloadAssetSurface('messages');
   const clock = props.clock ?? systemMessagesClock;
@@ -293,7 +284,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   };
 
   return (
-    <LiqiScreen
+    <AppScreen
       contentContainerStyle={[
         styles.content,
         compactLayout && styles.contentCompact,
@@ -301,7 +292,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
       scroll
       withHeader={false}
     >
-      <LiqiIdentityHeader
+      <AppIdentityHeader
         actions={[
           {
             accessibilityLabel: 'Tìm cuộc trò chuyện',
@@ -324,7 +315,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
         title="Tin nhắn"
         titleAccessory={
           <Ionicons
-            color={liqiColors.accent.purpleIcon}
+            color={appColors.accent.purpleIcon}
             name="sparkles"
             size={compactLayout ? 22 : 24}
           />
@@ -333,19 +324,19 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
 
       <View style={styles.inboxControls}>
         {searchVisible ? (
-          <LiqiSurface
-            backgroundColor={liqiComponentColors.messages.composerInput}
-            borderColor={liqiComponentColors.messages.composerStroke}
+          <AppSurface
+            backgroundColor={messagesUi.colors.composerInput}
+            borderColor={messagesUi.colors.composerStroke}
             contentStyle={styles.searchBox}
             emphasis="none"
-            radius={liqiRadius.pill}
+            radius={appRadii.pill}
             style={styles.searchShell}
             variant="nav"
             withHighlight={false}
             withShadow={false}
           >
             <Ionicons
-              color={liqiColors.text.muted}
+              color={appColors.text.muted}
               name="search-outline"
               size={20}
             />
@@ -357,7 +348,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
               maxLength={120}
               onChangeText={setQuery}
               placeholder="Tìm người hoặc trò chuyện..."
-              placeholderTextColor={liqiColors.text.muted}
+              placeholderTextColor={appColors.text.muted}
               returnKeyType="search"
               style={styles.searchInput}
               value={query}
@@ -369,13 +360,13 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
                 onPress={() => setQuery('')}
               >
                 <Ionicons
-                  color={liqiColors.text.tertiary}
+                  color={appColors.text.tertiary}
                   name="close-circle"
                   size={19}
                 />
               </Pressable>
             ) : null}
-          </LiqiSurface>
+          </AppSurface>
         ) : null}
 
         <ScrollView
@@ -387,7 +378,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
           {inboxFilters.map((filter) => {
             const selected = selectedFilter === filter.id;
             return (
-              <LiqiChip
+              <AppChip
                 accessibilityLabel={`Lọc ${filter.label}`}
                 accessibilityState={{ selected }}
                 density="compact"
@@ -397,9 +388,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
                   setSelectedFilter(filter.id);
                 }}
                 selected={selected}
-                selectedGradient={
-                  liqiComponentGradients.messages.filterSelected
-                }
+                selectedGradient={messagesUi.gradients.filterSelected}
                 style={[
                   styles.filterChip,
                   selected && styles.filterChipSelected,
@@ -417,7 +406,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
                 withSheen={selected}
               >
                 {filter.label}
-              </LiqiChip>
+              </AppChip>
             );
           })}
         </ScrollView>
@@ -429,25 +418,25 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
           accessibilityLiveRegion="polite"
           accessible
         >
-          <LiqiSurface
-            backgroundColor={liqiColors.background.deep}
-            borderColor={liqiColors.status.warning}
+          <AppSurface
+            backgroundColor={appColors.background.deep}
+            borderColor={appColors.status.warning}
             borderOpacity={0.22}
             contentStyle={styles.staleBanner}
             emphasis="none"
-            radius={liqiRadius.lg}
+            radius={appRadii.lg}
             variant="card"
             withShadow={false}
           >
             <Ionicons
-              color={liqiColors.status.warning}
+              color={appColors.status.warning}
               name="information-circle"
               size={17}
             />
             <Text style={styles.staleText}>
               Không thể làm mới. Đang hiển thị cuộc trò chuyện đã tải gần nhất.
             </Text>
-          </LiqiSurface>
+          </AppSurface>
         </View>
       ) : null}
 
@@ -498,16 +487,19 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
             compact={compactLayout}
             conversations={actionable}
             label="Cần bạn xử lý"
+            onOpenConversation={openConversation}
           />
           <ConversationSection
             compact={compactLayout}
             conversations={pinned}
             label="Đã ghim"
+            onOpenConversation={openConversation}
           />
           <ConversationSection
             compact={compactLayout}
             conversations={recent}
             label="Gần đây"
+            onOpenConversation={openConversation}
           />
         </View>
       )}
@@ -533,7 +525,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
         title="Bắt đầu trò chuyện"
         visible={composePickerVisible}
       />
-    </LiqiScreen>
+    </AppScreen>
   );
 }
 
@@ -541,16 +533,18 @@ function ConversationSection({
   compact,
   conversations,
   label,
+  onOpenConversation,
 }: Readonly<{
   compact: boolean;
   conversations: readonly MessageInboxConversationViewModel[];
   label: string;
+  onOpenConversation: (conversationId: string) => void;
 }>) {
   if (conversations.length === 0) return null;
 
   return (
     <View style={styles.section}>
-      <LiqiSectionHeader
+      <AppSectionHeader
         action={<Text style={styles.sectionCount}>{conversations.length}</Text>}
         style={styles.sectionHeading}
         title={label}
@@ -561,275 +555,11 @@ function ConversationSection({
             compact={compact}
             conversation={conversation}
             key={conversation.id}
+            onPress={onOpenConversation}
           />
         ))}
       </View>
     </View>
-  );
-}
-
-function ConversationCard({
-  compact,
-  conversation,
-}: Readonly<{
-  compact: boolean;
-  conversation: MessageInboxConversationViewModel;
-}>) {
-  const isUnread = Boolean(conversation.unreadCount);
-  const artwork = conversationArtwork(conversation);
-  const avatarSize = compact
-    ? liqiComponents.messages.inbox.avatarCompact
-    : liqiComponents.messages.inbox.avatar;
-  const cardRadius = compact
-    ? liqiComponents.messages.inbox.cardRadiusCompact
-    : liqiComponents.messages.inbox.cardRadius;
-
-  return (
-    <Pressable
-      accessibilityLabel={`Mở chat với ${conversation.name}`}
-      accessibilityRole="button"
-      onPress={() => openConversation(conversation.id)}
-      style={({ pressed }) => [pressed && styles.pressed]}
-    >
-      <LiqiCard
-        backgroundColor={liqiComponentColors.messages.listCardSurface}
-        backgroundSlot={
-          artwork ? (
-            <ImageBackground
-              resizeMode="cover"
-              source={artwork}
-              style={StyleSheet.absoluteFill}
-              testID={`messages-conversation-artwork-${conversation.id}`}
-            >
-              <LinearGradient
-                colors={liqiComponentGradients.messages.cardScrim}
-                end={{ x: 1, y: 0.5 }}
-                locations={[0, 0.42, 0.76, 1]}
-                start={{ x: 0, y: 0.5 }}
-                style={StyleSheet.absoluteFill}
-              />
-            </ImageBackground>
-          ) : undefined
-        }
-        borderColor={liqiComponentColors.messages.listCardStroke}
-        borderOpacity={isUnread ? 0.86 : 0.58}
-        contentStyle={[
-          styles.cardContent,
-          {
-            minHeight: compact
-              ? liqiComponents.messages.inbox.cardMinHeightCompact
-              : liqiComponents.messages.inbox.cardMinHeight,
-          },
-        ]}
-        density="list"
-        emphasis={isUnread ? 'medium' : 'low'}
-        radius={cardRadius}
-        surfaceTone="high"
-        testID={`messages-conversation-card-${conversation.id}`}
-        withHighlight={false}
-      >
-        <MessageAvatarStack
-          avatars={conversation.participantAvatars}
-          fallbackIcon={conversation.icon}
-          online={conversation.isOnline}
-          primaryAvatar={conversation.avatar}
-          size={avatarSize}
-        />
-
-        <View style={styles.cardBody}>
-          <View style={styles.cardTitleLine}>
-            <Text
-              maxFontSizeMultiplier={1}
-              numberOfLines={1}
-              style={[styles.cardTitle, isUnread && styles.cardTitleUnread]}
-            >
-              {conversation.name}
-            </Text>
-            <Ionicons
-              color={relationshipColor(conversation)}
-              name={relationshipIcon(conversation)}
-              size={18}
-            />
-          </View>
-          <View
-            accessibilityLabel={`Tin nhắn cuối: ${
-              conversation.previewPrefix ? `${conversation.previewPrefix} ` : ''
-            }${conversation.lastMessage}`}
-            accessible
-            style={styles.previewLine}
-          >
-            {conversation.previewPrefix ? (
-              <Text
-                style={[
-                  styles.previewPrefix,
-                  conversation.isDraft && styles.previewPrefixDraft,
-                ]}
-              >
-                {conversation.previewPrefix}{' '}
-              </Text>
-            ) : null}
-            <Text
-              numberOfLines={1}
-              style={[styles.previewText, isUnread && styles.previewTextUnread]}
-            >
-              {conversation.lastMessage}
-            </Text>
-          </View>
-          <View style={styles.metaLine}>
-            <Ionicons
-              color={
-                conversation.isOnline
-                  ? liqiColors.status.online
-                  : liqiColors.accent.purple
-              }
-              name={conversation.isGroup ? 'people' : 'ellipse'}
-              size={conversation.isGroup ? 14 : 8}
-            />
-            <Text numberOfLines={1} style={styles.metaText}>
-              {conversation.isGroup && conversation.participantCount > 0
-                ? `${conversation.participantCount} thành viên`
-                : conversation.presenceLabel}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.trailingColumn}>
-          <Text style={[styles.cardTime, isUnread && styles.cardTimeUnread]}>
-            {conversation.time}
-          </Text>
-          <ConversationAccessory conversation={conversation} />
-        </View>
-      </LiqiCard>
-    </Pressable>
-  );
-}
-
-function conversationArtwork(conversation: MessageInboxConversationViewModel) {
-  switch (conversation.artworkVariant) {
-    case 'love':
-      return messagesChatAssets.inboxLove;
-    case 'pair':
-      return messagesChatAssets.inboxPair;
-    case 'party':
-      return messagesChatAssets.inboxParty;
-    case 'rank':
-      return messagesChatAssets.inboxRank;
-    default:
-      return undefined;
-  }
-}
-
-function relationshipIcon(
-  conversation: MessageInboxConversationViewModel,
-): keyof typeof Ionicons.glyphMap {
-  if (conversation.relationship === 'team') return 'trophy';
-  if (conversation.relationship === 'soulmate') return 'heart';
-  if (conversation.sourceType === 'play_session') return 'game-controller';
-  if (conversation.kind === 'system') return 'sparkles';
-  return 'heart-outline';
-}
-
-function relationshipColor(conversation: MessageInboxConversationViewModel) {
-  if (conversation.relationship === 'team') return liqiColors.accent.amber;
-  if (conversation.relationship === 'soulmate') return liqiColors.accent.pink;
-  return liqiColors.accent.purple;
-}
-
-function ConversationAccessory({
-  conversation,
-}: Readonly<{
-  conversation: MessageInboxConversationViewModel;
-}>) {
-  if (conversation.unreadCount) {
-    return (
-      <View
-        accessibilityLabel={`${conversation.unreadCount} tin nhắn chưa đọc`}
-        accessible
-        style={styles.unreadBadge}
-      >
-        <Text style={styles.unreadText}>{conversation.unreadCount}</Text>
-      </View>
-    );
-  }
-  if (conversation.isDraft) {
-    return (
-      <Ionicons
-        accessibilityLabel="Có bản nháp"
-        color={liqiColors.status.warning}
-        name="create-outline"
-        size={18}
-      />
-    );
-  }
-  if (conversation.latestDirection === 'outgoing') {
-    return <DeliveryAccessory status={conversation.latestDeliveryStatus} />;
-  }
-  if (conversation.isMuted) {
-    return (
-      <Ionicons
-        accessibilityLabel="Cuộc trò chuyện đã tắt thông báo"
-        color={liqiColors.text.muted}
-        name="notifications-off-outline"
-        size={18}
-      />
-    );
-  }
-  if (conversation.isPinned) {
-    return (
-      <Ionicons
-        accessibilityLabel="Cuộc trò chuyện đã ghim"
-        color={liqiColors.accent.purpleSoft}
-        name="bookmark"
-        size={17}
-      />
-    );
-  }
-  return <View style={styles.trailingSpacer} />;
-}
-
-function DeliveryAccessory({ status }: { status?: ChatDeliveryStatus }) {
-  if (status === 'failed') {
-    return (
-      <Ionicons
-        accessibilityLabel="Tin nhắn gửi thất bại"
-        color={liqiColors.status.danger}
-        name="alert-circle-outline"
-        size={18}
-      />
-    );
-  }
-  if (status === 'sending') {
-    return (
-      <ActivityIndicator
-        accessibilityLabel="Tin nhắn đang gửi"
-        color={liqiColors.text.muted}
-        size="small"
-      />
-    );
-  }
-  if (status === 'queued') {
-    return (
-      <Ionicons
-        accessibilityLabel="Tin nhắn đang chờ mạng"
-        color={liqiColors.status.warning}
-        name="cloud-offline-outline"
-        size={18}
-      />
-    );
-  }
-  return (
-    <Ionicons
-      accessibilityLabel={
-        status === 'read' ? 'Tin nhắn đã đọc' : 'Tin nhắn đã gửi'
-      }
-      color={
-        status === 'read'
-          ? liqiComponentColors.messages.deliveryRead
-          : liqiColors.text.muted
-      }
-      name={status === 'sent' ? 'checkmark' : 'checkmark-done'}
-      size={17}
-    />
   );
 }
 
@@ -838,30 +568,30 @@ function StartConversationCard({
   onPress,
 }: Readonly<{ compact: boolean; onPress: () => void }>) {
   return (
-    <LiqiCard
-      backgroundColor={liqiComponentColors.messages.promoSurface}
+    <AppCard
+      backgroundColor={messagesUi.colors.promoSurface}
       backgroundSlot={
         <LinearGradient
-          colors={liqiComponentGradients.messages.promo}
+          colors={messagesUi.gradients.promo}
           end={{ x: 1, y: 1 }}
           start={{ x: 0, y: 0 }}
           style={StyleSheet.absoluteFill}
         />
       }
-      borderColor={liqiComponentColors.messages.listCardStroke}
+      borderColor={messagesUi.colors.listCardStroke}
       contentStyle={[
         styles.promoContent,
         compact && styles.promoContentCompact,
       ]}
       density="list"
       emphasis="medium"
-      radius={liqiComponents.messages.inbox.cardRadiusCompact}
+      radius={messagesUi.metrics.inbox.cardRadiusCompact}
       style={styles.promoCard}
       withHighlight
     >
       <View style={styles.promoIcon}>
         <Ionicons
-          color={liqiColors.text.onAccent}
+          color={appColors.text.onAccent}
           name="chatbubble-ellipses"
           size={25}
         />
@@ -872,15 +602,15 @@ function StartConversationCard({
           Kết nối ngay với một người bạn đã sẵn sàng nhắn tin.
         </Text>
       </View>
-      <LiqiButton
+      <AppButton
         accessibilityLabel="Bắt đầu trò chuyện"
         onPress={onPress}
         style={styles.promoButton}
         textStyle={styles.promoButtonText}
       >
         Bắt đầu
-      </LiqiButton>
-    </LiqiCard>
+      </AppButton>
+    </AppCard>
   );
 }
 
@@ -900,240 +630,158 @@ function InboxState({
   title: string;
 }>) {
   return (
-    <LiqiCard
-      backgroundColor={liqiComponentColors.messages.mutedSurface}
-      borderColor={liqiComponentColors.messages.listCardStroke}
+    <AppCard
+      backgroundColor={messagesUi.colors.mutedSurface}
+      borderColor={messagesUi.colors.listCardStroke}
       contentStyle={styles.stateCardContent}
       emphasis="none"
-      radius={liqiComponents.messages.inbox.cardRadius}
+      radius={messagesUi.metrics.inbox.cardRadius}
       style={styles.stateCard}
       surfaceTone="high"
       withHighlight={false}
       withShadow={false}
     >
       {loading ? (
-        <ActivityIndicator color={liqiColors.accent.purpleIcon} size="small" />
+        <ActivityIndicator color={appColors.accent.purpleIcon} size="small" />
       ) : (
-        <Ionicons color={liqiColors.accent.purpleIcon} name={icon} size={30} />
+        <Ionicons color={appColors.accent.purpleIcon} name={icon} size={30} />
       )}
       <Text accessibilityLabel={title} style={styles.stateTitle}>
         {title}
       </Text>
       <Text style={styles.stateDescription}>{description}</Text>
       {actionLabel && onAction ? (
-        <LiqiButton
+        <AppButton
           accessibilityLabel={actionLabel}
           onPress={onAction}
           style={styles.stateAction}
           variant="secondary"
         >
           {actionLabel}
-        </LiqiButton>
+        </AppButton>
       ) : null}
-    </LiqiCard>
+    </AppCard>
   );
 }
 
 const styles = StyleSheet.create({
-  cardBody: { flex: 1, gap: liqiSpacing.sm, minWidth: 0 },
-  cardContent: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: liqiSpacing.xl,
-    paddingHorizontal: liqiSpacing.xl,
-    paddingVertical: liqiSpacing.lg,
-  },
-  cardTime: {
-    ...liqiTypography.caption,
-    color: liqiComponentColors.messages.timestamp,
-    fontWeight: '600',
-  },
-  cardTimeUnread: { color: liqiColors.text.primary },
-  cardTitle: {
-    ...liqiTypography.cardTitle,
-    color: liqiColors.text.secondary,
-    flexShrink: 1,
-  },
-  cardTitleLine: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: liqiSpacing.sm,
-    minWidth: 0,
-  },
-  cardTitleUnread: { color: liqiColors.text.primary, fontWeight: '800' },
   content: {
-    gap: liqiSpacing['3xl'],
-    paddingBottom: liqiComponents.screen.bottomNavSpacer,
-    paddingTop: liqiSpacing.lg,
+    gap: appSpacing['3xl'],
+    paddingTop: appSpacing.lg,
   },
-  contentCompact: { gap: liqiSpacing['2xl'] },
-  conversationList: { gap: liqiSpacing.lg },
+  contentCompact: { gap: appSpacing['2xl'] },
+  conversationList: { gap: appSpacing.lg },
   filterChip: {
-    minHeight: liqiComponents.messages.inbox.filterHeight,
-    paddingHorizontal: liqiComponents.messages.inbox.filterPaddingHorizontal,
+    minHeight: messagesUi.metrics.inbox.filterHeight,
+    paddingHorizontal: messagesUi.metrics.inbox.filterPaddingHorizontal,
   },
   filterChipSelected: {
-    shadowColor: liqiComponentColors.messages.filterSelectedShadow,
+    shadowColor: messagesUi.colors.filterSelectedShadow,
     shadowOffset: { height: 0, width: 0 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
   },
   filterChipText: { fontSize: 12.5, fontWeight: '700' },
   filterRail: {
-    gap: liqiSpacing.md,
-    paddingHorizontal: liqiSpacing.xs,
-    paddingVertical: liqiSpacing.xs,
+    gap: appSpacing.md,
+    paddingHorizontal: appSpacing.xs,
+    paddingVertical: appSpacing.xs,
   },
   filterUnreadDot: {
-    backgroundColor: liqiComponentColors.messages.filterUnreadDot,
+    backgroundColor: messagesUi.colors.filterUnreadDot,
     borderRadius: 4,
     height: 8,
-    shadowColor: liqiComponentColors.messages.filterSelectedShadow,
+    shadowColor: messagesUi.colors.filterSelectedShadow,
     shadowOffset: { height: 0, width: 0 },
     shadowOpacity: 0.55,
     shadowRadius: 5,
     width: 8,
   },
-  inboxControls: { gap: liqiSpacing.lg },
-  metaLine: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: liqiSpacing.sm,
-  },
-  metaText: {
-    ...liqiTypography.caption,
-    color: liqiColors.text.tertiary,
-    flex: 1,
-    fontWeight: '600',
-  },
-  pressed: {
-    opacity: liqiOpacity.pressed,
-    transform: [{ scale: liqiMotion.subtlePressScale }],
-  },
-  previewLine: {
-    alignItems: 'baseline',
-    flexDirection: 'row',
-    minWidth: 0,
-  },
-  previewPrefix: {
-    ...liqiTypography.bodyCompact,
-    color: liqiColors.text.secondary,
-    fontWeight: '700',
-  },
-  previewPrefixDraft: { color: liqiColors.status.warning },
-  previewText: {
-    ...liqiTypography.bodyCompact,
-    color: liqiColors.text.tertiary,
-    flex: 1,
-  },
-  previewTextUnread: { color: liqiColors.text.secondary, fontWeight: '600' },
+  inboxControls: { gap: appSpacing.lg },
   promoButton: { minWidth: 94 },
-  promoButtonText: { fontSize: liqiTypography.buttonCompact.fontSize },
-  promoCard: { marginTop: liqiSpacing.xs },
+  promoButtonText: { fontSize: appTypography.buttonCompact.fontSize },
+  promoCard: { marginTop: appSpacing.xs },
   promoContent: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: liqiSpacing.xl,
-    minHeight: liqiComponents.messages.inbox.promoMinHeight,
-    padding: liqiSpacing.xl,
+    gap: appSpacing.xl,
+    minHeight: messagesUi.metrics.inbox.promoMinHeight,
+    padding: appSpacing.xl,
   },
   promoContentCompact: {
-    gap: liqiSpacing.md,
-    paddingHorizontal: liqiSpacing.lg,
+    gap: appSpacing.md,
+    paddingHorizontal: appSpacing.lg,
   },
-  promoCopy: { flex: 1, gap: liqiSpacing.xs, minWidth: 0 },
+  promoCopy: { flex: 1, gap: appSpacing.xs, minWidth: 0 },
   promoDescription: {
-    ...liqiTypography.caption,
-    color: liqiColors.text.secondary,
+    ...appTypography.caption,
+    color: appColors.text.secondary,
   },
   promoIcon: {
     alignItems: 'center',
-    backgroundColor: liqiColors.accent.purpleSoft,
-    borderRadius: liqiRadius.xl,
+    backgroundColor: appColors.accent.purpleSoft,
+    borderRadius: appRadii.xl,
     height: 48,
     justifyContent: 'center',
     width: 48,
   },
   promoTitle: {
-    ...liqiTypography.sectionTitle,
-    color: liqiColors.text.primary,
+    ...appTypography.sectionTitle,
+    color: appColors.text.primary,
   },
   searchBox: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: liqiSpacing.md,
-    minHeight: liqiComponents.messages.inbox.searchHeight,
-    paddingHorizontal: liqiSpacing['2xl'],
+    gap: appSpacing.md,
+    minHeight: messagesUi.metrics.inbox.searchHeight,
+    paddingHorizontal: appSpacing['2xl'],
   },
   searchInput: {
-    ...liqiTypography.body,
-    color: liqiColors.text.primary,
+    ...appTypography.body,
+    color: appColors.text.primary,
     flex: 1,
     paddingVertical: 0,
   },
-  searchShell: { marginHorizontal: liqiSpacing.xs },
-  section: { gap: liqiSpacing.md },
+  searchShell: { marginHorizontal: appSpacing.xs },
+  section: { gap: appSpacing.md },
   sectionCount: {
-    ...liqiTypography.caption,
-    color: liqiColors.accent.purpleIcon,
+    ...appTypography.caption,
+    color: appColors.accent.purpleIcon,
     fontWeight: '800',
   },
-  sectionHeading: { marginTop: 0, paddingHorizontal: liqiSpacing.xs },
-  sections: { gap: liqiSpacing['4xl'] },
+  sectionHeading: { marginTop: 0, paddingHorizontal: appSpacing.xs },
+  sections: { gap: appSpacing['4xl'] },
   staleBanner: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: liqiSpacing.md,
-    paddingHorizontal: liqiSpacing.xl,
-    paddingVertical: liqiSpacing.lg,
+    gap: appSpacing.md,
+    paddingHorizontal: appSpacing.xl,
+    paddingVertical: appSpacing.lg,
   },
   staleText: {
-    ...liqiTypography.caption,
-    color: liqiColors.text.secondary,
+    ...appTypography.caption,
+    color: appColors.text.secondary,
     flex: 1,
   },
-  stateAction: { marginTop: liqiSpacing.sm },
-  stateCard: { marginTop: liqiSpacing.md },
+  stateAction: { marginTop: appSpacing.sm },
+  stateCard: { marginTop: appSpacing.md },
   stateCardContent: {
     alignItems: 'center',
-    gap: liqiSpacing.md,
+    gap: appSpacing.md,
     justifyContent: 'center',
     minHeight: 190,
-    paddingHorizontal: liqiSpacing['6xl'],
-    paddingVertical: liqiSpacing['6xl'],
+    paddingHorizontal: appSpacing['6xl'],
+    paddingVertical: appSpacing['6xl'],
   },
   stateDescription: {
-    ...liqiTypography.bodyCompact,
-    color: liqiColors.text.tertiary,
+    ...appTypography.bodyCompact,
+    color: appColors.text.tertiary,
     maxWidth: 280,
     textAlign: 'center',
   },
   stateTitle: {
-    ...liqiTypography.sectionTitle,
-    color: liqiColors.text.primary,
+    ...appTypography.sectionTitle,
+    color: appColors.text.primary,
     textAlign: 'center',
-  },
-  trailingColumn: {
-    alignItems: 'flex-end',
-    alignSelf: 'stretch',
-    justifyContent: 'space-between',
-    minWidth: 42,
-    paddingVertical: liqiSpacing.xs,
-  },
-  trailingSpacer: { height: 18, width: 18 },
-  unreadBadge: {
-    alignItems: 'center',
-    backgroundColor: liqiComponentColors.messages.unread,
-    borderColor: liqiColors.border.surfaceHighlight,
-    borderRadius: liqiRadius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    minWidth: 24,
-    paddingHorizontal: liqiSpacing.sm,
-    paddingVertical: liqiSpacing.xs,
-  },
-  unreadText: {
-    ...liqiTypography.caption,
-    color: liqiColors.text.onAccent,
-    fontWeight: '900',
   },
 });

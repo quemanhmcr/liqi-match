@@ -1,0 +1,380 @@
+{
+  "schemaVersion": 1,
+  "authority": "Home-derived LiQi design language",
+  "baselineCommit": "92f45f74f2ec904832ec7d44789d0d73dea43c8a",
+  "policy": "Checksums freeze pre-governance UI. Remove entries through migration; do not refresh hashes in unrelated feature work.",
+  "entries": [
+    {
+      "owner": "feature:auth",
+      "path": "src/features/auth/screens/LoginScreen.tsx",
+      "sha256": "fe22f5477b3ee5312e14edad0bafc644797ee9c5321d052370bbc2fd17bf96b4",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:auth",
+      "path": "src/features/auth/screens/OAuthCallbackScreen.tsx",
+      "sha256": "0297c3187087c285527bc20f999f18db0531acb24edf458e9ebc8dc5daefb1a2",
+      "violations": ["missing-liqi-screen-host"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/components/DiscoverCollectionScreen.tsx",
+      "sha256": "68a04fb9ad33706d61d866c313e614f8dc2310d3bbfae40cb69694f1ce2e78ca",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/components/DiscoverMatchIntentGate.tsx",
+      "sha256": "8dc20df031191bf3fd2aace57e0f02f161dadd683a99a58f75c01b68afcb2ff0",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/components/DiscoverQueryState.tsx",
+      "sha256": "8616220175fbaba4c3b01de00153acfe1232fc056c3fb33ed9f4b90a0ae5e52e",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/components/DiscoverResolvedImage.tsx",
+      "sha256": "83bcc81d2904c4d73a1725766c82b8f725b9b71fba425dcd3638018568c25593",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/components/DiscoverSetCard.tsx",
+      "sha256": "d8934942e8e3b65c751895bed814119acef353578b40e3926e860c957f95f1df",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/components/discover-collection.styles.ts",
+      "sha256": "098e1e11af52f6222e12a44ed952e5aab2a0cce626c709ca04ff09ecdf2070c6",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/screens/DiscoverSetsScreen.tsx",
+      "sha256": "8450351c3577da211a689638cb8f9b80b3a431f10454864b4f674a252aabcda8",
+      "violations": ["missing-liqi-screen-host", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/screens/DiscoverVibesScreen.tsx",
+      "sha256": "2ee74a24ba51bfb9f77d4e68fabe415a93932fcb4ba7cdd855aac4b0338a88bf",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/screens/ExploreScreen.tsx",
+      "sha256": "8bb7a40168b355a28d9514db1aaf02a6ff7901eeac88b9f16711265c15fcf9af",
+      "violations": ["missing-liqi-screen-host", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/screens/MatchDetailScreen.tsx",
+      "sha256": "0402cd2aba72ae0ec3eb80e084525039f30cf4f0c9aa0435b3568e8f8f80878d",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/screens/MatchSetDetailScreen.tsx",
+      "sha256": "94bd4edeeb9de51ed9264c18ba11efe2598324d56372a4ef6c535e401a6038c3",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/screens/MatchSetDiscoveryScreen.tsx",
+      "sha256": "bbb1e9dda86e55edac3d941c1199dc9b57f3bd7cc31f1f5e7b49cba4661fd9d5",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:discover",
+      "path": "src/features/discover/screens/explore.styles.ts",
+      "sha256": "8a5f5490b74316ac89acab516e0d20946e10a041d37d60fab262d3537bd1947a",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:home",
+      "path": "src/features/home/home-dashboard-service.ts",
+      "sha256": "bb9785310149363d38224e5cb86a7948bdb184df1a689f817e78f3fb7fa6e330",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:match-set",
+      "path": "src/features/match-set/screens/MatchSetEditorScreen.tsx",
+      "sha256": "6d12f8975691eda0fc302da9ea5e8ec2ca4939f444c25778df85691bf6a8941f",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:match-set",
+      "path": "src/features/match-set/screens/MatchSetHubScreen.tsx",
+      "sha256": "58353e2aa243ff014e38593a7c1a6b8acb21b9e20178654dc6920cdb2288304e",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:messages",
+      "path": "src/features/messages/components/ChatMediaViewer.tsx",
+      "sha256": "862bc16e9e860c9032dc7e8e1ec33d8c318aec63d8ec5cd54f4146791bb7c23a",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:messages",
+      "path": "src/features/messages/components/MessageResolvedImage.tsx",
+      "sha256": "d55d25f8c9d2d5a3745a8956f6ee50d1e883c3d695fef6f0d48009ff5bfb2a02",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:notifications",
+      "path": "src/features/notifications/components/NotificationResolvedImage.tsx",
+      "sha256": "9a1da6c6a756dfe82002a7ec09cf125f4ffb483b11fb87c173582924f930dda8",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:notifications",
+      "path": "src/features/notifications/screens/NotificationsScreen.tsx",
+      "sha256": "ac018f02e0b5d2b523fcefff10ce9da1b6d35070ae57e7fbabbb4ba034367b94",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:onboarding",
+      "path": "src/features/onboarding/components/OnboardingCinematic.tsx",
+      "sha256": "3182349bb2c9c1db6156a078d8801af3f4bbeb75b241eece69f4564d9ce8ca1d",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:onboarding",
+      "path": "src/features/onboarding/screens/HabitsScreen.tsx",
+      "sha256": "b1374d429bed71c578ed5566ab754c16c2117ae364cb5e13f09e98ac1613cf2c",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:onboarding",
+      "path": "src/features/onboarding/screens/HeroSelectionScreen.tsx",
+      "sha256": "19aae7c80b9295a27382dcf3922a2ea12c1ec4e06a55e76b4186af84c643890a",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:onboarding",
+      "path": "src/features/onboarding/screens/LaneSelectionScreen.tsx",
+      "sha256": "42849c3e89c678b461e8a3d0bbd0c0c0ee8f477484c435bfc5e097522bb693cb",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:onboarding",
+      "path": "src/features/onboarding/screens/ProfileMediaScreen.tsx",
+      "sha256": "2d821125d6891cff0b786d35967456d7bf773e4921f21a53bc877f27a263a611",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:onboarding",
+      "path": "src/features/onboarding/screens/ProfileSetupScreen.tsx",
+      "sha256": "4596acc95146964f18a2796b7a5d1972ed909a8290c9a15f4f653a7157325f7f",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:onboarding",
+      "path": "src/features/onboarding/screens/RankSelectionScreen.tsx",
+      "sha256": "36c8cda7dea26c4f133783b389e08790aadf7988fbbddcb6e525985d9e5d5905",
+      "violations": [
+        "missing-canonical-theme-import",
+        "missing-liqi-screen-host",
+        "raw-color-literal"
+      ]
+    },
+    {
+      "owner": "feature:play-session",
+      "path": "src/features/play-session/screens/PlaySessionCreateScreen.tsx",
+      "sha256": "9d3ff38b4faf26dcf20c35ed6736b7df69d9cbdccdad4afc7f3bddbf89b143d3",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:play-session",
+      "path": "src/features/play-session/screens/PlaySessionDetailScreen.tsx",
+      "sha256": "4a0d57bd28e9d407a6711b584ac22f67e41fc2fa6bd910dffa883a7ec16ad5b7",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:play-session",
+      "path": "src/features/play-session/screens/PlaySessionListScreen.tsx",
+      "sha256": "04220b721e148c65125de8fa581717fd06127a8f7de41de8dc8b0bb1aa878140",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:play-session",
+      "path": "src/features/play-session/screens/SessionConversationScreen.tsx",
+      "sha256": "65598ea7fbc594b65d47708d99d617a6d05b8b6cf50c916a349ca5b05df6d859",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/components/ProfilePrivacySettingsSection.tsx",
+      "sha256": "90a007d4ea2b821a5f906fb2338299e42039a770d5e0c8821e2556088926428c",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/AvailabilitySection.tsx",
+      "sha256": "8f6f370b215e7d208a364408229169fa2ec0ce0fdc49ef667e391f5a72d74025",
+      "violations": ["missing-canonical-theme-import"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/GameProfileSection.tsx",
+      "sha256": "862220b8fbabb8b0d43a0576e3c1cca50251bb044ee708a8c371105e0d15c184",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/HeroSection.tsx",
+      "sha256": "17d46489186bab1ae30e88e71fa72790df6329c770f8d85621079a7157ea3460",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/IdentitySection.tsx",
+      "sha256": "5b1cdf4855baffa59f65823c9f8bd7788091eeab2d5ba2820de0258a2247d13f",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/LaneSection.tsx",
+      "sha256": "a3100904c3bba18430ec84d1e0465660e569b79a82ff49b6ff324893969833b5",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/MediaSection.tsx",
+      "sha256": "2b472fd9d8c7259f24167d86bf8eab47e280b92aa5cee5a3a6be766a4915ebc8",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/ProfileEditAvatar.tsx",
+      "sha256": "d8cbe6e488abd73962b2bada2f24ee1a90aa0bb39c9af8c17f3d92dfddd260a8",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/ProfileEditChrome.tsx",
+      "sha256": "76320206ed8346b3b6d3b52ad980e7879a72e172b998c534721124ffa1123b86",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/ProfileEditPreview.tsx",
+      "sha256": "2b080e40f388f8753db02a4448d8018af1781716e368eb3a01d32166dfde0349",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/ProfileEditPrimitives.tsx",
+      "sha256": "a9ab7f5fdbcf1277611bdc87b93e00153b1a4ae027a5bf62d3ec197f294bf869",
+      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/ProfileEditSaveBanner.tsx",
+      "sha256": "4f5df6ae38f0b015372af388e493de0743d71e6339142caa0ca862fc3f9d6514",
+      "violations": ["missing-canonical-theme-import"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/edit/components/profile-edit-styles.ts",
+      "sha256": "3417f76791508c35ddef5162bc68a48ba2327f28d0bdbb7cdc9044c731d08408",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/screens/ProfileBlockedUsersScreen.tsx",
+      "sha256": "37043ae9d1b8fcc618c352bf51e132d451cc24b8f82e5a78bcb42a423c40f963",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/screens/ProfileEditScreen.tsx",
+      "sha256": "70f4300257c19ef8dfd479f02641afe104653a5deffa3a3f0ee9df1e0786a39e",
+      "violations": ["missing-canonical-theme-import"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/screens/ProfileGalleryScreen.tsx",
+      "sha256": "479d4b86189471b3fecf0478c40de090c6fca8c38a77f50bf5067f16cb47d740",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/screens/ProfileSettingsScreen.tsx",
+      "sha256": "38d227b765d0b86b36fdc1aaea4bca1cf4baf330855571f159ebc231bb2d46ff",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:profile",
+      "path": "src/features/profile/screens/ProfileShareScreen.tsx",
+      "sha256": "537a3e69d0d0f4c6bead84b1516a9f5336d5f987bd84f017112df51c7dfca3d0",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:social",
+      "path": "src/features/social/screens/SocialHubScreen.tsx",
+      "sha256": "f5ab689abbc8f89024f20c7da1e82cd151aff37fefed6d8b8726af7e1b6d22a6",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:trust-outcomes",
+      "path": "src/features/trust-outcomes/screens/EngagementPreferencesScreen.tsx",
+      "sha256": "470cd38182689c55a0c3b828123c17f92c0f941d432229e653b1a0d95f1d10b1",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:trust-outcomes",
+      "path": "src/features/trust-outcomes/screens/ReputationLedgerScreen.tsx",
+      "sha256": "5c192d5230a5c0f809b56ca6035483132bb9b7556bccf6f8793b85797aede14c",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "feature:trust-outcomes",
+      "path": "src/features/trust-outcomes/screens/SessionFeedbackScreen.tsx",
+      "sha256": "02452e85113bb00f8a1d9db5fbfcd1a531d7b66dd2d42fcf8dcbeda8c5a507bb",
+      "violations": ["raw-color-literal"]
+    },
+    {
+      "owner": "platform:shared",
+      "path": "src/shared/components/FeatureStageScreen.tsx",
+      "sha256": "ef1bb7022ca3c47d1ffaded942581cf7360986bd49167a06e6e55506c8b84815",
+      "violations": ["raw-color-literal"]
+    }
+  ]
+}

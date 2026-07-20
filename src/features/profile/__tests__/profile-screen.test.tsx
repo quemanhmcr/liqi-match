@@ -1,6 +1,7 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
 
+import { appRoutes } from '@/app-shell/navigation/routes';
 import { createAssetKey, type AssetResolver } from '@/entities/media-asset';
 import {
   PlayerTrustProjectionV2Schema,
@@ -108,12 +109,39 @@ describe('ProfileScreen repository consumer', () => {
     expect(screen.getByText('12')).toBeTruthy();
     expect(screen.getByText('3')).toBeTruthy();
     expect(screen.getByText('Buổi đã chơi')).toBeTruthy();
-    expect(screen.getByText('Hoàn tất')).toBeTruthy();
-    expect(screen.getByText('Lời khen')).toBeTruthy();
+    expect(screen.getByText('Độ tin cậy')).toBeTruthy();
     expect(screen.getByText('Đồng đội quen')).toBeTruthy();
     expect(screen.queryByText('128')).toBeNull();
     expect(screen.queryByText('4.8')).toBeNull();
     expect(screen.queryByText('92')).toBeNull();
+  });
+
+  it('keeps mature self-profile workflows reachable through the shared identity header and sections', async () => {
+    mockedRouter.router.push.mockClear();
+    const screen = await renderWithProviders(<ProfileScreen mode="self" />, {
+      serviceOverrides: {
+        profileRepository: { getProfile: async () => canonicalProfile },
+      },
+    });
+
+    expect(await screen.findByTestId('profile-identity-header')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Cài đặt hồ sơ'));
+    await fireEvent.press(screen.getByLabelText('Chỉnh sửa hồ sơ'));
+    await fireEvent.press(screen.getByLabelText('Quản lý khoảnh khắc'));
+    await fireEvent.press(screen.getByLabelText('Chia sẻ hồ sơ'));
+
+    expect(mockedRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.settings,
+    );
+    expect(mockedRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.edit,
+    );
+    expect(mockedRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.gallery,
+    );
+    expect(mockedRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.share,
+    );
   });
 
   it('uses the canonical route userId and renders the repository projection', async () => {
@@ -149,7 +177,10 @@ describe('ProfileScreen repository consumer', () => {
     );
 
     expect(
-      await screen.findByLabelText('Ảnh bìa hồ sơ offline-unavailable'),
+      await screen.findByLabelText('Không gian fantasy của hồ sơ LiQi'),
+    ).toBeTruthy();
+    expect(
+      screen.getByLabelText('Ảnh bìa hồ sơ offline-unavailable'),
     ).toBeTruthy();
     expect(
       screen.getByLabelText('Avatar hồ sơ offline-unavailable'),

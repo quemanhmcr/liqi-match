@@ -4,17 +4,22 @@ import { Alert, StyleSheet, View } from 'react-native';
 
 import type { SocialCommandCoordinator } from '@/entities/social-relationship/social-command-coordinator';
 import type { AuthSession } from '@/shared/auth/auth-service';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-} from '@/shared/components/liquid';
 import type {
   ReportCategoryV2,
   SocialRelationshipSnapshotV2,
 } from '@/shared/contracts/core-v2';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import {
+  liqiColors,
+  liqiSpacing,
+  liqiTypography,
+} from '@/shared/theme/liqi-design-system';
 
+import {
+  ProfileActionButton,
+  ProfilePill,
+  ProfileSurface,
+  type ProfileActionVariant,
+} from './ProfilePresentationPrimitives';
 import { ProfileText } from './ProfileShared';
 
 type RelationshipAction =
@@ -67,28 +72,25 @@ export function ProfileRelationshipActions({
   const friendshipLabel = friendshipCopy(capabilities.friendshipLabel);
 
   return (
-    <LiquidCard
-      contentStyle={styles.content}
-      density="compact"
-      glowIntensity="low"
-      style={styles.card}
-      withShadow={false}
-    >
+    <ProfileSurface style={styles.card}>
       <View style={styles.headingRow}>
         <View style={styles.headingCopy}>
           <ProfileText style={styles.eyebrow}>QUAN HỆ & AN TOÀN</ProfileText>
           <ProfileText style={styles.title}>{friendshipLabel}</ProfileText>
         </View>
-        <LiquidChip
-          density="compact"
-          variant={capabilities.blocked ? 'orange' : 'purple'}
-        >
-          {capabilities.blocked
-            ? 'Đã chặn'
-            : capabilities.muted
-              ? 'Đã tắt tiếng'
-              : 'Authoritative V2'}
-        </LiquidChip>
+        <ProfilePill
+          icon={
+            capabilities.blocked ? 'ban-outline' : 'shield-checkmark-outline'
+          }
+          label={
+            capabilities.blocked
+              ? 'Đã chặn'
+              : capabilities.muted
+                ? 'Đã tắt tiếng'
+                : 'Đã xác minh'
+          }
+          tone={capabilities.blocked ? 'amber' : 'purple'}
+        />
       </View>
 
       <View style={styles.actionGrid}>
@@ -98,6 +100,7 @@ export function ProfileRelationshipActions({
             icon="person-add-outline"
             label="Kết bạn"
             onPress={() => mutation.mutate('request')}
+            variant="primary"
           />
         ) : null}
         {capabilities.canAcceptFriendship ? (
@@ -106,6 +109,7 @@ export function ProfileRelationshipActions({
             icon="checkmark-circle-outline"
             label="Chấp nhận"
             onPress={() => mutation.mutate('accept')}
+            variant="primary"
           />
         ) : null}
         {capabilities.canDeclineFriendship ? (
@@ -114,7 +118,6 @@ export function ProfileRelationshipActions({
             icon="close-circle-outline"
             label="Từ chối"
             onPress={() => mutation.mutate('decline')}
-            variant="secondary"
           />
         ) : null}
         {capabilities.canCancelFriendship ? (
@@ -123,7 +126,6 @@ export function ProfileRelationshipActions({
             icon="arrow-undo-outline"
             label="Huỷ lời mời"
             onPress={() => mutation.mutate('cancel')}
-            variant="secondary"
           />
         ) : null}
         {capabilities.canRemoveFriendship ? (
@@ -132,7 +134,7 @@ export function ProfileRelationshipActions({
             icon="person-remove-outline"
             label="Huỷ kết bạn"
             onPress={() => confirmRemove(() => mutation.mutate('remove'))}
-            variant="secondary"
+            variant="danger"
           />
         ) : null}
         {capabilities.canMute ? (
@@ -141,7 +143,7 @@ export function ProfileRelationshipActions({
             icon="notifications-off-outline"
             label="Tắt tiếng"
             onPress={() => mutation.mutate('mute')}
-            variant="secondary"
+            variant="ghost"
           />
         ) : null}
         {capabilities.canUnmute ? (
@@ -150,7 +152,7 @@ export function ProfileRelationshipActions({
             icon="notifications-outline"
             label="Bật thông báo"
             onPress={() => mutation.mutate('unmute')}
-            variant="secondary"
+            variant="ghost"
           />
         ) : null}
         {capabilities.canBlock ? (
@@ -159,7 +161,7 @@ export function ProfileRelationshipActions({
             icon="ban-outline"
             label="Chặn"
             onPress={() => confirmBlock(() => mutation.mutate('block'))}
-            variant="team"
+            variant="danger"
           />
         ) : null}
         {capabilities.canUnblock ? (
@@ -168,7 +170,7 @@ export function ProfileRelationshipActions({
             icon="shield-checkmark-outline"
             label="Gỡ chặn"
             onPress={() => mutation.mutate('unblock')}
-            variant="team"
+            variant="primary"
           />
         ) : null}
         {capabilities.canReport ? (
@@ -191,7 +193,7 @@ export function ProfileRelationshipActions({
           {socialErrorMessage(mutation.error)}
         </ProfileText>
       ) : null}
-    </LiquidCard>
+    </ProfileSurface>
   );
 }
 
@@ -200,29 +202,23 @@ function ActionButton({
   icon,
   label,
   onPress,
-  variant = 'primary',
+  variant = 'secondary',
 }: Readonly<{
   disabled: boolean;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
-  variant?: 'ghost' | 'primary' | 'secondary' | 'team';
+  variant?: ProfileActionVariant;
 }>) {
   return (
-    <LiquidButton
-      accessibilityLabel={label}
-      contentStyle={styles.buttonContent}
+    <ProfileActionButton
       disabled={disabled}
-      glowIntensity="none"
+      icon={icon}
+      label={label}
       onPress={onPress}
-      radius={18}
       style={styles.button}
       variant={variant}
-      withShadow={false}
-    >
-      <Ionicons color="rgba(239,244,255,0.88)" name={icon} size={15} />
-      <ProfileText style={styles.buttonText}>{label}</ProfileText>
-    </LiquidButton>
+    />
   );
 }
 
@@ -353,30 +349,31 @@ const styles = StyleSheet.create({
   actionGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: liqiSpacing.md,
+    marginTop: liqiSpacing.xl,
   },
   button: { flexGrow: 1, minWidth: 112 },
-  buttonContent: { gap: 6, minHeight: 38, paddingHorizontal: 12 },
-  buttonText: {
-    color: 'rgba(239,244,255,0.88)',
-    fontSize: 12,
-    fontWeight: '800',
+  card: { gap: liqiSpacing.xl },
+  errorText: {
+    ...liqiTypography.caption,
+    color: liqiColors.status.danger,
+    marginTop: liqiSpacing.md,
   },
-  card: { marginTop: 12 },
-  content: { gap: 12 },
-  errorText: { color: '#FFB6B6', fontSize: 12, lineHeight: 17 },
   eyebrow: {
-    color: 'rgba(186,239,255,0.58)',
-    fontSize: 10,
+    ...liqiTypography.caption,
+    color: liqiColors.accent.purpleIcon,
     fontWeight: '900',
-    letterSpacing: 1.15,
+    letterSpacing: 0.9,
   },
   headingCopy: { flex: 1, minWidth: 0 },
-  headingRow: { alignItems: 'center', flexDirection: 'row', gap: 10 },
+  headingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: liqiSpacing.lg,
+  },
   title: {
-    color: liquidColors.text.primary,
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: 3,
+    ...liqiTypography.sectionTitle,
+    color: liqiColors.text.primary,
+    marginTop: liqiSpacing.xs,
   },
 });

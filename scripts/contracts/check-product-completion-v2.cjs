@@ -9,6 +9,10 @@ const failures = [];
 const expectInvariant = (condition, message) => {
   if (!condition) failures.push(message);
 };
+const mountsAuthorityOrReset = (source, authorityImport, routeId) =>
+  source.includes(authorityImport) ||
+  (source.includes('ResetRouteScreen') &&
+    source.includes(`routeId="${routeId}"`));
 
 const files = {
   routes: read('src/app-shell/navigation/routes.ts'),
@@ -16,6 +20,8 @@ const files = {
   packageJson: read('package.json'),
   socialRoute: read('src/app/(app)/social/index.tsx'),
   socialScreen: read('src/features/social/screens/SocialHubScreen.tsx'),
+  profileSelfRoute: read('src/app/(app)/(tabs)/profile.tsx'),
+  profilePlayerRoute: read('src/app/(app)/profile/[playerId].tsx'),
   socialQueries: read(
     'src/entities/social-relationship/social-relationship-queries.ts',
   ),
@@ -99,8 +105,8 @@ const files = {
 
 expectInvariant(
   files.routes.includes("hub: '/social'") &&
-    files.socialRoute.includes('SocialHubScreen'),
-  'Social Hub must have an Expo Router destination.',
+    mountsAuthorityOrReset(files.socialRoute, 'SocialHubScreen', 'social'),
+  'Social Hub must keep its Expo Router destination and mount either its authority screen or the exact reset host.',
 );
 expectInvariant(
   files.socialScreen.includes('useSocialRelationshipsQuery') &&
@@ -138,12 +144,16 @@ expectInvariant(
   'Messages compose must open an existing provisioned friend conversation and expose no no-op header controls.',
 );
 expectInvariant(
-  files.engagementRoute.includes('EngagementPreferencesScreen') &&
+  mountsAuthorityOrReset(
+    files.engagementRoute,
+    'EngagementPreferencesScreen',
+    'profile-engagement',
+  ) &&
     files.engagementScreen.includes('useEngagementPreferences') &&
     files.engagementScreen.includes('useUpdateEngagementPreferences') &&
     files.engagementScreen.includes('maxReactivationNotificationsPerDay') &&
     files.engagementScreen.includes('preferences.version'),
-  'Engagement preferences must use the authoritative versioned policy provider.',
+  'Engagement preferences must keep its route classification and authoritative versioned policy provider.',
 );
 expectInvariant(
   files.reputationHooks.includes('useReputationLedger') &&
@@ -185,9 +195,16 @@ expectInvariant(
   'Onboarding cover/wall media must complete only after authoritative association.',
 );
 expectInvariant(
-  files.profileHighlights.includes('wallUrls') &&
-    files.profileHighlights.includes('Quản lý tường ảnh'),
-  'Profile highlights must render associated remote gallery assets and expose self-management.',
+  mountsAuthorityOrReset(files.profileSelfRoute, 'ProfileScreen', 'profile') &&
+    mountsAuthorityOrReset(
+      files.profilePlayerRoute,
+      'ProfileScreen',
+      'profile-player',
+    ) &&
+    files.profileHighlights.includes('wallUrls') &&
+    files.profileHighlights.includes('remoteItems') &&
+    files.profileHighlights.includes('onManage'),
+  'Profile routes must remain classified while highlights preserve associated remote gallery assets and self-management.',
 );
 expectInvariant(
   files.privacy.includes('không tự tạo trạng thái online') &&

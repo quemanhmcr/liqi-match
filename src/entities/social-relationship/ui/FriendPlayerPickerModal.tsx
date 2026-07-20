@@ -12,7 +12,7 @@ import {
 import { usePlayerIdentities } from '@/entities/player-identity';
 import { useFriendshipsQuery } from '@/entities/social-relationship';
 import type { PlayerId } from '@/shared/contracts/core-v1';
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
+import { LiqiButton, LiqiCard } from '@/shared/components/liqi';
 
 export type FriendPlayerPickerModalProps = Readonly<{
   excludedPlayerIds?: readonly string[];
@@ -74,11 +74,11 @@ export function FriendPlayerPickerModal({
           onPress={onClose}
           style={StyleSheet.absoluteFill}
         />
-        <LiquidCard
+        <LiqiCard
           contentStyle={styles.card}
           radius={30}
           style={styles.frame}
-          surfaceBackground="rgba(11,15,31,0.98)"
+          backgroundColor="rgba(11,15,31,0.98)"
           variant="purple"
         >
           <View style={styles.handle} />
@@ -160,17 +160,17 @@ export function FriendPlayerPickerModal({
             </Text>
           ) : null}
           <View style={styles.actions}>
-            <LiquidButton onPress={onClose} variant="ghost">
+            <LiqiButton onPress={onClose} variant="ghost">
               Huỷ
-            </LiquidButton>
-            <LiquidButton
+            </LiqiButton>
+            <LiqiButton
               disabled={!selectedPlayerIds.length}
               onPress={() => onConfirm(selectedPlayerIds)}
             >
               Xác nhận
-            </LiquidButton>
+            </LiqiButton>
           </View>
-        </LiquidCard>
+        </LiqiCard>
       </View>
     </Modal>
   );

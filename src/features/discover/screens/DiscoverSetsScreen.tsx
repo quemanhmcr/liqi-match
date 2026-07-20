@@ -16,8 +16,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { LiquidCard, LiquidGlassSurface } from '@/shared/components/liquid';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiCard, LiqiSurface } from '@/shared/components/liqi';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 import { env } from '@/shared/config/env';
 
 import { MatchSetDiscoveryScreen } from './MatchSetDiscoveryScreen';
@@ -203,14 +203,14 @@ function SimulationDiscoverSetsScreen() {
             ]}
             testID="discover-sets-sort-toggle"
           >
-            <LiquidGlassSurface
+            <LiqiSurface
               contentStyle={styles.sortPillContent}
-              glowIntensity="none"
+              emphasis="none"
               radius={16}
               style={styles.sortPill}
-              surfaceBackground="rgba(17,22,44,0.72)"
+              backgroundColor="rgba(17,22,44,0.72)"
               variant="button"
-              withInnerReflection={false}
+              withHighlight={false}
               withShadow={false}
             >
               <DiscoverText numberOfLines={1} style={styles.sortPillText}>
@@ -221,7 +221,7 @@ function SimulationDiscoverSetsScreen() {
                 name={sortMenuOpen ? 'chevron-up' : 'chevron-down'}
                 size={14}
               />
-            </LiquidGlassSurface>
+            </LiqiSurface>
           </Pressable>
         </View>
 
@@ -325,18 +325,18 @@ function HeaderOrb({
         pressed && styles.pressed,
       ]}
     >
-      <LiquidGlassSurface
+      <LiqiSurface
         contentStyle={styles.headerOrbSurface}
-        glowIntensity="none"
+        emphasis="none"
         radius={22}
         style={styles.headerOrbGlass}
-        surfaceBackground="rgba(13,18,36,0.62)"
+        backgroundColor="rgba(13,18,36,0.62)"
         variant="button"
-        withInnerReflection={false}
+        withHighlight={false}
         withShadow={false}
       >
         <Ionicons color="rgba(236,241,255,0.88)" name={icon} size={23} />
-      </LiquidGlassSurface>
+      </LiqiSurface>
     </Pressable>
   );
 }
@@ -354,14 +354,14 @@ function SearchField({
 }) {
   return (
     <View style={[styles.searchRow, { paddingHorizontal: horizontalPadding }]}>
-      <LiquidGlassSurface
+      <LiqiSurface
         contentStyle={styles.searchSurface}
-        glowIntensity="low"
+        emphasis="low"
         radius={21}
         style={styles.searchShell}
-        surfaceBackground="rgba(10,16,34,0.66)"
+        backgroundColor="rgba(10,16,34,0.66)"
         variant="card"
-        withInnerReflection={false}
+        withHighlight={false}
         withShadow={false}
       >
         <Ionicons
@@ -399,7 +399,7 @@ function SearchField({
             />
           </Pressable>
         ) : null}
-      </LiquidGlassSurface>
+      </LiqiSurface>
     </View>
   );
 }
@@ -478,14 +478,14 @@ function SortMenu({
   selectedId: DiscoverSetSortId;
 }) {
   return (
-    <LiquidGlassSurface
+    <LiqiSurface
       contentStyle={styles.sortMenuContent}
-      glowIntensity="low"
+      emphasis="low"
       radius={18}
       style={[styles.sortMenu, { marginRight: horizontalPadding }]}
-      surfaceBackground="rgba(11,16,34,0.90)"
+      backgroundColor="rgba(11,16,34,0.90)"
       variant="modal"
-      withInnerReflection={false}
+      withHighlight={false}
       withShadow={false}
     >
       {sortOptions.map((option) => {
@@ -512,7 +512,7 @@ function SortMenu({
           </Pressable>
         );
       })}
-    </LiquidGlassSurface>
+    </LiqiSurface>
   );
 }
 
@@ -524,13 +524,13 @@ function SetsEmptyState({
   onReset: () => void;
 }) {
   return (
-    <LiquidCard
+    <LiqiCard
       contentStyle={styles.emptyContent}
-      glowIntensity="low"
+      emphasis="low"
       radius={24}
       style={[styles.emptyCard, { marginHorizontal: horizontalPadding }]}
-      surfaceBackground="rgba(10,16,34,0.64)"
-      withInnerReflection={false}
+      backgroundColor="rgba(10,16,34,0.64)"
+      withHighlight={false}
       withShadow={false}
     >
       <Ionicons color="rgba(194,174,255,0.78)" name="search" size={27} />
@@ -546,7 +546,7 @@ function SetsEmptyState({
       >
         <DiscoverText style={styles.emptyResetText}>Đặt lại</DiscoverText>
       </Pressable>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -582,7 +582,7 @@ const styles = StyleSheet.create({
   chipList: { gap: 8, paddingVertical: 1 },
   content: { paddingHorizontal: 0 },
   emptyBody: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 7,
@@ -605,7 +605,7 @@ const styles = StyleSheet.create({
   },
   emptyResetText: { color: '#DDC9FF', fontSize: 11, fontWeight: '800' },
   emptyTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 16,
     fontWeight: '900',
     marginTop: 10,
@@ -658,7 +658,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headerTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: -0.45,
@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
     width: 30,
   },
   searchInput: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flex: 1,
     fontSize: 13,
     fontWeight: '600',

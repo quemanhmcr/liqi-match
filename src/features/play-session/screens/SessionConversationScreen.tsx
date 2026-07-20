@@ -15,12 +15,9 @@ import {
   IdempotencyKeySchema,
   RequestIdSchema,
 } from '@/shared/contracts/core-v1';
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+import { LiqiButton, LiqiCard } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors, liqiTypography } from '@/shared/theme/liqi-design-system';
 
 export const sessionConversationQueryKeys = {
   detail: (playerId: string, conversationId: string) =>
@@ -144,34 +141,30 @@ export function SessionConversationScreen() {
 
   if (!conversationId) {
     return (
-      <LiquidScreen title="Conversation không hợp lệ">
+      <LiqiScreen title="Conversation không hợp lệ">
         <Text style={styles.error}>ConversationId không đúng contract.</Text>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
   if (!conversationRepository || !conversationMessageTransport) {
     return (
-      <LiquidScreen title="Communication đang đồng bộ">
+      <LiqiScreen title="Communication đang đồng bộ">
         <Text style={styles.meta}>
           Trò chuyện của buổi chơi chưa sẵn sàng. Hãy quay lại danh sách tin
           nhắn và thử lại.
         </Text>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       subtitle="Quyền gửi tin nhắn được cập nhật theo thành viên của buổi chơi."
       title={conversation.data?.title ?? 'Session conversation'}
       withBottomNavPadding={false}
     >
       {timeline.data?.map((message) => (
-        <LiquidCard
-          key={message.messageId}
-          style={styles.message}
-          variant="cyan"
-        >
+        <LiqiCard key={message.messageId} style={styles.message} variant="cyan">
           <Text style={styles.sender}>
             {message.senderPlayerId ? 'Thành viên' : 'Hệ thống'}
           </Text>
@@ -182,7 +175,7 @@ export function SessionConversationScreen() {
                 ? (message.content.caption ?? 'Media')
                 : message.content.sourceEventType}
           </Text>
-        </LiquidCard>
+        </LiqiCard>
       ))}
       <View style={styles.composer}>
         <TextInput
@@ -194,25 +187,25 @@ export function SessionConversationScreen() {
           style={styles.input}
           value={text}
         />
-        <LiquidButton
+        <LiqiButton
           disabled={!text.trim() || send.isPending}
           onPress={() => send.mutate(text.trim())}
           variant="rank"
         >
           Gửi
-        </LiquidButton>
+        </LiqiButton>
       </View>
       {send.error ? (
         <Text style={styles.error}>{send.error.message}</Text>
       ) : null}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
 const styles = StyleSheet.create({
   body: {
-    ...liquidTypography.body,
-    color: liquidColors.text.primary,
+    ...liqiTypography.body,
+    color: liqiColors.text.primary,
     marginTop: 5,
   },
   composer: { gap: 10, marginTop: 18 },
@@ -222,12 +215,12 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.14)',
     borderRadius: 18,
     borderWidth: 1,
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     minHeight: 72,
     padding: 14,
     textAlignVertical: 'top',
   },
   message: { marginTop: 10 },
-  meta: { ...liquidTypography.body },
-  sender: { ...liquidTypography.sectionLabel },
+  meta: { ...liqiTypography.body },
+  sender: { ...liqiTypography.sectionLabel },
 });

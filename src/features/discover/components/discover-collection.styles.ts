@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 export const discoverCollectionStyles = StyleSheet.create({
   actionButton: { minWidth: 116 },
@@ -61,7 +61,7 @@ export const discoverCollectionStyles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 15,
     fontWeight: '800',
     marginTop: 9,
@@ -108,7 +108,7 @@ export const discoverCollectionStyles = StyleSheet.create({
     textAlign: 'center',
   },
   headerTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 17,
     fontWeight: '900',
     letterSpacing: -0.45,
@@ -136,7 +136,7 @@ export const discoverCollectionStyles = StyleSheet.create({
     justifyContent: 'center',
     width: 38,
   },
-  metaDot: { color: liquidColors.text.muted, fontSize: 12 },
+  metaDot: { color: liqiColors.text.muted, fontSize: 12 },
   metaRow: { alignItems: 'center', flexDirection: 'row', gap: 5, marginTop: 6 },
   metaText: {
     color: 'rgba(205,213,239,0.68)',
@@ -182,7 +182,7 @@ export const discoverCollectionStyles = StyleSheet.create({
     marginTop: 8,
   },
   profileName: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flexShrink: 1,
     fontSize: 16,
     fontWeight: '900',
@@ -217,7 +217,7 @@ export const discoverCollectionStyles = StyleSheet.create({
   },
   screen: { backgroundColor: '#030711', flex: 1 },
   searchInput: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flex: 1,
     fontSize: 12.5,
     fontWeight: '600',
@@ -258,7 +258,7 @@ export const discoverCollectionStyles = StyleSheet.create({
     width: 66,
   },
   setTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flex: 1,
     fontSize: 15.5,
     fontWeight: '900',

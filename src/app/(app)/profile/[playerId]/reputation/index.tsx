@@ -1,6 +1,5 @@
-import { useLocalSearchParams } from 'expo-router';
-import { ReputationLedgerScreen } from '@/features/trust-outcomes/screens/ReputationLedgerScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+
 export default function PlayerReputationRoute() {
-  const { playerId } = useLocalSearchParams<{ playerId: string }>();
-  return <ReputationLedgerScreen playerId={playerId} />;
+  return <ResetRouteScreen routeId="profile-player-reputation" />;
 }

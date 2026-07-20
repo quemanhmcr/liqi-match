@@ -1,32 +1,29 @@
+import { liqiColors } from './liqi-design-system';
+
 export type ColorSchemeName = 'light' | 'dark';
 
 export type SemanticColors = Readonly<{
   background: string;
+  border: string;
+  danger: string;
+  primary: string;
   surface: string;
   textPrimary: string;
   textSecondary: string;
-  border: string;
-  primary: string;
-  danger: string;
 }>;
 
+const canonicalDarkColors: SemanticColors = {
+  background: liqiColors.background.base,
+  border: liqiColors.border.surface,
+  danger: liqiColors.status.danger,
+  primary: liqiColors.accent.purple,
+  surface: liqiColors.background.elevated,
+  textPrimary: liqiColors.text.primary,
+  textSecondary: liqiColors.text.secondary,
+};
+
+/** @deprecated LiQi is dark-only. Import semantic tokens from liqi-design-system. */
 export const colors: Readonly<Record<ColorSchemeName, SemanticColors>> = {
-  light: {
-    background: '#F7F8FA',
-    surface: '#FFFFFF',
-    textPrimary: '#14171F',
-    textSecondary: '#5E6675',
-    border: '#D9DEE8',
-    primary: '#1F6FEB',
-    danger: '#C93C3C',
-  },
-  dark: {
-    background: '#111318',
-    surface: '#1B1F27',
-    textPrimary: '#F4F6FA',
-    textSecondary: '#A8B0BF',
-    border: '#303642',
-    primary: '#78A8FF',
-    danger: '#FF8A8A',
-  },
+  dark: canonicalDarkColors,
+  light: canonicalDarkColors,
 };

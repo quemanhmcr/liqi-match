@@ -8,9 +8,10 @@ import {
   View,
 } from 'react-native';
 
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
+import { AppButton, AppCard, appColors } from '@/shared/ui';
 import type { ReportCategoryV2 } from '@/shared/contracts/core-v2';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+
+import { messagesUi } from '../ui/messages-ui';
 
 const reportOptions: readonly Readonly<{
   category: ReportCategoryV2;
@@ -83,11 +84,11 @@ export function ChatMessageReportModal({
       visible={visible}
     >
       <View style={styles.backdrop}>
-        <LiquidCard
+        <AppCard
           density="large"
-          glowIntensity="low"
+          emphasis="low"
           style={styles.card}
-          surfaceBackground="rgba(19, 15, 39, 0.97)"
+          backgroundColor={messagesUi.colors.reportModal.card}
           variant="purple"
         >
           <Text style={styles.eyebrow}>AN TOÀN</Text>
@@ -109,16 +110,16 @@ export function ChatMessageReportModal({
                 onPress={() => onSubmit(option.category)}
                 style={({ pressed }) => [pressed && !pending && styles.pressed]}
               >
-                <LiquidCard
+                <AppCard
                   density="list"
-                  glowIntensity="none"
+                  emphasis="none"
                   style={styles.optionCard}
                   withShadow={false}
                 >
                   <View style={styles.optionRow}>
                     <View style={styles.iconShell}>
                       <Ionicons
-                        color="rgba(255,188,203,0.84)"
+                        color={messagesUi.colors.reportModal.icon}
                         name={option.icon}
                         size={17}
                       />
@@ -130,26 +131,26 @@ export function ChatMessageReportModal({
                       </Text>
                     </View>
                     <Ionicons
-                      color="rgba(219,226,255,0.34)"
+                      color={messagesUi.colors.reportModal.chevron}
                       name="chevron-forward"
                       size={17}
                     />
                   </View>
-                </LiquidCard>
+                </AppCard>
               </Pressable>
             ))}
           </ScrollView>
-          <LiquidButton
+          <AppButton
             accessibilityLabel="Đóng báo cáo tin nhắn"
             disabled={pending}
-            glowIntensity="none"
+            emphasis="none"
             onPress={onClose}
             variant="secondary"
             withShadow={false}
           >
             {pending ? 'Đang gửi…' : 'Huỷ'}
-          </LiquidButton>
-        </LiquidCard>
+          </AppButton>
+        </AppCard>
       </View>
     </Modal>
   );
@@ -158,21 +159,21 @@ export function ChatMessageReportModal({
 const styles = StyleSheet.create({
   backdrop: {
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.70)',
+    backgroundColor: messagesUi.colors.reportModal.backdrop,
     flex: 1,
     justifyContent: 'center',
     padding: 18,
   },
   card: { maxHeight: '90%', maxWidth: 500, width: '100%' },
   description: {
-    color: liquidColors.text.secondary,
+    color: appColors.text.secondary,
     fontSize: 12,
     lineHeight: 18,
     marginTop: 7,
     textAlign: 'center',
   },
   eyebrow: {
-    color: 'rgba(255,188,203,0.62)',
+    color: messagesUi.colors.reportModal.eyebrow,
     fontSize: 10,
     fontWeight: '900',
     letterSpacing: 1.25,
@@ -180,8 +181,8 @@ const styles = StyleSheet.create({
   },
   iconShell: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255,116,150,0.08)',
-    borderColor: 'rgba(255,142,170,0.13)',
+    backgroundColor: messagesUi.colors.reportModal.iconSurface,
+    borderColor: messagesUi.colors.reportModal.iconBorder,
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
     height: 34,
@@ -191,7 +192,7 @@ const styles = StyleSheet.create({
   optionCard: { marginTop: 8 },
   optionCopy: { flex: 1, minWidth: 0 },
   optionDescription: {
-    color: liquidColors.text.muted,
+    color: appColors.text.muted,
     fontSize: 11.5,
     lineHeight: 16,
     marginTop: 3,
@@ -203,14 +204,14 @@ const styles = StyleSheet.create({
     minHeight: 56,
   },
   optionTitle: {
-    color: liquidColors.text.primary,
+    color: appColors.text.primary,
     fontSize: 13.5,
     fontWeight: '800',
   },
   options: { paddingBottom: 13 },
   pressed: { opacity: 0.84, transform: [{ scale: 0.992 }] },
   title: {
-    color: liquidColors.text.primary,
+    color: appColors.text.primary,
     fontSize: 20,
     fontWeight: '900',
     marginTop: 5,

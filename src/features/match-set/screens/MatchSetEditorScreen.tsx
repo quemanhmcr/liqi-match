@@ -8,15 +8,11 @@ import {
   useMatchSetCommandMutation,
   useMatchSetDetailQuery,
 } from '@/entities/match-set';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-} from '@/shared/components/liquid';
+import { LiqiButton, LiqiCard, LiqiChip } from '@/shared/components/liqi';
 import { SetIdSchema } from '@/shared/contracts/core-v1';
 import type { MatchSetSnapshotV2 } from '@/shared/contracts/core-v2';
 import { prepareCoreV2CommandMetadata } from '@/shared/core-v2';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 type IntentId = 'normal' | 'rank' | 'set_love' | 'soulmate' | 'team_rank';
 type ExpiryId = 'day' | 'none' | 'week';
@@ -174,7 +170,7 @@ function MatchSetEditorForm({ snapshot }: { snapshot?: MatchSetSnapshotV2 }) {
 
   const pending = create.isPending || update.isPending;
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screen}
       subtitle={
         editing
@@ -184,7 +180,7 @@ function MatchSetEditorForm({ snapshot }: { snapshot?: MatchSetSnapshotV2 }) {
       title={editing ? 'Chỉnh sửa Set' : 'Set mới'}
       withBottomNavPadding={false}
     >
-      <LiquidCard contentStyle={styles.card} radius={26} variant="purple">
+      <LiqiCard contentStyle={styles.card} radius={26} variant="purple">
         <FieldLabel icon="text-outline" label="Tên đội" />
         <TextInput
           accessibilityLabel="Tên Set"
@@ -202,7 +198,7 @@ function MatchSetEditorForm({ snapshot }: { snapshot?: MatchSetSnapshotV2 }) {
         <FieldLabel icon="sparkles-outline" label="Mục tiêu chơi" />
         <View style={styles.intentGrid}>
           {intents.map((intent) => (
-            <LiquidChip
+            <LiqiChip
               accessibilityLabel={`${intent.label}: ${intent.subtitle}`}
               key={intent.id}
               onPress={() => setIntentKind(intent.id)}
@@ -211,21 +207,21 @@ function MatchSetEditorForm({ snapshot }: { snapshot?: MatchSetSnapshotV2 }) {
               variant="purple"
             >
               {intent.label}
-            </LiquidChip>
+            </LiqiChip>
           ))}
         </View>
 
         <FieldLabel icon="people-outline" label="Số thành viên tối đa" />
         <View style={styles.optionsRow}>
           {[2, 3, 4, 5].map((value) => (
-            <LiquidChip
+            <LiqiChip
               key={value}
               onPress={() => setCapacity(value)}
               selected={capacity === value}
               variant="cyan"
             >
               {value} người
-            </LiquidChip>
+            </LiqiChip>
           ))}
         </View>
 
@@ -238,19 +234,19 @@ function MatchSetEditorForm({ snapshot }: { snapshot?: MatchSetSnapshotV2 }) {
               ['none', 'Không giới hạn'],
             ] as const
           ).map(([value, label]) => (
-            <LiquidChip
+            <LiqiChip
               key={value}
               onPress={() => setExpiry(value)}
               selected={expiry === value}
               variant="purple"
             >
               {label}
-            </LiquidChip>
+            </LiqiChip>
           ))}
         </View>
-      </LiquidCard>
+      </LiqiCard>
 
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.note}
         density="compact"
         radius={20}
@@ -262,7 +258,7 @@ function MatchSetEditorForm({ snapshot }: { snapshot?: MatchSetSnapshotV2 }) {
           Lời mời, yêu cầu tham gia và thay đổi thành viên luôn được kiểm tra
           lại bằng trạng thái mới nhất của Set.
         </Text>
-      </LiquidCard>
+      </LiqiCard>
 
       {validationError || create.error || update.error ? (
         <Text accessibilityRole="alert" style={styles.error}>
@@ -270,13 +266,13 @@ function MatchSetEditorForm({ snapshot }: { snapshot?: MatchSetSnapshotV2 }) {
             'Dữ liệu vừa thay đổi hoặc Set chưa thể lưu. Hãy kiểm tra lại.'}
         </Text>
       ) : null}
-      <LiquidButton disabled={pending} onPress={submit} variant="primary">
+      <LiqiButton disabled={pending} onPress={submit} variant="primary">
         {pending ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : 'Tạo Set'}
-      </LiquidButton>
-      <LiquidButton onPress={() => router.back()} variant="ghost">
+      </LiqiButton>
+      <LiqiButton onPress={() => router.back()} variant="ghost">
         Huỷ
-      </LiquidButton>
-    </LiquidScreen>
+      </LiqiButton>
+    </LiqiScreen>
   );
 }
 
@@ -292,13 +288,13 @@ function EditorState({
   title: string;
 }) {
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screen}
       subtitle={description}
       title={title}
       withBottomNavPadding={false}
     >
-      <LiquidCard contentStyle={styles.errorCard} radius={22} variant="purple">
+      <LiqiCard contentStyle={styles.errorCard} radius={22} variant="purple">
         <Ionicons
           color={loading ? '#9BDFF2' : '#FFB9C5'}
           name={loading ? 'sync-outline' : 'alert-circle-outline'}
@@ -306,17 +302,17 @@ function EditorState({
         />
         <Text style={styles.stateText}>{description}</Text>
         {onRetry ? (
-          <LiquidButton onPress={onRetry} variant="secondary">
+          <LiqiButton onPress={onRetry} variant="secondary">
             Tải lại
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
         {!loading ? (
-          <LiquidButton onPress={() => router.back()} variant="ghost">
+          <LiqiButton onPress={() => router.back()} variant="ghost">
             Quay lại
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
-      </LiquidCard>
-    </LiquidScreen>
+      </LiqiCard>
+    </LiqiScreen>
   );
 }
 

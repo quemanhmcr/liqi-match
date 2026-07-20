@@ -1,6 +1,6 @@
 import { StyleSheet } from 'react-native';
 
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 export const VIBE_CARD_HEIGHT = 134;
 
@@ -33,7 +33,7 @@ export const exploreStyles = StyleSheet.create({
     textAlign: 'center',
   },
   emptyTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 14,
     fontWeight: '700',
     marginTop: 8,
@@ -158,7 +158,7 @@ export const exploreStyles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   headerTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 19,
     fontWeight: '900',
     letterSpacing: -0.5,
@@ -176,7 +176,7 @@ export const exploreStyles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '800',
   },
-  metaDot: { color: liquidColors.text.muted, fontSize: 12 },
+  metaDot: { color: liqiColors.text.muted, fontSize: 12 },
   metricCard: { flex: 1, minWidth: 0 },
   metricCardContent: {
     alignItems: 'center',
@@ -197,7 +197,7 @@ export const exploreStyles = StyleSheet.create({
     width: 36,
   },
   metricLabel: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 10.5,
     fontWeight: '600',
     marginTop: 1,
@@ -220,7 +220,7 @@ export const exploreStyles = StyleSheet.create({
   },
   metricTextBlock: { alignItems: 'center', minWidth: 0, width: '100%' },
   metricTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: -0.35,
@@ -304,7 +304,7 @@ export const exploreStyles = StyleSheet.create({
     fontWeight: '800',
   },
   profileName: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flexShrink: 1,
     fontSize: 15,
     fontWeight: '900',
@@ -317,7 +317,7 @@ export const exploreStyles = StyleSheet.create({
     minWidth: 0,
   },
   profileSubtitle: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 12,
     marginTop: 2,
   },
@@ -380,7 +380,7 @@ export const exploreStyles = StyleSheet.create({
   sectionSpacer: { flex: 1 },
   sectionStack: { gap: 10 },
   sectionTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flexShrink: 1,
     fontSize: 14.5,
     fontWeight: '700',
@@ -423,7 +423,7 @@ export const exploreStyles = StyleSheet.create({
     width: 46,
   },
   setMeta: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -435,7 +435,7 @@ export const exploreStyles = StyleSheet.create({
     marginTop: 3,
   },
   setTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flex: 1,
     flexShrink: 1,
     fontSize: 13.5,
@@ -520,7 +520,7 @@ export const exploreStyles = StyleSheet.create({
     paddingHorizontal: 7,
   },
   stackSurplusText: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 11,
     fontWeight: '800',
   },
@@ -606,7 +606,7 @@ export const exploreStyles = StyleSheet.create({
   },
   vibeTextBlock: { justifyContent: 'flex-end' },
   vibeTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 15,
     fontWeight: '900',
     letterSpacing: -0.34,

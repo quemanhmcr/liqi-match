@@ -1,6 +1,6 @@
 import { View } from 'react-native';
 
-import { LiquidButton } from '@/shared/components/liquid';
+import { LiqiButton } from '@/shared/components/liqi';
 
 import { ProfileText } from '../../components/ProfileShared';
 import type { ProfileEditSaveResult } from '../services/profile-edit-coordinator';
@@ -34,7 +34,7 @@ export function ProfileEditSaveBanner({
         </ProfileText>
       ) : null}
       {result.retrySections.length ? (
-        <LiquidButton
+        <LiqiButton
           accessibilityLabel="Thử lưu lại phần thất bại"
           onPress={onRetry}
           radius={18}
@@ -42,7 +42,7 @@ export function ProfileEditSaveBanner({
           withShadow={false}
         >
           <ProfileText style={styles.primaryMiniText}>Thử lại</ProfileText>
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
     </View>
   );

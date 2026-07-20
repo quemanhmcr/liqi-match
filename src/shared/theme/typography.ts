@@ -1,17 +1,8 @@
+import { liqiTypography } from './liqi-design-system';
+
+/** @deprecated Import liqiTypography from liqi-design-system. */
 export const typography = {
-  title: {
-    fontSize: 32,
-    lineHeight: 38,
-    fontWeight: '700',
-  },
-  body: {
-    fontSize: 16,
-    lineHeight: 24,
-    fontWeight: '400',
-  },
-  caption: {
-    fontSize: 14,
-    lineHeight: 20,
-    fontWeight: '500',
-  },
+  body: liqiTypography.body,
+  caption: liqiTypography.caption,
+  title: liqiTypography.screenTitle,
 } as const;

@@ -1,5 +1,5 @@
-import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function SelfProfileRoute() {
-  return <ProfileScreen mode="self" />;
+  return <ResetRouteScreen routeId="profile" />;
 }

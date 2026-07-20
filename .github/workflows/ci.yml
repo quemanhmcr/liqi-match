@@ -62,7 +62,7 @@ jobs:
       - name: Validate asset manifest and bundle budget
         run: npm run assets:check
 
-      - name: Check architecture boundaries
+      - name: Check architecture and shared UI language
         run: npm run architecture:check
 
       - name: Lint

@@ -7,7 +7,7 @@ import {
 } from '../match-set-queries';
 import { useAuth } from '@/shared/auth/auth-context';
 import { prepareCoreV2CommandMetadata } from '@/shared/core-v2';
-import { LiquidButton, LiquidCard } from '@/shared/components/liquid';
+import { LiqiButton, LiqiCard } from '@/shared/components/liqi';
 
 export type MatchSetPickerModalProps = Readonly<{
   onClose: () => void;
@@ -59,11 +59,11 @@ export function MatchSetPickerModal({
           onPress={onClose}
           style={StyleSheet.absoluteFill}
         />
-        <LiquidCard
+        <LiqiCard
           contentStyle={styles.card}
           radius={30}
           style={styles.frame}
-          surfaceBackground="rgba(12,16,32,0.98)"
+          backgroundColor="rgba(12,16,32,0.98)"
           variant="purple"
         >
           <View style={styles.handle} />
@@ -103,7 +103,7 @@ export function MatchSetPickerModal({
                         {intentLabel(set.intentKind)}
                       </Text>
                     </View>
-                    <LiquidButton
+                    <LiqiButton
                       disabled={invite.isPending || set.state === 'full'}
                       onPress={() =>
                         invite.mutate({
@@ -118,7 +118,7 @@ export function MatchSetPickerModal({
                         : pending
                           ? 'Đang gửi…'
                           : 'Mời'}
-                    </LiquidButton>
+                    </LiqiButton>
                   </View>
                 );
               })}
@@ -141,10 +141,10 @@ export function MatchSetPickerModal({
               Dữ liệu Set vừa thay đổi hoặc kết nối đang gián đoạn. Hãy thử lại.
             </Text>
           ) : null}
-          <LiquidButton onPress={onClose} variant="ghost">
+          <LiqiButton onPress={onClose} variant="ghost">
             Đóng
-          </LiquidButton>
-        </LiquidCard>
+          </LiqiButton>
+        </LiqiCard>
       </View>
     </Modal>
   );

@@ -9,14 +9,14 @@ import {
 } from '@/entities/trust-outcomes';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
+  LiqiButton,
+  LiqiCard,
+  LiqiChip,
+  LiqiOrbButton,
+} from '@/shared/components/liqi';
 import type { ReputationLedgerEntryV2 } from '@/shared/contracts/core-v2';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 export function ReputationLedgerScreen({ playerId }: { playerId?: string }) {
   const { session } = useAuth();
@@ -31,23 +31,23 @@ export function ReputationLedgerScreen({ playerId }: { playerId?: string }) {
   const projection = projectionQuery.data;
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.content}
       withBottomNavPadding={false}
       withHeader={false}
     >
       <View style={styles.header}>
-        <LiquidOrbButton
+        <LiqiOrbButton
           accessibilityLabel="Quay lại"
           onPress={() => router.back()}
           size={42}
         >
           <Ionicons
-            color={liquidColors.text.primary}
+            color={liqiColors.text.primary}
             name="chevron-back"
             size={20}
           />
-        </LiquidOrbButton>
+        </LiqiOrbButton>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>TRUST LEDGER V2</Text>
           <Text style={styles.title}>Lịch sử uy tín</Text>
@@ -56,7 +56,7 @@ export function ReputationLedgerScreen({ playerId }: { playerId?: string }) {
       </View>
 
       {projection ? (
-        <LiquidCard density="regular" style={styles.summary} variant="purple">
+        <LiqiCard density="regular" style={styles.summary} variant="purple">
           <View style={styles.shield}>
             <Ionicons color="#67E8FF" name="shield-checkmark" size={27} />
           </View>
@@ -69,23 +69,23 @@ export function ReputationLedgerScreen({ playerId }: { playerId?: string }) {
               {formatBps(projection.completionReliabilityBps)} độ tin cậy
             </Text>
             <View style={styles.metrics}>
-              <LiquidChip density="compact" variant="cyan">
+              <LiqiChip density="compact" variant="cyan">
                 {projection.positiveEndorsements} lời khen
-              </LiquidChip>
-              <LiquidChip density="compact" variant="purple">
+              </LiqiChip>
+              <LiqiChip density="compact" variant="purple">
                 {projection.repeatTeammateCount} đồng đội chơi lại
-              </LiquidChip>
+              </LiqiChip>
               {projection.noShowCount ? (
-                <LiquidChip density="compact" variant="orange">
+                <LiqiChip density="compact" variant="orange">
                   {projection.noShowCount} vắng mặt
-                </LiquidChip>
+                </LiqiChip>
               ) : null}
             </View>
           </View>
-        </LiquidCard>
+        </LiqiCard>
       ) : null}
 
-      <LiquidCard density="compact" style={styles.explainer}>
+      <LiqiCard density="compact" style={styles.explainer}>
         <Ionicons
           color="rgba(178,235,255,0.72)"
           name="information-circle-outline"
@@ -95,7 +95,7 @@ export function ReputationLedgerScreen({ playerId }: { playerId?: string }) {
           Ledger là các fact bất biến từ session, endorsement, repeat-play và
           moderation. UI không tự tính hoặc sửa các điểm này.
         </Text>
-      </LiquidCard>
+      </LiqiCard>
 
       {ledgerQuery.isPending || projectionQuery.isPending ? (
         <StateCard loading title="Đang đọc trust ledger..." />
@@ -118,14 +118,14 @@ export function ReputationLedgerScreen({ playerId }: { playerId?: string }) {
           ))}
         </View>
       )}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
 function LedgerRow({ entry }: { entry: ReputationLedgerEntryV2 }) {
   const presentation = present(entry);
   return (
-    <LiquidCard density="list" style={styles.entryCard}>
+    <LiqiCard density="list" style={styles.entryCard}>
       <View
         style={[
           styles.entryIcon,
@@ -149,7 +149,7 @@ function LedgerRow({ entry }: { entry: ReputationLedgerEntryV2 }) {
       >
         {entry.delta > 0 ? `+${entry.delta}` : entry.delta}
       </Text>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -202,7 +202,7 @@ function StateCard({
   title: string;
 }) {
   return (
-    <LiquidCard density="regular" style={styles.stateCard}>
+    <LiqiCard density="regular" style={styles.stateCard}>
       {loading ? (
         <ActivityIndicator color="#67E8FF" />
       ) : (
@@ -210,11 +210,11 @@ function StateCard({
       )}
       <Text style={styles.body}>{title}</Text>
       {onRetry ? (
-        <LiquidButton onPress={onRetry} variant="secondary">
+        <LiqiButton onPress={onRetry} variant="secondary">
           Tải lại
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -230,7 +230,7 @@ function formatDate(value: string) {
 }
 
 const styles = StyleSheet.create({
-  body: { color: liquidColors.text.secondary, fontSize: 12.5, lineHeight: 18 },
+  body: { color: liqiColors.text.secondary, fontSize: 12.5, lineHeight: 18 },
   content: { gap: 13, paddingBottom: 36, paddingHorizontal: 16, paddingTop: 8 },
   delta: { color: '#95F3FF', fontSize: 16, fontWeight: '900' },
   deltaNegative: { color: '#FFCB8D' },
@@ -245,15 +245,15 @@ const styles = StyleSheet.create({
     width: 36,
   },
   entryIconWarning: { backgroundColor: 'rgba(255,184,107,0.09)' },
-  entryMeta: { color: liquidColors.text.muted, fontSize: 11, marginTop: 3 },
+  entryMeta: { color: liqiColors.text.muted, fontSize: 11, marginTop: 3 },
   entryTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 13.5,
     fontWeight: '800',
   },
   explainer: { alignItems: 'flex-start', flexDirection: 'row', gap: 9 },
   explainerText: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     flex: 1,
     fontSize: 11.5,
     lineHeight: 17,
@@ -286,9 +286,9 @@ const styles = StyleSheet.create({
   summary: { alignItems: 'center', flexDirection: 'row', gap: 12 },
   summaryCopy: { flex: 1, gap: 2 },
   summaryTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 17,
     fontWeight: '900',
   },
-  title: { color: liquidColors.text.primary, fontSize: 17, fontWeight: '900' },
+  title: { color: liqiColors.text.primary, fontSize: 17, fontWeight: '900' },
 });

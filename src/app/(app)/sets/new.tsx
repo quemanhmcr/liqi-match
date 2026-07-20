@@ -1,4 +1,5 @@
-import { MatchSetEditorScreen } from '@/features/match-set/screens/MatchSetEditorScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+
 export default function CreateSetRoute() {
-  return <MatchSetEditorScreen />;
+  return <ResetRouteScreen routeId="set-create" />;
 }

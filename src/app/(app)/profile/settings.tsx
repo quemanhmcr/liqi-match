@@ -1,5 +1,5 @@
-import { ProfileSettingsScreen } from '@/features/profile/screens/ProfileSettingsScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function ProfileSettingsRoute() {
-  return <ProfileSettingsScreen />;
+  return <ResetRouteScreen routeId="profile-settings" />;
 }

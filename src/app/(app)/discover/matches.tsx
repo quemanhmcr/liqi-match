@@ -1,5 +1,5 @@
-import { DiscoverMatchesScreen } from '@/features/discover/screens/DiscoverMatchesScreen';
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
 
 export default function DiscoverMatchesRoute() {
-  return <DiscoverMatchesScreen />;
+  return <ResetRouteScreen routeId="discover-matches" />;
 }

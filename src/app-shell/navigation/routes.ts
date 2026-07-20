@@ -56,7 +56,9 @@ export const appRoutes = {
         pathname: '/messages/[conversationId]',
         params: { conversationId },
       }) as const,
-    create: '/sessions/new',
+    create: '/sessions/new' as Href,
+    entry: '/sessions' as Href,
+    list: '/sessions' as Href,
     detail: (sessionId: string) =>
       ({
         pathname: '/sessions/[sessionId]',
@@ -67,7 +69,6 @@ export const appRoutes = {
         pathname: '/sessions/[sessionId]/feedback',
         params: { sessionId },
       }) as const,
-    list: '/sessions',
   },
   profile: {
     blocked: '/profile/settings/blocked',

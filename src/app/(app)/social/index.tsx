@@ -1,2 +1,5 @@
-import { SocialHubScreen } from '@/features/social/screens/SocialHubScreen';
-export default SocialHubScreen;
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+
+export default function SocialHubRoute() {
+  return <ResetRouteScreen routeId="social" />;
+}

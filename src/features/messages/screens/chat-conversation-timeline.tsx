@@ -15,19 +15,14 @@ import {
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 import {
-  LiqiCard,
-  LiqiChip,
-  LiqiIdentityHeader,
-  LiqiOrbButton,
-} from '@/shared/components/liqi';
-import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
-import {
-  isCompactLiqiViewport,
-  liqiColors,
-  liqiComponentColors,
-  liqiComponentGradients,
-  liqiComponents,
-} from '@/shared/theme/liqi-design-system';
+  AppCard,
+  AppChip,
+  AppIdentityHeader,
+  AppIconButton,
+  AppScreen,
+  isCompactViewport,
+  appColors,
+} from '@/shared/ui';
 
 import { ChatMediaViewer } from '../components/ChatMediaViewer';
 import { MessageAvatarStack } from '../components/MessageAvatarStack';
@@ -56,6 +51,7 @@ import { selectionImpact } from './chat-conversation-haptics';
 import { chatConversationStyles as styles } from './chat-conversation.styles';
 import type { ConversationLoadState } from './chat-conversation.types';
 import { messagesChatAssets } from './messages-redesign-assets';
+import { messagesUi } from '../ui/messages-ui';
 
 function isEmojiOnlyMessage(text: string) {
   const value = text.trim();
@@ -88,8 +84,8 @@ export function ChatNetworkBanner({
       <Ionicons
         color={
           offline
-            ? liqiComponentColors.messages.chat.networkOfflineIcon
-            : liqiComponentColors.messages.chat.networkSyncIcon
+            ? messagesUi.colors.chat.networkOfflineIcon
+            : messagesUi.colors.chat.networkSyncIcon
         }
         name={offline ? 'cloud-offline-outline' : 'sync-outline'}
         size={14}
@@ -127,9 +123,9 @@ export function ConversationStateScreen({
         : 'Đang chuẩn bị lịch sử tin nhắn.';
 
   return (
-    <LiqiScreen scroll={false} withBottomNavPadding={false} withHeader={false}>
+    <AppScreen scroll={false} withBottomNavPadding={false} withHeader={false}>
       <View style={styles.conversationStateHeader}>
-        <LiqiOrbButton
+        <AppIconButton
           accessibilityLabel="Quay lại danh sách tin nhắn"
           surfaceTone="low"
           emphasis="low"
@@ -137,15 +133,15 @@ export function ConversationStateScreen({
           size={34}
         >
           <Ionicons
-            color={liqiComponentColors.messages.chat.avatarFallbackIcon}
+            color={messagesUi.colors.chat.avatarFallbackIcon}
             name="chevron-back"
             size={18}
           />
-        </LiqiOrbButton>
+        </AppIconButton>
       </View>
       <View accessibilityLabel={title} style={styles.conversationStateBody}>
         <Ionicons
-          color={liqiComponentColors.messages.chat.stateIcon}
+          color={messagesUi.colors.chat.stateIcon}
           name={state === 'loading' ? 'chatbubble-ellipses' : 'alert-circle'}
           size={34}
         />
@@ -162,7 +158,7 @@ export function ConversationStateScreen({
             ]}
           >
             <Ionicons
-              color={liqiComponentColors.messages.chat.stateRetryText}
+              color={messagesUi.colors.chat.stateRetryText}
               name="refresh"
               size={15}
             />
@@ -170,7 +166,7 @@ export function ConversationStateScreen({
           </Pressable>
         ) : null}
       </View>
-    </LiqiScreen>
+    </AppScreen>
   );
 }
 
@@ -241,8 +237,8 @@ export function ConversationSourceBanner({
         pressed && styles.pressed,
       ]}
     >
-      <LiqiCard
-        backgroundColor={liqiComponentColors.messages.sourceBannerSurface}
+      <AppCard
+        backgroundColor={messagesUi.colors.sourceBannerSurface}
         backgroundSlot={
           <ImageBackground
             resizeMode="cover"
@@ -250,7 +246,7 @@ export function ConversationSourceBanner({
             style={StyleSheet.absoluteFill}
           >
             <LinearGradient
-              colors={liqiComponentGradients.messages.eventBannerScrim}
+              colors={messagesUi.gradients.eventBannerScrim}
               end={{ x: 1, y: 0.5 }}
               locations={[0, 0.44, 1]}
               start={{ x: 0, y: 0.5 }}
@@ -258,18 +254,18 @@ export function ConversationSourceBanner({
             />
           </ImageBackground>
         }
-        borderColor={liqiComponentColors.messages.sourceBannerStroke}
+        borderColor={messagesUi.colors.sourceBannerStroke}
         contentStyle={styles.sourceBanner}
         density="list"
         emphasis="low"
-        radius={liqiComponents.messages.chat.eventBannerRadius}
+        radius={messagesUi.metrics.chat.eventBannerRadius}
         surfaceTone="high"
         withHighlight={false}
         withShadow={false}
       >
         <View style={styles.sourceBannerIcon}>
           <Ionicons
-            color={liqiComponentColors.messages.contextIcon}
+            color={messagesUi.colors.contextIcon}
             name="game-controller"
             size={19}
           />
@@ -284,11 +280,11 @@ export function ConversationSourceBanner({
           </Text>
         </View>
         <Ionicons
-          color={liqiColors.accent.purpleIcon}
+          color={appColors.accent.purpleIcon}
           name="chevron-forward"
           size={21}
         />
-      </LiqiCard>
+      </AppCard>
     </Pressable>
   );
 }
@@ -301,10 +297,10 @@ export function ChatHeader({
   thread: ChatThread;
 }) {
   const { width } = useWindowDimensions();
-  const compact = isCompactLiqiViewport(width);
+  const compact = isCompactViewport(width);
   const avatarSize = compact
-    ? liqiComponents.messages.chat.headerAvatarCompact
-    : liqiComponents.messages.chat.headerAvatar;
+    ? messagesUi.metrics.chat.headerAvatarCompact
+    : messagesUi.metrics.chat.headerAvatar;
   const goBack = () => {
     selectionImpact();
     if (router.canGoBack()) {
@@ -319,7 +315,7 @@ export function ChatHeader({
       : '';
 
   return (
-    <LiqiIdentityHeader
+    <AppIdentityHeader
       actions={[
         {
           accessibilityLabel: `Tuỳ chọn cuộc trò chuyện với ${thread.name}`,
@@ -347,7 +343,7 @@ export function ChatHeader({
       title={thread.name}
       titleAccessory={
         thread.kind !== 'Bạn bè' ? (
-          <LiqiChip
+          <AppChip
             density="compact"
             selected
             style={styles.relationshipTag}
@@ -356,7 +352,7 @@ export function ChatHeader({
             withSheen={false}
           >
             {thread.kind === 'Hệ thống' ? 'Thông báo' : thread.kind}
-          </LiqiChip>
+          </AppChip>
         ) : undefined
       }
     />
@@ -470,7 +466,7 @@ function OutgoingMessage({
   return (
     <View style={styles.outgoingRow}>
       <LinearGradient
-        colors={liqiComponentGradients.messages.outgoingBubble}
+        colors={messagesUi.gradients.outgoingBubble}
         end={{ x: 1, y: 0.9 }}
         locations={[0, 0.56, 1]}
         start={{ x: 0, y: 0.1 }}
@@ -568,7 +564,7 @@ function IncomingMediaMessageBubble({
             {isVideo ? (
               <View style={styles.mediaVideoPreview}>
                 <Ionicons
-                  color={liqiComponentColors.messages.chat.mediaPlayIcon}
+                  color={messagesUi.colors.chat.mediaPlayIcon}
                   name="play-circle"
                   size={42}
                 />
@@ -606,7 +602,7 @@ function IncomingMediaMessageBubble({
                 style={styles.mediaStateOverlay}
               >
                 <Ionicons
-                  color={liqiComponentColors.messages.chat.mediaUnavailableIcon}
+                  color={messagesUi.colors.chat.mediaUnavailableIcon}
                   name={
                     resolvedState === 'offline-unavailable'
                       ? 'cloud-offline-outline'
@@ -626,7 +622,7 @@ function IncomingMediaMessageBubble({
             Boolean(resolvedSource ?? message.attachment.uri) ? (
               <View pointerEvents="none" style={styles.mediaLoadingOverlay}>
                 <ActivityIndicator
-                  color={liqiComponentColors.messages.chat.mediaLoadingIcon}
+                  color={messagesUi.colors.chat.mediaLoadingIcon}
                   size="small"
                 />
               </View>
@@ -722,7 +718,7 @@ function OutgoingMediaMessageBubble({
           {isVideo ? (
             <View style={styles.mediaVideoPreview}>
               <Ionicons
-                color={liqiComponentColors.messages.chat.mediaPlayIcon}
+                color={messagesUi.colors.chat.mediaPlayIcon}
                 name="play-circle"
                 size={42}
               />
@@ -747,7 +743,7 @@ function OutgoingMediaMessageBubble({
           {imageLoading && !isVideo ? (
             <View pointerEvents="none" style={styles.mediaLoadingOverlay}>
               <ActivityIndicator
-                color={liqiComponentColors.messages.chat.mediaLoadingIcon}
+                color={messagesUi.colors.chat.mediaLoadingIcon}
                 size="small"
               />
             </View>
@@ -759,7 +755,7 @@ function OutgoingMediaMessageBubble({
           {message.deliveryStatus === 'queued' ? (
             <View style={styles.mediaStateOverlay}>
               <Ionicons
-                color={liqiComponentColors.messages.chat.mediaQueuedIcon}
+                color={messagesUi.colors.chat.mediaQueuedIcon}
                 name="cloud-offline-outline"
                 size={21}
               />
@@ -842,7 +838,7 @@ function MediaUploadingOverlay({
   );
   return (
     <View style={styles.mediaStateOverlay}>
-      <ActivityIndicator color={liqiColors.text.onAccent} size="small" />
+      <ActivityIndicator color={appColors.text.onAccent} size="small" />
       <Text style={styles.mediaStateTitle}>Đang tải lên {progress}%</Text>
       <View style={styles.mediaProgressTrack}>
         <View style={[styles.mediaProgressValue, { width: `${progress}%` }]} />
@@ -859,7 +855,7 @@ function MediaUploadingOverlay({
           pressed && styles.pressed,
         ]}
       >
-        <Ionicons color={liqiColors.text.onAccent} name="close" size={14} />
+        <Ionicons color={appColors.text.onAccent} name="close" size={14} />
         <Text style={styles.mediaOverlayActionText}>Hủy</Text>
       </Pressable>
     </View>
@@ -879,7 +875,7 @@ function MediaFailedOverlay({
   return (
     <View style={[styles.mediaStateOverlay, styles.mediaFailedOverlay]}>
       <Ionicons
-        color={liqiComponentColors.messages.chat.mediaFailedIcon}
+        color={messagesUi.colors.chat.mediaFailedIcon}
         name={wasCancelled ? 'close-circle-outline' : 'alert-circle-outline'}
         size={22}
       />
@@ -899,7 +895,7 @@ function MediaFailedOverlay({
             pressed && styles.pressed,
           ]}
         >
-          <Ionicons color={liqiColors.text.onAccent} name="refresh" size={14} />
+          <Ionicons color={appColors.text.onAccent} name="refresh" size={14} />
           <Text style={styles.mediaOverlayActionText}>Thử lại</Text>
         </Pressable>
         <Pressable
@@ -915,7 +911,7 @@ function MediaFailedOverlay({
           ]}
         >
           <Ionicons
-            color={liqiColors.text.onAccent}
+            color={appColors.text.onAccent}
             name="trash-outline"
             size={14}
           />
@@ -936,37 +932,37 @@ function deliveryVisual(message: OutgoingChatMessage): DeliveryVisual {
   switch (message.deliveryStatus) {
     case 'queued':
       return {
-        color: liqiComponentColors.messages.chat.deliveryQueued,
+        color: messagesUi.colors.chat.deliveryQueued,
         icon: 'cloud-offline-outline',
         label: 'Đang chờ mạng',
       };
     case 'sending':
       return {
-        color: liqiComponentColors.messages.chat.mutedMeta,
+        color: messagesUi.colors.chat.mutedMeta,
         icon: 'time-outline',
         label: 'Đang gửi',
       };
     case 'sent':
       return {
-        color: liqiComponentColors.messages.chat.deliverySent,
+        color: messagesUi.colors.chat.deliverySent,
         icon: 'checkmark',
         label: 'Đã gửi',
       };
     case 'delivered':
       return {
-        color: liqiComponentColors.messages.chat.deliveryDelivered,
+        color: messagesUi.colors.chat.deliveryDelivered,
         icon: 'checkmark-done',
         label: 'Đã nhận',
       };
     case 'read':
       return {
-        color: liqiComponentColors.messages.chat.deliveryRead,
+        color: messagesUi.colors.chat.deliveryRead,
         icon: 'checkmark-done',
         label: 'Đã đọc',
       };
     case 'failed':
       return {
-        color: liqiComponentColors.messages.chat.deliveryFailed,
+        color: messagesUi.colors.chat.deliveryFailed,
         icon: 'alert-circle-outline',
         label: 'Không gửi được',
       };
@@ -1006,7 +1002,7 @@ function MessageDeliveryMeta({
           ]}
         >
           <Ionicons
-            color={liqiComponentColors.messages.chat.retryText}
+            color={messagesUi.colors.chat.retryText}
             name="refresh"
             size={13}
           />
@@ -1067,7 +1063,7 @@ function TeamInviteCard({
       style={styles.teamCardPressable}
     >
       <LinearGradient
-        colors={liqiComponentGradients.messages.chat.teamInvite}
+        colors={messagesUi.gradients.chat.teamInvite}
         end={{ x: 1, y: 1 }}
         start={{ x: 0, y: 0 }}
         style={styles.teamCard}
@@ -1096,7 +1092,7 @@ function TeamInviteCard({
             <View style={styles.teamNeedRow}>
               <View style={styles.teamNeedChip}>
                 <Ionicons
-                  color={liqiComponentColors.messages.chat.teamNeedIcon}
+                  color={messagesUi.colors.chat.teamNeedIcon}
                   name="flash-outline"
                   size={11}
                 />
@@ -1112,7 +1108,7 @@ function TeamInviteCard({
         </View>
         <View style={styles.teamAction}>
           <LinearGradient
-            colors={liqiComponentGradients.messages.chat.teamAction}
+            colors={messagesUi.gradients.chat.teamAction}
             end={{ x: 1, y: 1 }}
             start={{ x: 0, y: 0 }}
             style={StyleSheet.absoluteFill}
@@ -1145,7 +1141,7 @@ function BuildShareMessage({
             style={styles.buildCardPressable}
           >
             <LinearGradient
-              colors={liqiComponentGradients.messages.chat.buildCard}
+              colors={messagesUi.gradients.chat.buildCard}
               end={{ x: 1, y: 1 }}
               start={{ x: 0, y: 0 }}
               style={styles.buildCard}
@@ -1156,7 +1152,7 @@ function BuildShareMessage({
                   style={styles.buildPreview}
                 />
                 <LinearGradient
-                  colors={liqiComponentGradients.messages.chat.buildPreviewFade}
+                  colors={messagesUi.gradients.chat.buildPreviewFade}
                   pointerEvents="none"
                   style={StyleSheet.absoluteFill}
                 />
@@ -1185,7 +1181,7 @@ function BuildShareMessage({
                 <View style={styles.buildActionLine}>
                   <Text style={styles.buildActionText}>Chi tiết build</Text>
                   <Ionicons
-                    color={liqiComponentColors.messages.chat.buildActionIcon}
+                    color={messagesUi.colors.chat.buildActionIcon}
                     name="arrow-forward"
                     size={14}
                   />
@@ -1267,11 +1263,11 @@ function Avatar({
         />
       ) : (
         <LinearGradient
-          colors={liqiComponentGradients.messages.chat.avatarFallback}
+          colors={messagesUi.gradients.chat.avatarFallback}
           style={[styles.avatarFallback, { borderRadius: size / 2 }]}
         >
           <Ionicons
-            color={liqiComponentColors.messages.chat.avatarFallbackIcon}
+            color={messagesUi.colors.chat.avatarFallbackIcon}
             name={icon ?? 'person-outline'}
             size={Math.round(size * 0.42)}
           />

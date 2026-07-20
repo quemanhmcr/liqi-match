@@ -29,12 +29,8 @@ import {
   type ScheduleSessionCommandV2,
   type StartSessionCommandV2,
 } from '@/shared/contracts/core-v2';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-} from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiButton, LiqiCard, LiqiChip } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 import {
   prepareCoreV2CommandMetadata,
@@ -187,16 +183,16 @@ export function PlaySessionDetailScreen() {
   };
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screen}
       subtitle={sessionStateLabel(snapshot.state)}
       title={snapshot.title}
     >
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.hero}
         radius={28}
         variant="purple"
-        withInnerReflection
+        withHighlight
       >
         <View style={styles.heroIcon}>
           <Ionicons color="#D9C6FF" name="game-controller" size={28} />
@@ -211,14 +207,14 @@ export function PlaySessionDetailScreen() {
           </Text>
         </View>
         {canInvite ? (
-          <LiquidButton
+          <LiqiButton
             onPress={() => setInvitePickerVisible(true)}
             variant="ghost"
           >
             Mời bạn
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
-      </LiquidCard>
+      </LiqiCard>
 
       {snapshot.communication.conversationId ? (
         <Pressable
@@ -231,7 +227,7 @@ export function PlaySessionDetailScreen() {
           }
           style={({ pressed }) => pressed && styles.pressed}
         >
-          <LiquidCard
+          <LiqiCard
             contentStyle={styles.chatCard}
             density="compact"
             radius={22}
@@ -252,10 +248,10 @@ export function PlaySessionDetailScreen() {
               name="chevron-forward"
               size={18}
             />
-          </LiquidCard>
+          </LiqiCard>
         </Pressable>
       ) : (
-        <LiquidCard
+        <LiqiCard
           contentStyle={styles.note}
           density="compact"
           radius={20}
@@ -267,11 +263,11 @@ export function PlaySessionDetailScreen() {
             Trò chuyện nhóm đang được chuẩn bị và sẽ xuất hiện khi thành viên đã
             đồng bộ.
           </Text>
-        </LiquidCard>
+        </LiqiCard>
       )}
 
       <SectionTitle icon="people-outline">Thành viên</SectionTitle>
-      <LiquidCard
+      <LiqiCard
         contentStyle={styles.membersCard}
         radius={25}
         variant="purple"
@@ -319,7 +315,7 @@ export function PlaySessionDetailScreen() {
                   </Text>
                 </Pressable>
                 {canManageMembers && !self && member.role !== 'owner' ? (
-                  <LiquidButton
+                  <LiqiButton
                     disabled={busy}
                     onPress={() =>
                       remove.mutate({
@@ -332,14 +328,14 @@ export function PlaySessionDetailScreen() {
                     variant="ghost"
                   >
                     Mời rời đội
-                  </LiquidButton>
+                  </LiqiButton>
                 ) : null}
               </View>
               {isOwner &&
               ['recruiting', 'scheduled'].includes(snapshot.state) ? (
                 <View style={styles.roleRow}>
                   {roleChoices.map((role) => (
-                    <LiquidChip
+                    <LiqiChip
                       key={role}
                       onPress={() =>
                         assignRole.mutate({
@@ -353,14 +349,14 @@ export function PlaySessionDetailScreen() {
                       variant="purple"
                     >
                       {roleLabel(role)}
-                    </LiquidChip>
+                    </LiqiChip>
                   ))}
                 </View>
               ) : null}
             </View>
           );
         })}
-      </LiquidCard>
+      </LiqiCard>
 
       {isOwner && ['recruiting', 'scheduled'].includes(snapshot.state) ? (
         <>
@@ -373,7 +369,7 @@ export function PlaySessionDetailScreen() {
                 [1440, 'Tối mai'],
               ] as const
             ).map(([minutes, label]) => (
-              <LiquidButton
+              <LiqiButton
                 disabled={busy}
                 key={minutes}
                 onPress={() =>
@@ -387,7 +383,7 @@ export function PlaySessionDetailScreen() {
                 variant="ghost"
               >
                 {label}
-              </LiquidButton>
+              </LiqiButton>
             ))}
           </View>
 
@@ -396,17 +392,17 @@ export function PlaySessionDetailScreen() {
           </SectionTitle>
           <View style={styles.wrapRow}>
             {[5, 10, 15].map((minutes) => (
-              <LiquidChip
+              <LiqiChip
                 key={minutes}
                 onPress={() => setReadyMinutes(minutes)}
                 selected={readyMinutes === minutes}
                 variant="cyan"
               >
                 {minutes} phút
-              </LiquidChip>
+              </LiqiChip>
             ))}
           </View>
-          <LiquidButton
+          <LiqiButton
             disabled={busy}
             onPress={() =>
               openReady.mutate({
@@ -419,12 +415,12 @@ export function PlaySessionDetailScreen() {
             }
           >
             Mở kiểm tra sẵn sàng
-          </LiquidButton>
+          </LiqiButton>
         </>
       ) : null}
 
       {activeMember && snapshot.readyCheck?.state === 'open' ? (
-        <LiquidCard contentStyle={styles.readyCard} radius={24} variant="cyan">
+        <LiqiCard contentStyle={styles.readyCard} radius={24} variant="cyan">
           <View style={styles.readyCopy}>
             <Text style={styles.cardTitle}>Bạn đã sẵn sàng?</Text>
             <Text style={styles.cardMeta}>
@@ -432,7 +428,7 @@ export function PlaySessionDetailScreen() {
             </Text>
           </View>
           <View style={styles.wrapRow}>
-            <LiquidButton
+            <LiqiButton
               disabled={busy}
               onPress={() =>
                 respond.mutate({
@@ -445,8 +441,8 @@ export function PlaySessionDetailScreen() {
               variant="rank"
             >
               Tôi sẵn sàng
-            </LiquidButton>
-            <LiquidButton
+            </LiqiButton>
+            <LiqiButton
               disabled={busy}
               onPress={() =>
                 respond.mutate({
@@ -459,25 +455,25 @@ export function PlaySessionDetailScreen() {
               variant="ghost"
             >
               Chưa sẵn sàng
-            </LiquidButton>
+            </LiqiButton>
           </View>
-        </LiquidCard>
+        </LiqiCard>
       ) : null}
 
       <SectionTitle icon="flash-outline">Hành động</SectionTitle>
       <View style={styles.actions}>
         {isOwner && snapshot.state === 'scheduled' ? (
-          <LiquidButton
+          <LiqiButton
             disabled={busy}
             onPress={() => start.mutate({ ...commandMeta(), sessionId })}
           >
             Bắt đầu chơi
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
         {activeMember &&
         ['in_progress', 'completion_pending'].includes(snapshot.state) ? (
           <>
-            <LiquidButton
+            <LiqiButton
               disabled={busy}
               onPress={() =>
                 complete.mutate({
@@ -490,8 +486,8 @@ export function PlaySessionDetailScreen() {
               variant="rank"
             >
               Xác nhận đã chơi xong
-            </LiquidButton>
-            <LiquidButton
+            </LiqiButton>
+            <LiqiButton
               disabled={busy}
               onPress={() =>
                 complete.mutate({
@@ -504,31 +500,31 @@ export function PlaySessionDetailScreen() {
               variant="ghost"
             >
               Báo kết quả chưa đúng
-            </LiquidButton>
+            </LiqiButton>
           </>
         ) : null}
         {['completed', 'disputed'].includes(snapshot.state) ? (
-          <LiquidButton
+          <LiqiButton
             onPress={() => router.push(appRoutes.sessions.feedback(sessionId))}
             variant="primary"
           >
             Gửi đánh giá đồng đội
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
         {activeMember &&
         !isOwner &&
         ['recruiting', 'scheduled'].includes(snapshot.state) ? (
-          <LiquidButton
+          <LiqiButton
             disabled={busy}
             onPress={() => leave.mutate({ ...commandMeta(), sessionId })}
             variant="ghost"
           >
             Rời buổi chơi
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
         {isOwner &&
         !['completed', 'cancelled', 'disputed'].includes(snapshot.state) ? (
-          <LiquidButton
+          <LiqiButton
             disabled={busy}
             onPress={() =>
               cancel.mutate({
@@ -540,7 +536,7 @@ export function PlaySessionDetailScreen() {
             variant="secondary"
           >
             Huỷ buổi chơi
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
       </View>
 
@@ -564,7 +560,7 @@ export function PlaySessionDetailScreen() {
         title="Mời thêm vào đội"
         visible={invitePickerVisible}
       />
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -580,12 +576,12 @@ function SessionState({
   title: string;
 }) {
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.stateScreen}
       title={title}
       withBottomNavPadding={false}
     >
-      <LiquidCard contentStyle={styles.stateCard} radius={28} variant="purple">
+      <LiqiCard contentStyle={styles.stateCard} radius={28} variant="purple">
         {loading ? (
           <ActivityIndicator color="#D3C0FF" />
         ) : (
@@ -593,18 +589,18 @@ function SessionState({
         )}
         <Text style={styles.stateText}>{description}</Text>
         {onRetry ? (
-          <LiquidButton onPress={onRetry} variant="ghost">
+          <LiqiButton onPress={onRetry} variant="ghost">
             Thử lại
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
-        <LiquidButton
+        <LiqiButton
           onPress={() => router.replace(appRoutes.sessions.list)}
           variant="secondary"
         >
           Về danh sách buổi chơi
-        </LiquidButton>
-      </LiquidCard>
-    </LiquidScreen>
+        </LiqiButton>
+      </LiqiCard>
+    </LiqiScreen>
   );
 }
 function SectionTitle({

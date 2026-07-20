@@ -10,13 +10,10 @@ import {
   useSocialRelationshipRepository,
 } from '@/entities/social-relationship/RelationshipCapabilitiesProvider';
 import { useAuth } from '@/shared/auth/auth-context';
-import { LiquidCard, LiquidOrbButton } from '@/shared/components/liquid';
+import { LiqiCard, LiqiOrbButton } from '@/shared/components/liqi';
 import type { BlockedPlayerListItemV2 } from '@/shared/contracts/core-v2';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors, liqiTypography } from '@/shared/theme/liqi-design-system';
 
 import { ProfileText } from '../components/ProfileShared';
 import { profileMediaUrl } from '../services/profile-service';
@@ -89,16 +86,16 @@ export function ProfileBlockedUsersScreen() {
   };
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.scrollContent}
       withBottomNavPadding={false}
       withHeader={false}
     >
       <View style={styles.headerBar}>
-        <LiquidOrbButton
+        <LiqiOrbButton
           accessibilityLabel="Quay lại cài đặt"
-          glassIntensity="low"
-          glowIntensity="low"
+          surfaceTone="low"
+          emphasis="low"
           onPress={() => {
             selectionImpact();
             router.back();
@@ -107,11 +104,11 @@ export function ProfileBlockedUsersScreen() {
           style={styles.headerOrb}
         >
           <Ionicons
-            color={liquidColors.text.primary}
+            color={liqiColors.text.primary}
             name="chevron-back"
             size={20}
           />
-        </LiquidOrbButton>
+        </LiqiOrbButton>
         <View style={styles.headerCopy}>
           <ProfileText style={styles.headerEyebrow}>AN TOÀN</ProfileText>
           <ProfileText style={styles.headerTitle}>Người đã chặn</ProfileText>
@@ -149,7 +146,7 @@ export function ProfileBlockedUsersScreen() {
           ))}
         </View>
       )}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -165,9 +162,9 @@ function BlockedRow({
   const displayName = blockedPlayerName(item);
   const avatarUrl = profileMediaUrl(item.player.avatarAssetId);
   return (
-    <LiquidCard
+    <LiqiCard
       density="list"
-      glowIntensity="none"
+      emphasis="none"
       style={styles.rowCard}
       withShadow={false}
     >
@@ -203,7 +200,7 @@ function BlockedRow({
           </ProfileText>
         </Pressable>
       </View>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -215,10 +212,10 @@ function EmptyCard({
   text: string;
 }>) {
   return (
-    <LiquidCard density="regular" glowIntensity="low" style={styles.emptyCard}>
+    <LiqiCard density="regular" emphasis="low" style={styles.emptyCard}>
       <Ionicons color="rgba(178,235,255,0.78)" name={icon} size={22} />
       <ProfileText style={styles.emptyText}>{text}</ProfileText>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -270,7 +267,7 @@ const styles = StyleSheet.create({
   disabledRow: { opacity: 0.56 },
   emptyCard: { alignItems: 'center', gap: 10, marginTop: 18 },
   emptyText: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 19,
@@ -292,7 +289,7 @@ const styles = StyleSheet.create({
   headerOrb: { height: 42, width: 42 },
   headerSpacer: { height: 42, width: 42 },
   headerSubtitle: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 19,
@@ -301,7 +298,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headerTitle: {
-    ...liquidTypography.screenName,
+    ...liqiTypography.screenTitle,
     fontSize: 23,
     letterSpacing: -0.48,
     marginTop: 1,
@@ -317,14 +314,14 @@ const styles = StyleSheet.create({
   },
   rowCopy: { flex: 1, minWidth: 0 },
   rowSubtitle: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     fontSize: 11.5,
     fontWeight: '600',
     lineHeight: 16,
     marginTop: 3,
   },
   rowTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 13.5,
     fontWeight: '800',
   },

@@ -24,21 +24,18 @@ import {
 import { captureRef } from 'react-native-view-shot';
 
 import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
+  LiqiButton,
+  LiqiCard,
+  LiqiChip,
+  LiqiOrbButton,
+} from '@/shared/components/liqi';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { useAssetResolver } from '@/entities/media-asset';
 import { usePlayerTrustProjection } from '@/entities/trust-outcomes';
 import { useAuth } from '@/shared/auth/auth-context';
 import type { PlayerTrustProjectionV2 } from '@/shared/contracts/core-v2';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors, liqiTypography } from '@/shared/theme/liqi-design-system';
 
 import { ProfileText } from '../components/ProfileShared';
 import { resolveProfileMedia } from '../model/profile-media';
@@ -129,7 +126,7 @@ export function ProfileShareScreen() {
 
   if (!session) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -143,13 +140,13 @@ export function ProfileShareScreen() {
         >
           Đăng nhập để tạo ảnh chia sẻ từ hồ sơ của bạn.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   if (settingsQuery.isLoading) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -159,13 +156,13 @@ export function ProfileShareScreen() {
           Liqi Match đang xác nhận quyền tạo ảnh chia sẻ trước khi render thẻ
           social.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   if (settingsQuery.isError) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -182,13 +179,13 @@ export function ProfileShareScreen() {
           Vì đây là cài đặt quyền riêng tư, màn hình chia sẻ sẽ tạm khoá cho đến
           khi đọc được trạng thái mới nhất.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   if (settingsQuery.data?.allowProfileShare !== true) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -205,13 +202,13 @@ export function ProfileShareScreen() {
           Bạn đã tắt “Cho phép tạo ảnh chia sẻ”. Bật lại trong Cài đặt nếu muốn
           xuất PNG social từ hồ sơ.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   if (profileQuery.isPending) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -220,13 +217,13 @@ export function ProfileShareScreen() {
         <ShareGuardCard icon="hourglass-outline" title="Đang tải hồ sơ">
           Đang đồng bộ dữ liệu người chơi trước khi render ảnh chia sẻ.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   if (profileQuery.isError) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -240,13 +237,13 @@ export function ProfileShareScreen() {
         >
           Repository trả về lỗi. Ứng dụng không render ảnh từ fixture thay thế.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   if (!profile) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -255,13 +252,13 @@ export function ProfileShareScreen() {
         <ShareGuardCard icon="person-outline" title="Không tìm thấy hồ sơ">
           Tài khoản hiện tại chưa có projection hồ sơ trong runtime.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   if (trustProjectionQuery.isPending) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -273,13 +270,13 @@ export function ProfileShareScreen() {
         >
           Liqi Match đang tải thành tích và điểm uy tín mới nhất.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   if (trustProjectionQuery.isError) {
     return (
-      <LiquidScreen
+      <LiqiScreen
         contentContainerStyle={styles.scrollContent}
         withBottomNavPadding={false}
         withHeader={false}
@@ -296,12 +293,12 @@ export function ProfileShareScreen() {
           Ảnh chia sẻ được tạm khoá để không hiển thị số liệu tự khai hoặc dữ
           liệu cũ chưa xác minh.
         </ShareGuardCard>
-      </LiquidScreen>
+      </LiqiScreen>
     );
   }
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.scrollContent}
       withBottomNavPadding={false}
       withHeader={false}
@@ -344,10 +341,10 @@ export function ProfileShareScreen() {
       </ShareControls>
 
       <View style={styles.actionRow}>
-        <LiquidButton
+        <LiqiButton
           accessibilityLabel="Lưu ảnh hồ sơ"
           disabled={exporting !== null}
-          glowIntensity="low"
+          emphasis="low"
           onPress={async () => {
             setExporting('save');
             await exportShareImage({
@@ -372,11 +369,11 @@ export function ProfileShareScreen() {
             />
           )}
           <ProfileText style={styles.secondaryActionText}>Lưu ảnh</ProfileText>
-        </LiquidButton>
-        <LiquidButton
+        </LiqiButton>
+        <LiqiButton
           accessibilityLabel="Chia sẻ ảnh hồ sơ"
           disabled={exporting !== null}
-          glowIntensity="medium"
+          emphasis="medium"
           onPress={async () => {
             setExporting('share');
             await exportShareImage({
@@ -398,14 +395,14 @@ export function ProfileShareScreen() {
           <ProfileText style={styles.primaryActionText}>
             Chia sẻ ảnh
           </ProfileText>
-        </LiquidButton>
+        </LiqiButton>
       </View>
 
       <ProfileText style={styles.exportNote}>
         Preview này được render thành PNG thật để lưu vào máy hoặc gửi qua
         native share sheet. Thành tích trên ảnh chỉ lấy từ dữ liệu đã xác minh.
       </ProfileText>
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -427,11 +424,11 @@ function ShareGuardCard({
   title: string;
 }) {
   return (
-    <LiquidCard
+    <LiqiCard
       density="regular"
-      glowIntensity="low"
+      emphasis="low"
       style={styles.guardCard}
-      surfaceBackground="rgba(7,10,24,0.44)"
+      backgroundColor="rgba(7,10,24,0.44)"
       withShadow={false}
     >
       <View style={styles.guardIconShell}>
@@ -442,8 +439,8 @@ function ShareGuardCard({
       {onPrimaryPress || onSecondaryPress ? (
         <View style={styles.guardActions}>
           {onPrimaryPress && primaryLabel ? (
-            <LiquidButton
-              glowIntensity="low"
+            <LiqiButton
+              emphasis="low"
               onPress={() => {
                 selectionImpact();
                 onPrimaryPress();
@@ -455,11 +452,11 @@ function ShareGuardCard({
               <ProfileText style={styles.primaryActionText}>
                 {primaryLabel}
               </ProfileText>
-            </LiquidButton>
+            </LiqiButton>
           ) : null}
           {onSecondaryPress && secondaryLabel ? (
-            <LiquidButton
-              glowIntensity="none"
+            <LiqiButton
+              emphasis="none"
               onPress={() => {
                 selectionImpact();
                 onSecondaryPress();
@@ -472,21 +469,21 @@ function ShareGuardCard({
               <ProfileText style={styles.secondaryActionText}>
                 {secondaryLabel}
               </ProfileText>
-            </LiquidButton>
+            </LiqiButton>
           ) : null}
         </View>
       ) : null}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
 function ShareTopBar({ loading }: { loading: boolean }) {
   return (
     <View style={styles.topBar}>
-      <LiquidOrbButton
+      <LiqiOrbButton
         accessibilityLabel="Quay lại hồ sơ"
-        glassIntensity="low"
-        glowIntensity="low"
+        surfaceTone="low"
+        emphasis="low"
         onPress={() => {
           selectionImpact();
           router.back();
@@ -495,11 +492,11 @@ function ShareTopBar({ loading }: { loading: boolean }) {
         style={styles.topOrb}
       >
         <Ionicons
-          color={liquidColors.text.primary}
+          color={liqiColors.text.primary}
           name="chevron-back"
           size={20}
         />
-      </LiquidOrbButton>
+      </LiqiOrbButton>
       <View style={styles.titleBlock}>
         <ProfileText style={styles.title}>Chia sẻ ảnh hồ sơ</ProfileText>
         <ProfileText style={styles.subtitle}>
@@ -773,14 +770,14 @@ function PosterGroup({
 
 function ShareControls({ children }: { children: ReactNode }) {
   return (
-    <LiquidCard
+    <LiqiCard
       density="regular"
-      glowIntensity="low"
+      emphasis="low"
       style={styles.controlsCard}
-      surfaceBackground="rgba(7,10,24,0.44)"
+      backgroundColor="rgba(7,10,24,0.44)"
     >
       {children}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -802,7 +799,7 @@ function OptionRow<Value extends string>({
       <ProfileText style={styles.optionLabel}>{label}</ProfileText>
       <View style={styles.optionChips}>
         {options.map((option) => (
-          <LiquidChip
+          <LiqiChip
             accessibilityLabel={`${label} ${option.label}`}
             accessibilityState={{ selected: selected === option.id }}
             density="compact"
@@ -816,7 +813,7 @@ function OptionRow<Value extends string>({
             variant={tone}
           >
             {option.label}
-          </LiquidChip>
+          </LiqiChip>
         ))}
       </View>
     </View>
@@ -1101,7 +1098,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   posterName: {
-    ...liquidTypography.screenName,
+    ...liqiTypography.screenTitle,
     color: 'rgba(252,254,255,0.98)',
     flexShrink: 1,
     fontSize: 24,
@@ -1204,8 +1201,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   title: {
-    ...liquidTypography.sectionTitle,
-    color: liquidColors.text.primary,
+    ...liqiTypography.sectionTitle,
+    color: liqiColors.text.primary,
     fontSize: 18,
     fontWeight: '900',
     letterSpacing: -0.22,

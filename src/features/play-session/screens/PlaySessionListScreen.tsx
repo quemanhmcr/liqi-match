@@ -16,12 +16,8 @@ import type {
   AcceptSessionInviteCommandV2,
   DeclineSessionInviteCommandV2,
 } from '@/shared/contracts/core-v2';
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-} from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
+import { LiqiButton, LiqiCard, LiqiChip } from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 
 import {
   prepareCoreV2CommandMetadata,
@@ -55,32 +51,32 @@ export function PlaySessionListScreen() {
   const busy = accept.isPending || decline.isPending;
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.screen}
       subtitle="Lời mời, lịch chơi và đội đang hoạt động"
       title="Buổi chơi"
     >
       <View style={styles.heroActions}>
-        <LiquidButton
+        <LiqiButton
           onPress={() => router.push(appRoutes.sessions.create)}
           variant="primary"
         >
           <Ionicons color="#FFFFFF" name="add" size={17} />
           <Text style={styles.buttonText}>Tạo buổi chơi</Text>
-        </LiquidButton>
-        <LiquidButton
+        </LiqiButton>
+        <LiqiButton
           onPress={() => router.push(appRoutes.sets.hub)}
           variant="ghost"
         >
           Set của tôi
-        </LiquidButton>
+        </LiqiButton>
       </View>
 
       <SectionTitle icon="mail-unread-outline">Lời mời đang chờ</SectionTitle>
       {invites.data?.map((invite) => {
         const inviter = identityById.get(invite.inviterPlayerId);
         return (
-          <LiquidCard
+          <LiqiCard
             contentStyle={styles.inviteCard}
             key={invite.inviteId}
             radius={24}
@@ -111,7 +107,7 @@ export function PlaySessionListScreen() {
               </View>
             </View>
             <View style={styles.actions}>
-              <LiquidButton
+              <LiqiButton
                 disabled={busy}
                 onPress={() =>
                   accept.mutate({
@@ -123,8 +119,8 @@ export function PlaySessionListScreen() {
                 variant="rank"
               >
                 {accept.isPending ? 'Đang tham gia…' : 'Tham gia'}
-              </LiquidButton>
-              <LiquidButton
+              </LiqiButton>
+              <LiqiButton
                 disabled={busy}
                 onPress={() =>
                   decline.mutate({
@@ -136,17 +132,17 @@ export function PlaySessionListScreen() {
                 variant="ghost"
               >
                 Từ chối
-              </LiquidButton>
-              <LiquidButton
+              </LiqiButton>
+              <LiqiButton
                 onPress={() =>
                   router.push(appRoutes.sessions.detail(invite.sessionId))
                 }
                 variant="ghost"
               >
                 Xem chi tiết
-              </LiquidButton>
+              </LiqiButton>
             </View>
-          </LiquidCard>
+          </LiqiCard>
         );
       })}
       {!invites.data?.length && !loading ? (
@@ -170,7 +166,7 @@ export function PlaySessionListScreen() {
             }
             style={({ pressed }) => pressed && styles.pressed}
           >
-            <LiquidCard
+            <LiqiCard
               contentStyle={styles.sessionCard}
               radius={24}
               variant="purple"
@@ -183,14 +179,14 @@ export function PlaySessionListScreen() {
                   <Text numberOfLines={1} style={styles.title}>
                     {session.title}
                   </Text>
-                  <LiquidChip
+                  <LiqiChip
                     density="tag"
                     variant={
                       session.state === 'in_progress' ? 'cyan' : 'purple'
                     }
                   >
                     {stateLabel(session.state)}
-                  </LiquidChip>
+                  </LiqiChip>
                 </View>
                 <Text style={styles.meta}>
                   {activeMembers.length}/{session.capacity} thành viên ·{' '}
@@ -211,7 +207,7 @@ export function PlaySessionListScreen() {
                 name="chevron-forward"
                 size={18}
               />
-            </LiquidCard>
+            </LiqiCard>
           </Pressable>
         );
       })}
@@ -229,7 +225,7 @@ export function PlaySessionListScreen() {
         </Text>
       ) : null}
       {error ? (
-        <LiquidButton
+        <LiqiButton
           onPress={() => {
             void current.refetch();
             void invites.refetch();
@@ -237,9 +233,9 @@ export function PlaySessionListScreen() {
           variant="secondary"
         >
           Thử lại
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 

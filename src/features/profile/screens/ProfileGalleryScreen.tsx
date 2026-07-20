@@ -17,13 +17,13 @@ import {
 import { PROFILE_WALL_MEDIA_LIMIT } from '@/entities/player-profile';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+  LiqiButton,
+  LiqiCard,
+  LiqiChip,
+  LiqiOrbButton,
+} from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 import {
   associateProfileGalleryAsset,
@@ -169,23 +169,23 @@ export function ProfileGalleryScreen() {
   };
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.content}
       withBottomNavPadding={false}
       withHeader={false}
     >
       <View style={styles.header}>
-        <LiquidOrbButton
+        <LiqiOrbButton
           accessibilityLabel="Quay lại"
           onPress={() => router.back()}
           size={42}
         >
           <Ionicons
-            color={liquidColors.text.primary}
+            color={liqiColors.text.primary}
             name="chevron-back"
             size={20}
           />
-        </LiquidOrbButton>
+        </LiqiOrbButton>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>PROFILE MEDIA</Text>
           <Text style={styles.title}>Khoảnh khắc nổi bật</Text>
@@ -193,7 +193,7 @@ export function ProfileGalleryScreen() {
         <View style={styles.spacer} />
       </View>
 
-      <LiquidCard density="regular" style={styles.hero} variant="purple">
+      <LiqiCard density="regular" style={styles.hero} variant="purple">
         <View style={styles.heroIcon}>
           <Ionicons color="#BFF5FF" name="images" size={25} />
         </View>
@@ -204,7 +204,7 @@ export function ProfileGalleryScreen() {
             sơ.
           </Text>
         </View>
-      </LiquidCard>
+      </LiqiCard>
 
       {galleryQuery.isPending ? (
         <StateCard loading title="Đang tải tường ảnh..." />
@@ -294,7 +294,7 @@ export function ProfileGalleryScreen() {
           </View>
 
           {pending ? (
-            <LiquidCard density="compact" style={styles.retryCard}>
+            <LiqiCard density="compact" style={styles.retryCard}>
               <Ionicons
                 color="#FFCB8D"
                 name="cloud-offline-outline"
@@ -306,23 +306,23 @@ export function ProfileGalleryScreen() {
                   Chỉ cần thử lại bước liên kết, không upload lại file.
                 </Text>
               </View>
-              <LiquidButton
+              <LiqiButton
                 disabled={associationMutation.isPending}
                 onPress={retryPending}
                 variant="secondary"
               >
                 Thử lại
-              </LiquidButton>
-            </LiquidCard>
+              </LiqiButton>
+            </LiqiCard>
           ) : null}
 
           <View style={styles.policyRow}>
-            <LiquidChip density="compact" variant="cyan">
+            <LiqiChip density="compact" variant="cyan">
               Tối đa 4 ảnh
-            </LiquidChip>
-            <LiquidChip density="compact" variant="purple">
+            </LiqiChip>
+            <LiqiChip density="compact" variant="purple">
               Ảnh hồ sơ công khai theo policy
-            </LiquidChip>
+            </LiqiChip>
           </View>
           <Text style={styles.footerCopy}>
             Không hiển thị trạng thái “đang xử lý” giả: ảnh chỉ xuất hiện trên
@@ -330,7 +330,7 @@ export function ProfileGalleryScreen() {
           </Text>
         </>
       )}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -344,7 +344,7 @@ function StateCard({
   title: string;
 }) {
   return (
-    <LiquidCard density="regular" style={styles.stateCard}>
+    <LiqiCard density="regular" style={styles.stateCard}>
       {loading ? (
         <ActivityIndicator color="#67E8FF" />
       ) : (
@@ -352,16 +352,16 @@ function StateCard({
       )}
       <Text style={styles.body}>{title}</Text>
       {onRetry ? (
-        <LiquidButton onPress={onRetry} variant="secondary">
+        <LiqiButton onPress={onRetry} variant="secondary">
           Tải lại
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { color: liquidColors.text.secondary, fontSize: 12.5, lineHeight: 18 },
+  body: { color: liqiColors.text.secondary, fontSize: 12.5, lineHeight: 18 },
   busyOverlay: {
     alignItems: 'center',
     backgroundColor: 'rgba(2,5,14,0.62)',
@@ -373,12 +373,12 @@ const styles = StyleSheet.create({
     top: 0,
   },
   cardTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 15,
     fontWeight: '900',
   },
   content: { gap: 14, paddingBottom: 42, paddingHorizontal: 16, paddingTop: 8 },
-  emptyMeta: { color: liquidColors.text.muted, fontSize: 10.5 },
+  emptyMeta: { color: liqiColors.text.muted, fontSize: 10.5 },
   emptyTile: {
     alignItems: 'center',
     flex: 1,
@@ -386,7 +386,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 12.5,
     fontWeight: '800',
   },
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1.1,
   },
   footerCopy: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     fontSize: 11.5,
     lineHeight: 17,
     textAlign: 'center',
@@ -498,5 +498,5 @@ const styles = StyleSheet.create({
     minWidth: 135,
     overflow: 'hidden',
   },
-  title: { color: liquidColors.text.primary, fontSize: 17, fontWeight: '900' },
+  title: { color: liqiColors.text.primary, fontSize: 17, fontWeight: '900' },
 });

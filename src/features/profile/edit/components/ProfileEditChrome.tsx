@@ -1,12 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, View } from 'react-native';
 
-import {
-  LiquidButton,
-  LiquidCard,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiButton, LiqiCard, LiqiOrbButton } from '@/shared/components/liqi';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 import { ProfileText } from '../../components/ProfileShared';
 import { profileEditStyles as styles } from './profile-edit-styles';
@@ -26,30 +22,30 @@ export function ProfileEditTopBar({
 }) {
   return (
     <View style={styles.topBar}>
-      <LiquidOrbButton
+      <LiqiOrbButton
         accessibilityLabel="Quay lại hồ sơ"
-        glassIntensity="low"
-        glowIntensity="low"
+        surfaceTone="low"
+        emphasis="low"
         onPress={onBack}
         size={42}
         style={styles.topOrb}
       >
         <Ionicons
-          color={liquidColors.text.primary}
+          color={liqiColors.text.primary}
           name="chevron-back"
           size={20}
         />
-      </LiquidOrbButton>
+      </LiqiOrbButton>
       <View style={styles.titleBlock}>
         <ProfileText style={styles.title}>Chỉnh sửa hồ sơ</ProfileText>
         <ProfileText numberOfLines={2} style={styles.subtitle}>
           Chỉ section thay đổi mới được gửi lên server.
         </ProfileText>
       </View>
-      <LiquidButton
+      <LiqiButton
         accessibilityLabel="Lưu hồ sơ"
         disabled={!canSave}
-        glowIntensity={canSave ? 'low' : 'none'}
+        emphasis={canSave ? 'low' : 'none'}
         onPress={onSave}
         radius={18}
         style={styles.saveButton}
@@ -60,7 +56,7 @@ export function ProfileEditTopBar({
         <ProfileText style={styles.saveText}>
           {loading ? 'Đang lưu' : 'Lưu'}
         </ProfileText>
-      </LiquidButton>
+      </LiqiButton>
       {hasChanges ? (
         <View pointerEvents="none" style={styles.dirtyDot} />
       ) : null}
@@ -79,11 +75,7 @@ export function ProfileEditLoadingState() {
 
 export function ProfileEditErrorState({ onRetry }: { onRetry: () => void }) {
   return (
-    <LiquidCard
-      density="regular"
-      glowIntensity="low"
-      style={styles.sectionCard}
-    >
+    <LiqiCard density="regular" emphasis="low" style={styles.sectionCard}>
       <View style={styles.errorState}>
         <Ionicons
           color="rgba(255,216,168,0.84)"
@@ -96,15 +88,15 @@ export function ProfileEditErrorState({ onRetry }: { onRetry: () => void }) {
         <ProfileText style={styles.errorBody}>
           Kiểm tra kết nối rồi thử lại. Dữ liệu chưa được thay đổi.
         </ProfileText>
-        <LiquidButton
+        <LiqiButton
           onPress={onRetry}
           radius={18}
           style={styles.retryButton}
           withShadow={false}
         >
           <ProfileText style={styles.primaryMiniText}>Thử lại</ProfileText>
-        </LiquidButton>
+        </LiqiButton>
       </View>
-    </LiquidCard>
+    </LiqiCard>
   );
 }

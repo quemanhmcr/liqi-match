@@ -17,14 +17,14 @@ import {
 } from '@/entities/trust-outcomes';
 import { useAuth } from '@/shared/auth/auth-context';
 import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-  LiquidOrbButton,
-} from '@/shared/components/liquid';
+  LiqiButton,
+  LiqiCard,
+  LiqiChip,
+  LiqiOrbButton,
+} from '@/shared/components/liqi';
 import type { EngagementPreferencesV2 } from '@/shared/contracts/core-v2';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import { liquidColors } from '@/shared/theme/liquid-glass.tokens';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors } from '@/shared/theme/liqi-design-system';
 
 type BooleanPreferenceKey =
   | 'activityEnabled'
@@ -102,23 +102,23 @@ export function EngagementPreferencesScreen() {
   };
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.content}
       withBottomNavPadding={false}
       withHeader={false}
     >
       <View style={styles.header}>
-        <LiquidOrbButton
+        <LiqiOrbButton
           accessibilityLabel="Quay lại"
           onPress={() => router.back()}
           size={42}
         >
           <Ionicons
-            color={liquidColors.text.primary}
+            color={liqiColors.text.primary}
             name="chevron-back"
             size={20}
           />
-        </LiquidOrbButton>
+        </LiqiOrbButton>
         <View style={styles.headerCopy}>
           <Text style={styles.eyebrow}>RETURN LOOP V2</Text>
           <Text style={styles.title}>Nhắc nhở & hoạt động</Text>
@@ -126,7 +126,7 @@ export function EngagementPreferencesScreen() {
         <View style={styles.spacer} />
       </View>
 
-      <LiquidCard density="regular" style={styles.intro} variant="purple">
+      <LiqiCard density="regular" style={styles.intro} variant="purple">
         <Ionicons color="#67E8FF" name="options-outline" size={24} />
         <View style={styles.introCopy}>
           <Text style={styles.cardTitle}>Bạn kiểm soát nhịp quay lại</Text>
@@ -135,7 +135,7 @@ export function EngagementPreferencesScreen() {
             ngăn consumer tương ứng tạo delivery mới.
           </Text>
         </View>
-      </LiquidCard>
+      </LiqiCard>
 
       {preferencesQuery.isPending ? (
         <StateCard loading title="Đang tải chính sách nhắc nhở..." />
@@ -148,7 +148,7 @@ export function EngagementPreferencesScreen() {
         <>
           <View style={styles.rows}>
             {definitions.map((definition) => (
-              <LiquidCard
+              <LiqiCard
                 density="list"
                 key={definition.key}
                 style={styles.rowCard}
@@ -176,11 +176,11 @@ export function EngagementPreferencesScreen() {
                     value={preferences[definition.key]}
                   />
                 </View>
-              </LiquidCard>
+              </LiqiCard>
             ))}
           </View>
 
-          <LiquidCard density="regular" style={styles.capCard}>
+          <LiqiCard density="regular" style={styles.capCard}>
             <Text style={styles.cardTitle}>Giới hạn push mỗi ngày</Text>
             <Text style={styles.body}>
               Tối đa số push tái kích hoạt trong một ngày. Giá trị 0 tắt
@@ -188,7 +188,7 @@ export function EngagementPreferencesScreen() {
             </Text>
             <View style={styles.caps}>
               {[0, 1, 2, 3, 4].map((value) => (
-                <LiquidChip
+                <LiqiChip
                   accessibilityLabel={`${value} push mỗi ngày`}
                   density="compact"
                   disabled={updateMutation.isPending}
@@ -209,10 +209,10 @@ export function EngagementPreferencesScreen() {
                   }
                 >
                   {value === 0 ? 'Tắt' : `${value}/ngày`}
-                </LiquidChip>
+                </LiqiChip>
               ))}
             </View>
-          </LiquidCard>
+          </LiqiCard>
           {updateMutation.isPending ? (
             <View style={styles.savingRow}>
               <ActivityIndicator color="#67E8FF" size="small" />
@@ -221,7 +221,7 @@ export function EngagementPreferencesScreen() {
           ) : null}
         </>
       )}
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -235,7 +235,7 @@ function StateCard({
   title: string;
 }) {
   return (
-    <LiquidCard density="regular" style={styles.stateCard}>
+    <LiqiCard density="regular" style={styles.stateCard}>
       {loading ? (
         <ActivityIndicator color="#67E8FF" />
       ) : (
@@ -243,20 +243,20 @@ function StateCard({
       )}
       <Text style={styles.body}>{title}</Text>
       {onRetry ? (
-        <LiquidButton onPress={onRetry} variant="secondary">
+        <LiqiButton onPress={onRetry} variant="secondary">
           Tải lại
-        </LiquidButton>
+        </LiqiButton>
       ) : null}
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
 const styles = StyleSheet.create({
-  body: { color: liquidColors.text.secondary, fontSize: 12.5, lineHeight: 18 },
+  body: { color: liqiColors.text.secondary, fontSize: 12.5, lineHeight: 18 },
   capCard: { gap: 10 },
   caps: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   cardTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 15,
     fontWeight: '900',
   },
@@ -283,13 +283,13 @@ const styles = StyleSheet.create({
   rowCard: { overflow: 'hidden' },
   rowCopy: { flex: 1, minWidth: 0 },
   rowSubtitle: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     fontSize: 11.5,
     lineHeight: 16,
     marginTop: 3,
   },
   rowTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 14,
     fontWeight: '800',
   },
@@ -307,5 +307,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 150,
   },
-  title: { color: liquidColors.text.primary, fontSize: 17, fontWeight: '900' },
+  title: { color: liqiColors.text.primary, fontSize: 17, fontWeight: '900' },
 });

@@ -12,8 +12,6 @@ import { DiscoverMatchesScreen } from '../screens/DiscoverMatchesScreen';
 import { DiscoverSetsScreen } from '../screens/DiscoverSetsScreen';
 import { DiscoverVibesScreen } from '../screens/DiscoverVibesScreen';
 
-jest.mock('expo-blur', () => ({ BlurView: 'BlurView' }));
-
 jest.mock('expo-linear-gradient', () => {
   const React = jest.requireActual<typeof import('react')>('react');
   const { View } =

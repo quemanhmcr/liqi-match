@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { LiquidCard } from '@/shared/components/liquid';
+import { AppCard } from '@/shared/ui';
 
 import type {
   MessageConversationSource,
   MessageParticipant,
 } from '../contracts/messages-contracts';
+import { messagesUi } from '../ui/messages-ui';
 
 type OptionRowProps = Readonly<{
   destructive?: boolean;
@@ -61,15 +62,14 @@ export function ConversationOptionsModal({
           onPress={onClose}
           style={StyleSheet.absoluteFill}
         />
-        <LiquidCard
-          blurIntensity={34}
+        <AppCard
           contentStyle={styles.cardContent}
-          glowIntensity="low"
+          emphasis="low"
           radius={28}
           style={styles.card}
-          surfaceBackground="rgba(13, 17, 34, 0.98)"
+          backgroundColor={messagesUi.colors.optionsModal.card}
           variant="purple"
-          withInnerReflection
+          withHighlight
           withShadow={false}
         >
           <View style={styles.handle} />
@@ -144,7 +144,7 @@ export function ConversationOptionsModal({
           >
             <Text style={styles.closeText}>Xong</Text>
           </Pressable>
-        </LiquidCard>
+        </AppCard>
       </View>
     </Modal>
   );
@@ -175,7 +175,11 @@ function OptionRow({
         style={[styles.optionIcon, destructive && styles.optionIconDestructive]}
       >
         <Ionicons
-          color={destructive ? '#FFB4C2' : 'rgba(220, 208, 255, 0.84)'}
+          color={
+            destructive
+              ? messagesUi.colors.optionsModal.destructiveIcon
+              : messagesUi.colors.optionsModal.icon
+          }
           name={icon}
           size={20}
         />
@@ -189,7 +193,7 @@ function OptionRow({
         <Text style={styles.optionSubtitle}>{subtitle}</Text>
       </View>
       <Ionicons
-        color="rgba(210, 219, 245, 0.34)"
+        color={messagesUi.colors.optionsModal.chevron}
         name="chevron-forward"
         size={17}
       />
@@ -218,7 +222,7 @@ function sourceOptionCopy(source?: MessageConversationSource) {
 const styles = StyleSheet.create({
   backdrop: {
     alignItems: 'center',
-    backgroundColor: 'rgba(2, 4, 12, 0.72)',
+    backgroundColor: messagesUi.colors.optionsModal.backdrop,
     flex: 1,
     justifyContent: 'flex-end',
     padding: 14,
@@ -232,19 +236,23 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     alignItems: 'center',
-    backgroundColor: 'rgba(145, 105, 255, 0.16)',
-    borderColor: 'rgba(194, 169, 255, 0.20)',
+    backgroundColor: messagesUi.colors.optionsModal.closeBackground,
+    borderColor: messagesUi.colors.optionsModal.closeBorder,
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,
     justifyContent: 'center',
     minHeight: 46,
   },
-  closeText: { color: '#EFEAFF', fontSize: 14, fontWeight: '800' },
-  destructiveText: { color: '#FFD3DC' },
+  closeText: {
+    color: messagesUi.colors.optionsModal.closeText,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  destructiveText: { color: messagesUi.colors.optionsModal.destructiveText },
   disabled: { opacity: 0.52 },
   handle: {
     alignSelf: 'center',
-    backgroundColor: 'rgba(222, 214, 255, 0.24)',
+    backgroundColor: messagesUi.colors.optionsModal.handle,
     borderRadius: 999,
     height: 4,
     width: 40,
@@ -252,7 +260,7 @@ const styles = StyleSheet.create({
   heading: { gap: 5, paddingHorizontal: 5 },
   option: {
     alignItems: 'center',
-    borderBottomColor: 'rgba(214, 224, 255, 0.07)',
+    borderBottomColor: messagesUi.colors.optionsModal.divider,
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     gap: 12,
@@ -263,8 +271,8 @@ const styles = StyleSheet.create({
   optionCopy: { flex: 1, gap: 3 },
   optionIcon: {
     alignItems: 'center',
-    backgroundColor: 'rgba(122, 91, 210, 0.14)',
-    borderColor: 'rgba(190, 164, 255, 0.14)',
+    backgroundColor: messagesUi.colors.optionsModal.iconSurface,
+    borderColor: messagesUi.colors.optionsModal.iconBorder,
     borderRadius: 15,
     borderWidth: StyleSheet.hairlineWidth,
     height: 42,
@@ -272,24 +280,28 @@ const styles = StyleSheet.create({
     width: 42,
   },
   optionIconDestructive: {
-    backgroundColor: 'rgba(180, 54, 89, 0.12)',
-    borderColor: 'rgba(255, 153, 180, 0.14)',
+    backgroundColor: messagesUi.colors.optionsModal.destructiveIconSurface,
+    borderColor: messagesUi.colors.optionsModal.destructiveIconBorder,
   },
-  optionLabel: { color: '#F4F1FF', fontSize: 14, fontWeight: '700' },
+  optionLabel: {
+    color: messagesUi.colors.optionsModal.label,
+    fontSize: 14,
+    fontWeight: '700',
+  },
   options: { gap: 1 },
   optionSubtitle: {
-    color: 'rgba(207, 216, 241, 0.56)',
+    color: messagesUi.colors.optionsModal.optionSubtitle,
     fontSize: 11,
     lineHeight: 15,
   },
   pressed: { opacity: 0.7, transform: [{ scale: 0.992 }] },
   subtitle: {
-    color: 'rgba(207, 216, 241, 0.60)',
+    color: messagesUi.colors.optionsModal.subtitle,
     fontSize: 12,
     lineHeight: 17,
   },
   title: {
-    color: '#FAF8FF',
+    color: messagesUi.colors.optionsModal.title,
     fontSize: 20,
     fontWeight: '800',
     letterSpacing: -0.3,

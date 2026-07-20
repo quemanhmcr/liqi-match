@@ -1,2 +1,5 @@
-import { PlaySessionDetailScreen } from '@/features/play-session/screens/PlaySessionDetailScreen';
-export default PlaySessionDetailScreen;
+import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+
+export default function PlaySessionDetailRoute() {
+  return <ResetRouteScreen routeId="session-detail" />;
+}

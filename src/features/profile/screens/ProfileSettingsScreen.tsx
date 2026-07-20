@@ -28,17 +28,14 @@ import {
 } from '@/shared/auth/account-deletion-service';
 import { appRoutes } from '@/app-shell/navigation/routes';
 import {
-  LiquidButton,
-  LiquidCard,
-  LiquidChip,
-  LiquidOrbButton,
-  LiquidSectionHeader,
-} from '@/shared/components/liquid';
-import { LiquidScreen } from '@/shared/layouts/LiquidScreen';
-import {
-  liquidColors,
-  liquidTypography,
-} from '@/shared/theme/liquid-glass.tokens';
+  LiqiButton,
+  LiqiCard,
+  LiqiChip,
+  LiqiOrbButton,
+  LiqiSectionHeader,
+} from '@/shared/components/liqi';
+import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { liqiColors, liqiTypography } from '@/shared/theme/liqi-design-system';
 
 import {
   ProfilePrivacySettingsSection,
@@ -325,16 +322,16 @@ export function ProfileSettingsScreen() {
   };
 
   return (
-    <LiquidScreen
+    <LiqiScreen
       contentContainerStyle={styles.scrollContent}
       withBottomNavPadding={false}
       withHeader={false}
     >
       <View style={styles.headerBar}>
-        <LiquidOrbButton
+        <LiqiOrbButton
           accessibilityLabel="Quay lại hồ sơ"
-          glassIntensity="low"
-          glowIntensity="low"
+          surfaceTone="low"
+          emphasis="low"
           onPress={() => {
             selectionImpact();
             router.back();
@@ -343,11 +340,11 @@ export function ProfileSettingsScreen() {
           style={styles.headerOrb}
         >
           <Ionicons
-            color={liquidColors.text.primary}
+            color={liqiColors.text.primary}
             name="chevron-back"
             size={20}
           />
-        </LiquidOrbButton>
+        </LiqiOrbButton>
         <View style={styles.headerCopy}>
           <ProfileText style={styles.headerEyebrow}>LIQI MATCH</ProfileText>
           <ProfileText style={styles.headerTitle}>Cài đặt</ProfileText>
@@ -564,7 +561,7 @@ export function ProfileSettingsScreen() {
       />
 
       <View aria-hidden style={styles.bottomSpacer} />
-    </LiquidScreen>
+    </LiqiScreen>
   );
 }
 
@@ -584,9 +581,9 @@ function ProfileReadStatusCard({
   title: string;
 }) {
   return (
-    <LiquidCard
+    <LiqiCard
       density="list"
-      glowIntensity="low"
+      emphasis="low"
       style={styles.accountCard}
       withShadow={false}
     >
@@ -605,15 +602,12 @@ function ProfileReadStatusCard({
           </ProfileText>
         </View>
         {!loading && onRetry ? (
-          <LiquidButton
-            accessibilityLabel="Thử tải lại hồ sơ"
-            onPress={onRetry}
-          >
+          <LiqiButton accessibilityLabel="Thử tải lại hồ sơ" onPress={onRetry}>
             Thử lại
-          </LiquidButton>
+          </LiqiButton>
         ) : null}
       </View>
-    </LiquidCard>
+    </LiqiCard>
   );
 }
 
@@ -638,9 +632,9 @@ function AccountSummaryCard({
       onPress={onPress}
       style={({ pressed }) => pressed && styles.pressed}
     >
-      <LiquidCard
+      <LiqiCard
         density="list"
-        glowIntensity="low"
+        emphasis="low"
         style={styles.accountCard}
         withShadow={false}
       >
@@ -651,9 +645,9 @@ function AccountSummaryCard({
               <ProfileText numberOfLines={1} style={styles.accountName}>
                 {displayName}
               </ProfileText>
-              <LiquidChip density="compact" selected variant="cyan">
+              <LiqiChip density="compact" selected variant="cyan">
                 {statusLabel}
-              </LiquidChip>
+              </LiqiChip>
             </View>
             <ProfileText numberOfLines={1} style={styles.accountMeta}>
               {accountSubtitle}
@@ -665,7 +659,7 @@ function AccountSummaryCard({
             size={17}
           />
         </View>
-      </LiquidCard>
+      </LiqiCard>
     </Pressable>
   );
 }
@@ -681,7 +675,7 @@ function SettingsSection({
 }) {
   return (
     <View style={styles.section}>
-      <LiquidSectionHeader label={label} title={title} />
+      <LiqiSectionHeader label={label} title={title} />
       <View style={styles.rows}>{children}</View>
     </View>
   );
@@ -709,11 +703,11 @@ function SettingsRow({
   const interactive = Boolean(onPress && !disabled);
   const isDanger = tone === 'danger';
   const content = (
-    <LiquidCard
+    <LiqiCard
       density="list"
-      glowIntensity={interactive && !isDanger ? 'low' : 'none'}
+      emphasis={interactive && !isDanger ? 'low' : 'none'}
       style={styles.rowCard}
-      surfaceBackground={isDanger ? 'rgba(48, 17, 31, 0.24)' : undefined}
+      backgroundColor={isDanger ? 'rgba(48, 17, 31, 0.24)' : undefined}
       withShadow={false}
     >
       <View style={[styles.rowContent, disabled && styles.disabledRow]}>
@@ -746,7 +740,7 @@ function SettingsRow({
           />
         ) : null}
       </View>
-    </LiquidCard>
+    </LiqiCard>
   );
 
   if (!onPress) return content;
@@ -828,11 +822,11 @@ function AccountDeleteModal({
       visible={visible}
     >
       <View style={styles.modalBackdrop}>
-        <LiquidCard
+        <LiqiCard
           density="large"
-          glowIntensity="low"
+          emphasis="low"
           style={styles.deleteModalCard}
-          surfaceBackground="rgba(32, 12, 24, 0.86)"
+          backgroundColor="rgba(32, 12, 24, 0.86)"
           variant="purple"
         >
           <View style={styles.deleteIconShell}>
@@ -861,29 +855,29 @@ function AccountDeleteModal({
             value={confirmationText}
           />
           <View style={styles.deleteActions}>
-            <LiquidButton
+            <LiqiButton
               accessibilityLabel="Huỷ xoá tài khoản"
               disabled={pending}
-              glowIntensity="none"
+              emphasis="none"
               onPress={onCancel}
               style={styles.deleteActionButton}
               variant="secondary"
             >
               Huỷ
-            </LiquidButton>
-            <LiquidButton
+            </LiqiButton>
+            <LiqiButton
               accessibilityLabel="Xác nhận xoá tài khoản"
               disabled={disabled}
-              glowIntensity="low"
+              emphasis="low"
               onPress={onConfirm}
               style={styles.deleteActionButton}
               textStyle={styles.deleteButtonText}
               variant="ghost"
             >
               {pending ? 'Đang xoá...' : 'Xoá vĩnh viễn'}
-            </LiquidButton>
+            </LiqiButton>
           </View>
-        </LiquidCard>
+        </LiqiCard>
       </View>
     </Modal>
   );
@@ -958,13 +952,13 @@ const styles = StyleSheet.create({
   accountCard: { marginTop: 14 },
   accountCopy: { flex: 1, minWidth: 0 },
   accountMeta: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     fontSize: 12,
     fontWeight: '600',
     marginTop: 4,
   },
   accountName: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     flex: 1,
     fontSize: 15.5,
     fontWeight: '800',
@@ -1012,7 +1006,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   countBadgeText: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 12,
     fontWeight: '800',
   },
@@ -1024,7 +1018,7 @@ const styles = StyleSheet.create({
   deleteActionButton: { flex: 1, minWidth: 0 },
   deleteActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
   deleteBody: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 20,
@@ -1055,7 +1049,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.14)',
     borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 1.4,
@@ -1090,7 +1084,7 @@ const styles = StyleSheet.create({
   headerOrb: { height: 42, width: 42 },
   headerSpacer: { height: 42, width: 42 },
   headerSubtitle: {
-    color: liquidColors.text.secondary,
+    color: liqiColors.text.secondary,
     fontSize: 13,
     fontWeight: '600',
     lineHeight: 19,
@@ -1099,7 +1093,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   headerTitle: {
-    ...liquidTypography.screenName,
+    ...liqiTypography.screenTitle,
     fontSize: 24,
     letterSpacing: -0.48,
     marginTop: 1,
@@ -1132,14 +1126,14 @@ const styles = StyleSheet.create({
     width: 34,
   },
   rowSubtitle: {
-    color: liquidColors.text.muted,
+    color: liqiColors.text.muted,
     fontSize: 11.5,
     fontWeight: '600',
     lineHeight: 16,
     marginTop: 3,
   },
   rowTitle: {
-    color: liquidColors.text.primary,
+    color: liqiColors.text.primary,
     fontSize: 13.5,
     fontWeight: '800',
     letterSpacing: -0.16,
