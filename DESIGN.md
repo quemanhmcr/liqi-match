@@ -11,6 +11,8 @@ npm run design-system:check
 
 The scaffold creates an `AppScreen` and a colocated native test. It intentionally contains `TODO(design-scaffold)`, so validation stays red until placeholder composition is replaced with authoritative feature state.
 
+For concrete imports, ownership rules and the route reactivation workflow, read the [shared UI and route rebuild playbook](docs/development/SHARED_UI_AND_ROUTE_REBUILD_PLAYBOOK.md).
+
 ## Non-negotiable rules
 
 1. **Home and Messages are reference authorities, not copy-paste templates.** Reuse their hierarchy, density, interaction treatment, state visibility and compact behavior. Do not copy a feature-specific layout into unrelated pages.
