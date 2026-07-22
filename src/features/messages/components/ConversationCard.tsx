@@ -107,11 +107,7 @@ export function ConversationCard({
             >
               {conversation.name}
             </Text>
-            <Ionicons
-              color={relationshipColor(conversation)}
-              name={relationshipIcon(conversation)}
-              size={18}
-            />
+            <RelationshipAdornment conversation={conversation} />
           </View>
           <View
             accessibilityLabel={`Tin nhắn cuối: ${
@@ -138,15 +134,7 @@ export function ConversationCard({
             </Text>
           </View>
           <View style={styles.metaLine}>
-            <Ionicons
-              color={
-                conversation.isOnline
-                  ? appColors.status.online
-                  : appColors.accent.purple
-              }
-              name={conversation.isGroup ? 'people' : 'ellipse'}
-              size={conversation.isGroup ? 14 : 8}
-            />
+            <ConversationMetaIcon conversation={conversation} />
             <Text numberOfLines={1} style={styles.metaText}>
               {conversation.isGroup && conversation.participantCount > 0
                 ? `${conversation.participantCount} thành viên`
@@ -181,20 +169,64 @@ function conversationArtwork(conversation: MessageInboxConversationViewModel) {
   }
 }
 
+function RelationshipAdornment({
+  conversation,
+}: Readonly<{ conversation: MessageInboxConversationViewModel }>) {
+  const icon = relationshipIcon(conversation);
+  if (!icon) return null;
+
+  return (
+    <Ionicons
+      accessibilityLabel={conversation.relationshipLabel}
+      color={relationshipColor(conversation)}
+      name={icon}
+      size={18}
+      testID={`messages-conversation-relationship-icon-${conversation.id}`}
+    />
+  );
+}
+
 function relationshipIcon(
   conversation: MessageInboxConversationViewModel,
-): keyof typeof Ionicons.glyphMap {
+): keyof typeof Ionicons.glyphMap | undefined {
   if (conversation.relationship === 'team') return 'trophy';
   if (conversation.relationship === 'soulmate') return 'heart';
   if (conversation.sourceType === 'play_session') return 'game-controller';
   if (conversation.kind === 'system') return 'sparkles';
-  return 'heart-outline';
+  return undefined;
 }
 
 function relationshipColor(conversation: MessageInboxConversationViewModel) {
   if (conversation.relationship === 'team') return appColors.accent.amber;
   if (conversation.relationship === 'soulmate') return appColors.accent.pink;
   return appColors.accent.purple;
+}
+
+function ConversationMetaIcon({
+  conversation,
+}: Readonly<{ conversation: MessageInboxConversationViewModel }>) {
+  if (conversation.isGroup) {
+    return (
+      <Ionicons
+        accessible={false}
+        color={appColors.accent.purple}
+        name="people"
+        size={14}
+        testID={`messages-conversation-group-indicator-${conversation.id}`}
+      />
+    );
+  }
+  if (!conversation.isOnline) return null;
+
+  return (
+    <Ionicons
+      accessible={false}
+      color={appColors.status.online}
+      name="ellipse"
+      size={8}
+      testID={`messages-conversation-online-indicator-${conversation.id}`}
+    />
+  );
 }
 
 function ConversationAccessory({
