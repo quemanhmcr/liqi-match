@@ -230,8 +230,9 @@ describe('MessagesScreen', () => {
     ).toBeTruthy();
     expect(screen.getByText('Tất cả')).toBeTruthy();
     expect(screen.getByText('Chưa đọc')).toBeTruthy();
-    expect(screen.getByText('Phòng')).toBeTruthy();
     expect(screen.getByText('Cá nhân')).toBeTruthy();
+    expect(screen.getByText('Nhóm')).toBeTruthy();
+    expect(screen.queryByText('Tri kỉ')).toBeNull();
     expect(screen.getByTestId('messages-unread-filter-indicator')).toBeTruthy();
     expect(screen.getAllByText('Minh Anh').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Mở chat với Minh Anh')).toBeTruthy();
@@ -323,23 +324,39 @@ describe('MessagesScreen', () => {
     });
   });
 
-  it('filters through the repository contract', async () => {
+  it('filters conversation shape through the repository contract', async () => {
     const base = createLocalChatRepository();
     const listConversations = jest.fn(base.listConversations);
     const repository = { ...base, listConversations };
     const screen = await renderMessagesScreen({ repository });
 
-    await fireEvent.press(screen.getByLabelText('Lọc Phòng'));
+    await fireEvent.press(screen.getByLabelText('Lọc Nhóm'));
 
     await waitFor(() =>
       expect(listConversations).toHaveBeenLastCalledWith(
-        expect.objectContaining({ filter: 'teams', query: '' }),
+        expect.objectContaining({ filter: 'group', query: '' }),
         expect.objectContaining({ viewerId: testAuthSession.user.id }),
       ),
     );
     await waitFor(() => {
       expect(screen.getByLabelText('Mở chat với Team Sao Băng')).toBeTruthy();
+      expect(screen.getByLabelText('Mở chat với Aya Only')).toBeTruthy();
       expect(screen.queryByLabelText('Mở chat với Minh Anh')).toBeNull();
+    });
+
+    await fireEvent.press(screen.getByLabelText('Lọc Cá nhân'));
+
+    await waitFor(() =>
+      expect(listConversations).toHaveBeenLastCalledWith(
+        expect.objectContaining({ filter: 'direct', query: '' }),
+        expect.objectContaining({ viewerId: testAuthSession.user.id }),
+      ),
+    );
+    await waitFor(() => {
+      expect(screen.getByLabelText('Mở chat với Minh Anh')).toBeTruthy();
+      expect(screen.getByLabelText('Mở chat với Khoa Jungle')).toBeTruthy();
+      expect(screen.queryByLabelText('Mở chat với Team Sao Băng')).toBeNull();
+      expect(screen.queryByLabelText('Mở chat với Aya Only')).toBeNull();
     });
   });
 

@@ -213,9 +213,8 @@ export type MessageTimelineItem = z.infer<typeof MessageTimelineItemSchema>;
 
 export const MessageInboxFilterSchema = z.enum([
   'all',
-  'friends',
-  'soulmates',
-  'teams',
+  'direct',
+  'group',
   'unread',
 ]);
 export type MessageInboxFilter = z.infer<typeof MessageInboxFilterSchema>;

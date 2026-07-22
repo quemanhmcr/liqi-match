@@ -43,14 +43,21 @@ describe('local chat repository contract', () => {
 
   it('filters and searches the inbox through the contract instead of the screen', async () => {
     const repository = createLocalChatRepository();
-    const teams = await repository.listConversations({ filter: 'teams' });
+    const groups = await repository.listConversations({ filter: 'group' });
+    const direct = await repository.listConversations({ filter: 'direct' });
     const search = await repository.listConversations({ query: 'Khoa' });
 
-    expect(teams.data.items.map(({ relationship }) => relationship)).toEqual([
-      'team',
+    expect(groups.data.items.map(({ id }) => id).sort()).toEqual([
+      'aya-only',
+      'team-sao-bang',
     ]);
+    expect(groups.data.items.every(({ kind }) => kind === 'group')).toBe(true);
+    expect(direct.data.items.every(({ kind }) => kind === 'direct')).toBe(true);
+    expect(
+      direct.data.items.some(({ relationship }) => relationship === 'soulmate'),
+    ).toBe(true);
     expect(search.data.items.map(({ id }) => id)).toEqual(['khoa-jungle']);
-    expect(teams.data.pageInfo.nextCursor).toBeNull();
+    expect(groups.data.pageInfo.nextCursor).toBeNull();
   });
 
   it('rejects a stale cursor with a typed retryable error', async () => {

@@ -60,9 +60,8 @@ const inboxFilters: readonly {
 }[] = [
   { id: 'all', label: 'Tất cả' },
   { id: 'unread', label: 'Chưa đọc' },
-  { id: 'teams', label: 'Phòng' },
-  { id: 'friends', label: 'Cá nhân' },
-  { id: 'soulmates', label: 'Tri kỉ' },
+  { id: 'direct', label: 'Cá nhân' },
+  { id: 'group', label: 'Nhóm' },
 ];
 
 export type MessagesClock = {
@@ -232,7 +231,6 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   const openComposePicker = () => {
     lightImpact();
     setQuery('');
-    setSelectedFilter('friends');
     setComposeSelectedPlayerIds([]);
     setComposePickerVisible(true);
   };
