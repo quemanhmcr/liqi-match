@@ -1,5 +1,14 @@
-import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+import { useLocalSearchParams } from 'expo-router';
+
+import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 
 export default function OtherProfileRoute() {
-  return <ResetRouteScreen routeId="profile-player" />;
+  const { playerId } = useLocalSearchParams<{ playerId?: string | string[] }>();
+
+  return (
+    <ProfileScreen
+      identityId={Array.isArray(playerId) ? playerId[0] : playerId}
+      mode="other"
+    />
+  );
 }

@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Alert, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, View } from 'react-native';
 
 import type { SocialCommandCoordinator } from '@/entities/social-relationship/social-command-coordinator';
 import type { AuthSession } from '@/shared/auth/auth-service';
@@ -9,18 +9,15 @@ import type {
   SocialRelationshipSnapshotV2,
 } from '@/shared/contracts/core-v2';
 import {
-  liqiColors,
-  liqiSpacing,
-  liqiTypography,
-} from '@/shared/theme/liqi-design-system';
+  AppButton,
+  AppCard,
+  AppChip,
+  AppText,
+  appColors,
+  appSpacing,
+} from '@/shared/ui';
 
-import {
-  ProfileActionButton,
-  ProfilePill,
-  ProfileSurface,
-  type ProfileActionVariant,
-} from './ProfilePresentationPrimitives';
-import { ProfileText } from './ProfileShared';
+import { profileUi } from '../ui/profile-ui';
 
 type RelationshipAction =
   | 'request'
@@ -33,6 +30,8 @@ type RelationshipAction =
   | 'mute'
   | 'unmute'
   | Readonly<{ reportCategory: ReportCategoryV2 }>;
+
+type ActionTone = 'danger' | 'ghost' | 'primary' | 'secondary';
 
 export type ProfileRelationshipActionsProps = Readonly<{
   coordinator: SocialCommandCoordinator;
@@ -69,51 +68,81 @@ export function ProfileRelationshipActions({
   });
   const capabilities = relationship.capabilities;
   const pending = mutation.isPending;
-  const friendshipLabel = friendshipCopy(capabilities.friendshipLabel);
+  const hasSafetyActions =
+    capabilities.canMute ||
+    capabilities.canUnmute ||
+    capabilities.canBlock ||
+    capabilities.canReport;
 
   return (
-    <ProfileSurface style={styles.card}>
+    <AppCard
+      backgroundColor={profileUi.colors.relationshipSurface}
+      borderOpacity={profileUi.card.borderOpacity}
+      contentStyle={styles.cardContent}
+      density="compact"
+      emphasis="none"
+      radius={profileUi.radii.card}
+      surfaceTone="low"
+      testID="profile-relationship-actions"
+      withShadow={false}
+    >
       <View style={styles.headingRow}>
         <View style={styles.headingCopy}>
-          <ProfileText style={styles.eyebrow}>QUAN HỆ & AN TOÀN</ProfileText>
-          <ProfileText style={styles.title}>{friendshipLabel}</ProfileText>
+          <AppText tone="accent" variant="caption">
+            QUAN HỆ & AN TOÀN
+          </AppText>
+          <AppText variant="h3">
+            {friendshipCopy(capabilities.friendshipLabel)}
+          </AppText>
+          <AppText tone="tertiary" variant="bodySmall">
+            {relationshipDescription(relationship)}
+          </AppText>
         </View>
-        <ProfilePill
+        <AppChip
+          density="tag"
           icon={
-            capabilities.blocked ? 'ban-outline' : 'shield-checkmark-outline'
+            <Ionicons
+              color={
+                capabilities.blocked
+                  ? appColors.status.warning
+                  : appColors.accent.purpleIcon
+              }
+              name={capabilities.blocked ? 'ban-outline' : 'shield-checkmark'}
+              size={13}
+            />
           }
-          label={
-            capabilities.blocked
-              ? 'Đã chặn'
-              : capabilities.muted
-                ? 'Đã tắt tiếng'
-                : 'Đã xác minh'
-          }
-          tone={capabilities.blocked ? 'amber' : 'purple'}
-        />
+          variant={capabilities.blocked ? 'orange' : 'purple'}
+          withSheen={false}
+        >
+          {capabilities.blocked
+            ? 'Đã chặn'
+            : capabilities.muted
+              ? 'Đã tắt tiếng'
+              : 'Đã xác minh'}
+        </AppChip>
       </View>
 
-      <View style={styles.actionGrid}>
+      <View style={styles.primaryActions}>
         {capabilities.canRequestFriendship ? (
-          <ActionButton
+          <RelationshipButton
             disabled={pending}
             icon="person-add-outline"
             label="Kết bạn"
             onPress={() => mutation.mutate('request')}
-            variant="primary"
+            tone="primary"
           />
         ) : null}
         {capabilities.canAcceptFriendship ? (
-          <ActionButton
+          <RelationshipButton
             disabled={pending}
             icon="checkmark-circle-outline"
             label="Chấp nhận"
             onPress={() => mutation.mutate('accept')}
-            variant="primary"
+            tone="primary"
           />
         ) : null}
         {capabilities.canDeclineFriendship ? (
-          <ActionButton
+          <RelationshipButton
             disabled={pending}
             icon="close-circle-outline"
             label="Từ chối"
@@ -121,7 +150,7 @@ export function ProfileRelationshipActions({
           />
         ) : null}
         {capabilities.canCancelFriendship ? (
-          <ActionButton
+          <RelationshipButton
             disabled={pending}
             icon="arrow-undo-outline"
             label="Huỷ lời mời"
@@ -129,96 +158,156 @@ export function ProfileRelationshipActions({
           />
         ) : null}
         {capabilities.canRemoveFriendship ? (
-          <ActionButton
+          <RelationshipButton
             disabled={pending}
             icon="person-remove-outline"
             label="Huỷ kết bạn"
             onPress={() => confirmRemove(() => mutation.mutate('remove'))}
-            variant="danger"
-          />
-        ) : null}
-        {capabilities.canMute ? (
-          <ActionButton
-            disabled={pending}
-            icon="notifications-off-outline"
-            label="Tắt tiếng"
-            onPress={() => mutation.mutate('mute')}
-            variant="ghost"
-          />
-        ) : null}
-        {capabilities.canUnmute ? (
-          <ActionButton
-            disabled={pending}
-            icon="notifications-outline"
-            label="Bật thông báo"
-            onPress={() => mutation.mutate('unmute')}
-            variant="ghost"
-          />
-        ) : null}
-        {capabilities.canBlock ? (
-          <ActionButton
-            disabled={pending}
-            icon="ban-outline"
-            label="Chặn"
-            onPress={() => confirmBlock(() => mutation.mutate('block'))}
-            variant="danger"
+            tone="danger"
           />
         ) : null}
         {capabilities.canUnblock ? (
-          <ActionButton
+          <RelationshipButton
             disabled={pending}
             icon="shield-checkmark-outline"
             label="Gỡ chặn"
             onPress={() => mutation.mutate('unblock')}
-            variant="primary"
-          />
-        ) : null}
-        {capabilities.canReport ? (
-          <ActionButton
-            disabled={pending}
-            icon="flag-outline"
-            label="Báo cáo"
-            onPress={() =>
-              chooseReportCategory((reportCategory) =>
-                mutation.mutate({ reportCategory }),
-              )
-            }
-            variant="ghost"
+            tone="primary"
           />
         ) : null}
       </View>
 
-      {mutation.isError ? (
-        <ProfileText accessibilityLiveRegion="polite" style={styles.errorText}>
-          {socialErrorMessage(mutation.error)}
-        </ProfileText>
+      {hasSafetyActions ? (
+        <View style={styles.safetySection}>
+          <View style={styles.safetyHeadingRow}>
+            <Ionicons
+              color={appColors.icon.inactive}
+              name="shield-outline"
+              size={15}
+            />
+            <AppText tone="secondary" variant="label">
+              Quyền riêng tư & an toàn
+            </AppText>
+          </View>
+          <View style={styles.safetyActions}>
+            {capabilities.canMute ? (
+              <RelationshipButton
+                disabled={pending}
+                icon="notifications-off-outline"
+                label="Tắt tiếng"
+                onPress={() => mutation.mutate('mute')}
+                tone="ghost"
+              />
+            ) : null}
+            {capabilities.canUnmute ? (
+              <RelationshipButton
+                disabled={pending}
+                icon="notifications-outline"
+                label="Bật thông báo"
+                onPress={() => mutation.mutate('unmute')}
+                tone="ghost"
+              />
+            ) : null}
+            {capabilities.canBlock ? (
+              <RelationshipButton
+                disabled={pending}
+                icon="ban-outline"
+                label="Chặn"
+                onPress={() => confirmBlock(() => mutation.mutate('block'))}
+                tone="danger"
+              />
+            ) : null}
+            {capabilities.canReport ? (
+              <RelationshipButton
+                disabled={pending}
+                icon="flag-outline"
+                label="Báo cáo"
+                onPress={() =>
+                  chooseReportCategory((reportCategory) =>
+                    mutation.mutate({ reportCategory }),
+                  )
+                }
+                tone="ghost"
+              />
+            ) : null}
+          </View>
+        </View>
       ) : null}
-    </ProfileSurface>
+
+      {pending ? (
+        <View accessibilityLiveRegion="polite" style={styles.pendingRow}>
+          <ActivityIndicator color={appColors.accent.purpleIcon} size="small" />
+          <AppText tone="secondary" variant="caption">
+            Đang cập nhật quan hệ an toàn…
+          </AppText>
+        </View>
+      ) : null}
+
+      {mutation.isError ? (
+        <AppText
+          accessibilityLiveRegion="polite"
+          tone="danger"
+          variant="caption"
+        >
+          {socialErrorMessage(mutation.error)}
+        </AppText>
+      ) : null}
+    </AppCard>
   );
 }
 
-function ActionButton({
+function RelationshipButton({
   disabled,
   icon,
   label,
   onPress,
-  variant = 'secondary',
+  tone = 'secondary',
 }: Readonly<{
   disabled: boolean;
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
-  variant?: ProfileActionVariant;
+  tone?: ActionTone;
 }>) {
+  const danger = tone === 'danger';
+  const primary = tone === 'primary';
   return (
-    <ProfileActionButton
+    <AppButton
+      accessibilityLabel={label}
+      contentStyle={styles.buttonContent}
       disabled={disabled}
-      icon={icon}
-      label={label}
+      emphasis={primary ? 'medium' : 'none'}
       onPress={onPress}
       style={styles.button}
-      variant={variant}
-    />
+      variant={primary ? 'primary' : tone === 'ghost' ? 'ghost' : 'secondary'}
+      withShadow={primary}
+    >
+      <View style={styles.buttonCopy}>
+        <Ionicons
+          color={
+            danger
+              ? appColors.status.danger
+              : primary
+                ? appColors.text.onAccent
+                : appColors.accent.purpleIcon
+          }
+          name={icon}
+          size={16}
+        />
+        <AppText
+          style={
+            danger
+              ? styles.dangerText
+              : primary
+                ? styles.primaryText
+                : styles.secondaryText
+          }
+          variant="button"
+        >
+          {label}
+        </AppText>
+      </View>
+    </AppButton>
   );
 }
 
@@ -276,6 +365,25 @@ async function executeAction(
     case 'unmute':
       return coordinator.unmutePlayer(target);
   }
+}
+
+function relationshipDescription(relationship: SocialRelationshipSnapshotV2) {
+  const capabilities = relationship.capabilities;
+  if (capabilities.blocked) {
+    return 'Tương tác đang bị khoá theo trạng thái chặn. Gỡ chặn không tự khôi phục quan hệ cũ.';
+  }
+  if (capabilities.friendshipLabel === 'friend') {
+    return capabilities.muted
+      ? 'Hai bạn đang kết nối; thông báo từ người chơi này hiện đã tắt.'
+      : 'Hai bạn đang kết nối và các quyền tương tác đã được hệ thống xác minh.';
+  }
+  if (capabilities.friendshipLabel === 'pending_incoming') {
+    return 'Lời mời đang chờ quyết định của bạn.';
+  }
+  if (capabilities.friendshipLabel === 'pending_outgoing') {
+    return 'Lời mời đã gửi và đang chờ người chơi phản hồi.';
+  }
+  return 'Các hành động chỉ mở khi trạng thái quan hệ cho phép.';
 }
 
 function friendshipCopy(
@@ -346,34 +454,52 @@ function socialErrorMessage(error: unknown) {
 }
 
 const styles = StyleSheet.create({
-  actionGrid: {
+  primaryActions: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: liqiSpacing.md,
-    marginTop: liqiSpacing.xl,
+    gap: appSpacing.md,
   },
   button: { flexGrow: 1, minWidth: 112 },
-  card: { gap: liqiSpacing.xl },
-  errorText: {
-    ...liqiTypography.caption,
-    color: liqiColors.status.danger,
-    marginTop: liqiSpacing.md,
+  buttonContent: {
+    minHeight: 44,
+    paddingHorizontal: appSpacing.lg,
+    paddingVertical: appSpacing.md,
   },
-  eyebrow: {
-    ...liqiTypography.caption,
-    color: liqiColors.accent.purpleIcon,
-    fontWeight: '900',
-    letterSpacing: 0.9,
-  },
-  headingCopy: { flex: 1, minWidth: 0 },
-  headingRow: {
+  buttonCopy: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: liqiSpacing.lg,
+    gap: appSpacing.md,
+    justifyContent: 'center',
   },
-  title: {
-    ...liqiTypography.sectionTitle,
-    color: liqiColors.text.primary,
-    marginTop: liqiSpacing.xs,
+  cardContent: { gap: appSpacing['2xl'] },
+  dangerText: { color: appColors.status.danger },
+  headingCopy: { flex: 1, gap: appSpacing.xs, minWidth: 0 },
+  headingRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    gap: appSpacing.lg,
   },
+  pendingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: appSpacing.md,
+  },
+  primaryText: { color: appColors.text.onAccent },
+  safetyActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: appSpacing.md,
+  },
+  safetyHeadingRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: appSpacing.sm,
+  },
+  safetySection: {
+    borderTopColor: appColors.border.surfaceSoft,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: appSpacing.md,
+    paddingTop: appSpacing.xl,
+  },
+  secondaryText: { color: appColors.text.primary },
 });

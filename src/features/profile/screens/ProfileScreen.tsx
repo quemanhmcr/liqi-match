@@ -1,22 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
+  Alert,
   StyleSheet,
   useWindowDimensions,
   View,
 } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
-import {
-  useAssetResolver,
-  usePreloadAssetSurface,
-} from '@/entities/media-asset';
+import { usePreloadAssetSurface } from '@/entities/media-asset';
 import { MatchSetPickerModal } from '@/entities/match-set/ui';
 import {
   useSocialCommandCoordinator,
@@ -26,35 +22,35 @@ import { usePlayerTrustProjection } from '@/entities/trust-outcomes';
 import { useAuth } from '@/shared/auth/auth-context';
 import { runtimeEnvironment } from '@/shared/config/env';
 import { PlayerIdSchema } from '@/shared/contracts/core-v1';
-import { LiqiIdentityHeader, liqiDaypartCopy } from '@/shared/components/liqi';
 import { classifyApplicationError } from '@/shared/errors/application-error';
-import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
 import {
-  isCompactLiqiViewport,
-  liqiColors,
-  liqiComponentColors,
-  liqiComponentGradients,
-  liqiComponents,
-  liqiRadius,
-  liqiSpacing,
-  liqiTypography,
-} from '@/shared/theme/liqi-design-system';
+  AppButton,
+  AppCard,
+  AppIconButton,
+  AppScreen,
+  AppText,
+  appColors,
+  appSpacing,
+  isCompactViewport,
+} from '@/shared/ui';
 
-import { ProfileConnectionStatus } from '../components/ProfileConnectionStatus';
-import { ProfileFavoriteHeroes } from '../components/ProfileFavoriteHeroes';
+import { ProfileHighlightSummary } from '../components/ProfileHighlightSummary';
+import { ProfileMemorySection } from '../components/ProfileMemorySection';
+import { ProfilePlayStyleGallery } from '../components/ProfilePlayStyleGallery';
 import {
-  ProfileHeroCard,
+  ProfileReferenceHero,
   type ProfileHeroMode,
-} from '../components/ProfileHeroCard';
-import { ProfileHighlights } from '../components/ProfileHighlights';
-import { ProfilePlayStyle } from '../components/ProfilePlayStyle';
-import { ProfileActionButton } from '../components/ProfilePresentationPrimitives';
+} from '../components/ProfileReferenceHero';
 import { ProfileRelationshipActions } from '../components/ProfileRelationshipActions';
-import { ProfileStatsBar } from '../components/ProfileStatsBar';
-import { ProfileText } from '../components/ProfileShared';
-import { resolveProfileMedia } from '../model/profile-media';
+import { ProfileSocialStats } from '../components/ProfileSocialStats';
+import { ProfileTrustSections } from '../components/ProfileTrustSections';
+import {
+  presentProfileHighlights,
+  presentProfilePlayStyle,
+  presentProfileSocialStats,
+} from '../model/profile-surface-presenter';
 import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
-import type { ProfileViewModel } from '../services/profile-service';
+import { profileUi } from '../ui/profile-ui';
 
 export type ProfileScreenProps = {
   identityId?: string;
@@ -63,30 +59,14 @@ export type ProfileScreenProps = {
 
 export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
   usePreloadAssetSurface('profile');
-  const { width: viewportWidth } = useWindowDimensions();
-  const compact = isCompactLiqiViewport(viewportWidth);
+  const { width } = useWindowDimensions();
+  const compact = isCompactViewport(width);
   const { session } = useAuth();
   const profileRepository = useProfileReadRepository();
   const relationshipRepository = useSocialRelationshipRepository();
   const socialCoordinator = useSocialCommandCoordinator();
   const [setPickerVisible, setSetPickerVisible] = useState(false);
 
-  const openProfileEditor = () => {
-    selectionImpact();
-    router.push(appRoutes.profile.edit);
-  };
-  const openProfileGallery = () => {
-    selectionImpact();
-    router.push(appRoutes.profile.gallery);
-  };
-  const openProfileShare = () => {
-    impactLight();
-    router.push(appRoutes.profile.share);
-  };
-  const openProfileSettings = () => {
-    selectionImpact();
-    router.push(appRoutes.profile.settings);
-  };
   const returnFromProfile = () => {
     selectionImpact();
     if (router.canGoBack()) {
@@ -162,7 +142,9 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
     return (
       <ProfileReadState
         description="Thiếu phiên đăng nhập hoặc thông tin hồ sơ cần thiết."
+        icon="person-circle-outline"
         mode={mode}
+        onBack={mode === 'other' ? returnFromProfile : undefined}
         title="Không thể mở hồ sơ"
       />
     );
@@ -171,25 +153,30 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
   if (profileQuery.isPending) {
     return (
       <ProfileReadState
-        description="Đang đồng bộ dữ liệu người chơi."
+        description="Đang đồng bộ dữ liệu người chơi và trạng thái media."
+        icon="person-outline"
         loading
         mode={mode}
+        onBack={mode === 'other' ? returnFromProfile : undefined}
         title="Đang tải hồ sơ"
       />
     );
   }
 
   if (profileQuery.isError && !profile) {
+    const offline = profileFailure.kind === 'offline';
     return (
       <ProfileReadState
         description={
-          profileFailure.kind === 'offline'
+          offline
             ? 'Thiết bị đang offline. Kết nối lại để tải hồ sơ.'
             : profileFailure.retryable
               ? 'Dịch vụ hồ sơ tạm thời chưa phản hồi. Hãy thử lại.'
               : 'Hồ sơ hiện chưa thể hiển thị. Hãy thử lại sau.'
         }
+        icon={offline ? 'cloud-offline-outline' : 'alert-circle-outline'}
         mode={mode}
+        onBack={mode === 'other' ? returnFromProfile : undefined}
         onRetry={
           profileFailure.retryable
             ? () => void profileQuery.refetch()
@@ -204,85 +191,26 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
     return (
       <ProfileReadState
         description="Người chơi này không tồn tại hoặc không còn khả dụng."
+        icon="search-outline"
         mode={mode}
+        onBack={mode === 'other' ? returnFromProfile : undefined}
         title="Không tìm thấy hồ sơ"
       />
     );
   }
 
-  const openTrustLedger = targetPlayerId
-    ? () => {
-        selectionImpact();
-        router.push(
-          mode === 'self'
-            ? appRoutes.profile.reputation
-            : appRoutes.profile.reputationFor(targetPlayerId),
-        );
-      }
-    : undefined;
-
   return (
-    <LiqiScreen
-      contentContainerStyle={[
-        styles.scrollContent,
-        compact && styles.scrollContentCompact,
-      ]}
+    <AppScreen
+      contentContainerStyle={styles.screenContent}
       withBottomNavPadding={mode === 'self'}
       withHeader={false}
     >
-      <LiqiIdentityHeader
-        actions={
-          mode === 'self'
-            ? [
-                {
-                  accessibilityLabel: 'Cài đặt hồ sơ',
-                  icon: 'settings-outline',
-                  onPress: openProfileSettings,
-                },
-                {
-                  accessibilityLabel: 'Chỉnh sửa hồ sơ',
-                  emphasized: true,
-                  icon: 'create-outline',
-                  onPress: openProfileEditor,
-                },
-              ]
-            : [
-                {
-                  accessibilityLabel: 'Quay lại',
-                  icon: 'chevron-back',
-                  onPress: returnFromProfile,
-                },
-              ]
-        }
-        avatar={<ProfileHeaderAvatar compact={compact} profile={profile} />}
-        compact={compact}
-        online={profile.statusValue === 'ready'}
-        subtitle={`${liqiDaypartCopy()} · ${profile.statusLabel}`}
-        testID="profile-identity-header"
-        title={`${profileFirstName(profile.displayName)} ✨`}
-      />
-
-      {profileQuery.isError ? (
-        <View
-          accessibilityLabel="Hồ sơ đang hiển thị dữ liệu cũ"
-          style={styles.staleBanner}
-        >
-          <Ionicons
-            color={liqiColors.status.warning}
-            name="information-circle"
-            size={16}
-          />
-          <ProfileText style={styles.staleText}>
-            Không thể làm mới. Đang hiển thị hồ sơ đã tải gần nhất.
-          </ProfileText>
-        </View>
-      ) : null}
-
-      <ProfileHeroCard
+      <ProfileReferenceHero
         compact={compact}
         inviteDisabled={authoritativeInviteDisabled}
         messageDisabled={authoritativeMessageDisabled}
         mode={mode}
+        onBack={returnFromProfile}
         onInvite={() => {
           impactLight();
           setSetPickerVisible(true);
@@ -293,53 +221,65 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
             router.push(appRoutes.messages.detail(profile.conversationId));
           }
         }}
+        onMore={() =>
+          Alert.alert(
+            'Tùy chọn hồ sơ',
+            'Các thao tác quan hệ và an toàn được hiển thị trong phần bên dưới.',
+          )
+        }
         profile={profile}
       />
 
-      <ProfileStatsBar
+      <ProfileSocialStats
         compact={compact}
-        onOpenTrust={openTrustLedger}
-        projection={trustProjectionQuery.data}
+        items={presentProfileSocialStats(profile.socialStats)}
       />
 
-      {mode === 'other' && socialCoordinator ? (
-        relationship ? (
-          <ProfileRelationshipActions
-            coordinator={socialCoordinator}
-            queryKey={relationshipQueryKey}
-            relationship={relationship}
-            session={session}
-          />
-        ) : (
-          <RelationshipReadState loading={relationshipQuery.isPending} />
-        )
-      ) : null}
+      <View
+        style={[
+          styles.sections,
+          compact ? styles.sectionsCompact : styles.sectionsRegular,
+        ]}
+      >
+        {profileQuery.isError ? <StaleProfileBanner /> : null}
 
-      <View style={[styles.detailGrid, compact && styles.detailGridCompact]}>
-        <ProfileFavoriteHeroes
+        <ProfileHighlightSummary
           compact={compact}
-          heroes={profile.favoriteHeroes}
-          onOpen={mode === 'self' ? openProfileEditor : undefined}
-          showWinRate={profile.showWinRate}
+          items={presentProfileHighlights(profile)}
         />
-        <ProfilePlayStyle compact={compact} tags={profile.playStyleTags} />
+
+        {mode === 'other' && socialCoordinator ? (
+          relationship ? (
+            <ProfileRelationshipActions
+              coordinator={socialCoordinator}
+              queryKey={relationshipQueryKey}
+              relationship={relationship}
+              session={session}
+            />
+          ) : (
+            <RelationshipReadState loading={relationshipQuery.isPending} />
+          )
+        ) : null}
+
+        <ProfilePlayStyleGallery
+          compact={compact}
+          tiles={presentProfilePlayStyle(profile)}
+        />
+
+        <ProfileMemorySection
+          compact={compact}
+          mode={mode}
+          wallAssetKeys={profile.wallAssetKeys}
+          wallUrls={profile.wallUrls}
+        />
+
+        <ProfileTrustSections
+          compact={compact}
+          failed={trustProjectionQuery.isError}
+          loading={trustProjectionQuery.isPending}
+          projection={trustProjectionQuery.data}
+        />
       </View>
-
-      <ProfileHighlights
-        compact={compact}
-        coverAssetKey={profile.coverAssetKey}
-        coverUrl={profile.coverUrl}
-        mode={mode}
-        onManage={mode === 'self' ? openProfileGallery : undefined}
-        wallAssetKeys={profile.wallAssetKeys}
-        wallUrls={profile.wallUrls}
-      />
-
-      <ProfileConnectionStatus
-        compact={compact}
-        onShare={mode === 'self' ? openProfileShare : undefined}
-        profile={profile}
-      />
 
       {mode === 'other' && targetPlayerId && setPickerVisible ? (
         <MatchSetPickerModal
@@ -349,125 +289,133 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
           visible={setPickerVisible}
         />
       ) : null}
-    </LiqiScreen>
+    </AppScreen>
   );
 }
 
-function ProfileHeaderAvatar({
-  compact,
-  profile,
-}: {
-  compact: boolean;
-  profile: ProfileViewModel;
-}) {
-  const resolver = useAssetResolver();
-  const media = resolveProfileMedia(resolver, {
-    assetKey: profile.avatarAssetKey,
-    uri: profile.avatarUrl ?? profile.avatarFallbackUrl,
-  });
-  const size = compact
-    ? liqiComponents.identityHeader.avatarCompact
-    : liqiComponents.identityHeader.avatar;
-
+function StaleProfileBanner() {
   return (
-    <LinearGradient
-      colors={liqiComponentGradients.identityHeader.avatarRing}
-      style={[
-        styles.headerAvatarRing,
-        { borderRadius: size / 2, height: size, width: size },
-      ]}
-    >
-      {media.source ? (
-        <Image
-          accessibilityLabel={`Avatar ${profile.displayName}`}
-          resizeMode="cover"
-          source={media.source}
-          style={{
-            borderRadius: size / 2 - 2,
-            height: size - 4,
-            width: size - 4,
-          }}
+    <View accessibilityLabel="Hồ sơ đang hiển thị dữ liệu cũ" accessible>
+      <AppCard
+        backgroundColor={profileUi.colors.staleSurface}
+        contentStyle={styles.staleContent}
+        density="list"
+        radius={profileUi.radii.card}
+        withShadow={false}
+      >
+        <Ionicons
+          color={appColors.status.warning}
+          name="information-circle"
+          size={18}
         />
-      ) : (
-        <View
-          accessibilityLabel={`Avatar đầu trang hồ sơ ${media.state}`}
-          style={[
-            styles.headerAvatarFallback,
-            {
-              borderRadius: size / 2 - 2,
-              height: size - 4,
-              width: size - 4,
-            },
-          ]}
-        >
-          <ProfileText style={styles.headerAvatarInitials}>
-            {profile.displayName.trim().charAt(0).toUpperCase() || 'L'}
-          </ProfileText>
-        </View>
-      )}
-    </LinearGradient>
+        <AppText style={styles.staleText} tone="secondary" variant="bodySmall">
+          Không thể làm mới. Đang hiển thị hồ sơ đã tải gần nhất.
+        </AppText>
+      </AppCard>
+    </View>
   );
-}
-
-function profileFirstName(displayName: string) {
-  const value = displayName.trim();
-  if (!value) return 'Bạn';
-  return value.split(/\s+/)[0] ?? value;
 }
 
 function RelationshipReadState({ loading }: { loading: boolean }) {
   return (
-    <View
-      accessibilityLabel="Trạng thái quan hệ không khả dụng"
-      style={styles.relationshipReadState}
-    >
-      {loading ? (
-        <ActivityIndicator color={liqiColors.accent.purple} size="small" />
-      ) : null}
-      <ProfileText style={styles.relationshipReadStateText}>
-        {loading
-          ? 'Đang kiểm tra quyền quan hệ và an toàn…'
-          : 'Không thể xác minh quyền quan hệ. Các hành động tương tác đang bị khoá an toàn.'}
-      </ProfileText>
+    <View accessibilityLabel="Trạng thái quan hệ không khả dụng" accessible>
+      <AppCard
+        borderOpacity={profileUi.card.borderOpacity}
+        contentStyle={styles.relationshipState}
+        density="compact"
+        emphasis="none"
+        radius={profileUi.radii.card}
+        surfaceTone="low"
+        withShadow={false}
+      >
+        {loading ? (
+          <ActivityIndicator color={appColors.accent.purple} size="small" />
+        ) : (
+          <Ionicons
+            color={appColors.status.warning}
+            name="shield-outline"
+            size={20}
+          />
+        )}
+        <AppText
+          style={styles.relationshipText}
+          tone="secondary"
+          variant="bodySmall"
+        >
+          {loading
+            ? 'Đang kiểm tra quyền quan hệ và an toàn…'
+            : 'Không thể xác minh quyền quan hệ. Các hành động tương tác đang bị khoá an toàn.'}
+        </AppText>
+      </AppCard>
     </View>
   );
 }
 
 function ProfileReadState({
   description,
+  icon,
   loading = false,
   mode,
+  onBack,
   onRetry,
   title,
-}: {
+}: Readonly<{
   description: string;
+  icon: keyof typeof Ionicons.glyphMap;
   loading?: boolean;
   mode: ProfileHeroMode;
+  onBack?: () => void;
   onRetry?: () => void;
   title: string;
-}) {
+}>) {
   return (
-    <LiqiScreen
-      contentContainerStyle={styles.readStateScreen}
+    <AppScreen
+      contentContainerStyle={styles.readState}
+      scroll={false}
       withBottomNavPadding={mode === 'self'}
       withHeader={false}
     >
-      {loading ? (
-        <ActivityIndicator color={liqiColors.accent.purple} size="large" />
+      {onBack ? (
+        <View style={styles.readStateHeader}>
+          <AppIconButton
+            accessibilityLabel="Quay lại"
+            emphasis="none"
+            onPress={onBack}
+            size={44}
+            testID="profile-read-state-back-action"
+            withHighlight={false}
+          >
+            <Ionicons
+              color={appColors.icon.primary}
+              name="chevron-back"
+              size={22}
+            />
+          </AppIconButton>
+        </View>
       ) : null}
-      <ProfileText style={styles.readStateTitle}>{title}</ProfileText>
-      <ProfileText style={styles.readStateDescription}>
-        {description}
-      </ProfileText>
-      {!loading && onRetry ? (
-        <ProfileActionButton
-          label="Thử tải lại hồ sơ"
-          onPress={onRetry}
-          style={styles.retryButton}
-          variant="primary"
-        />
-      ) : null}
-    </LiqiScreen>
+      <View style={styles.readStateBody}>
+        {loading ? (
+          <ActivityIndicator color={appColors.accent.purple} size="large" />
+        ) : (
+          <Ionicons color={appColors.accent.purpleIcon} name={icon} size={42} />
+        )}
+        <AppText style={styles.centeredText} variant="h2">
+          {title}
+        </AppText>
+        <AppText style={styles.centeredText} tone="secondary" variant="body">
+          {description}
+        </AppText>
+        {!loading && onRetry ? (
+          <AppButton
+            accessibilityLabel="Thử tải lại hồ sơ"
+            onPress={onRetry}
+            style={styles.retryButton}
+          >
+            Thử lại
+          </AppButton>
+        ) : null}
+      </View>
+    </AppScreen>
   );
 }
 
@@ -482,82 +430,41 @@ function selectionImpact() {
 }
 
 const styles = StyleSheet.create({
-  detailGrid: {
-    alignItems: 'stretch',
-    flexDirection: 'row',
-    gap: liqiSpacing.lg,
-  },
-  detailGridCompact: {
-    flexDirection: 'column',
-  },
-  headerAvatarFallback: {
-    alignItems: 'center',
-    backgroundColor: liqiComponentColors.profile.avatarFallback,
-    justifyContent: 'center',
-  },
-  headerAvatarInitials: {
-    ...liqiTypography.greeting,
-    color: liqiColors.text.primary,
-  },
-  headerAvatarRing: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 2,
-  },
-  readStateDescription: {
-    ...liqiTypography.body,
-    color: liqiColors.text.secondary,
-    maxWidth: 320,
-    textAlign: 'center',
-  },
-  readStateScreen: {
-    alignItems: 'center',
-    flexGrow: 1,
-    gap: liqiSpacing['2xl'],
-    justifyContent: 'center',
-    paddingHorizontal: liqiSpacing['6xl'],
-  },
-  readStateTitle: {
-    ...liqiTypography.cardTitle,
-    color: liqiColors.text.primary,
-    textAlign: 'center',
-  },
-  retryButton: { minWidth: 128 },
-  relationshipReadState: {
-    alignItems: 'center',
-    backgroundColor: liqiComponentColors.profile.statusSurface,
-    borderColor: liqiColors.border.card,
-    borderRadius: liqiRadius.xl,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: liqiSpacing.lg,
-    paddingHorizontal: liqiSpacing.xl,
-    paddingVertical: liqiSpacing.lg,
-  },
-  relationshipReadStateText: {
-    ...liqiTypography.subtitle,
-    color: liqiColors.text.secondary,
+  centeredText: { maxWidth: 320, textAlign: 'center' },
+  readState: {
     flex: 1,
+    paddingHorizontal: appSpacing['3xl'],
+    paddingTop: appSpacing.xl,
   },
-  scrollContent: {
-    gap: liqiComponents.screen.gap,
-    paddingTop: liqiSpacing.lg,
-  },
-  scrollContentCompact: { gap: liqiComponents.screen.gapCompact },
-  staleBanner: {
+  readStateBody: {
     alignItems: 'center',
-    backgroundColor: liqiComponentColors.profile.actions.ghost.background,
-    borderColor: liqiComponentColors.profile.pills.amber.border,
-    borderRadius: liqiRadius.lg,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: liqiSpacing.md,
-    paddingHorizontal: liqiSpacing.xl,
-    paddingVertical: liqiSpacing.md,
-  },
-  staleText: {
-    ...liqiTypography.caption,
-    color: liqiColors.text.secondary,
     flex: 1,
+    gap: appSpacing['3xl'],
+    justifyContent: 'center',
+    paddingHorizontal: appSpacing['3xl'],
   },
+  readStateHeader: { alignSelf: 'stretch' },
+  relationshipState: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: appSpacing.xl,
+  },
+  relationshipText: { flex: 1 },
+  retryButton: { marginTop: appSpacing.xl, minWidth: 132 },
+  screenContent: { paddingHorizontal: 0, paddingTop: 0 },
+  sections: { paddingTop: appSpacing['2xl'] },
+  sectionsCompact: {
+    gap: profileUi.screen.sectionGapCompact,
+    paddingHorizontal: profileUi.screen.gutterCompact,
+  },
+  sectionsRegular: {
+    gap: profileUi.screen.sectionGap,
+    paddingHorizontal: profileUi.screen.gutter,
+  },
+  staleContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: appSpacing.md,
+  },
+  staleText: { flex: 1 },
 });
