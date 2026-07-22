@@ -20,6 +20,17 @@ describe('messages surface contracts', () => {
         query: 'Minh Anh',
       }),
     ).toEqual({ filter: 'unread', limit: 50, query: 'Minh Anh' });
+
+    for (const filter of ['direct', 'group'] as const) {
+      expect(MessageInboxParamsSchema.parse({ filter })).toMatchObject({
+        filter,
+      });
+    }
+    for (const legacyFilter of ['friends', 'soulmates', 'teams'] as const) {
+      expect(
+        MessageInboxParamsSchema.safeParse({ filter: legacyFilter }).success,
+      ).toBe(false);
+    }
   });
 
   it('rejects non-serializable media and invalid capability values', () => {

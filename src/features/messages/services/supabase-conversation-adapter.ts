@@ -33,6 +33,7 @@ import {
   type MessageTimelineItem,
   type MessagesResponse,
 } from '../contracts/messages-contracts';
+import { matchesMessageInboxFilter } from '../model/message-inbox-filter';
 import type {
   AdvanceChatReadCommand,
   AdvanceChatReadReceipt,
@@ -396,16 +397,7 @@ export function createSupabaseConversationAdapter(
         return toConversationSummary(surface);
       });
       const filtered = summaries
-        .filter((item) =>
-          canonical.filter === 'unread'
-            ? item.viewerState.unreadCount > 0
-            : canonical.filter === 'all' ||
-              (canonical.filter === 'friends' &&
-                item.relationship === 'friend') ||
-              (canonical.filter === 'soulmates' &&
-                item.relationship === 'soulmate') ||
-              (canonical.filter === 'teams' && item.relationship === 'team'),
-        )
+        .filter((item) => matchesMessageInboxFilter(item, canonical.filter))
         .filter(
           (item) =>
             !normalizedQuery ||

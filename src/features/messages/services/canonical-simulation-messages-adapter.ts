@@ -16,13 +16,13 @@ import {
 } from '@/entities/simulation';
 
 import type {
-  CanonicalMessageInboxParams,
   MessageAssetRef,
   MessageConversationDetail,
   MessageConversationSummary,
   MessageTimelineItem,
 } from '../contracts/messages-contracts';
 import { MessagesServiceError } from '../contracts/messages-contracts';
+import { matchesMessageInboxFilter } from '../model/message-inbox-filter';
 import type {
   SendChatMediaCommand,
   SendChatTextCommand,
@@ -107,7 +107,7 @@ export function createCanonicalSimulationMessagesAdapter(
           conversationSummary(world, conversation, viewerId),
         )
         .filter((conversation) =>
-          matchesInboxFilter(conversation, query.filter),
+          matchesMessageInboxFilter(conversation, query.filter),
         )
         .filter((conversation) => {
           if (!normalizedQuery) return true;
@@ -754,17 +754,6 @@ function parseTimelineCursor(
 
 function staleCursor(message: string) {
   return new MessagesServiceError('stale_cursor', message, true);
-}
-
-function matchesInboxFilter(
-  conversation: MessageConversationSummary,
-  filter: CanonicalMessageInboxParams['filter'],
-) {
-  if (filter === 'all') return true;
-  if (filter === 'unread') return conversation.viewerState.unreadCount > 0;
-  if (filter === 'friends') return conversation.relationship === 'friend';
-  if (filter === 'soulmates') return conversation.relationship === 'soulmate';
-  return conversation.relationship === 'team';
 }
 
 function compareConversationActivity(

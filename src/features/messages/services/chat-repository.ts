@@ -11,7 +11,6 @@ import {
   MessageTimelineResponseSchema,
   MessagesServiceError,
   messagesContractVersion,
-  type CanonicalMessageInboxParams,
   type MessageAssetRef,
   type MessageConversationCapabilities,
   type MessageConversationDetail,
@@ -24,6 +23,7 @@ import {
   type MessagesResponse,
 } from '../contracts/messages-contracts';
 import { getOutgoingMessagePreviewText } from '../model/chat-message';
+import { matchesMessageInboxFilter } from '../model/message-inbox-filter';
 
 export const DEFAULT_CHAT_MESSAGE_PAGE_SIZE = 30;
 export const DEFAULT_MESSAGE_INBOX_PAGE_SIZE = 30;
@@ -371,17 +371,6 @@ function parseOffsetCursor(
   return Number(match[1]);
 }
 
-function matchesInboxFilter(
-  conversation: MessageConversationSummary,
-  filter: CanonicalMessageInboxParams['filter'],
-) {
-  if (filter === 'all') return true;
-  if (filter === 'unread') return conversation.viewerState.unreadCount > 0;
-  if (filter === 'friends') return conversation.relationship === 'friend';
-  if (filter === 'soulmates') return conversation.relationship === 'soulmate';
-  return conversation.relationship === 'team';
-}
-
 function compareConversationActivity(
   left: MessageConversationSummary,
   right: MessageConversationSummary,
@@ -459,7 +448,7 @@ export function createLocalChatRepository({
       const all = listChatThreadFixtures()
         .map(summaryForThread)
         .filter((conversation) =>
-          matchesInboxFilter(conversation, canonical.filter),
+          matchesMessageInboxFilter(conversation, canonical.filter),
         )
         .filter((conversation) => {
           if (!normalizedQuery) return true;

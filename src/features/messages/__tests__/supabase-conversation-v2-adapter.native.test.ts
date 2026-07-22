@@ -267,6 +267,14 @@ describe('SupabaseConversationV2Adapter', () => {
       { filter: 'all', limit: 30, query: '' },
       context,
     );
+    const groups = await adapter.listConversations(
+      { filter: 'group', limit: 30, query: '' },
+      context,
+    );
+    const direct = await adapter.listConversations(
+      { filter: 'direct', limit: 30, query: '' },
+      context,
+    );
     expect(result.data.items).toEqual([
       expect.objectContaining({
         id: conversationId,
@@ -277,6 +285,9 @@ describe('SupabaseConversationV2Adapter', () => {
         participants: expect.objectContaining({ totalCount: 3 }),
       }),
     ]);
+    expect(groups.data.items).toHaveLength(1);
+    expect(groups.data.items[0]?.kind).toBe('group');
+    expect(direct.data.items).toEqual([]);
     expect(rpc.calls[0]).toEqual(
       expect.objectContaining({
         functionName: 'list_conversation_mobile_inbox_v2',

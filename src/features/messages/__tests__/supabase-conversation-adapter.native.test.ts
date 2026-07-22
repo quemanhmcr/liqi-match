@@ -189,6 +189,8 @@ describe('Supabase Conversation adapter', () => {
     await adapter.setSession(session);
 
     const inbox = await adapter.listConversations();
+    const direct = await adapter.listConversations({ filter: 'direct' });
+    const groups = await adapter.listConversations({ filter: 'group' });
 
     expect(inbox.data.items[0]).toMatchObject({
       id: surface.conversation.conversationId,
@@ -201,6 +203,9 @@ describe('Supabase Conversation adapter', () => {
       viewerState: { unreadCount: 1 },
     });
     expect(inbox.data.unreadConversationCount).toBe(1);
+    expect(direct.data.items).toHaveLength(1);
+    expect(direct.data.items[0]?.kind).toBe('direct');
+    expect(groups.data.items).toEqual([]);
   });
 
   it('preserves authoritative sequence and clientMessageId for optimistic dedupe', async () => {
