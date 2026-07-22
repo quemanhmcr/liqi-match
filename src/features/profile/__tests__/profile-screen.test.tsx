@@ -229,7 +229,8 @@ describe('ProfileScreen repository consumer', () => {
     expect(screen.queryByText('128')).toBeNull();
   });
 
-  it('does not advertise Profile workflows whose routes are still reset', async () => {
+  it('advertises only restored self-profile workflows', async () => {
+    mockedRouter.router.push.mockClear();
     const screen = await renderWithProviders(<ProfileScreen mode="self" />, {
       serviceOverrides: {
         profileRepository: { getProfile: async () => canonicalProfile },
@@ -237,11 +238,23 @@ describe('ProfileScreen repository consumer', () => {
     });
 
     expect(await screen.findByTestId('profile-identity-header')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Chỉnh sửa hồ sơ'));
+    await fireEvent.press(screen.getByLabelText('Chia sẻ hồ sơ'));
+    await fireEvent.press(
+      screen.getByLabelText('Mở chỉnh sửa phong cách chơi'),
+    );
+
+    expect(mockedRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.edit,
+    );
+    expect(mockedRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.share,
+    );
+    expect(mockedRouter.router.push).toHaveBeenCalledWith(
+      appRoutes.profile.editPlayStyle,
+    );
     expect(screen.queryByLabelText('Cài đặt hồ sơ')).toBeNull();
-    expect(screen.queryByLabelText('Chỉnh sửa hồ sơ')).toBeNull();
-    expect(screen.queryByLabelText('Chia sẻ hồ sơ')).toBeNull();
     expect(screen.queryByLabelText('Quản lý khoảnh khắc')).toBeNull();
-    expect(screen.queryByLabelText('Mở chỉnh sửa phong cách chơi')).toBeNull();
     expect(screen.queryByLabelText('Mở chi tiết uy tín')).toBeNull();
   });
 

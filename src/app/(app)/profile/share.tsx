@@ -1,5 +1,5 @@
-import { ResetRouteScreen } from '@/app-shell/navigation/ResetRouteScreen';
+import { ProfileShareScreen } from '@/features/profile/screens/ProfileShareScreen';
 
 export default function ProfileShareRoute() {
-  return <ResetRouteScreen routeId="profile-share" />;
+  return <ProfileShareScreen />;
 }

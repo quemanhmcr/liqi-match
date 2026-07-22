@@ -30,6 +30,14 @@ const preservedAdapters = new Map([
     'src/app/(app)/profile/[playerId].tsx',
     '@/features/profile/screens/ProfileScreen',
   ],
+  [
+    'src/app/(app)/profile/edit.tsx',
+    '@/features/profile/screens/ProfileEditScreen',
+  ],
+  [
+    'src/app/(app)/profile/share.tsx',
+    '@/features/profile/screens/ProfileShareScreen',
+  ],
 ]);
 
 const resetAdapters = new Map([
@@ -44,13 +52,11 @@ const resetAdapters = new Map([
     'src/app/(app)/profile/[playerId]/reputation/index.tsx',
     'profile-player-reputation',
   ],
-  ['src/app/(app)/profile/edit.tsx', 'profile-edit'],
   ['src/app/(app)/profile/gallery/index.tsx', 'profile-gallery'],
   ['src/app/(app)/profile/reputation/index.tsx', 'profile-reputation'],
   ['src/app/(app)/profile/settings.tsx', 'profile-settings'],
   ['src/app/(app)/profile/settings/blocked.tsx', 'profile-blocked'],
   ['src/app/(app)/profile/settings/engagement/index.tsx', 'profile-engagement'],
-  ['src/app/(app)/profile/share.tsx', 'profile-share'],
   ['src/app/(app)/sessions/[sessionId].tsx', 'session-detail'],
   ['src/app/(app)/sessions/[sessionId]/feedback.tsx', 'session-feedback'],
   ['src/app/(app)/sessions/index.tsx', 'sessions'],
@@ -103,6 +109,6 @@ describe('authenticated product route reset policy', () => {
       ...resetAdapters.keys(),
     ]);
     expect(routeAdapters(appRoot).sort()).toEqual([...classified].sort());
-    expect(resetAdapters.size).toBe(23);
+    expect(resetAdapters.size).toBe(21);
   });
 });

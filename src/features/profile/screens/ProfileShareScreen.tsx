@@ -1,99 +1,60 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as MediaLibrary from 'expo-media-library/legacy';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
-import {
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-  type RefObject,
-} from 'react';
+import { useMemo, useRef, useState, type RefObject } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Image,
   Platform,
   StyleSheet,
   ToastAndroid,
+  useWindowDimensions,
   View,
 } from 'react-native';
 import { captureRef } from 'react-native-view-shot';
 
-import {
-  LiqiButton,
-  LiqiCard,
-  LiqiChip,
-  LiqiOrbButton,
-} from '@/shared/components/liqi';
 import { appRoutes } from '@/app-shell/navigation/routes';
-import { useAssetResolver } from '@/entities/media-asset';
 import { usePlayerTrustProjection } from '@/entities/trust-outcomes';
 import { useAuth } from '@/shared/auth/auth-context';
-import type { PlayerTrustProjectionV2 } from '@/shared/contracts/core-v2';
-import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
-import { liqiColors, liqiTypography } from '@/shared/theme/liqi-design-system';
+import {
+  AppActionDock,
+  AppButton,
+  AppCard,
+  AppChip,
+  AppIconButton,
+  AppScreen,
+  AppText,
+  appColors,
+  appSpacing,
+} from '@/shared/ui';
 
-import { ProfileText } from '../components/ProfileShared';
-import { resolveProfileMedia } from '../model/profile-media';
+import { ProfileShareCard } from '../components/ProfileShareCard';
 import { useProfileReadRepository } from '../runtime/ProfileReadRepositoryProvider';
+import {
+  profileShareCtaOptions,
+  profileSharePreviewWidth,
+  profileShareRatioConfig,
+  profileShareRatioOptions,
+  profileShareTemplateOptions,
+  type ProfileShareCta,
+  type ProfileShareOption,
+  type ProfileShareRatio,
+  type ProfileShareTemplate,
+} from '../share/profile-share-model';
 import type { ProfileViewModel } from '../services/profile-service';
 import { fetchProfileSettings } from '../services/profile-settings-service';
-
-type ShareRatio = 'story' | 'feed' | 'square';
-type ShareTemplate = 'fantasy' | 'minimal' | 'rank';
-type ShareCta = 'teamup' | 'clean' | 'rank' | 'support';
-
-type Option<Value extends string> = {
-  id: Value;
-  label: string;
-  meta?: string;
-};
-
-const ctaOptions: (Option<ShareCta> & { text: string })[] = [
-  {
-    id: 'teamup',
-    label: 'Tìm đồng đội',
-    text: 'Đang tìm đồng đội leo rank tối nay',
-  },
-  {
-    id: 'clean',
-    label: 'Không toxic',
-    text: 'Teamwork, giao tranh sạch, không toxic',
-  },
-  {
-    id: 'rank',
-    label: 'Leo rank',
-    text: 'Cần team sạch để leo rank tối nay',
-  },
-  {
-    id: 'support',
-    label: 'Teamplay',
-    text: 'Support/teamplay, mic on, đánh bình tĩnh',
-  },
-];
-
-const ratioOptions: Option<ShareRatio>[] = [
-  { id: 'story', label: 'Story 9:16', meta: 'đăng story' },
-  { id: 'feed', label: 'Feed 4:5', meta: 'bài đăng' },
-  { id: 'square', label: 'Vuông 1:1', meta: 'gửi chat' },
-];
-
-const templateOptions: Option<ShareTemplate>[] = [
-  { id: 'fantasy', label: 'Fantasy', meta: 'premium game' },
-  { id: 'minimal', label: 'Tối giản', meta: 'sạch, ít hiệu ứng' },
-  { id: 'rank', label: 'Rank', meta: 'nhấn cấp độ' },
-];
+import { profileShareUi } from '../ui/profile-share-ui';
 
 export function ProfileShareScreen() {
+  const { width } = useWindowDimensions();
   const { session } = useAuth();
-  const profileRepository = useProfileReadRepository();
-  const [template, setTemplate] = useState<ShareTemplate>('fantasy');
-  const [ratio, setRatio] = useState<ShareRatio>('story');
-  const [cta, setCta] = useState<ShareCta>('teamup');
+  const repository = useProfileReadRepository();
+  const [template, setTemplate] = useState<ProfileShareTemplate>('fantasy');
+  const [ratio, setRatio] = useState<ProfileShareRatio>('story');
+  const [cta, setCta] = useState<ProfileShareCta>('teamup');
   const [exporting, setExporting] = useState<'save' | 'share' | null>(null);
   const cardRef = useRef<View>(null);
 
@@ -101,7 +62,7 @@ export function ProfileShareScreen() {
     enabled: Boolean(session),
     queryFn: () => {
       if (!session) throw new Error('Missing auth session');
-      return profileRepository.getProfile({ session });
+      return repository.getProfile({ session });
     },
     queryKey: ['profile-view', 'self', session?.user.id],
   });
@@ -114,751 +75,423 @@ export function ProfileShareScreen() {
     queryKey: ['profile-settings', session?.user.id],
   });
   const profile = profileQuery.data;
-  const trustProjectionQuery = usePlayerTrustProjection(
-    session,
-    profile?.playerId,
-  );
-
+  const trustQuery = usePlayerTrustProjection(session, profile?.playerId);
   const selectedCta = useMemo(
-    () => ctaOptions.find((item) => item.id === cta) ?? ctaOptions[0]!,
+    () =>
+      profileShareCtaOptions.find((option) => option.id === cta) ??
+      profileShareCtaOptions[0]!,
     [cta],
+  );
+  const previewWidth = Math.min(
+    profileSharePreviewWidth(ratio),
+    Math.max(214, width - appSpacing['4xl'] * 2),
   );
 
   if (!session) {
     return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading={false} />
-        <ShareGuardCard
-          icon="lock-closed-outline"
-          primaryLabel="Về đăng nhập"
-          title="Cần đăng nhập"
-          onPrimaryPress={() => router.replace(appRoutes.auth.login)}
-        >
-          Đăng nhập để tạo ảnh chia sẻ từ hồ sơ của bạn.
-        </ShareGuardCard>
-      </LiqiScreen>
+      <ProfileShareState
+        actionLabel="Về đăng nhập"
+        description="Đăng nhập để tạo ảnh chia sẻ từ hồ sơ của bạn."
+        icon="lock-closed-outline"
+        onAction={() => router.replace(appRoutes.auth.login)}
+        title="Cần đăng nhập"
+      />
     );
   }
 
   if (settingsQuery.isLoading) {
     return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading />
-        <ShareGuardCard icon="hourglass-outline" title="Đang kiểm tra cài đặt">
-          Liqi Match đang xác nhận quyền tạo ảnh chia sẻ trước khi render thẻ
-          social.
-        </ShareGuardCard>
-      </LiqiScreen>
+      <ProfileShareState
+        description="Đang xác nhận quyền riêng tư trước khi dựng ảnh hồ sơ."
+        icon="shield-checkmark-outline"
+        loading
+        title="Đang kiểm tra quyền chia sẻ"
+      />
     );
   }
 
   if (settingsQuery.isError) {
     return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading={false} />
-        <ShareGuardCard
-          icon="warning-outline"
-          primaryLabel="Thử lại"
-          secondaryLabel="Về cài đặt"
-          title="Chưa kiểm tra được quyền chia sẻ"
-          onPrimaryPress={() => void settingsQuery.refetch()}
-          onSecondaryPress={() => router.replace(appRoutes.profile.settings)}
-        >
-          Vì đây là cài đặt quyền riêng tư, màn hình chia sẻ sẽ tạm khoá cho đến
-          khi đọc được trạng thái mới nhất.
-        </ShareGuardCard>
-      </LiqiScreen>
+      <ProfileShareState
+        actionLabel="Thử lại"
+        description="Màn hình tạm khoá vì chưa đọc được cài đặt quyền riêng tư mới nhất."
+        icon="warning-outline"
+        onAction={() => void settingsQuery.refetch()}
+        title="Chưa kiểm tra được quyền chia sẻ"
+      />
     );
   }
 
   if (settingsQuery.data?.allowProfileShare !== true) {
     return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading={false} />
-        <ShareGuardCard
-          icon="image-outline"
-          primaryLabel="Bật trong cài đặt"
-          secondaryLabel="Về hồ sơ"
-          title="Đang tắt chia sẻ hồ sơ"
-          onPrimaryPress={() => router.replace(appRoutes.profile.settings)}
-          onSecondaryPress={() => router.replace(appRoutes.profile.self)}
-        >
-          Bạn đã tắt “Cho phép tạo ảnh chia sẻ”. Bật lại trong Cài đặt nếu muốn
-          xuất PNG social từ hồ sơ.
-        </ShareGuardCard>
-      </LiqiScreen>
+      <ProfileShareState
+        actionLabel="Mở cài đặt"
+        description="Bạn đang tắt quyền tạo ảnh chia sẻ. Bật lại trong Cài đặt hồ sơ để tiếp tục."
+        icon="image-outline"
+        onAction={() => router.replace(appRoutes.profile.settings)}
+        title="Đang tắt chia sẻ hồ sơ"
+      />
     );
   }
 
   if (profileQuery.isPending) {
     return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading />
-        <ShareGuardCard icon="hourglass-outline" title="Đang tải hồ sơ">
-          Đang đồng bộ dữ liệu người chơi trước khi render ảnh chia sẻ.
-        </ShareGuardCard>
-      </LiqiScreen>
+      <ProfileShareState
+        description="Đang đồng bộ identity và media mới nhất của hồ sơ."
+        icon="person-circle-outline"
+        loading
+        title="Đang tải hồ sơ"
+      />
     );
   }
 
-  if (profileQuery.isError) {
+  if (profileQuery.isError || !profile) {
     return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading={false} />
-        <ShareGuardCard
-          icon="warning-outline"
-          primaryLabel="Thử lại"
-          title="Không thể tải hồ sơ"
-          onPrimaryPress={() => void profileQuery.refetch()}
-        >
-          Repository trả về lỗi. Ứng dụng không render ảnh từ fixture thay thế.
-        </ShareGuardCard>
-      </LiqiScreen>
+      <ProfileShareState
+        actionLabel="Thử lại"
+        description="Không dùng fixture thay thế vì ảnh chia sẻ phải phản ánh đúng hồ sơ hiện tại."
+        icon="warning-outline"
+        onAction={() => void profileQuery.refetch()}
+        title={
+          profileQuery.isError ? 'Không thể tải hồ sơ' : 'Không tìm thấy hồ sơ'
+        }
+      />
     );
   }
 
-  if (!profile) {
+  if (trustQuery.isPending) {
     return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading={false} />
-        <ShareGuardCard icon="person-outline" title="Không tìm thấy hồ sơ">
-          Tài khoản hiện tại chưa có projection hồ sơ trong runtime.
-        </ShareGuardCard>
-      </LiqiScreen>
+      <ProfileShareState
+        description="Đang tải số buổi chơi, độ hoàn tất và lời khen đã xác minh."
+        icon="shield-checkmark-outline"
+        loading
+        title="Đang tải số liệu xác minh"
+      />
     );
   }
 
-  if (trustProjectionQuery.isPending) {
+  if (trustQuery.isError) {
     return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading />
-        <ShareGuardCard
-          icon="shield-checkmark-outline"
-          title="Đang tải số liệu xác minh"
-        >
-          Liqi Match đang tải thành tích và điểm uy tín mới nhất.
-        </ShareGuardCard>
-      </LiqiScreen>
+      <ProfileShareState
+        actionLabel="Thử lại"
+        description="Ảnh chia sẻ được khoá để không hiển thị thành tích tự khai hoặc dữ liệu cũ chưa xác minh."
+        icon="warning-outline"
+        onAction={() => void trustQuery.refetch()}
+        title="Chưa tải được số liệu xác minh"
+      />
     );
   }
 
-  if (trustProjectionQuery.isError) {
-    return (
-      <LiqiScreen
-        contentContainerStyle={styles.scrollContent}
-        withBottomNavPadding={false}
-        withHeader={false}
-      >
-        <ShareTopBar loading={false} />
-        <ShareGuardCard
-          icon="warning-outline"
-          primaryLabel="Thử lại"
-          secondaryLabel="Về hồ sơ"
-          title="Chưa tải được số liệu xác minh"
-          onPrimaryPress={() => void trustProjectionQuery.refetch()}
-          onSecondaryPress={() => router.replace(appRoutes.profile.self)}
-        >
-          Ảnh chia sẻ được tạm khoá để không hiển thị số liệu tự khai hoặc dữ
-          liệu cũ chưa xác minh.
-        </ShareGuardCard>
-      </LiqiScreen>
-    );
-  }
+  const exportImage = async (action: 'save' | 'share') => {
+    if (exporting) return;
+    setExporting(action);
+    try {
+      await exportProfileShareImage({ action, cardRef, profile, ratio });
+    } finally {
+      setExporting(null);
+    }
+  };
 
   return (
-    <LiqiScreen
-      contentContainerStyle={styles.scrollContent}
+    <AppScreen
+      bottomSlot={
+        <ProfileShareActionDock
+          exporting={exporting}
+          onSave={() => void exportImage('save')}
+          onShare={() => void exportImage('share')}
+        />
+      }
+      contentContainerStyle={styles.screenContent}
       withBottomNavPadding={false}
       withHeader={false}
     >
-      <ShareTopBar loading={profileQuery.isLoading} />
+      <ProfileShareHeader onBack={leaveShare} />
 
       <View style={styles.previewStage}>
-        <SocialProfileCard
+        <ProfileShareCard
           captureRef={cardRef}
           cta={selectedCta.text}
+          previewWidth={previewWidth}
           profile={profile}
           ratio={ratio}
           template={template}
-          trustProjection={trustProjectionQuery.data}
+          trustProjection={trustQuery.data}
         />
       </View>
 
-      <ShareControls>
-        <OptionRow
-          label="Phong cách"
-          options={templateOptions}
-          selected={template}
-          tone="purple"
+      <AppCard
+        backgroundColor={profileShareUi.colors.controlSurface}
+        contentStyle={styles.controlsContent}
+        radius={profileShareUi.radii.control}
+        withShadow={false}
+      >
+        <ShareOptionGroup
+          label="Mẫu thiết kế"
           onSelect={setTemplate}
+          options={profileShareTemplateOptions}
+          selected={template}
         />
-        <OptionRow
+        <View style={styles.divider} />
+        <ShareOptionGroup
           label="Tỉ lệ ảnh"
-          options={ratioOptions}
+          onSelect={setRatio}
+          options={profileShareRatioOptions}
           selected={ratio}
           tone="cyan"
-          onSelect={setRatio}
         />
-        <OptionRow
-          label="Dòng trên ảnh"
-          options={ctaOptions}
-          selected={cta}
-          tone="purple"
+        <View style={styles.divider} />
+        <ShareOptionGroup
+          label="Thông điệp"
           onSelect={setCta}
+          options={profileShareCtaOptions}
+          selected={cta}
         />
-      </ShareControls>
+      </AppCard>
 
-      <View style={styles.actionRow}>
-        <LiqiButton
-          accessibilityLabel="Lưu ảnh hồ sơ"
-          disabled={exporting !== null}
-          emphasis="low"
-          onPress={async () => {
-            setExporting('save');
-            await exportShareImage({
-              action: 'save',
-              captureTargetRef: cardRef,
-              profile,
-            });
-            setExporting(null);
-          }}
-          radius={22}
-          style={styles.secondaryAction}
-          variant="ghost"
-          withShadow={false}
-        >
-          {exporting === 'save' ? (
-            <ActivityIndicator color="rgba(231,236,255,0.78)" size="small" />
-          ) : (
-            <Ionicons
-              color="rgba(231,236,255,0.78)"
-              name="download-outline"
-              size={16}
-            />
-          )}
-          <ProfileText style={styles.secondaryActionText}>Lưu ảnh</ProfileText>
-        </LiqiButton>
-        <LiqiButton
-          accessibilityLabel="Chia sẻ ảnh hồ sơ"
-          disabled={exporting !== null}
-          emphasis="medium"
-          onPress={async () => {
-            setExporting('share');
-            await exportShareImage({
-              action: 'share',
-              captureTargetRef: cardRef,
-              profile,
-            });
-            setExporting(null);
-          }}
-          radius={22}
-          style={styles.primaryAction}
-          withShadow={false}
-        >
-          {exporting === 'share' ? (
-            <ActivityIndicator color="#FFFFFF" size="small" />
-          ) : (
-            <Ionicons color="#FFFFFF" name="share-social-outline" size={16} />
-          )}
-          <ProfileText style={styles.primaryActionText}>
-            Chia sẻ ảnh
-          </ProfileText>
-        </LiqiButton>
-      </View>
-
-      <ProfileText style={styles.exportNote}>
-        Preview này được render thành PNG thật để lưu vào máy hoặc gửi qua
-        native share sheet. Thành tích trên ảnh chỉ lấy từ dữ liệu đã xác minh.
-      </ProfileText>
-    </LiqiScreen>
-  );
-}
-
-function ShareGuardCard({
-  children,
-  icon,
-  onPrimaryPress,
-  onSecondaryPress,
-  primaryLabel,
-  secondaryLabel,
-  title,
-}: {
-  children: ReactNode;
-  icon: keyof typeof Ionicons.glyphMap;
-  onPrimaryPress?: () => void;
-  onSecondaryPress?: () => void;
-  primaryLabel?: string;
-  secondaryLabel?: string;
-  title: string;
-}) {
-  return (
-    <LiqiCard
-      density="regular"
-      emphasis="low"
-      style={styles.guardCard}
-      backgroundColor="rgba(7,10,24,0.44)"
-      withShadow={false}
-    >
-      <View style={styles.guardIconShell}>
-        <Ionicons color="rgba(178,235,255,0.86)" name={icon} size={22} />
-      </View>
-      <ProfileText style={styles.guardTitle}>{title}</ProfileText>
-      <ProfileText style={styles.guardText}>{children}</ProfileText>
-      {onPrimaryPress || onSecondaryPress ? (
-        <View style={styles.guardActions}>
-          {onPrimaryPress && primaryLabel ? (
-            <LiqiButton
-              emphasis="low"
-              onPress={() => {
-                selectionImpact();
-                onPrimaryPress();
-              }}
-              radius={18}
-              style={styles.guardAction}
-              withShadow={false}
-            >
-              <ProfileText style={styles.primaryActionText}>
-                {primaryLabel}
-              </ProfileText>
-            </LiqiButton>
-          ) : null}
-          {onSecondaryPress && secondaryLabel ? (
-            <LiqiButton
-              emphasis="none"
-              onPress={() => {
-                selectionImpact();
-                onSecondaryPress();
-              }}
-              radius={18}
-              style={styles.guardAction}
-              variant="ghost"
-              withShadow={false}
-            >
-              <ProfileText style={styles.secondaryActionText}>
-                {secondaryLabel}
-              </ProfileText>
-            </LiqiButton>
-          ) : null}
+      <View style={styles.authorityNote}>
+        <Ionicons
+          color={appColors.accent.purpleIcon}
+          name="shield-checkmark-outline"
+          size={18}
+        />
+        <View style={styles.authorityCopy}>
+          <AppText variant="label">Thành tích trên ảnh được xác minh</AppText>
+          <AppText tone="secondary" variant="bodySmall">
+            Thẻ chỉ dùng trust projection của nền tảng; social stats và legacy
+            profile stats không được dùng làm fallback.
+          </AppText>
         </View>
-      ) : null}
-    </LiqiCard>
+      </View>
+    </AppScreen>
   );
 }
 
-function ShareTopBar({ loading }: { loading: boolean }) {
+function ProfileShareHeader({ onBack }: Readonly<{ onBack: () => void }>) {
   return (
-    <View style={styles.topBar}>
-      <LiqiOrbButton
+    <View style={styles.header}>
+      <AppIconButton
         accessibilityLabel="Quay lại hồ sơ"
-        surfaceTone="low"
         emphasis="low"
-        onPress={() => {
-          selectionImpact();
-          router.back();
-        }}
-        size={42}
-        style={styles.topOrb}
+        onPress={onBack}
+        size={44}
+        surfaceTone="low"
+        withHighlight={false}
       >
         <Ionicons
-          color={liqiColors.text.primary}
+          color={appColors.icon.primary}
           name="chevron-back"
-          size={20}
+          size={21}
         />
-      </LiqiOrbButton>
-      <View style={styles.titleBlock}>
-        <ProfileText style={styles.title}>Chia sẻ ảnh hồ sơ</ProfileText>
-        <ProfileText style={styles.subtitle}>
-          Tạo một thẻ fantasy gaming để lưu hoặc gửi lên social.
-        </ProfileText>
-      </View>
-      <View style={styles.topRightSlot}>
-        {loading ? <ActivityIndicator color="#C679FF" size="small" /> : null}
+      </AppIconButton>
+      <View style={styles.headerCopy}>
+        <AppText variant="h1">Chia sẻ hồ sơ</AppText>
+        <AppText tone="secondary" variant="bodySmall">
+          Tạo một ảnh có chủ đích để đăng story, feed hoặc gửi trong chat.
+        </AppText>
       </View>
     </View>
   );
 }
 
-function SocialProfileCard({
-  captureRef,
-  cta,
-  profile,
-  ratio,
-  template,
-  trustProjection,
-}: {
-  captureRef: RefObject<View | null>;
-  cta: string;
-  profile: ProfileViewModel;
-  ratio: ShareRatio;
-  template: ShareTemplate;
-  trustProjection?: PlayerTrustProjectionV2;
-}) {
-  const assetResolver = useAssetResolver();
-  const coverMedia = resolveProfileMedia(assetResolver, {
-    assetKey: profile.coverAssetKey,
-    uri: profile.coverUrl,
-  });
-  const ratioStyle =
-    ratio === 'square'
-      ? styles.cardSquare
-      : ratio === 'feed'
-        ? styles.cardFeed
-        : styles.cardStory;
-  const isMinimal = template === 'minimal';
-  const isRank = template === 'rank';
-  const meta = [
-    profile.rankName ?? 'Chưa rõ rank',
-    profile.roleNames[0] ?? 'Chưa chọn vai trò',
-    profile.region ?? 'Global',
-  ];
-  const heroNames = profile.favoriteHeroes.map((hero) => hero.name).slice(0, 3);
-  const playstyleTags = profile.playStyleTags.slice(0, 5);
-
+function ProfileShareState({
+  actionLabel,
+  description,
+  icon,
+  loading = false,
+  onAction,
+  title,
+}: Readonly<{
+  actionLabel?: string;
+  description: string;
+  icon: keyof typeof Ionicons.glyphMap;
+  loading?: boolean;
+  onAction?: () => void;
+  title: string;
+}>) {
   return (
-    <View
-      ref={captureRef}
-      collapsable={false}
-      renderToHardwareTextureAndroid
-      style={[styles.socialCard, ratioStyle]}
+    <AppScreen
+      contentContainerStyle={styles.stateScreen}
+      scroll={false}
+      withBottomNavPadding={false}
+      withHeader={false}
     >
-      {coverMedia.source ? (
-        <>
-          <Image
-            blurRadius={isMinimal ? 2 : 5}
-            resizeMode="cover"
-            source={coverMedia.source}
-            style={styles.cardCoverBlur}
+      <View style={styles.stateHeader}>
+        <AppIconButton
+          accessibilityLabel="Quay lại hồ sơ"
+          emphasis="low"
+          onPress={leaveShare}
+          size={44}
+          surfaceTone="low"
+          withHighlight={false}
+        >
+          <Ionicons
+            color={appColors.icon.primary}
+            name="chevron-back"
+            size={21}
           />
-          <Image
-            resizeMode="cover"
-            source={coverMedia.source}
-            style={styles.cardCoverClarity}
-          />
-        </>
-      ) : (
-        <LinearGradient
-          colors={[
-            'rgba(42,28,96,0.72)',
-            'rgba(9,18,42,0.92)',
-            'rgba(3,6,18,1)',
-          ]}
-          style={StyleSheet.absoluteFill}
-        />
-      )}
-      <View pointerEvents="none" style={styles.cardDimLayer} />
-      <LinearGradient
-        colors={[
-          'rgba(2,5,16,0.92)',
-          'rgba(2,5,16,0.62)',
-          'rgba(2,5,16,0.30)',
-          'rgba(2,5,16,0.62)',
-        ]}
-        end={{ x: 1, y: 0.46 }}
-        locations={[0, 0.4, 0.74, 1]}
-        pointerEvents="none"
-        start={{ x: 0, y: 0.46 }}
-        style={StyleSheet.absoluteFill}
-      />
-      <LinearGradient
-        colors={['rgba(2,5,16,0.56)', 'rgba(2,5,16,0.08)', 'rgba(2,5,16,0.84)']}
-        end={{ x: 0.5, y: 1 }}
-        locations={[0, 0.42, 1]}
-        pointerEvents="none"
-        start={{ x: 0.5, y: 0 }}
-        style={StyleSheet.absoluteFill}
-      />
-      {!isMinimal ? (
-        <>
-          <View pointerEvents="none" style={styles.cornerGlow} />
-          <LinearGradient
-            colors={[
-              isRank ? 'rgba(255,212,76,0.20)' : 'rgba(130,92,255,0.20)',
-              'rgba(103,232,255,0.10)',
-              'rgba(255,255,255,0.00)',
-            ]}
-            end={{ x: 1, y: 1 }}
-            pointerEvents="none"
-            start={{ x: 0, y: 0 }}
-            style={StyleSheet.absoluteFill}
-          />
-        </>
-      ) : null}
-
-      <View style={styles.cardContent}>
-        <View style={styles.brandRow}>
-          <ProfileText style={styles.brandText}>LIQI MATCH</ProfileText>
-          <ProfileText style={styles.brandMeta}>
-            Fantasy Profile Card
-          </ProfileText>
-        </View>
-
-        <View style={styles.identityRow}>
-          <AvatarPoster profile={profile} />
-          <View style={styles.identityCopy}>
-            <View style={styles.nameRow}>
-              <ProfileText numberOfLines={1} style={styles.posterName}>
-                {profile.displayName}
-              </ProfileText>
-              {profile.verified ? <VerifiedBadge /> : null}
-            </View>
-            <ProfileText numberOfLines={1} style={styles.posterRank}>
-              {meta.join(' · ')}
-            </ProfileText>
-            <View style={styles.statusLine}>
-              <View style={styles.readyDot} />
-              <ProfileText numberOfLines={1} style={styles.statusText}>
-                {profile.statusLabel}
-              </ProfileText>
-            </View>
-          </View>
-        </View>
-
-        <ProfileText numberOfLines={2} style={styles.posterBio}>
-          “{profile.bio}”
-        </ProfileText>
-        <ProfileText numberOfLines={2} style={styles.posterCta}>
-          {cta}
-        </ProfileText>
-
-        <View style={styles.statsBox}>
-          <PosterStat
-            label="Buổi chơi"
-            value={
-              trustProjection ? String(trustProjection.completedSessions) : '—'
-            }
-          />
-          <PosterStat
-            label="Hoàn tất"
-            value={
-              trustProjection
-                ? `${Math.round(
-                    trustProjection.completionReliabilityBps / 100,
-                  )}%`
-                : '—'
-            }
-          />
-          <PosterStat
-            label="Lời khen"
-            value={
-              trustProjection
-                ? String(trustProjection.positiveEndorsements)
-                : '—'
-            }
-          />
-        </View>
-
-        {heroNames.length ? (
-          <PosterGroup label="Tướng tủ" values={heroNames} tone="hero" />
-        ) : null}
-        {playstyleTags.length ? (
-          <PosterGroup label="Phong cách" values={playstyleTags} tone="tag" />
-        ) : null}
-
-        <View style={styles.footerLine}>
-          <ProfileText style={styles.footerText}>
-            Gaming profile made for social share
-          </ProfileText>
-        </View>
+        </AppIconButton>
       </View>
-    </View>
-  );
-}
-
-function AvatarPoster({ profile }: { profile: ProfileViewModel }) {
-  const assetResolver = useAssetResolver();
-  const avatarMedia = resolveProfileMedia(assetResolver, {
-    assetKey: profile.avatarAssetKey,
-    uri: profile.avatarUrl ?? profile.avatarFallbackUrl,
-  });
-
-  return (
-    <LinearGradient
-      colors={['rgba(142,92,255,0.92)', 'rgba(103,232,255,0.82)']}
-      end={{ x: 1, y: 1 }}
-      start={{ x: 0, y: 0 }}
-      style={styles.avatarRingOuter}
-    >
-      <View style={styles.avatarRingInner}>
-        {avatarMedia.source ? (
-          <Image source={avatarMedia.source} style={styles.avatarImage} />
+      <AppCard
+        backgroundColor={profileShareUi.colors.guardSurface}
+        contentStyle={styles.stateCard}
+        withShadow={false}
+      >
+        {loading ? (
+          <ActivityIndicator color={appColors.accent.purpleIcon} size="large" />
         ) : (
-          <ProfileText style={styles.avatarInitial}>
-            {profile.displayName.charAt(0).toUpperCase() || 'L'}
-          </ProfileText>
+          <Ionicons color={appColors.accent.purpleIcon} name={icon} size={32} />
         )}
-      </View>
-    </LinearGradient>
+        <AppText variant="h2">{title}</AppText>
+        <AppText style={styles.centerText} tone="secondary" variant="bodySmall">
+          {description}
+        </AppText>
+        {actionLabel && onAction ? (
+          <AppButton onPress={onAction} variant="secondary" withShadow={false}>
+            {actionLabel}
+          </AppButton>
+        ) : null}
+      </AppCard>
+    </AppScreen>
   );
 }
 
-function VerifiedBadge() {
-  return (
-    <View style={styles.verifiedBadge}>
-      <Ionicons color="rgba(220,248,255,0.96)" name="checkmark" size={13} />
-    </View>
-  );
-}
-
-function PosterStat({ label, value }: { label: string; value: string }) {
-  return (
-    <View style={styles.statItem}>
-      <ProfileText style={styles.statValue}>{value}</ProfileText>
-      <ProfileText style={styles.statLabel}>{label}</ProfileText>
-    </View>
-  );
-}
-
-function PosterGroup({
-  label,
-  tone,
-  values,
-}: {
-  label: string;
-  tone: 'hero' | 'tag';
-  values: string[];
-}) {
-  return (
-    <View style={styles.posterGroup}>
-      <ProfileText style={styles.posterGroupLabel}>{label}</ProfileText>
-      <View style={styles.posterPills}>
-        {values.map((value) => (
-          <View
-            key={value}
-            style={[styles.posterPill, tone === 'hero' && styles.heroPill]}
-          >
-            <ProfileText numberOfLines={1} style={styles.posterPillText}>
-              {value}
-            </ProfileText>
-          </View>
-        ))}
-      </View>
-    </View>
-  );
-}
-
-function ShareControls({ children }: { children: ReactNode }) {
-  return (
-    <LiqiCard
-      density="regular"
-      emphasis="low"
-      style={styles.controlsCard}
-      backgroundColor="rgba(7,10,24,0.44)"
-    >
-      {children}
-    </LiqiCard>
-  );
-}
-
-function OptionRow<Value extends string>({
+function ShareOptionGroup<Value extends string>({
   label,
   onSelect,
   options,
   selected,
-  tone,
-}: {
+  tone = 'purple',
+}: Readonly<{
   label: string;
   onSelect: (value: Value) => void;
-  options: Option<Value>[];
+  options: readonly ProfileShareOption<Value>[];
   selected: Value;
-  tone: 'cyan' | 'purple';
-}) {
+  tone?: 'purple' | 'cyan';
+}>) {
   return (
-    <View style={styles.optionRow}>
-      <ProfileText style={styles.optionLabel}>{label}</ProfileText>
-      <View style={styles.optionChips}>
+    <View style={styles.optionGroup}>
+      <AppText variant="h3">{label}</AppText>
+      <View style={styles.optionWrap}>
         {options.map((option) => (
-          <LiqiChip
-            accessibilityLabel={`${label} ${option.label}`}
-            accessibilityState={{ selected: selected === option.id }}
-            density="compact"
-            key={option.id}
-            onPress={() => {
-              selectionImpact();
-              onSelect(option.id);
-            }}
-            selected={selected === option.id}
-            textStyle={styles.optionChipText}
-            variant={tone}
-          >
-            {option.label}
-          </LiqiChip>
+          <View key={option.id} style={styles.optionItem}>
+            <AppChip
+              accessibilityLabel={`${label} ${option.label}`}
+              accessibilityState={{ selected: option.id === selected }}
+              density="compact"
+              onPress={() => {
+                selectionImpact();
+                onSelect(option.id);
+              }}
+              selected={option.id === selected}
+              variant={tone}
+            >
+              {option.label}
+            </AppChip>
+            {option.meta ? (
+              <AppText tone="muted" variant="caption">
+                {option.meta}
+              </AppText>
+            ) : null}
+          </View>
         ))}
       </View>
     </View>
   );
 }
 
-async function exportShareImage({
+function ProfileShareActionDock({
+  exporting,
+  onSave,
+  onShare,
+}: Readonly<{
+  exporting: 'save' | 'share' | null;
+  onSave: () => void;
+  onShare: () => void;
+}>) {
+  return (
+    <AppActionDock contentStyle={styles.actionDockContent}>
+      <AppButton
+        accessibilityLabel="Lưu ảnh hồ sơ"
+        disabled={exporting !== null}
+        onPress={onSave}
+        style={styles.actionButton}
+        variant="ghost"
+        withShadow={false}
+      >
+        {exporting === 'save' ? (
+          <ActivityIndicator color={appColors.text.secondary} size="small" />
+        ) : (
+          <Ionicons
+            color={appColors.icon.primary}
+            name="download-outline"
+            size={18}
+          />
+        )}
+        <AppText variant="button">Lưu ảnh</AppText>
+      </AppButton>
+      <AppButton
+        accessibilityLabel="Chia sẻ ảnh hồ sơ"
+        disabled={exporting !== null}
+        onPress={onShare}
+        style={styles.actionButton}
+        withShadow={false}
+      >
+        {exporting === 'share' ? (
+          <ActivityIndicator color={appColors.text.onAccent} size="small" />
+        ) : (
+          <Ionicons
+            color={appColors.text.onAccent}
+            name="share-social-outline"
+            size={18}
+          />
+        )}
+        <AppText variant="button">Chia sẻ</AppText>
+      </AppButton>
+    </AppActionDock>
+  );
+}
+
+async function exportProfileShareImage({
   action,
-  captureTargetRef,
+  cardRef,
   profile,
-}: {
+  ratio,
+}: Readonly<{
   action: 'save' | 'share';
-  captureTargetRef: RefObject<View | null>;
+  cardRef: RefObject<View | null>;
   profile: ProfileViewModel;
-}) {
+  ratio: ProfileShareRatio;
+}>) {
   impactLight();
   try {
-    const uri = await captureShareCard(captureTargetRef, profile.displayName);
-
+    const uri = await captureProfileShareCard(
+      cardRef,
+      profile.displayName,
+      ratio,
+    );
     if (action === 'save') {
       const permission = await MediaLibrary.requestPermissionsAsync();
       if (!permission.granted) {
         Alert.alert(
           'Cần quyền lưu ảnh',
-          'Bạn cần cấp quyền thư viện ảnh để Liqi Match lưu thẻ hồ sơ vào máy.',
+          'Cấp quyền thư viện ảnh để lưu thẻ hồ sơ vào thiết bị.',
         );
         return;
       }
-
       await MediaLibrary.saveToLibraryAsync(uri);
       showFeedback('Đã lưu ảnh hồ sơ');
       return;
     }
 
-    const shareAvailable = await Sharing.isAvailableAsync();
-    if (!shareAvailable) {
+    if (!(await Sharing.isAvailableAsync())) {
       Alert.alert(
         'Không chia sẻ được',
-        'Thiết bị hiện không hỗ trợ native share sheet cho file ảnh.',
+        'Thiết bị hiện không hỗ trợ native share sheet cho ảnh.',
       );
       return;
     }
-
     await Sharing.shareAsync(uri, {
-      dialogTitle: `Chia sẻ ảnh hồ sơ của ${profile.displayName}`,
+      dialogTitle: `Chia sẻ hồ sơ của ${profile.displayName}`,
       mimeType: 'image/png',
       UTI: 'public.png',
     });
@@ -870,29 +503,39 @@ async function exportShareImage({
   }
 }
 
-async function captureShareCard(
-  captureTargetRef: RefObject<View | null>,
+async function captureProfileShareCard(
+  cardRef: RefObject<View | null>,
   displayName: string,
+  ratio: ProfileShareRatio,
 ) {
-  if (!captureTargetRef.current) {
-    throw new Error('Thẻ ảnh chưa sẵn sàng. Vui lòng thử lại sau một chút.');
+  if (!cardRef.current) {
+    throw new Error('Thẻ ảnh chưa sẵn sàng. Hãy thử lại sau một chút.');
   }
-
   await new Promise((resolve) => requestAnimationFrame(resolve));
-
+  const config = profileShareRatioConfig(ratio);
   const safeName = displayName
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-zA-Z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .toLowerCase();
-
-  return captureRef(captureTargetRef.current, {
+  return captureRef(cardRef.current, {
     fileName: `liqi-profile-${safeName || 'player'}-${Date.now()}`,
     format: 'png',
+    height: config.exportHeight,
     quality: 1,
     result: 'tmpfile',
+    width: config.exportWidth,
   });
+}
+
+function leaveShare() {
+  selectionImpact();
+  if (router.canGoBack?.()) {
+    router.back();
+    return;
+  }
+  router.replace(appRoutes.profile.self);
 }
 
 function showFeedback(message: string) {
@@ -900,8 +543,11 @@ function showFeedback(message: string) {
     ToastAndroid.show(message, ToastAndroid.SHORT);
     return;
   }
-
   Alert.alert(message);
+}
+
+function selectionImpact() {
+  void Haptics.selectionAsync().catch(() => undefined);
 }
 
 function impactLight() {
@@ -910,327 +556,51 @@ function impactLight() {
   );
 }
 
-function selectionImpact() {
-  void Haptics.selectionAsync().catch(() => undefined);
-}
-
 const styles = StyleSheet.create({
-  actionRow: { flexDirection: 'row', gap: 10, marginBottom: 8, marginTop: 10 },
-  avatarImage: { borderRadius: 42, height: '100%', width: '100%' },
-  avatarInitial: { color: '#FFFFFF', fontSize: 34, fontWeight: '900' },
-  avatarRingInner: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(8,14,30,0.82)',
-    borderRadius: 42,
-    height: 84,
-    justifyContent: 'center',
-    overflow: 'hidden',
-    width: 84,
+  actionButton: { flex: 1, minWidth: 0 },
+  actionDockContent: { gap: appSpacing.md, width: '100%' },
+  authorityCopy: { flex: 1, gap: appSpacing.xs },
+  authorityNote: {
+    alignItems: 'flex-start',
+    backgroundColor: profileShareUi.colors.guardSurface,
+    borderColor: profileShareUi.colors.cardBorder,
+    borderRadius: profileShareUi.radii.control,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: appSpacing.lg,
+    padding: appSpacing.xl,
   },
-  avatarRingOuter: {
-    alignItems: 'center',
-    borderRadius: 47,
-    height: 94,
-    justifyContent: 'center',
-    shadowColor: '#67E8FF',
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    width: 94,
+  centerText: { maxWidth: 320, textAlign: 'center' },
+  controlsContent: { gap: appSpacing.xl },
+  divider: {
+    backgroundColor: profileShareUi.colors.divider,
+    height: StyleSheet.hairlineWidth,
   },
-  brandMeta: {
-    color: 'rgba(210,220,248,0.42)',
-    fontSize: 8.5,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-  },
-  brandRow: {
+  header: {
     alignItems: 'center',
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 18,
+    gap: appSpacing.xl,
   },
-  brandText: {
-    color: 'rgba(235,242,255,0.52)',
-    fontSize: 9.5,
-    fontWeight: '900',
-    letterSpacing: 1.8,
+  headerCopy: { flex: 1, gap: appSpacing.xxs },
+  optionGroup: { gap: appSpacing.lg },
+  optionItem: { alignItems: 'flex-start', gap: appSpacing.xs },
+  optionWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: appSpacing.lg },
+  previewStage: { alignItems: 'center' },
+  screenContent: {
+    gap: profileShareUi.screen.gap,
+    paddingBottom: profileShareUi.screen.bottomContentInset,
   },
-  cardContent: {
+  stateCard: {
+    alignItems: 'center',
+    gap: appSpacing.xl,
+    justifyContent: 'center',
+    minHeight: 270,
+  },
+  stateHeader: { alignSelf: 'stretch' },
+  stateScreen: {
     flex: 1,
-    justifyContent: 'flex-end',
-    padding: 18,
-    position: 'relative',
-    zIndex: 3,
-  },
-  cardCoverBlur: {
-    bottom: 0,
-    left: 0,
-    opacity: 0.62,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    transform: [{ scale: 1.035 }],
-  },
-  cardCoverClarity: {
-    bottom: 0,
-    left: 0,
-    opacity: 0.16,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  cardDimLayer: {
-    backgroundColor: 'rgba(2,5,16,0.18)',
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-  },
-  cardFeed: { minHeight: 438 },
-  cardSquare: { minHeight: 354 },
-  cardStory: { minHeight: 548 },
-  controlsCard: { marginBottom: 2 },
-  cornerGlow: {
-    backgroundColor: 'rgba(103,232,255,0.12)',
-    borderRadius: 120,
-    height: 160,
-    position: 'absolute',
-    right: -78,
-    top: 80,
-    width: 160,
-  },
-  guardAction: { flex: 1, minHeight: 42 },
-  guardActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
-  guardCard: {
-    alignItems: 'center',
-    marginTop: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 22,
-  },
-  guardIconShell: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(103,232,255,0.10)',
-    borderColor: 'rgba(178,235,255,0.16)',
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 44,
+    gap: appSpacing['3xl'],
     justifyContent: 'center',
-    marginBottom: 12,
-    width: 44,
-  },
-  guardText: {
-    color: 'rgba(205,216,245,0.64)',
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 19,
-    textAlign: 'center',
-  },
-  guardTitle: {
-    color: 'rgba(248,251,255,0.96)',
-    fontSize: 18,
-    fontWeight: '900',
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  exportNote: {
-    color: 'rgba(205,216,245,0.46)',
-    fontSize: 10.5,
-    fontWeight: '500',
-    lineHeight: 15,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  footerLine: {
-    borderTopColor: 'rgba(255,255,255,0.08)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    marginTop: 17,
-    paddingTop: 10,
-  },
-  footerText: {
-    color: 'rgba(209,221,255,0.42)',
-    fontSize: 9.5,
-    fontWeight: '700',
-    letterSpacing: 0.22,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-  },
-  heroPill: { borderColor: 'rgba(142,92,255,0.34)' },
-  identityCopy: { flex: 1, minWidth: 0 },
-  identityRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 13,
-    minWidth: 0,
-  },
-  nameRow: { alignItems: 'center', flexDirection: 'row', gap: 6, minWidth: 0 },
-  optionChipText: { fontSize: 11, fontWeight: '800' },
-  optionChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  optionLabel: {
-    color: 'rgba(235,242,255,0.72)',
-    fontSize: 11.5,
-    fontWeight: '800',
-    marginBottom: 8,
-  },
-  optionRow: { marginBottom: 13 },
-  posterBio: {
-    color: 'rgba(231,236,255,0.72)',
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 19,
-    marginTop: 18,
-  },
-  posterCta: {
-    color: 'rgba(126,236,255,0.94)',
-    fontSize: 15,
-    fontWeight: '900',
-    lineHeight: 20,
-    marginTop: 13,
-  },
-  posterGroup: { marginTop: 15 },
-  posterGroupLabel: {
-    color: 'rgba(250,252,255,0.82)',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.15,
-    marginBottom: 7,
-    textTransform: 'uppercase',
-  },
-  posterName: {
-    ...liqiTypography.screenTitle,
-    color: 'rgba(252,254,255,0.98)',
-    flexShrink: 1,
-    fontSize: 24,
-    fontWeight: '900',
-    letterSpacing: -0.5,
-    lineHeight: 29,
-  },
-  posterPill: {
-    backgroundColor: 'rgba(7,12,28,0.58)',
-    borderColor: 'rgba(103,232,255,0.22)',
-    borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    maxWidth: '100%',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  posterPillText: {
-    color: 'rgba(232,242,255,0.86)',
-    fontSize: 10.5,
-    fontWeight: '800',
-  },
-  posterPills: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
-  posterRank: {
-    color: 'rgba(219,226,255,0.64)',
-    fontSize: 12.2,
-    fontWeight: '700',
-    marginTop: 3,
-  },
-  previewStage: { alignItems: 'center', marginBottom: 14, marginTop: 8 },
-  primaryAction: { flex: 1.1 },
-  primaryActionText: { color: '#FFFFFF', fontSize: 12, fontWeight: '900' },
-  readyDot: {
-    backgroundColor: 'rgba(103,232,255,0.94)',
-    borderRadius: 4,
-    height: 8,
-    shadowColor: '#67E8FF',
-    shadowOpacity: 0.32,
-    shadowRadius: 7,
-    width: 8,
-  },
-  scrollContent: { paddingBottom: 44, paddingTop: 3 },
-  secondaryAction: { flex: 0.88 },
-  secondaryActionText: {
-    color: 'rgba(231,236,255,0.78)',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  socialCard: {
-    alignSelf: 'stretch',
-    backgroundColor: 'rgba(4,8,20,0.98)',
-    borderColor: 'rgba(103,232,255,0.18)',
-    borderRadius: 31,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: 'hidden',
-    shadowColor: '#67E8FF',
-    shadowOpacity: 0.13,
-    shadowRadius: 20,
-  },
-  statItem: { alignItems: 'center', flex: 1 },
-  statLabel: {
-    color: 'rgba(198,211,241,0.54)',
-    fontSize: 10,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  statValue: {
-    color: 'rgba(252,254,255,0.96)',
-    fontSize: 21,
-    fontWeight: '900',
-    letterSpacing: -0.4,
-  },
-  statsBox: {
-    backgroundColor: 'rgba(4,8,20,0.62)',
-    borderColor: 'rgba(150,190,255,0.13)',
-    borderRadius: 24,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: 4,
-    marginTop: 18,
-    paddingHorizontal: 9,
-    paddingVertical: 12,
-  },
-  statusLine: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 7,
-    marginTop: 9,
-  },
-  statusText: {
-    color: 'rgba(235,244,255,0.84)',
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  subtitle: {
-    color: 'rgba(205,216,245,0.58)',
-    fontSize: 11.5,
-    fontWeight: '600',
-    lineHeight: 15,
-    marginTop: 2,
-    textAlign: 'center',
-  },
-  title: {
-    ...liqiTypography.sectionTitle,
-    color: liqiColors.text.primary,
-    fontSize: 18,
-    fontWeight: '900',
-    letterSpacing: -0.22,
-  },
-  titleBlock: {
-    alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center',
-    minWidth: 0,
-    paddingHorizontal: 10,
-  },
-  topBar: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 4,
-    minHeight: 54,
-  },
-  topOrb: { height: 42, width: 42 },
-  topRightSlot: { alignItems: 'flex-end', minWidth: 42 },
-  verifiedBadge: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(38,130,188,0.70)',
-    borderColor: 'rgba(103,232,255,0.28)',
-    borderRadius: 11,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 22,
-    justifyContent: 'center',
-    width: 22,
+    paddingBottom: appSpacing['4xl'],
   },
 });

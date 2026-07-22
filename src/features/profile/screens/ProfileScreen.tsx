@@ -199,6 +199,19 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
     );
   }
 
+  const openProfileEditor = () => {
+    selectionImpact();
+    router.push(appRoutes.profile.edit);
+  };
+  const openProfilePlayStyleEditor = () => {
+    selectionImpact();
+    router.push(appRoutes.profile.editPlayStyle);
+  };
+  const openProfileShare = () => {
+    impactLight();
+    router.push(appRoutes.profile.share);
+  };
+
   return (
     <AppScreen
       contentContainerStyle={styles.screenContent}
@@ -211,6 +224,7 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
         messageDisabled={authoritativeMessageDisabled}
         mode={mode}
         onBack={returnFromProfile}
+        onEdit={mode === 'self' ? openProfileEditor : undefined}
         onInvite={() => {
           impactLight();
           setSetPickerVisible(true);
@@ -227,6 +241,7 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
             'Các thao tác quan hệ và an toàn được hiển thị trong phần bên dưới.',
           )
         }
+        onShare={mode === 'self' ? openProfileShare : undefined}
         profile={profile}
       />
 
@@ -263,6 +278,7 @@ export function ProfileScreen({ identityId, mode }: ProfileScreenProps) {
 
         <ProfilePlayStyleGallery
           compact={compact}
+          onOpen={mode === 'self' ? openProfilePlayStyleEditor : undefined}
           tiles={presentProfilePlayStyle(profile)}
         />
 

@@ -54,6 +54,10 @@ const profileShareScreenPath = path.join(
   root,
   'src/features/profile/screens/ProfileShareScreen.tsx',
 );
+const profileShareCardPath = path.join(
+  root,
+  'src/features/profile/components/ProfileShareCard.tsx',
+);
 
 for (const file of [
   migrationPath,
@@ -69,6 +73,7 @@ for (const file of [
   profileSocialStatsPath,
   profileSurfacePresenterPath,
   profileShareScreenPath,
+  profileShareCardPath,
 ]) {
   if (!fs.existsSync(file))
     throw new Error(`Missing trusted-stat file: ${file}`);
@@ -90,6 +95,7 @@ const profileSurfacePresenter = fs.readFileSync(
   'utf8',
 );
 const profileShareScreen = fs.readFileSync(profileShareScreenPath, 'utf8');
+const profileShareCard = fs.readFileSync(profileShareCardPath, 'utf8');
 
 function requireInvariant(condition, message) {
   if (!condition) throw new Error(message);
@@ -210,16 +216,19 @@ requireInvariant(
 );
 requireInvariant(
   profileShareScreen.includes('usePlayerTrustProjection') &&
-    profileShareScreen.includes(
-      'trustProjection={trustProjectionQuery.data}',
-    ) &&
-    profileShareScreen.includes('label="Buổi chơi"') &&
-    profileShareScreen.includes('completionReliabilityBps') &&
-    profileShareScreen.includes('positiveEndorsements') &&
+    profileShareScreen.includes('trustProjection={trustQuery.data}') &&
+    profileShareScreen.includes('Chưa tải được số liệu xác minh') &&
+    profileShareCard.includes('PlayerTrustProjectionV2') &&
+    profileShareCard.includes('label="Buổi chơi"') &&
+    profileShareCard.includes('completionReliabilityBps') &&
+    profileShareCard.includes('positiveEndorsements') &&
+    profileShareCard.includes('profileShareReliabilityLabel') &&
     !profileShareScreen.includes('profile.stats.matches') &&
     !profileShareScreen.includes('profile.stats.winRate') &&
     !profileShareScreen.includes('profile.stats.rating') &&
-    profileShareScreen.includes('Chưa tải được số liệu xác minh'),
+    !profileShareCard.includes('profile.stats.matches') &&
+    !profileShareCard.includes('profile.stats.winRate') &&
+    !profileShareCard.includes('profile.stats.rating'),
   'Profile share poster must use authoritative trust projection data and fail closed without legacy fallbacks',
 );
 

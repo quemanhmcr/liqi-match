@@ -2,30 +2,32 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Alert, Platform, ToastAndroid } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Alert,
+  Platform,
+  StyleSheet,
+  ToastAndroid,
+  View,
+  type ScrollView,
+} from 'react-native';
 
+import { appRoutes } from '@/app-shell/navigation/routes';
 import type { AuthSession } from '@/shared/auth/auth-service';
 import { useAuth } from '@/shared/auth/auth-context';
-import { LiqiScreen } from '@/shared/layouts/LiqiScreen';
+import { AppScreen, AppText, appSpacing } from '@/shared/ui';
 
-import { ProfileText } from '../components/ProfileShared';
-import { profileMediaUrl } from '../services/profile-service';
-import { AvailabilitySection } from '../edit/components/AvailabilitySection';
-import { GameProfileSection } from '../edit/components/GameProfileSection';
-import { HabitSection } from '../edit/components/HabitSection';
-import { HeroSection } from '../edit/components/HeroSection';
-import { IdentitySection } from '../edit/components/IdentitySection';
-import { LaneSection } from '../edit/components/LaneSection';
-import { MediaSection } from '../edit/components/MediaSection';
 import {
+  ProfileEditBody,
   ProfileEditErrorState,
+  ProfileEditHeader,
   ProfileEditLoadingState,
-  ProfileEditTopBar,
-} from '../edit/components/ProfileEditChrome';
+  ProfileEditSaveDock,
+  type ProfileEditCategoryId,
+} from '../edit/components/ProfileEditExperience';
 import { ProfileEditSaveBanner } from '../edit/components/ProfileEditSaveBanner';
-import { ProfileEditPreview } from '../edit/components/ProfileEditPreview';
-import { profileEditStyles as styles } from '../edit/components/profile-edit-styles';
+import { ProfilePlayStyleChangePreview } from '../edit/components/ProfilePlayStyleChangePreview';
 import {
   cloneProfileEditForm,
   getDirtyProfileEditSections,
@@ -53,8 +55,17 @@ import {
   type ProfileEditSaveResult,
 } from '../edit/services/profile-edit-coordinator';
 import { fetchProfileEditDraft } from '../edit/services/profile-edit-read-service';
+import {
+  presentProfilePlayStyleHabits,
+  type ProfilePlayStyleSlot,
+  type ProfilePlayStyleTile,
+} from '../model/profile-play-style-presenter';
+import { profileMediaUrl } from '../services/profile-service';
+import { profileEditUi } from '../ui/profile-edit-ui';
 
-export function ProfileEditScreen() {
+export function ProfileEditScreen({
+  initialCategory = 'identity',
+}: Readonly<{ initialCategory?: ProfileEditCategoryId }> = {}) {
   const { session } = useAuth();
   const draftQuery = useQuery({
     enabled: Boolean(session),
@@ -65,38 +76,84 @@ export function ProfileEditScreen() {
     queryKey: ['profile-edit-draft', session?.user.id],
   });
 
-  return (
-    <LiqiScreen
-      contentContainerStyle={styles.scrollContent}
-      withBottomNavPadding={false}
-      withHeader={false}
-    >
-      {draftQuery.isLoading ? <ProfileEditLoadingState /> : null}
-      {draftQuery.isError && !draftQuery.data ? (
-        <ProfileEditErrorState onRetry={() => void draftQuery.refetch()} />
-      ) : null}
-      {session && draftQuery.data ? (
-        <ProfileEditEditor
-          draft={draftQuery.data}
-          key={draftQuery.data.id}
-          readError={draftQuery.isError}
-          session={session}
+  if (!session) {
+    return (
+      <AppScreen
+        contentContainerStyle={styles.stateScreen}
+        scroll={false}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ProfileEditErrorState
+          onRetry={() => router.replace(appRoutes.auth.login)}
         />
-      ) : null}
-    </LiqiScreen>
+      </AppScreen>
+    );
+  }
+
+  if (draftQuery.isLoading) {
+    return (
+      <AppScreen
+        contentContainerStyle={styles.stateScreen}
+        scroll={false}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ProfileEditLoadingState />
+      </AppScreen>
+    );
+  }
+
+  if (draftQuery.isError && !draftQuery.data) {
+    return (
+      <AppScreen
+        contentContainerStyle={styles.stateScreen}
+        scroll={false}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ProfileEditErrorState onRetry={() => void draftQuery.refetch()} />
+      </AppScreen>
+    );
+  }
+
+  if (!draftQuery.data) {
+    return (
+      <AppScreen
+        contentContainerStyle={styles.stateScreen}
+        scroll={false}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ProfileEditErrorState onRetry={() => void draftQuery.refetch()} />
+      </AppScreen>
+    );
+  }
+
+  return (
+    <ProfileEditEditor
+      draft={draftQuery.data}
+      initialCategory={initialCategory}
+      key={`${draftQuery.data.id}:${initialCategory}`}
+      readError={draftQuery.isError}
+      session={session}
+    />
   );
 }
 
 function ProfileEditEditor({
   draft,
+  initialCategory,
   readError,
   session,
-}: {
+}: Readonly<{
   draft: ProfileEditDraft;
+  initialCategory: ProfileEditCategoryId;
   readError: boolean;
   session: AuthSession;
-}) {
+}>) {
   const queryClient = useQueryClient();
+  const screenScrollRef = useRef<ScrollView>(null);
   const [baseline, setBaseline] = useState<ProfileEditForm>(() =>
     cloneProfileEditForm(draft.form),
   );
@@ -108,6 +165,52 @@ function ProfileEditEditor({
   );
   const [pickingMedia, setPickingMedia] = useState<ProfileEditMediaSlot>();
   const [lastSaveResult, setLastSaveResult] = useState<ProfileEditSaveResult>();
+  const [activeCategory, setActiveCategory] =
+    useState<ProfileEditCategoryId>(initialCategory);
+  const playStyleTiles = useMemo(
+    () => presentProfilePlayStyleHabits(form.habits),
+    [form.habits],
+  );
+  const previousPlayStyleArchetypesRef = useRef(
+    profilePlayStyleArchetypes(playStyleTiles),
+  );
+  const quickPreviewSequenceRef = useRef(0);
+  const [quickPreview, setQuickPreview] =
+    useState<Readonly<{ sequence: number; tile: ProfilePlayStyleTile }>>();
+  const clearQuickPreview = useCallback(() => {
+    setQuickPreview(undefined);
+  }, []);
+  const dismissQuickPreview = useCallback((sequence: number) => {
+    setQuickPreview((current) =>
+      current?.sequence === sequence ? undefined : current,
+    );
+  }, []);
+  const changeActiveCategory = useCallback(
+    (category: ProfileEditCategoryId) => {
+      if (category !== 'playStyle') clearQuickPreview();
+      setActiveCategory(category);
+    },
+    [clearQuickPreview],
+  );
+
+  useEffect(() => {
+    const previous = previousPlayStyleArchetypesRef.current;
+    previousPlayStyleArchetypesRef.current =
+      profilePlayStyleArchetypes(playStyleTiles);
+    if (activeCategory !== 'playStyle') return;
+
+    const changedTile = playStyleTiles.find(
+      (tile) => previous[tile.slot] !== tile.archetypeId,
+    );
+    if (!changedTile) return;
+
+    quickPreviewSequenceRef.current += 1;
+    const sequence = quickPreviewSequenceRef.current;
+    setQuickPreview({ sequence, tile: changedTile });
+    AccessibilityInfo.announceForAccessibility(
+      `Bản xem trước ${profilePlayStyleAccessibilityLabel(changedTile.slot)}: ${changedTile.title}`,
+    );
+  }, [activeCategory, playStyleTiles]);
 
   useEffect(() => {
     let active = true;
@@ -198,7 +301,7 @@ function ProfileEditEditor({
       if (result.outcome !== 'saved') return;
       await queryClient.invalidateQueries({ queryKey: ['profile-edit-draft'] });
       showFeedback('Đã cập nhật hồ sơ');
-      router.back();
+      leaveEditor();
     },
   });
 
@@ -214,80 +317,83 @@ function ProfileEditEditor({
     !pickingMedia,
   );
 
-  const pickImage = async (slot: ProfileEditMediaSlot) => {
-    if (pickingMedia || saveMutation.isPending) return;
-    const existing = form.media.staged[slot];
-    if (existing?.status === 'uploaded') {
-      Alert.alert(
-        'Ảnh đang chờ liên kết',
-        'Hãy thử lưu lại asset hiện có trước khi chọn ảnh khác để tránh orphan asset.',
-      );
-      return;
-    }
-
-    selectionImpact();
-    setPickingMedia(slot);
-    try {
-      await rememberPendingProfileMediaSlot(slot);
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        await clearPendingProfileMediaSlot();
+  const pickImage = useCallback(
+    async (slot: ProfileEditMediaSlot) => {
+      if (pickingMedia || saveMutation.isPending) return;
+      const existing = form.media.staged[slot];
+      if (existing?.status === 'uploaded') {
         Alert.alert(
-          'Cần quyền truy cập ảnh',
-          'Bạn cần cấp quyền thư viện ảnh để chọn ảnh hồ sơ.',
+          'Ảnh đang chờ liên kết',
+          'Hãy thử lưu lại asset hiện có trước khi chọn ảnh khác để tránh orphan asset.',
         );
         return;
       }
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsEditing: true,
-        aspect: slot === 'avatar' ? [1, 1] : [16, 9],
-        exif: false,
-        mediaTypes: ['images'],
-        quality: slot === 'avatar' ? 0.82 : 0.84,
-      });
-      await clearPendingProfileMediaSlot();
-      const asset = firstPickedProfileImage(result);
-      if (!asset) return;
+      selectionImpact();
+      setPickingMedia(slot);
+      try {
+        await rememberPendingProfileMediaSlot(slot);
+        const permission =
+          await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) {
+          await clearPendingProfileMediaSlot();
+          Alert.alert(
+            'Cần quyền truy cập ảnh',
+            'Bạn cần cấp quyền thư viện ảnh để chọn ảnh hồ sơ.',
+          );
+          return;
+        }
 
-      const staged = stageProfileMedia(
-        slot,
-        imagePickerAssetToProfileLocalAsset(asset),
-      );
-      const durable = await persistProfileMediaDraftItem(draft.id, staged);
-      setForm((current) => applyStagedMedia(current, durable));
-      showFeedback(
-        durable.status === 'ready'
-          ? 'Đã giữ ảnh cục bộ. Bấm Lưu để upload.'
-          : (durable.failure?.message ?? 'Ảnh chưa hợp lệ.'),
-      );
-    } catch (error) {
-      await clearPendingProfileMediaSlot().catch(() => undefined);
-      Alert.alert(
-        'Không thể chọn ảnh',
-        error instanceof Error ? error.message : 'Vui lòng thử lại.',
-      );
-    } finally {
-      setPickingMedia(undefined);
-    }
-  };
+        const result = await ImagePicker.launchImageLibraryAsync({
+          allowsEditing: true,
+          aspect: slot === 'avatar' ? [1, 1] : [16, 9],
+          exif: false,
+          mediaTypes: ['images'],
+          quality: slot === 'avatar' ? 0.82 : 0.84,
+        });
+        await clearPendingProfileMediaSlot();
+        const asset = firstPickedProfileImage(result);
+        if (!asset) return;
+
+        const staged = stageProfileMedia(
+          slot,
+          imagePickerAssetToProfileLocalAsset(asset),
+        );
+        const durable = await persistProfileMediaDraftItem(draft.id, staged);
+        setForm((current) => applyStagedMedia(current, durable));
+        showFeedback(
+          durable.status === 'ready'
+            ? 'Đã giữ ảnh cục bộ. Bấm Lưu để upload.'
+            : (durable.failure?.message ?? 'Ảnh chưa hợp lệ.'),
+        );
+      } catch (error) {
+        await clearPendingProfileMediaSlot().catch(() => undefined);
+        Alert.alert(
+          'Không thể chọn ảnh',
+          error instanceof Error ? error.message : 'Vui lòng thử lại.',
+        );
+      } finally {
+        setPickingMedia(undefined);
+      }
+    },
+    [draft.id, form.media.staged, pickingMedia, saveMutation.isPending],
+  );
 
   const handleBack = () => {
     selectionImpact();
     if (!hasChanges && !hasUploadedButUnassociated) {
-      router.back();
+      leaveEditor();
       return;
     }
     Alert.alert(
       'Bạn có thay đổi chưa lưu',
       hasUploadedButUnassociated
         ? 'Có asset đã upload nhưng chưa liên kết. Rời màn hình sẽ giữ asset để retry sau, không tự xoá âm thầm.'
-        : 'Các field chưa lưu sẽ bị bỏ. Ảnh đã chọn được giữ như bản nháp để tiếp tục lần sau?',
+        : 'Các field chưa lưu sẽ bị bỏ. Ảnh đã chọn vẫn được giữ như bản nháp để tiếp tục lần sau.',
       [
         { style: 'cancel', text: 'Tiếp tục chỉnh sửa' },
         {
-          onPress: () => router.back(),
+          onPress: leaveEditor,
           style: 'destructive',
           text: 'Rời và giữ ảnh nháp',
         },
@@ -296,72 +402,89 @@ function ProfileEditEditor({
   };
 
   return (
-    <>
-      <ProfileEditTopBar
-        canSave={canSave}
-        hasChanges={hasChanges}
-        loading={saveMutation.isPending}
-        onBack={handleBack}
-        onSave={() => saveMutation.mutate({})}
-      />
-      {lastSaveResult ? (
-        <ProfileEditSaveBanner
-          onRetry={() =>
-            saveMutation.mutate({
-              onlySections: lastSaveResult.retrySections,
-            })
-          }
-          result={lastSaveResult}
+    <View style={styles.root}>
+      <AppScreen
+        bottomSlot={
+          <ProfileEditSaveDock
+            canSave={canSave}
+            dirtyCount={dirtySections.length}
+            loading={saveMutation.isPending}
+            onSave={() => saveMutation.mutate({})}
+          />
+        }
+        contentContainerStyle={styles.screenContent}
+        scrollViewRef={screenScrollRef}
+        withBottomNavPadding={false}
+        withHeader={false}
+      >
+        <ProfileEditHeader hasChanges={hasChanges} onBack={handleBack} />
+        {lastSaveResult ? (
+          <ProfileEditSaveBanner
+            onRetry={() =>
+              saveMutation.mutate({
+                onlySections: lastSaveResult.retrySections,
+              })
+            }
+            result={lastSaveResult}
+          />
+        ) : null}
+        {draft.meta.readIssues.length || draft.meta.habitIssues.length ? (
+          <AppText tone="warning" variant="bodySmall">
+            Một số dữ liệu cũ chưa chuyển losslessly. Phần không liên quan vẫn
+            lưu độc lập; mục bị ảnh hưởng cần được chọn lại bằng giá trị hiện
+            hành.
+          </AppText>
+        ) : null}
+        <ProfileEditBody
+          activeCategory={activeCategory}
+          disabled={Boolean(pickingMedia || saveMutation.isPending)}
+          dirtySections={dirtySections}
+          draft={draft}
+          form={form}
+          onActiveCategoryChange={changeActiveCategory}
+          onChange={setForm}
+          onLimitReached={showSelectionLimit}
+          onPickMedia={pickImage}
+          scrollViewRef={screenScrollRef}
+        />
+        {readError ? (
+          <AppText tone="warning" variant="bodySmall">
+            Chưa đọc được bản mới nhất; form cục bộ vẫn được giữ nguyên.
+          </AppText>
+        ) : null}
+      </AppScreen>
+      {quickPreview ? (
+        <ProfilePlayStyleChangePreview
+          key={quickPreview.sequence}
+          onDismiss={dismissQuickPreview}
+          sequence={quickPreview.sequence}
+          tile={quickPreview.tile}
         />
       ) : null}
-      <ProfileEditPreview draft={draft} form={form} />
-      {draft.meta.readIssues.length || draft.meta.habitIssues.length ? (
-        <ProfileText style={styles.errorText}>
-          Một số dữ liệu legacy chưa thể chuyển losslessly. Field không liên
-          quan vẫn lưu độc lập; section bị ảnh hưởng cần được chọn lại bằng giá
-          trị canonical trước khi ghi.
-        </ProfileText>
-      ) : null}
-      <IdentitySection
-        identity={form.identity}
-        onChange={(identity) => setForm({ ...form, identity })}
-      />
-      <GameProfileSection
-        gameProfile={form.gameProfile}
-        hasGameProfileRecord={draft.meta.hasGameProfileRecord}
-        onChange={(gameProfile) => setForm({ ...form, gameProfile })}
-      />
-      <LaneSection
-        onChange={(laneSelection) => setForm({ ...form, laneSelection })}
-        onLimitReached={showSelectionLimit}
-        selection={form.laneSelection}
-      />
-      <HeroSection
-        heroes={form.heroes}
-        onChange={(heroes) => setForm({ ...form, heroes })}
-      />
-      <HabitSection
-        habits={form.habits}
-        onChange={(habits) => setForm({ ...form, habits })}
-        onLimitReached={showSelectionLimit}
-      />
-      <AvailabilitySection
-        availability={form.availability}
-        onChange={(availability) => setForm({ ...form, availability })}
-      />
-      <MediaSection
-        disabled={Boolean(pickingMedia || saveMutation.isPending)}
-        displayName={form.identity.displayName}
-        media={form.media}
-        onPick={(slot) => void pickImage(slot)}
-      />
-      {readError ? (
-        <ProfileText style={styles.errorText}>
-          Chưa đọc được bản mới nhất; form cục bộ vẫn được giữ nguyên.
-        </ProfileText>
-      ) : null}
-    </>
+    </View>
   );
+}
+
+function profilePlayStyleArchetypes(tiles: readonly ProfilePlayStyleTile[]) {
+  return Object.fromEntries(
+    tiles.map((tile) => [tile.slot, tile.archetypeId]),
+  ) as Readonly<
+    Record<ProfilePlayStyleSlot, ProfilePlayStyleTile['archetypeId']>
+  >;
+}
+
+function profilePlayStyleAccessibilityLabel(slot: ProfilePlayStyleSlot) {
+  if (slot === 'goal') return 'Mục tiêu chơi';
+  if (slot === 'coordination') return 'Cách phối hợp';
+  return 'Bản sắc chiến thuật';
+}
+
+function leaveEditor() {
+  if (router.canGoBack?.()) {
+    router.back();
+    return;
+  }
+  router.replace(appRoutes.profile.self);
 }
 
 function applyRecoveredMedia(
@@ -421,3 +544,16 @@ function showFeedback(message: string) {
 function selectionImpact() {
   void Haptics.selectionAsync().catch(() => undefined);
 }
+
+const styles = StyleSheet.create({
+  root: { flex: 1 },
+  screenContent: {
+    gap: profileEditUi.screen.gap,
+    paddingBottom: profileEditUi.screen.bottomContentInset,
+  },
+  stateScreen: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingBottom: appSpacing['4xl'],
+  },
+});

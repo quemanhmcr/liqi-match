@@ -306,12 +306,6 @@
     },
     {
       "owner": "feature:profile",
-      "path": "src/features/profile/edit/components/ProfileEditSaveBanner.tsx",
-      "sha256": "4f5df6ae38f0b015372af388e493de0743d71e6339142caa0ca862fc3f9d6514",
-      "violations": ["missing-canonical-theme-import"]
-    },
-    {
-      "owner": "feature:profile",
       "path": "src/features/profile/edit/components/profile-edit-styles.ts",
       "sha256": "3417f76791508c35ddef5162bc68a48ba2327f28d0bdbb7cdc9044c731d08408",
       "violations": ["raw-color-literal"]
@@ -324,12 +318,6 @@
     },
     {
       "owner": "feature:profile",
-      "path": "src/features/profile/screens/ProfileEditScreen.tsx",
-      "sha256": "70f4300257c19ef8dfd479f02641afe104653a5deffa3a3f0ee9df1e0786a39e",
-      "violations": ["missing-canonical-theme-import"]
-    },
-    {
-      "owner": "feature:profile",
       "path": "src/features/profile/screens/ProfileGalleryScreen.tsx",
       "sha256": "479d4b86189471b3fecf0478c40de090c6fca8c38a77f50bf5067f16cb47d740",
       "violations": ["raw-color-literal"]
@@ -338,12 +326,6 @@
       "owner": "feature:profile",
       "path": "src/features/profile/screens/ProfileSettingsScreen.tsx",
       "sha256": "38d227b765d0b86b36fdc1aaea4bca1cf4baf330855571f159ebc231bb2d46ff",
-      "violations": ["raw-color-literal"]
-    },
-    {
-      "owner": "feature:profile",
-      "path": "src/features/profile/screens/ProfileShareScreen.tsx",
-      "sha256": "537a3e69d0d0f4c6bead84b1516a9f5336d5f987bd84f017112df51c7dfca3d0",
       "violations": ["raw-color-literal"]
     },
     {

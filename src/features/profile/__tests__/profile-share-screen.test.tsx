@@ -1,4 +1,8 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { beforeEach, describe, expect, it, jest } from '@jest/globals';
+
+import { act, fireEvent, waitFor } from '@testing-library/react-native';
+import * as Sharing from 'expo-sharing';
+import { captureRef } from 'react-native-view-shot';
 
 import { PlayerTrustProjectionV2Schema } from '@/shared/contracts/core-v2';
 import { ProfileShareScreen } from '@/features/profile/screens/ProfileShareScreen';
@@ -27,6 +31,22 @@ jest.mock('react-native-view-shot', () => ({
   captureRef: jest.fn(async () => 'file:///profile-share.png'),
 }));
 
+jest.mock('expo-haptics', () => ({
+  ImpactFeedbackStyle: { Light: 'light' },
+  impactAsync: jest.fn(async () => undefined),
+  selectionAsync: jest.fn(async () => undefined),
+}));
+
+jest.mock('expo-sharing', () => ({
+  isAvailableAsync: jest.fn(async () => true),
+  shareAsync: jest.fn(async () => undefined),
+}));
+
+jest.mock('expo-media-library/legacy', () => ({
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
+  saveToLibraryAsync: jest.fn(async () => undefined),
+}));
+
 const profileWithLegacyStats: ProfileViewModel = {
   bio: 'Bình tĩnh, phối hợp và không toxic.',
   displayName: 'Verified Share Player',
@@ -44,6 +64,14 @@ const profileWithLegacyStats: ProfileViewModel = {
   statusValue: 'ready',
   verified: true,
 };
+
+const mockCaptureRef = jest.mocked(captureRef);
+const mockShareAsync = jest.mocked(Sharing.shareAsync);
+
+beforeEach(() => {
+  mockCaptureRef.mockClear();
+  mockShareAsync.mockClear();
+});
 
 const verifiedProjection = PlayerTrustProjectionV2Schema.parse({
   completedSessions: 7,
@@ -105,5 +133,64 @@ describe('ProfileShareScreen authoritative trust surface', () => {
     expect(screen.queryByText('128')).toBeNull();
     expect(screen.queryByText('4.8')).toBeNull();
     expect(screen.queryByText('59%')).toBeNull();
+  });
+
+  it('exports the default story preset at canonical dimensions', async () => {
+    const screen = await renderWithProviders(<ProfileShareScreen />, {
+      serviceOverrides: {
+        playerTrustProjectionProvider: {
+          getForPlayer: async () => verifiedProjection,
+        },
+        profileRepository: {
+          getProfile: async () => profileWithLegacyStats,
+        },
+      },
+    });
+    await screen.findByText('Buổi chơi');
+
+    await act(async () => {
+      await fireEvent.press(screen.getByLabelText('Chia sẻ ảnh hồ sơ'));
+    });
+
+    await waitFor(() =>
+      expect(mockCaptureRef).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ height: 1920, width: 1080 }),
+      ),
+    );
+    expect(mockShareAsync).toHaveBeenCalledWith(
+      'file:///profile-share.png',
+      expect.objectContaining({ mimeType: 'image/png' }),
+    );
+  });
+
+  it('does not present zero-percent completion when there is no reliability sample', async () => {
+    const emptyProjection = PlayerTrustProjectionV2Schema.parse({
+      completedSessions: 0,
+      completionReliabilityBps: 0,
+      confirmedModerationActions: 0,
+      noShowCount: 0,
+      playerId: profileWithLegacyStats.playerId,
+      positiveEndorsements: 0,
+      projectionVersion: 1,
+      rebuiltAt: null,
+      repeatTeammateCount: 0,
+      updatedAt: '2026-07-14T16:00:00.000Z',
+    });
+    const screen = await renderWithProviders(<ProfileShareScreen />, {
+      serviceOverrides: {
+        playerTrustProjectionProvider: {
+          getForPlayer: async () => emptyProjection,
+        },
+        profileRepository: {
+          getProfile: async () => profileWithLegacyStats,
+        },
+      },
+    });
+
+    expect(
+      (await screen.findByTestId('profile-share-stat-Hoàn tất')).props.children,
+    ).toBe('—');
+    expect(screen.queryByText('0%')).toBeNull();
   });
 });
