@@ -1,8 +1,10 @@
-import { describe, expect, it, jest } from '@jest/globals';
+import { afterEach, describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
+import { Dimensions, StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { createAssetKey, type AssetResolver } from '@/entities/media-asset';
+import { createEmptyHabitAnswers } from '@/entities/player-profile';
 import {
   PlayerTrustProjectionV2Schema,
   SocialRelationshipCommandReceiptV2Schema,
@@ -11,6 +13,7 @@ import {
 } from '@/shared/contracts/core-v2';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import type { ProfileViewModel } from '@/features/profile/services/profile-service';
+import { profileUi } from '@/features/profile/ui/profile-ui';
 import {
   renderWithProviders,
   testAuthSession,
@@ -33,8 +36,23 @@ jest.mock('expo-router', () => ({
 }));
 
 const mockedRouter = jest.requireMock('expo-router') as {
-  router: { push: ReturnType<typeof jest.fn> };
+  router: {
+    back: ReturnType<typeof jest.fn>;
+    canGoBack: ReturnType<typeof jest.fn>;
+    navigate: ReturnType<typeof jest.fn>;
+    push: ReturnType<typeof jest.fn>;
+  };
 };
+
+function setWindowMetrics(width: number) {
+  const metrics = { fontScale: 1, height: 844, scale: 1, width };
+  Dimensions.set({ screen: metrics, window: metrics });
+}
+
+afterEach(() => {
+  setWindowMetrics(400);
+  mockedRouter.router.canGoBack.mockReturnValue(true);
+});
 
 const unavailableAssetResolver: AssetResolver = {
   async invalidate() {},
@@ -59,6 +77,12 @@ const canonicalProfile: ProfileViewModel = {
     { heroId: 'hero-3', name: 'Annette', slug: 'annette', winRate: 56 },
   ],
   gender: 'hidden',
+  habitAnswers: {
+    ...createEmptyHabitAnswers(),
+    decisionStyleId: 'decision.discuss',
+    strategyStyleIds: ['strategy.protect'],
+    teamGoalIds: ['goal.rank-climb'],
+  },
   id: 'legacy-profile-canonical-1',
   playerId: '20000000-0000-4000-8000-000000000002',
   playStyleTags: ['Không toxic', 'Có voice'],
@@ -66,6 +90,7 @@ const canonicalProfile: ProfileViewModel = {
   region: 'Global',
   roleNames: ['Trợ Thủ'],
   showWinRate: true,
+  socialStats: { completedSessionCount: 48, likeCount: 1284, matchCount: 96 },
   stats: { matches: 128, rating: 4.8, reputation: 92, winRate: 59 },
   statusLabel: 'Sẵn sàng',
   statusValue: 'ready',
@@ -73,7 +98,7 @@ const canonicalProfile: ProfileViewModel = {
 };
 
 describe('ProfileScreen repository consumer', () => {
-  it('renders only authoritative explainable trust dimensions and never legacy editable stats', async () => {
+  it('keeps social counters separate from trust evidence and legacy editable stats', async () => {
     const getForPlayer = jest.fn(async () =>
       PlayerTrustProjectionV2Schema.parse({
         completedSessions: 7,
@@ -104,20 +129,107 @@ describe('ProfileScreen repository consumer', () => {
         canonicalProfile.playerId,
       ),
     );
-    expect(await screen.findByText('7')).toBeTruthy();
-    expect(screen.getByText('88%')).toBeTruthy();
-    expect(screen.getByText('12')).toBeTruthy();
-    expect(screen.getByText('3')).toBeTruthy();
-    expect(screen.getByText('Buổi đã chơi')).toBeTruthy();
-    expect(screen.getByText('Độ tin cậy')).toBeTruthy();
-    expect(screen.getByText('Đồng đội quen')).toBeTruthy();
+    expect(
+      screen.getByTestId('profile-social-stat-value-0').props.children,
+    ).toBe('1,3K');
+    expect(
+      screen.getByTestId('profile-social-stat-value-1').props.children,
+    ).toBe('96');
+    expect(
+      screen.getByTestId('profile-social-stat-value-2').props.children,
+    ).toBe('48');
+    expect(screen.getByText('Lượt thích')).toBeTruthy();
+    expect(screen.getByText('Đã match')).toBeTruthy();
+    expect(screen.getByText('Đã chơi')).toBeTruthy();
+    expect(screen.getByText('88% độ tin cậy')).toBeTruthy();
+    expect(screen.getByText('12 lời khen xác minh')).toBeTruthy();
     expect(screen.queryByText('128')).toBeNull();
     expect(screen.queryByText('4.8')).toBeNull();
     expect(screen.queryByText('92')).toBeNull();
   });
 
-  it('keeps mature self-profile workflows reachable through the shared identity header and sections', async () => {
-    mockedRouter.router.push.mockClear();
+  it('does not present an empty trust projection as zero-percent reliability', async () => {
+    const emptyProjection = PlayerTrustProjectionV2Schema.parse({
+      completedSessions: 0,
+      completionReliabilityBps: 0,
+      confirmedModerationActions: 0,
+      noShowCount: 0,
+      playerId: canonicalProfile.playerId,
+      positiveEndorsements: 0,
+      projectionVersion: 1,
+      rebuiltAt: null,
+      repeatTeammateCount: 0,
+      updatedAt: '2026-07-14T16:00:00.000Z',
+    });
+    const screen = await renderWithProviders(
+      <ProfileScreen identityId="player-canonical-1" mode="other" />,
+      {
+        serviceOverrides: {
+          playerTrustProjectionProvider: {
+            getForPlayer: async () => emptyProjection,
+          },
+          profileRepository: { getProfile: async () => canonicalProfile },
+        },
+      },
+    );
+
+    expect(
+      await screen.findByText('Nguồn: hoạt động đã xác minh trên LiQi'),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(
+        'Chưa đủ hoạt động đã xác minh để hình thành tín hiệu uy tín.',
+      ),
+    ).toBeTruthy();
+    expect(screen.getByText('Chưa đủ dữ liệu uy tín')).toBeTruthy();
+    expect(screen.getByText('Chưa có lời khen xác minh')).toBeTruthy();
+    expect(screen.queryByText('0%')).toBeNull();
+    expect(screen.queryByText('0 lời khen xác minh')).toBeNull();
+  });
+
+  it('fails closed when the future social projection is not available', async () => {
+    const { socialStats: _socialStats, ...profileWithoutSocialStats } =
+      canonicalProfile;
+    const screen = await renderWithProviders(
+      <ProfileScreen identityId="player-canonical-1" mode="other" />,
+      {
+        serviceOverrides: {
+          playerTrustProjectionProvider: {
+            getForPlayer: async () =>
+              PlayerTrustProjectionV2Schema.parse({
+                completedSessions: 27,
+                completionReliabilityBps: 9000,
+                confirmedModerationActions: 0,
+                noShowCount: 1,
+                playerId: canonicalProfile.playerId,
+                positiveEndorsements: 4,
+                projectionVersion: 1,
+                rebuiltAt: null,
+                repeatTeammateCount: 2,
+                updatedAt: '2026-07-14T16:00:00.000Z',
+              }),
+          },
+          profileRepository: {
+            getProfile: async () => profileWithoutSocialStats,
+          },
+        },
+      },
+    );
+
+    await screen.findByText('Canonical Player');
+    expect(
+      screen.getByTestId('profile-social-stat-value-0').props.children,
+    ).toBe('—');
+    expect(
+      screen.getByTestId('profile-social-stat-value-1').props.children,
+    ).toBe('—');
+    expect(
+      screen.getByTestId('profile-social-stat-value-2').props.children,
+    ).toBe('—');
+    expect(screen.queryByText('128')).toBeNull();
+  });
+
+  it('does not advertise Profile workflows whose routes are still reset', async () => {
     const screen = await renderWithProviders(<ProfileScreen mode="self" />, {
       serviceOverrides: {
         profileRepository: { getProfile: async () => canonicalProfile },
@@ -125,23 +237,12 @@ describe('ProfileScreen repository consumer', () => {
     });
 
     expect(await screen.findByTestId('profile-identity-header')).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText('Cài đặt hồ sơ'));
-    await fireEvent.press(screen.getByLabelText('Chỉnh sửa hồ sơ'));
-    await fireEvent.press(screen.getByLabelText('Quản lý khoảnh khắc'));
-    await fireEvent.press(screen.getByLabelText('Chia sẻ hồ sơ'));
-
-    expect(mockedRouter.router.push).toHaveBeenCalledWith(
-      appRoutes.profile.settings,
-    );
-    expect(mockedRouter.router.push).toHaveBeenCalledWith(
-      appRoutes.profile.edit,
-    );
-    expect(mockedRouter.router.push).toHaveBeenCalledWith(
-      appRoutes.profile.gallery,
-    );
-    expect(mockedRouter.router.push).toHaveBeenCalledWith(
-      appRoutes.profile.share,
-    );
+    expect(screen.queryByLabelText('Cài đặt hồ sơ')).toBeNull();
+    expect(screen.queryByLabelText('Chỉnh sửa hồ sơ')).toBeNull();
+    expect(screen.queryByLabelText('Chia sẻ hồ sơ')).toBeNull();
+    expect(screen.queryByLabelText('Quản lý khoảnh khắc')).toBeNull();
+    expect(screen.queryByLabelText('Mở chỉnh sửa phong cách chơi')).toBeNull();
+    expect(screen.queryByLabelText('Mở chi tiết uy tín')).toBeNull();
   });
 
   it('uses the canonical route userId and renders the repository projection', async () => {
@@ -156,6 +257,208 @@ describe('ProfileScreen repository consumer', () => {
       session: testAuthSession,
       identityId: 'player-canonical-1',
     });
+  });
+
+  it('renders the Profile-owned reference composition without presenting artwork as user data', async () => {
+    const screen = await renderWithProviders(
+      <ProfileScreen identityId="player-canonical-1" mode="other" />,
+      {
+        serviceOverrides: {
+          profileRepository: { getProfile: async () => canonicalProfile },
+        },
+      },
+    );
+
+    expect(await screen.findByTestId('profile-highlight-summary')).toBeTruthy();
+    expect(screen.getByTestId('profile-play-style-gallery')).toBeTruthy();
+    expect(screen.getByText('Leo rank nghiêm túc')).toBeTruthy();
+    expect(screen.getByText('Cùng phân tích')).toBeTruthy();
+    expect(screen.getByText('Bảo kê đồng đội')).toBeTruthy();
+    expect(screen.getByText('MỤC TIÊU')).toBeTruthy();
+    expect(screen.getByText('PHỐI HỢP')).toBeTruthy();
+    expect(screen.getByText('CHIẾN THUẬT')).toBeTruthy();
+    expect(screen.queryByTestId('profile-play-style-description-0')).toBeNull();
+    expect(screen.getByTestId('profile-memory-section')).toBeTruthy();
+    expect(screen.getByTestId('profile-social-stats')).toBeTruthy();
+    expect(screen.getByTestId('profile-trust-story')).toBeTruthy();
+    expect(screen.getByText('Chiến binh mới')).toBeTruthy();
+    expect(screen.getByText('LiQi cấp')).toBeTruthy();
+    expect(screen.queryByText('Trạng thái trống')).toBeNull();
+    expect(screen.getByText('Lời khen & uy tín')).toBeTruthy();
+    expect(screen.getByText('DỮ LIỆU UY TÍN')).toBeTruthy();
+    expect(screen.queryByText(/Admin LiQi/)).toBeNull();
+  });
+
+  it('normalizes profile bio punctuation without duplicating rank as a chip', async () => {
+    const profile: ProfileViewModel = {
+      ...canonicalProfile,
+      availability: {
+        slots: [
+          { dayOfWeek: 1, endMinute: 1380, startMinute: 1140 },
+          { dayOfWeek: 3, endMinute: 1380, startMinute: 1140 },
+        ],
+        timezone: 'Asia/Ho_Chi_Minh',
+      },
+      bio: 'Teamwork, giao tranh sạch, không toxic., Mic on',
+      gender: 'female',
+      playStyleTags: ['Cạnh tranh', 'Mic on'],
+    };
+    const screen = await renderWithProviders(
+      <ProfileScreen identityId="player-canonical-1" mode="other" />,
+      {
+        serviceOverrides: {
+          profileRepository: { getProfile: async () => profile },
+        },
+      },
+    );
+
+    expect(
+      await screen.findByText('Teamwork, giao tranh sạch, không toxic. Mic on'),
+    ).toBeTruthy();
+    expect(screen.getByText('Cao Thủ · Trợ Thủ · Nữ')).toBeTruthy();
+    expect(screen.queryByText('Global')).toBeNull();
+    expect(screen.getByText('T2, T4 · Tối')).toBeTruthy();
+    expect(screen.getByText('Aya')).toBeTruthy();
+    expect(screen.queryByText('Cao Thủ')).toBeNull();
+  });
+
+  it('keeps long display names inside the identity row without displacing verification', async () => {
+    const displayName = 'Nguyễn Hoàng Minh Anh Siêu Dài Nhưng Vẫn Có Badge';
+    const profile: ProfileViewModel = {
+      ...canonicalProfile,
+      displayName,
+    };
+    const screen = await renderWithProviders(<ProfileScreen mode="self" />, {
+      serviceOverrides: {
+        profileRepository: { getProfile: async () => profile },
+      },
+    });
+
+    await screen.findByText(displayName);
+    const displayNameNode = screen.getByTestId('profile-hero-display-name');
+    const verifiedBadge = screen.getByTestId('profile-hero-verified-badge');
+
+    expect(displayNameNode.props.numberOfLines).toBe(1);
+    expect(displayNameNode.props.adjustsFontSizeToFit).toBe(true);
+    expect(StyleSheet.flatten(displayNameNode.props.style)).toEqual(
+      expect.objectContaining({ flex: 1, minWidth: 0 }),
+    );
+    expect(StyleSheet.flatten(verifiedBadge.props.style).flexShrink).toBe(0);
+  });
+
+  it('uses compact Profile geometry below 390dp', async () => {
+    setWindowMetrics(360);
+    const screen = await renderWithProviders(<ProfileScreen mode="self" />, {
+      serviceOverrides: {
+        profileRepository: { getProfile: async () => canonicalProfile },
+      },
+    });
+
+    await screen.findByText('Canonical Player');
+    expect(
+      StyleSheet.flatten(screen.getByTestId('profile-hero-cover').props.style)
+        .height,
+    ).toBe(152);
+    expect(
+      StyleSheet.flatten(screen.getByTestId('profile-avatar-frame').props.style)
+        .width,
+    ).toBe(70);
+    expect(screen.getByTestId('profile-hero-compact-details')).toBeTruthy();
+    expect(screen.getByTestId('profile-hero-bio').props.numberOfLines).toBe(2);
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('profile-highlight-item-content-0').props.style,
+      ).minHeight,
+    ).toBe(64);
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('profile-highlight-icon-0').props.style,
+      ).width,
+    ).toBe(24);
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('profile-play-style-tile-0').props.style,
+      ).width,
+    ).toBe(144);
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('profile-play-style-tile-0').props.style,
+      ).aspectRatio,
+    ).toBe(3 / 4);
+    expect(
+      screen.getByTestId('profile-play-style-rail').props.snapToInterval,
+    ).toBe(profileUi.playStyle.tileWidthCompact + profileUi.playStyle.gap);
+    expect(
+      screen.getByTestId('profile-play-style-rail').props
+        .disableIntervalMomentum,
+    ).toBe(true);
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('profile-memory-starter').props.style,
+      ).aspectRatio,
+    ).toBe(2);
+    expect(
+      screen.getByTestId('profile-play-style-image-0').props.contentFit,
+    ).toBe('contain');
+    expect(
+      screen.getByTestId('profile-play-style-image-0').props.contentPosition,
+    ).toEqual({ left: '50%', top: 0 });
+    expect(
+      screen.getByTestId('profile-memory-starter-image').props.contentFit,
+    ).toBe('cover');
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('profile-memory-section-content').props.style,
+      ).padding,
+    ).toBe(0);
+    expect(screen.getByTestId('profile-memory-header-overlay')).toBeTruthy();
+    expect(
+      screen.getByTestId('profile-trust-description').props.numberOfLines,
+    ).toBeUndefined();
+    expect(screen.getByText('DỮ LIỆU UY TÍN')).toBeTruthy();
+    expect(
+      StyleSheet.flatten(
+        screen.getByTestId('profile-trust-story-content').props.style,
+      ).backgroundColor,
+    ).toBe(profileUi.colors.trustSurface);
+    expect(screen.queryByTestId('profile-bottom-reading-inset')).toBeNull();
+  });
+
+  it('keeps the LiQi starter first and appends recoverable user media', async () => {
+    const wallUrl = 'https://media.example.test/profile/memory-1.jpg';
+    const profile: ProfileViewModel = {
+      ...canonicalProfile,
+      wallUrls: [wallUrl],
+    };
+    const screen = await renderWithProviders(
+      <ProfileScreen identityId="player-canonical-1" mode="other" />,
+      {
+        serviceOverrides: {
+          profileRepository: { getProfile: async () => profile },
+        },
+      },
+    );
+
+    expect(await screen.findByTestId('profile-memory-starter')).toBeTruthy();
+    expect(screen.getByText('Chiến binh mới')).toBeTruthy();
+    expect(screen.getByTestId('profile-memory-user-0')).toBeTruthy();
+    expect(screen.getByText('Khoảnh khắc đã chia sẻ')).toBeTruthy();
+    expect(screen.getByText('Media hồ sơ')).toBeTruthy();
+    const userImage = screen.getByTestId('profile-memory-user-image-0');
+    expect(userImage.props.source).toEqual([{ uri: wallUrl }]);
+    expect(userImage.props.contentFit).toBe('contain');
+    expect(userImage.props.cachePolicy).toBe('memory-disk');
+    expect(screen.getByLabelText('Khoảnh khắc 1 trên 2')).toBeTruthy();
+
+    await fireEvent(
+      screen.getByTestId('profile-memory-user-image-0'),
+      'error',
+      {
+        nativeEvent: { error: 'test image failure' },
+      },
+    );
+    expect(await screen.findByText('Chưa thể tải khoảnh khắc')).toBeTruthy();
+    expect(screen.getByText('Tạm dùng ảnh hệ thống')).toBeTruthy();
   });
 
   it('renders explicit unavailable states for canonical profile media', async () => {
@@ -176,9 +479,7 @@ describe('ProfileScreen repository consumer', () => {
       },
     );
 
-    expect(
-      await screen.findByLabelText('Không gian fantasy của hồ sơ LiQi'),
-    ).toBeTruthy();
+    expect(await screen.findByTestId('profile-identity-hero')).toBeTruthy();
     expect(
       screen.getByLabelText('Ảnh bìa hồ sơ offline-unavailable'),
     ).toBeTruthy();
@@ -280,6 +581,7 @@ describe('ProfileScreen repository consumer', () => {
 
     expect(await screen.findByText('Không thể tải hồ sơ')).toBeTruthy();
     expect(screen.queryByText('Khoa Jungle')).toBeNull();
+    expect(screen.getByTestId('profile-read-state-back-action')).toBeTruthy();
     expect(screen.getByLabelText('Thử tải lại hồ sơ')).toBeTruthy();
   });
 
@@ -327,8 +629,11 @@ describe('ProfileScreen repository consumer', () => {
     expect(screen.getByText('Canonical Player')).toBeTruthy();
   });
 
-  it('renders not-found when the repository has no projection', async () => {
+  it('renders not-found and falls back to Home when no back stack exists', async () => {
     const getProfile = jest.fn(async () => null);
+    mockedRouter.router.back.mockClear();
+    mockedRouter.router.navigate.mockClear();
+    mockedRouter.router.canGoBack.mockReturnValueOnce(false);
     const screen = await renderWithProviders(
       <ProfileScreen identityId="missing-player" mode="other" />,
       { serviceOverrides: { profileRepository: { getProfile } } },
@@ -336,6 +641,11 @@ describe('ProfileScreen repository consumer', () => {
 
     expect(await screen.findByText('Không tìm thấy hồ sơ')).toBeTruthy();
     expect(screen.queryByText('Khoa Jungle')).toBeNull();
+    await fireEvent.press(screen.getByLabelText('Quay lại'));
+    expect(mockedRouter.router.back).not.toHaveBeenCalled();
+    expect(mockedRouter.router.navigate).toHaveBeenCalledWith(
+      appRoutes.main.home,
+    );
   });
 });
 

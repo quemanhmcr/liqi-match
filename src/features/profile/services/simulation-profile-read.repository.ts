@@ -53,6 +53,7 @@ export function mapProfileViewModel(
       match.profileIds.includes(profileId),
   )?.conversationId;
   return {
+    availability: profile.availability,
     avatarAssetKey: profile.avatar?.assetKey,
     bio: profile.bio,
     coverAssetKey: profile.cover?.assetKey,

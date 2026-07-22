@@ -93,6 +93,72 @@ describe('fetchProfileView', () => {
     );
   });
 
+  it('projects canonical availability only when the resolved profile is self', async () => {
+    const canonicalProfileId = '30000000-0000-4000-8000-000000000003';
+    const selfSession = {
+      ...session,
+      principal: {
+        accountId: session.user.id,
+        expiresAt: '2099-12-31T00:00:00.000Z',
+        issuedAt: '2026-07-14T12:00:00.000Z',
+        playerId: canonicalPlayerId,
+        sessionId: '19000000-0000-4000-8000-000000000003',
+      },
+    } as AuthSession;
+    mockSupabaseRest
+      .mockResolvedValueOnce({
+        contractVersion: 2,
+        legacyProfileId: session.user.id,
+        playerId: canonicalPlayerId,
+        profileId: canonicalProfileId,
+      })
+      .mockResolvedValueOnce([
+        {
+          avatar_media_id: null,
+          bio: 'Bio',
+          display_name: 'Backend Player',
+          game_profiles: [],
+          id: session.user.id,
+          profile_habits: [
+            {
+              communication_channels: [],
+              media_summary: { cover_media_id: 'cover-1' },
+              online_time_presets: [],
+              seriousness: null,
+              team_goals: [],
+            },
+          ],
+          profile_roles: [],
+        },
+      ])
+      .mockResolvedValueOnce({
+        availability: {
+          slots: [
+            { dayOfWeek: 1, endMinute: 1380, startMinute: 1140 },
+            { dayOfWeek: 3, endMinute: 1380, startMinute: 1140 },
+          ],
+          timezone: 'Asia/Ho_Chi_Minh',
+        },
+        playerId: canonicalPlayerId,
+        profileId: canonicalProfileId,
+        profileVersion: 4,
+      })
+      .mockResolvedValueOnce([]);
+
+    const profile = await fetchProfileView({ session: selfSession });
+
+    expect(profile?.availability).toEqual({
+      slots: [
+        { dayOfWeek: 1, endMinute: 1380, startMinute: 1140 },
+        { dayOfWeek: 3, endMinute: 1380, startMinute: 1140 },
+      ],
+      timezone: 'Asia/Ho_Chi_Minh',
+    });
+    expect(mockSupabaseRest.mock.calls[2]?.[0]).toBe(
+      'rpc/get_own_player_profile_availability_v1',
+    );
+  });
+
   it('does not borrow the viewer identity for another incomplete profile', async () => {
     const targetUserId = '01000000-0000-4000-8000-000000000099';
     mockSupabaseRest

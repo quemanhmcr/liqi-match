@@ -9,6 +9,7 @@ import {
   catalogOptionById,
   type LaneSlug,
   type RankId,
+  type RecurringAvailability,
 } from '@/entities/player-profile';
 
 import type {
@@ -52,6 +53,7 @@ export type SimulationMediaProjection = Readonly<{
 }>;
 
 export type SimulationProfileProjection = Readonly<{
+  availability: RecurringAvailability;
   avatar: SimulationMediaProjection | null;
   bio: string;
   cover: SimulationMediaProjection | null;
@@ -233,6 +235,7 @@ export function projectSimulationProfile(
   ];
 
   return {
+    availability: canonical.recurringAvailability,
     avatar: mediaProjection(world, profile.media.avatarAssetKey),
     bio: profile.bio,
     cover: mediaProjection(world, profile.media.coverAssetKey),

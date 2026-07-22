@@ -38,6 +38,18 @@ const profileScreenPath = path.join(
   root,
   'src/features/profile/screens/ProfileScreen.tsx',
 );
+const profileTrustSectionsPath = path.join(
+  root,
+  'src/features/profile/components/ProfileTrustSections.tsx',
+);
+const profileSocialStatsPath = path.join(
+  root,
+  'src/features/profile/components/ProfileSocialStats.tsx',
+);
+const profileSurfacePresenterPath = path.join(
+  root,
+  'src/features/profile/model/profile-surface-presenter.ts',
+);
 const profileShareScreenPath = path.join(
   root,
   'src/features/profile/screens/ProfileShareScreen.tsx',
@@ -53,6 +65,9 @@ for (const file of [
   legacySavePath,
   statsBarPath,
   profileScreenPath,
+  profileTrustSectionsPath,
+  profileSocialStatsPath,
+  profileSurfacePresenterPath,
   profileShareScreenPath,
 ]) {
   if (!fs.existsSync(file))
@@ -68,6 +83,12 @@ const command = fs.readFileSync(commandPath, 'utf8');
 const legacySave = fs.readFileSync(legacySavePath, 'utf8');
 const statsBar = fs.readFileSync(statsBarPath, 'utf8');
 const profileScreen = fs.readFileSync(profileScreenPath, 'utf8');
+const profileTrustSections = fs.readFileSync(profileTrustSectionsPath, 'utf8');
+const profileSocialStats = fs.readFileSync(profileSocialStatsPath, 'utf8');
+const profileSurfacePresenter = fs.readFileSync(
+  profileSurfacePresenterPath,
+  'utf8',
+);
 const profileShareScreen = fs.readFileSync(profileShareScreenPath, 'utf8');
 
 function requireInvariant(condition, message) {
@@ -141,8 +162,48 @@ requireInvariant(
   'Profile statistics must render explainable platform-derived trust dimensions only',
 );
 requireInvariant(
+  profileTrustSections.includes('PlayerTrustProjectionV2') &&
+    profileTrustSections.includes('presentTrustSummary') &&
+    profileTrustSections.includes('profile-trust-reliability') &&
+    profileTrustSections.includes('profile-trust-endorsements') &&
+    profileSurfacePresenter.includes('completedSessions') &&
+    profileSurfacePresenter.includes('noShowCount') &&
+    profileSurfacePresenter.includes('completionReliabilityBps') &&
+    profileSurfacePresenter.includes('positiveEndorsements') &&
+    !profileTrustSections.includes('profile.stats') &&
+    !profileSurfacePresenter.includes('profile.stats') &&
+    !profileTrustSections.includes('Admin LiQi') &&
+    !profileSurfacePresenter.includes('starterAdmin') &&
+    !profileSurfacePresenter.includes('Lời chào đầu tiên'),
+  'Active Profile trust sections must render only authoritative explainable projection fields without fabricated testimonials',
+);
+requireInvariant(
+  legacySave.includes('ProfileSocialStatsProjection') &&
+    legacySave.includes('socialStats?: ProfileSocialStatsProjection') &&
+    profileScreen.includes('<ProfileSocialStats') &&
+    profileScreen.includes('presentProfileSocialStats(profile.socialStats)') &&
+    profileSocialStats.includes('ProfileSocialStatItem') &&
+    profileSurfacePresenter.includes('likeCount') &&
+    profileSurfacePresenter.includes('matchCount') &&
+    profileSurfacePresenter.includes('completedSessionCount') &&
+    profileSurfacePresenter.includes("label: 'Lượt thích'") &&
+    profileSurfacePresenter.includes("label: 'Đã match'") &&
+    profileSurfacePresenter.includes("label: 'Đã chơi'") &&
+    !profileSurfacePresenter.includes('friendCount') &&
+    !profileSurfacePresenter.includes("label: 'Bạn bè'") &&
+    !profileSurfacePresenter.includes("label: 'Kết nối'") &&
+    !profileScreen.includes('profile.stats.matches') &&
+    !profileScreen.includes('positiveEndorsements') &&
+    !profileSocialStats.includes('PlayerTrustProjectionV2'),
+  'Future social counters must use a separate optional projection without legacy or trust fallbacks',
+);
+requireInvariant(
   profileScreen.includes('usePlayerTrustProjection') &&
-    profileScreen.includes('trustProjection={trustProjectionQuery.data}') &&
+    profileScreen.includes('<ProfileTrustSections') &&
+    profileScreen.includes('projection={trustProjectionQuery.data}') &&
+    profileScreen.includes(
+      'items={presentProfileSocialStats(profile.socialStats)}',
+    ) &&
     !profileScreen.includes('profile.stats.reputation') &&
     !profileScreen.includes('Hợp vibe'),
   'Profile must consume the trust projection provider and never derive a score from legacy stats',

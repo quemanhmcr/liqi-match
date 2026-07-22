@@ -16,6 +16,7 @@ describe('canonical simulation Profile adapter', () => {
     );
 
     expect(profile).toMatchObject({
+      availability: { timezone: 'Asia/Ho_Chi_Minh' },
       avatarAssetKey: 'asset:profile:minh-anh:avatar',
       coverAssetKey: 'asset:profile:minh-anh:cover',
       id: GOLDEN_PROFILE_IDS.minhAnh,

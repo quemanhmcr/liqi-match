@@ -1,11 +1,19 @@
 import { HEROES } from '@/entities/hero';
-import { profileWallMediaIds } from '@/entities/player-profile';
+import {
+  adaptLegacyHabitAnswers,
+  profileWallMediaIds,
+  type HabitAnswersDraft,
+} from '@/entities/player-profile';
 import {
   uploadProfileMediaAsset,
   type LocalImageAsset,
 } from '@/shared/services/media-upload';
 import type { AssetKey } from '@/entities/media-asset';
 import type { AuthSession } from '@/shared/auth/auth-service';
+import {
+  PlayerProfileAvailabilitySnapshotV1Schema,
+  type PlayerProfileAvailabilityV1,
+} from '@/shared/contracts/core-v1';
 import { VisibleProfileIdentityV2Schema } from '@/shared/contracts/core-v2';
 import { env } from '@/shared/config/env';
 import { supabaseRest } from '@/shared/services/supabase-rest';
@@ -47,22 +55,21 @@ type ProfileRoleEmbed = {
 };
 
 type ProfileHabitEmbed = {
-  communication_channels: string[] | null;
-  media_summary: unknown | null;
-  online_time_presets: string[] | null;
-  seriousness: string | null;
-  team_goals: string[] | null;
-};
-
-type ProfileEditHabitEmbed = ProfileHabitEmbed & {
   comeback_response: string | null;
+  communication_channels: string[] | null;
   decision_style: string | null;
   feedback_style: string | null;
   loss_response: string | null;
+  media_summary: unknown | null;
+  online_time_presets: string[] | null;
+  seriousness: string | null;
   session_length: string | null;
   strategy_styles: string[] | null;
   team_atmospheres: string[] | null;
+  team_goals: string[] | null;
 };
+
+type ProfileEditHabitEmbed = ProfileHabitEmbed;
 
 type ProfileEditGameProfileEmbed = {
   handle: string | null;
@@ -133,6 +140,18 @@ export type ProfileStats = {
   winRate: number;
 };
 
+/**
+ * Social counters are a separate read projection. They must never be inferred
+ * from editable legacy profile stats or trust outcomes. The completed-session
+ * counter stays projection-owned even though trust exposes completedSessions;
+ * the trade-off is that the backend must keep both projections consistent.
+ */
+export type ProfileSocialStatsProjection = Readonly<{
+  completedSessionCount: number;
+  likeCount: number;
+  matchCount: number;
+}>;
+
 export type ProfileFavoriteHero = {
   heroId?: string;
   matches?: number;
@@ -146,6 +165,12 @@ export type ProfileHeroPickerOption = ProfileFavoriteHero & {
 };
 
 export type ProfileViewModel = {
+  /**
+   * Canonical recurring schedule when the repository is authorized to project
+   * it. `undefined` means the surface has no schedule authority; `null` means
+   * the authoritative profile currently has no recurring schedule.
+   */
+  availability?: PlayerProfileAvailabilityV1 | null;
   avatarAssetKey?: AssetKey;
   avatarFallbackUrl?: string;
   avatarUrl?: string;
@@ -156,6 +181,7 @@ export type ProfileViewModel = {
   displayName: string;
   favoriteHeroes: ProfileFavoriteHero[];
   gender: ProfileGender;
+  habitAnswers?: HabitAnswersDraft;
   id: string;
   playerId: string;
   playStyleTags: string[];
@@ -163,6 +189,7 @@ export type ProfileViewModel = {
   region?: string;
   roleNames: string[];
   showWinRate: boolean;
+  socialStats?: ProfileSocialStatsProjection;
   stats: ProfileStats;
   statusLabel: string;
   statusValue: ProfileStatusValue;
@@ -236,7 +263,13 @@ const profileSelect = [
   'avatar_media_id',
   'game_profiles(handle,server_region,ranks(name,slug))',
   'profile_roles(roles(name,slug))',
-  'profile_habits(seriousness,online_time_presets,team_goals,communication_channels,media_summary)',
+  [
+    'profile_habits(',
+    'communication_channels,online_time_presets,decision_style,session_length,',
+    'team_goals,seriousness,strategy_styles,team_atmospheres,feedback_style,',
+    'loss_response,comeback_response,media_summary',
+    ')',
+  ].join(''),
 ].join(',');
 
 const editableRoleOrder = ['slayer', 'jungle', 'mid', 'dragon', 'support'];
@@ -255,6 +288,29 @@ const emptyProfileStats: ProfileStats = {
   winRate: 0,
 };
 
+// Review-only fixtures. Production reads omit this projection until the
+// dedicated backend aggregate is available.
+const previewSocialStats: ProfileSocialStatsProjection = {
+  completedSessionCount: 48,
+  likeCount: 1284,
+  matchCount: 96,
+};
+
+const minhAnhPreviewSocialStats: ProfileSocialStatsProjection = {
+  completedSessionCount: 36,
+  likeCount: 872,
+  matchCount: 74,
+};
+
+const previewAvailability: PlayerProfileAvailabilityV1 = {
+  slots: [
+    { dayOfWeek: 1, endMinute: 23 * 60, startMinute: 19 * 60 },
+    { dayOfWeek: 3, endMinute: 23 * 60, startMinute: 19 * 60 },
+    { dayOfWeek: 5, endMinute: 24 * 60, startMinute: 19 * 60 },
+  ],
+  timezone: 'Asia/Ho_Chi_Minh',
+};
+
 const defaultEditHabits: ProfileEditHabits = {
   comeback_response: 'Vẫn cố gắng đến cuối',
   communication_channels: ['Voice khi cần'],
@@ -269,6 +325,14 @@ const defaultEditHabits: ProfileEditHabits = {
   team_atmospheres: ['Bình tĩnh, không tạo áp lực'],
   team_goals: ['Leo rank nghiêm túc', 'Tìm người phối hợp ổn định'],
 };
+
+const previewHabitAnswers = adaptLegacyHabitAnswers({
+  communication_channels: ['Voice khi cần'],
+  decision_style: 'Cùng trao đổi trước khi quyết định',
+  seriousness: 'Cạnh tranh',
+  strategy_styles: ['Bảo kê và hỗ trợ đồng đội'],
+  team_goals: ['Leo rank nghiêm túc'],
+}).value;
 
 const profileEditSelect = [
   'id',
@@ -475,10 +539,35 @@ export async function fetchProfileView(input: {
     }),
   );
 
-  const rows = await supabaseRest<ProfileRow[]>(
-    `profiles?id=eq.${encodeURIComponent(mapping.legacyProfileId)}&select=${profileSelect}&limit=1`,
-    { session: input.session },
-  );
+  const isSelf = mapping.playerId === input.session.principal?.playerId;
+  const [rows, availabilitySnapshotRaw] = await Promise.all([
+    supabaseRest<ProfileRow[]>(
+      `profiles?id=eq.${encodeURIComponent(mapping.legacyProfileId)}&select=${profileSelect}&limit=1`,
+      { session: input.session },
+    ),
+    isSelf
+      ? supabaseRest<unknown>('rpc/get_own_player_profile_availability_v1', {
+          body: {},
+          method: 'POST',
+          session: input.session,
+        })
+      : Promise.resolve(undefined),
+  ]);
+  const availabilitySnapshot =
+    availabilitySnapshotRaw === undefined
+      ? undefined
+      : PlayerProfileAvailabilitySnapshotV1Schema.parse(
+          availabilitySnapshotRaw,
+        );
+  if (
+    availabilitySnapshot &&
+    (availabilitySnapshot.playerId !== mapping.playerId ||
+      availabilitySnapshot.profileId !== mapping.profileId)
+  ) {
+    throw new Error(
+      'Profile availability snapshot không khớp visible profile identity.',
+    );
+  }
 
   const row = rows[0];
   if (!row) return null;
@@ -490,7 +579,6 @@ export async function fetchProfileView(input: {
     row.profile_roles?.map((item) => first(item.roles)?.name) ?? [],
   );
   const heroRows = await fetchProfileHeroRows(input.session, row.id);
-  const isSelf = mapping.playerId === input.session.principal?.playerId;
   const avatarFallbackUrl = isSelf
     ? avatarUrlFromSession(input.session)
     : undefined;
@@ -517,6 +605,7 @@ export async function fetchProfileView(input: {
     .filter((url): url is string => Boolean(url));
 
   return {
+    availability: availabilitySnapshot?.availability,
     avatarFallbackUrl,
     avatarUrl,
     coverUrl,
@@ -524,6 +613,7 @@ export async function fetchProfileView(input: {
     displayName,
     favoriteHeroes: buildFavoriteHeroes(heroRows, false, mediaSummary),
     gender,
+    habitAnswers: adaptLegacyHabitAnswers(habits).value,
     id: row.id,
     playerId: mapping.playerId,
     playStyleTags: buildPlayStyleTags(habits),
@@ -549,6 +639,7 @@ export function buildPreviewProfile(
 
   const avatarFallbackUrl = avatarUrlFromSession(session);
   return {
+    availability: previewAvailability,
     avatarFallbackUrl,
     avatarUrl: avatarFallbackUrl,
     bio: profileMockQuote,
@@ -561,6 +652,7 @@ export function buildPreviewProfile(
       winRate: hero.winRate,
     })),
     gender: 'male',
+    habitAnswers: previewHabitAnswers,
     id: userId,
     playerId: inputPlayerId(session, userId),
     playStyleTags: [...profileMockPlayStyleTags],
@@ -568,6 +660,7 @@ export function buildPreviewProfile(
     region: 'Global',
     roleNames: ['Trợ Thủ'],
     showWinRate: true,
+    socialStats: previewSocialStats,
     stats: defaultProfileStats,
     statusLabel: 'Sẵn sàng',
     statusValue: 'ready',
@@ -577,6 +670,7 @@ export function buildPreviewProfile(
 
 function buildMinhAnhPreviewProfile(): ProfileViewModel {
   return {
+    availability: previewAvailability,
     avatarUrl: undefined,
     bio: profileMockQuote,
     displayName: 'Minh Anh',
@@ -588,6 +682,7 @@ function buildMinhAnhPreviewProfile(): ProfileViewModel {
       winRate: hero.winRate,
     })),
     gender: 'female',
+    habitAnswers: previewHabitAnswers,
     id: profileMockMinhAnhUserId,
     playerId: inputPlayerId(null, profileMockMinhAnhUserId),
     playStyleTags: [...profileMockPlayStyleTags],
@@ -595,6 +690,7 @@ function buildMinhAnhPreviewProfile(): ProfileViewModel {
     region: 'Global',
     roleNames: ['Trợ Thủ'],
     showWinRate: true,
+    socialStats: minhAnhPreviewSocialStats,
     stats: defaultProfileStats,
     statusLabel: 'Sẵn sàng',
     statusValue: 'ready',

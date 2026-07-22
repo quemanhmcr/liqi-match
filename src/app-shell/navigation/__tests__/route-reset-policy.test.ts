@@ -22,18 +22,24 @@ const preservedAdapters = new Map([
     'src/app/(app)/sessions/conversations/[conversationId].tsx',
     '@/features/messages/screens/LegacySessionConversationRedirectScreen',
   ],
+  [
+    'src/app/(app)/(tabs)/profile.tsx',
+    '@/features/profile/screens/ProfileScreen',
+  ],
+  [
+    'src/app/(app)/profile/[playerId].tsx',
+    '@/features/profile/screens/ProfileScreen',
+  ],
 ]);
 
 const resetAdapters = new Map([
   ['src/app/(app)/(tabs)/explore.tsx', 'explore'],
-  ['src/app/(app)/(tabs)/profile.tsx', 'profile'],
   ['src/app/(app)/discover/matches.tsx', 'discover-matches'],
   ['src/app/(app)/discover/matches/[matchId].tsx', 'discover-match-detail'],
   ['src/app/(app)/discover/sets.tsx', 'discover-sets'],
   ['src/app/(app)/discover/sets/[setId].tsx', 'discover-set-detail'],
   ['src/app/(app)/discover/vibes.tsx', 'discover-vibes'],
   ['src/app/(app)/notifications.tsx', 'notifications'],
-  ['src/app/(app)/profile/[playerId].tsx', 'profile-player'],
   [
     'src/app/(app)/profile/[playerId]/reputation/index.tsx',
     'profile-player-reputation',
@@ -74,7 +80,7 @@ function routeAdapters(directory: string): string[] {
 }
 
 describe('authenticated product route reset policy', () => {
-  it('keeps only Home and Messages authority adapters mounted', () => {
+  it('keeps approved authority adapters mounted', () => {
     for (const [file, authorityImport] of preservedAdapters) {
       const source = read(file);
       expect(source).toContain(authorityImport);
@@ -97,6 +103,6 @@ describe('authenticated product route reset policy', () => {
       ...resetAdapters.keys(),
     ]);
     expect(routeAdapters(appRoot).sort()).toEqual([...classified].sort());
-    expect(resetAdapters.size).toBe(25);
+    expect(resetAdapters.size).toBe(23);
   });
 });
