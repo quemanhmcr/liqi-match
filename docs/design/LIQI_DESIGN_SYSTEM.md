@@ -45,8 +45,9 @@ A shared primitive owns reusable behavior and accessibility:
 
 - `AppScreen` and `AppBackground`
 - `AppSurface` and `AppCard`
-- `AppButton`, `AppIconButton` and `AppChip`
-- `AppText`, `AppSectionHeader` and `AppIdentityHeader`
+- `AppButton`, `AppIconButton`, `AppChip` and `AppPressableCard`
+- `AppText`, `AppTextField`, `AppNotice`, `AppSectionHeader` and `AppIdentityHeader`
+- `AppActionDock` for safe-area-aware full-screen actions
 
 ### What stays feature-owned
 
@@ -58,6 +59,17 @@ Feature components own domain semantics and data shape:
 - artwork selection rules tied to relationship/source contracts.
 
 Visual similarity alone is not sufficient reason to move a component into shared.
+
+### Form and flow primitive boundaries
+
+| Primitive          | Use for                                                                                                         | Do not use for                                                       |
+| ------------------ | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `AppTextField`     | Conventional single-line or multiline form input with shared label, focus, disabled and validation presentation | Rich chat composers, token editors or domain-specific input behavior |
+| `AppNotice`        | Persistent inline explanation, guard, error or recovery state                                                   | Transient toast feedback or blocking confirmation dialogs            |
+| `AppPressableCard` | A card whose complete surface represents one action or one selectable option                                    | Cards containing independent buttons, links or multiple actions      |
+| `AppActionDock`    | Safe-area-aware footer actions for a non-tab full-screen flow                                                   | Bottom tab navigation or an inline button row inside content         |
+
+These primitives own interaction and accessibility presentation only. Callers remain responsible for validation rules, permissions, command capability, navigation and all other business authority.
 
 ## Recipe policy
 

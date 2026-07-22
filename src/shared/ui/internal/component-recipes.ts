@@ -11,6 +11,15 @@ type GradientColors = readonly [string, string, ...string[]];
 type Tone = Readonly<{ background: string; border: string; text: string }>;
 
 export const sharedUiRecipes = {
+  actionDock: {
+    background: 'rgba(5,8,20,0.97)',
+    border: 'rgba(181,161,246,0.18)',
+    gap: appSpacing.xl,
+    minimumBottomInset: appSpacing.md,
+    minimumHeight: 76,
+    paddingHorizontal: appSpacing['3xl'],
+    paddingTop: appSpacing.md,
+  },
   appBackground: {
     bottomFade: 'rgba(1,3,8,0.46)',
     cyanAtmosphere: 'rgba(60,210,255,0.016)',
@@ -132,6 +141,46 @@ export const sharedUiRecipes = {
     plainActionWidth: 40,
     plainActionWidthCompact: 34,
   },
+  notice: {
+    actionGap: appSpacing.md,
+    copyGap: appSpacing.xs,
+    gap: appSpacing.lg,
+    iconSize: 34,
+    padding: appSpacing.xl,
+    radius: appRadii.lg,
+    tones: {
+      danger: {
+        background: 'rgba(217,93,103,0.10)',
+        border: 'rgba(255,180,197,0.22)',
+        icon: appColors.status.danger,
+        iconSurface: 'rgba(217,93,103,0.14)',
+      },
+      info: {
+        background: 'rgba(55,205,255,0.08)',
+        border: 'rgba(103,232,255,0.18)',
+        icon: appColors.status.info,
+        iconSurface: 'rgba(55,205,255,0.12)',
+      },
+      neutral: {
+        background: 'rgba(116,76,210,0.10)',
+        border: 'rgba(174,142,255,0.22)',
+        icon: appColors.accent.purpleIcon,
+        iconSurface: 'rgba(132,85,226,0.14)',
+      },
+      success: {
+        background: 'rgba(109,232,155,0.08)',
+        border: 'rgba(109,232,155,0.18)',
+        icon: appColors.status.success,
+        iconSurface: 'rgba(109,232,155,0.12)',
+      },
+      warning: {
+        background: 'rgba(247,166,62,0.08)',
+        border: 'rgba(255,184,107,0.20)',
+        icon: appColors.status.warning,
+        iconSurface: 'rgba(247,166,62,0.12)',
+      },
+    },
+  },
   screen: {
     bottomNavSpacer: 240,
     gutter: appSpacing['4xl'],
@@ -142,6 +191,20 @@ export const sharedUiRecipes = {
     label: appTypography.sectionLabel,
     marginTop: 15,
     title: appTypography.sectionTitle,
+  },
+  textField: {
+    accessoryPadding: appSpacing.md,
+    background: 'rgba(255,255,255,0.045)',
+    border: 'rgba(190,218,255,0.13)',
+    fontSize: 14,
+    fontWeight: '600' as const,
+    gap: appSpacing.sm,
+    minimumHeight: appTouch.minimum,
+    multilineMinimumHeight: 92,
+    multilinePaddingTop: appSpacing.xl,
+    paddingHorizontal: appSpacing.md,
+    paddingVertical: appSpacing.lg,
+    radius: appRadii.md,
   },
   surface: {
     background: {

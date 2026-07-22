@@ -31,8 +31,9 @@ Shared UI is intentionally small:
 
 - `AppScreen`, `AppBackground`
 - `AppSurface`, `AppCard`
-- `AppButton`, `AppIconButton`, `AppChip`
-- `AppText`, `AppSectionHeader`, `AppIdentityHeader`
+- `AppButton`, `AppIconButton`, `AppChip`, `AppPressableCard`
+- `AppText`, `AppTextField`, `AppNotice`, `AppSectionHeader`, `AppIdentityHeader`
+- `AppActionDock`
 
 Feature semantics stay with the feature. Examples include `HomeRecentActivityCard`, `ConversationCard`, message bubbles, delivery receipts and the chat composer. A component does not become shared merely because it looks like a card or button.
 

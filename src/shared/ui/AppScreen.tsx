@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement, ReactNode, Ref } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -21,11 +21,13 @@ import {
 import { sharedUiRecipes } from './internal/component-recipes';
 
 export type AppScreenProps = Readonly<{
+  backgroundSlot?: ReactNode;
   bottomSlot?: ReactNode;
   children: ReactNode;
   contentContainerStyle?: StyleProp<ViewStyle>;
   refreshControl?: ReactElement<RefreshControlProps>;
   scroll?: boolean;
+  scrollViewRef?: Ref<ScrollView>;
   subtitle?: string;
   title?: string;
   withBottomNavPadding?: boolean;
@@ -33,11 +35,13 @@ export type AppScreenProps = Readonly<{
 }>;
 
 export function AppScreen({
+  backgroundSlot,
   bottomSlot,
   children,
   contentContainerStyle,
   refreshControl,
   scroll = true,
+  scrollViewRef,
   subtitle,
   title,
   withBottomNavPadding = true,
@@ -60,6 +64,7 @@ export function AppScreen({
   return (
     <View style={styles.root}>
       <AppBackground />
+      {backgroundSlot}
       <SafeAreaView edges={['top']} style={styles.safe}>
         {scroll ? (
           <ScrollView
@@ -69,8 +74,10 @@ export function AppScreen({
               withBottomNavPadding && styles.bottomNavPadding,
               contentContainerStyle,
             ]}
+            ref={scrollViewRef}
             refreshControl={refreshControl}
             showsVerticalScrollIndicator={false}
+            testID="app-screen-scroll"
           >
             {content}
           </ScrollView>
@@ -82,6 +89,7 @@ export function AppScreen({
               withBottomNavPadding && styles.bottomNavPadding,
               contentContainerStyle,
             ]}
+            testID="app-screen-static"
           >
             {content}
           </View>
