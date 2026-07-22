@@ -88,6 +88,10 @@ export const appRoutes = {
     reputationFor: (playerId: string) =>
       `/profile/${encodeURIComponent(playerId)}/reputation` as Href,
     edit: '/profile/edit',
+    editPlayStyle: {
+      pathname: '/profile/edit',
+      params: { category: 'playStyle' },
+    } as const,
     self: '/profile',
     settings: '/profile/settings',
     share: '/profile/share',
