@@ -137,18 +137,6 @@
       "violations": ["missing-canonical-theme-import", "raw-color-literal"]
     },
     {
-      "owner": "feature:notifications",
-      "path": "src/features/notifications/components/NotificationResolvedImage.tsx",
-      "sha256": "9a1da6c6a756dfe82002a7ec09cf125f4ffb483b11fb87c173582924f930dda8",
-      "violations": ["missing-canonical-theme-import", "raw-color-literal"]
-    },
-    {
-      "owner": "feature:notifications",
-      "path": "src/features/notifications/screens/NotificationsScreen.tsx",
-      "sha256": "ac018f02e0b5d2b523fcefff10ce9da1b6d35070ae57e7fbabbb4ba034367b94",
-      "violations": ["raw-color-literal"]
-    },
-    {
       "owner": "feature:onboarding",
       "path": "src/features/onboarding/components/OnboardingCinematic.tsx",
       "sha256": "3182349bb2c9c1db6156a078d8801af3f4bbeb75b241eece69f4564d9ce8ca1d",

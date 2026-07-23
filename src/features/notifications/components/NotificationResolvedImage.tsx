@@ -7,6 +7,7 @@ import {
   type ViewStyle,
 } from 'react-native';
 
+import { notificationsUi } from '../ui/notifications-ui';
 import {
   notificationResolvedMediaSource,
   notificationResolvedMediaState,
@@ -36,5 +37,5 @@ export function NotificationResolvedImage({
 }
 
 const fallbackStyle: StyleProp<ImageStyle> = {
-  backgroundColor: 'rgba(112,122,162,0.18)',
+  backgroundColor: notificationsUi.colors.mediaFallback,
 };
