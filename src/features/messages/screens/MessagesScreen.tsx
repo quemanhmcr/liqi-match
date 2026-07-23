@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
+import { useFriendshipsQuery } from '@/entities/social-relationship';
 import { FriendPlayerPickerModal } from '@/entities/social-relationship/ui';
 import {
   useAssetResolver,
@@ -45,6 +46,10 @@ import type {
 } from '../contracts/messages-contracts';
 import { loadChatDraftIndex } from '../model/chat-draft-store';
 import { isMessageInboxAttentionStateActionable } from '../model/message-inbox-attention';
+import {
+  canOpenMessageComposeConversation,
+  resolveMessageComposeAvailability,
+} from '../model/message-compose-availability';
 import { resolveMessageInboxComposePlacement } from '../model/message-inbox-compose';
 import { useMessageInboxSearchQuery } from '../model/message-inbox-search-query';
 import {
@@ -162,6 +167,12 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
     query: canonicalQuery,
     repository,
   });
+  const friendshipsQuery = useFriendshipsQuery();
+  const composeAvailability = resolveMessageComposeAvailability({
+    error: friendshipsQuery.isError,
+    loading: friendshipsQuery.isPending,
+    relationships: friendshipsQuery.data?.items ?? [],
+  });
 
   useEffect(() => {
     if (draftIndexHydrated) return;
@@ -240,7 +251,45 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
     lightImpact();
     clearSearchQuery();
     setComposeSelectedPlayerIds([]);
-    setComposePickerVisible(true);
+
+    switch (composeAvailability.state) {
+      case 'loading':
+        Alert.alert(
+          'Đang tải bạn bè',
+          'Danh sách bạn bè có thể nhắn tin đang được đồng bộ. Hãy thử lại sau giây lát.',
+        );
+        return;
+      case 'error':
+        Alert.alert(
+          'Chưa tải được bạn bè',
+          'Không thể kiểm tra ai đang sẵn sàng nhắn tin lúc này.',
+          [
+            { style: 'cancel', text: 'Đóng' },
+            {
+              onPress: () => {
+                void friendshipsQuery.refetch();
+              },
+              text: 'Thử lại',
+            },
+          ],
+        );
+        return;
+      case 'empty':
+        Alert.alert(
+          'Chưa có bạn bè để nhắn tin',
+          'Khi một lời mời kết bạn được chấp nhận, LiQi sẽ chuẩn bị cuộc trò chuyện và người đó sẽ xuất hiện tại đây.',
+        );
+        return;
+      case 'ready':
+        setComposePickerVisible(true);
+        return;
+      default: {
+        const unsupportedState: never = composeAvailability;
+        throw new Error(
+          `Unsupported message compose availability: ${String(unsupportedState)}`,
+        );
+      }
+    }
   };
   const closeSearch = useCallback(() => {
     clearSearchQuery();
@@ -263,6 +312,17 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   const openFriendConversation = async (playerIds: readonly PlayerId[]) => {
     const targetPlayerId = playerIds[0];
     if (!targetPlayerId || composePending) return;
+    if (
+      !canOpenMessageComposeConversation(composeAvailability, targetPlayerId)
+    ) {
+      setComposePickerVisible(false);
+      setComposeSelectedPlayerIds([]);
+      Alert.alert(
+        'Bạn bè không còn sẵn sàng nhắn tin',
+        'Quyền nhắn tin vừa thay đổi. Hãy mở lại danh sách bạn bè để kiểm tra trạng thái mới nhất.',
+      );
+      return;
+    }
 
     setComposePending(true);
     try {
@@ -330,7 +390,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
               testID: 'messages-header-search-action',
             },
             {
-              accessibilityLabel: 'Tạo cuộc trò chuyện',
+              accessibilityLabel: 'Nhắn cho bạn bè',
               emphasized: true,
               icon: 'create-outline',
               onPress: openComposePicker,
@@ -465,9 +525,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
         />
       ) : conversations.length === 0 ? (
         <InboxState
-          actionLabel={
-            promotesComposeInEmptyState ? 'Bắt đầu trò chuyện' : undefined
-          }
+          actionLabel={promotesComposeInEmptyState ? 'Chọn bạn' : undefined}
           description={
             promotesComposeInEmptyState
               ? 'Chọn một người bạn đã sẵn sàng nhắn tin để bắt đầu.'
@@ -523,7 +581,7 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
         purpose="conversation"
         selectedPlayerIds={composeSelectedPlayerIds}
         setSelectedPlayerIds={setComposeSelectedPlayerIds}
-        title="Bắt đầu trò chuyện"
+        title="Nhắn cho bạn bè"
         visible={composePickerVisible}
       />
     </AppScreen>
