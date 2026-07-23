@@ -1,6 +1,11 @@
 import type { ImageSourcePropType } from 'react-native';
 
 import type { AssetResolver, ResolvedAsset } from '@/entities/media-asset';
+
+import {
+  resolveNotificationAttentionState,
+  type NotificationAttentionState,
+} from './notification-attention';
 import {
   notificationCategory,
   type NotificationActor,
@@ -60,6 +65,7 @@ export type NotificationReward = {
 
 export type NotificationItem = {
   action?: NotificationAction;
+  attentionState: NotificationAttentionState;
   category: ReturnType<typeof notificationCategory>;
   group: 'Hôm nay' | 'Trước đó';
   id: string;
@@ -82,6 +88,7 @@ export function mapNotificationToViewModel(
   { assetResolver, now = new Date() }: MapNotificationOptions,
 ): NotificationItem {
   const shared = {
+    attentionState: resolveNotificationAttentionState(notification),
     category: notificationCategory(notification),
     group: notificationGroup(notification.occurredAt, now),
     id: notification.id,
