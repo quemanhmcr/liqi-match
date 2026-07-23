@@ -7,6 +7,11 @@ import { appColors } from '@/shared/ui';
 import { ConversationCard } from '../components/ConversationCard';
 import type { MessageInboxConversationViewModel } from '../model/message-surface-presenters';
 
+const densityCases: [string, boolean, number, number][] = [
+  ['regular', false, 96, 52],
+  ['compact', true, 90, 48],
+];
+
 function conversation(
   overrides: Partial<MessageInboxConversationViewModel> = {},
 ): MessageInboxConversationViewModel {
@@ -144,4 +149,37 @@ describe('ConversationCard semantics', () => {
     });
     expect(screen.getByText('3 thành viên')).toBeTruthy();
   });
+
+  it.each(densityCases)(
+    'uses scan-first %s row geometry without shrinking content semantics',
+    async (_layout, compact, minHeight, avatarSize) => {
+      const screen = await render(
+        <ConversationCard
+          compact={compact}
+          conversation={conversation({ id: `density-${_layout}` })}
+          onPress={jest.fn()}
+        />,
+      );
+
+      expect(
+        StyleSheet.flatten(
+          screen.getByTestId(
+            `messages-conversation-card-density-${_layout}-content`,
+          ).props.style,
+        ),
+      ).toMatchObject({
+        minHeight,
+        paddingVertical: 8,
+      });
+      expect(
+        StyleSheet.flatten(
+          screen.getByTestId(`messages-conversation-avatar-density-${_layout}`)
+            .props.style,
+        ),
+      ).toMatchObject({
+        height: avatarSize,
+        width: avatarSize,
+      });
+    },
+  );
 });
