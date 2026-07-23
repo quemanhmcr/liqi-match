@@ -7,7 +7,6 @@ import {
   Alert,
   BackHandler,
   Keyboard,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -47,6 +46,7 @@ import type {
 import { loadChatDraftIndex } from '../model/chat-draft-store';
 import { isMessageInboxAttentionStateActionable } from '../model/message-inbox-attention';
 import { resolveMessageInboxComposePlacement } from '../model/message-inbox-compose';
+import { useMessageInboxSearchQuery } from '../model/message-inbox-search-query';
 import {
   presentInboxConversation,
   type MessageInboxConversationViewModel,
@@ -124,7 +124,13 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   usePreloadAssetSurface('messages');
   const clock = props.clock ?? systemMessagesClock;
   const repository = props.repository ?? services.repository;
-  const [query, setQuery] = useState('');
+  const {
+    clear: clearSearchQuery,
+    input: query,
+    pending: searchQueryPending,
+    query: canonicalQuery,
+    setInput: setSearchInput,
+  } = useMessageInboxSearchQuery();
   const [searchVisible, setSearchVisible] = useState(false);
   const [selectedFilter, setSelectedFilter] =
     useState<MessageInboxFilter>('all');
@@ -151,7 +157,6 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   const hydrateDraftIndex = useChatRuntimeStore(
     (state) => state.hydrateDraftIndex,
   );
-  const canonicalQuery = query.trim();
   const inboxQuery = useMessagesInboxQuery({
     filter: selectedFilter,
     query: canonicalQuery,
@@ -178,6 +183,8 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   const hasResolvedInbox = Boolean(activeSnapshot);
   const isLoading = inboxQuery.isPending && !hasResolvedInbox;
   const hasLoadError = inboxQuery.isError && !hasResolvedInbox;
+  const searchBusy =
+    searchVisible && (searchQueryPending || inboxQuery.isFetching);
   const referenceDate = clock.now();
   const conversations = useMemo(
     () =>
@@ -225,21 +232,21 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
   const composePlacement = resolveMessageInboxComposePlacement({
     filter: selectedFilter,
     inboxReady: hasResolvedInbox && !inboxQuery.isError,
-    query: canonicalQuery,
+    query,
     resultCount: activeSnapshot?.totalCount,
   });
   const promotesComposeInEmptyState = composePlacement === 'empty-state';
   const openComposePicker = () => {
     lightImpact();
-    setQuery('');
+    clearSearchQuery();
     setComposeSelectedPlayerIds([]);
     setComposePickerVisible(true);
   };
   const closeSearch = useCallback(() => {
-    setQuery('');
+    clearSearchQuery();
     setSearchVisible(false);
     Keyboard.dismiss();
-  }, []);
+  }, [clearSearchQuery]);
 
   useEffect(() => {
     if (!searchVisible) return undefined;
@@ -307,9 +314,10 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
     >
       {searchVisible ? (
         <MessageInboxSearchHeader
+          busy={searchBusy}
           compact={compactLayout}
           onCancel={closeSearch}
-          onChangeQuery={setQuery}
+          onChangeQuery={setSearchInput}
           query={query}
         />
       ) : (
@@ -447,6 +455,13 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
               : undefined
           }
           title="Không thể tải hộp thư"
+        />
+      ) : searchVisible && searchQueryPending && conversations.length === 0 ? (
+        <InboxState
+          description="Kết quả sẽ xuất hiện sau khi bạn dừng nhập."
+          icon="search-outline"
+          loading
+          title="Đang tìm cuộc trò chuyện"
         />
       ) : conversations.length === 0 ? (
         <InboxState

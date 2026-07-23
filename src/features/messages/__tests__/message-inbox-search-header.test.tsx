@@ -43,6 +43,23 @@ describe('MessageInboxSearchHeader', () => {
     },
   );
 
+  it('shows restrained progress without replacing the input', async () => {
+    const screen = await render(
+      <MessageInboxSearchHeader
+        busy
+        compact={false}
+        onCancel={jest.fn()}
+        onChangeQuery={jest.fn()}
+        query="Khoa"
+      />,
+    );
+
+    expect(screen.getByTestId('messages-search-progress')).toBeTruthy();
+    expect(screen.getByTestId('messages-search-input').props.value).toBe(
+      'Khoa',
+    );
+  });
+
   it('clears the controlled query without leaving search mode', async () => {
     const onChangeQuery = jest.fn();
     const screen = await render(
