@@ -16,6 +16,7 @@ function conversation(
   overrides: Partial<MessageInboxConversationViewModel> = {},
 ): MessageInboxConversationViewModel {
   return {
+    attentionState: 'normal',
     canMessage: true,
     id: 'match-conversation',
     isDraft: false,
@@ -148,6 +149,27 @@ describe('ConversationCard semantics', () => {
       fontSize: 14,
     });
     expect(screen.getByText('3 thành viên')).toBeTruthy();
+  });
+
+  it('renders only the primary accessory chosen by attention authority', async () => {
+    const screen = await render(
+      <ConversationCard
+        compact={false}
+        conversation={conversation({
+          attentionState: 'failed',
+          id: 'failed-with-draft-and-unread',
+          isDraft: false,
+          latestDeliveryStatus: 'failed',
+          latestDirection: 'outgoing',
+          unreadCount: 3,
+        })}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByLabelText('Tin nhắn gửi thất bại')).toBeTruthy();
+    expect(screen.queryByLabelText('Có bản nháp')).toBeNull();
+    expect(screen.queryByLabelText('3 tin nhắn chưa đọc')).toBeNull();
   });
 
   it.each(densityCases)(

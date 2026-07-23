@@ -416,6 +416,37 @@ describe('MessagesScreen', () => {
     expect(screen.getByLabelText('Có bản nháp')).toBeTruthy();
   });
 
+  it('uses the same attention authority for sectioning and the primary row accessory', async () => {
+    const failedMessage = enqueueRuntimeOutgoingText({
+      createdAt: inboxDateAt(22, 25).toISOString(),
+      conversationId: 'attention-thread',
+      text: 'Không gửi được',
+    });
+    useChatRuntimeStore
+      .getState()
+      .patchOutgoingMessage('attention-thread', failedMessage.id, {
+        deliveryStatus: 'failed',
+      });
+    setRuntimeChatDraft('attention-thread', 'Bản nháp mới hơn');
+
+    const screen = await renderMessagesScreen({
+      repository: repositoryForItems([
+        conversationSummary({
+          id: 'attention-thread',
+          title: 'Cuộc trò chuyện cần xử lý',
+        }),
+      ]),
+    });
+
+    await waitFor(() => expect(screen.getByText('Cần bạn xử lý')).toBeTruthy());
+    expect(
+      screen.getByLabelText('Tin nhắn cuối: Bạn: Không gửi được'),
+    ).toBeTruthy();
+    expect(screen.getByLabelText('Tin nhắn gửi thất bại')).toBeTruthy();
+    expect(screen.queryByLabelText('Có bản nháp')).toBeNull();
+    expect(screen.queryByLabelText('1 tin nhắn chưa đọc')).toBeNull();
+  });
+
   it('removes unread representation after the local read mutation', async () => {
     const repository = repositoryForItems([conversationSummary()]);
     const screen = await renderMessagesScreen({ repository });

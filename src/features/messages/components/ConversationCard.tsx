@@ -235,27 +235,42 @@ function ConversationAccessory({
 }: Readonly<{
   conversation: MessageInboxConversationViewModel;
 }>) {
-  if (conversation.unreadCount) {
-    return (
-      <View
-        accessibilityLabel={`${conversation.unreadCount} tin nhắn chưa đọc`}
-        accessible
-        style={styles.unreadBadge}
-      >
-        <Text style={styles.unreadText}>{conversation.unreadCount}</Text>
-      </View>
-    );
+  switch (conversation.attentionState) {
+    case 'failed':
+    case 'queued':
+    case 'sending':
+      return <DeliveryAccessory status={conversation.attentionState} />;
+    case 'draft':
+      return (
+        <Ionicons
+          accessibilityLabel="Có bản nháp"
+          color={appColors.status.warning}
+          name="create-outline"
+          size={18}
+        />
+      );
+    case 'unread':
+      return conversation.unreadCount ? (
+        <View
+          accessibilityLabel={`${conversation.unreadCount} tin nhắn chưa đọc`}
+          accessible
+          style={styles.unreadBadge}
+        >
+          <Text style={styles.unreadText}>{conversation.unreadCount}</Text>
+        </View>
+      ) : (
+        <View style={styles.trailingSpacer} />
+      );
+    case 'normal':
+      break;
+    default: {
+      const unsupportedState: never = conversation.attentionState;
+      throw new Error(
+        `Unsupported message inbox attention state: ${String(unsupportedState)}`,
+      );
+    }
   }
-  if (conversation.isDraft) {
-    return (
-      <Ionicons
-        accessibilityLabel="Có bản nháp"
-        color={appColors.status.warning}
-        name="create-outline"
-        size={18}
-      />
-    );
-  }
+
   if (conversation.latestDirection === 'outgoing') {
     return <DeliveryAccessory status={conversation.latestDeliveryStatus} />;
   }
