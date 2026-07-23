@@ -96,6 +96,7 @@ export function ConversationCard({
           online={conversation.isOnline}
           primaryAvatar={conversation.avatar}
           size={avatarSize}
+          testID={`messages-conversation-avatar-${conversation.id}`}
         />
 
         <View style={styles.body}>
@@ -328,13 +329,13 @@ function DeliveryAccessory({ status }: { status?: ChatDeliveryStatus }) {
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, gap: appSpacing.sm, minWidth: 0 },
+  body: { flex: 1, gap: appSpacing.xs, minWidth: 0 },
   content: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: appSpacing.xl,
+    gap: appSpacing.lg,
     paddingHorizontal: appSpacing.xl,
-    paddingVertical: appSpacing.lg,
+    paddingVertical: appSpacing.md,
   },
   metaLine: { alignItems: 'center', flexDirection: 'row', gap: appSpacing.sm },
   metaText: {
