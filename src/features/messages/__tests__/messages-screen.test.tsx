@@ -405,10 +405,12 @@ describe('MessagesScreen', () => {
     const repository = { ...base, listConversations };
     const screen = await renderMessagesScreen({ repository });
     await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
-    await fireEvent.changeText(
-      screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
-      'Khoa',
+    const searchInput = screen.getByPlaceholderText(
+      'Tìm người hoặc trò chuyện...',
     );
+    await fireEvent.changeText(searchInput, 'K');
+    await fireEvent.changeText(searchInput, 'Kh');
+    await fireEvent.changeText(searchInput, 'Khoa');
 
     await waitFor(() =>
       expect(listConversations).toHaveBeenLastCalledWith(
@@ -416,7 +418,56 @@ describe('MessagesScreen', () => {
         expect.objectContaining({ viewerId: testAuthSession.user.id }),
       ),
     );
+    expect(
+      listConversations.mock.calls
+        .map(([input]) => input?.query)
+        .filter((value) => Boolean(value)),
+    ).toEqual(['Khoa']);
     await waitFor(() => {
+      expect(screen.getByLabelText('Mở chat với Khoa Jungle')).toBeTruthy();
+      expect(screen.queryByLabelText('Mở chat với Minh Anh')).toBeNull();
+    });
+  });
+
+  it('keeps the resolved inbox visible while a new search is fetching', async () => {
+    const base = createLocalChatRepository();
+    const searchResponse = await base.listConversations({
+      filter: 'all',
+      limit: 30,
+      query: 'Khoa',
+    });
+    let releaseSearch: (() => void) | undefined;
+    const listConversations = jest.fn<ChatRepository['listConversations']>(
+      (input, context) => {
+        if (input?.query === 'Khoa') {
+          return new Promise((resolve) => {
+            releaseSearch = () => resolve(searchResponse);
+          });
+        }
+        return base.listConversations(input, context);
+      },
+    );
+    const screen = await renderMessagesScreen({
+      repository: { ...base, listConversations },
+    });
+
+    await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
+    await fireEvent.changeText(
+      screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
+      'Khoa',
+    );
+    await waitFor(() =>
+      expect(listConversations).toHaveBeenLastCalledWith(
+        expect.objectContaining({ query: 'Khoa' }),
+        expect.anything(),
+      ),
+    );
+
+    expect(screen.getByTestId('messages-search-progress')).toBeTruthy();
+    expect(screen.getByLabelText('Mở chat với Minh Anh')).toBeTruthy();
+    await act(() => releaseSearch?.());
+    await waitFor(() => {
+      expect(screen.queryByTestId('messages-search-progress')).toBeNull();
       expect(screen.getByLabelText('Mở chat với Khoa Jungle')).toBeTruthy();
       expect(screen.queryByLabelText('Mở chat với Minh Anh')).toBeNull();
     });

@@ -22,6 +22,13 @@ export function useMessagesInboxQuery({
   const { session } = useAuth();
   const viewerId = session?.user.id ?? 'anonymous';
 
+  const queryKey = messagesQueryKeys.inbox({
+    filter,
+    query: canonicalQuery,
+    repository,
+    viewerId,
+  });
+
   return useQuery({
     enabled: Boolean(session),
     queryFn: ({ signal }) =>
@@ -33,12 +40,22 @@ export function useMessagesInboxQuery({
         },
         { ...previewMessagesRequestContext, signal, viewerId },
       ),
-    queryKey: messagesQueryKeys.inbox({
-      filter,
-      query: canonicalQuery,
-      repository,
-      viewerId,
-    }),
+    placeholderData: (previousData, previousQuery) =>
+      previousQuery &&
+      isSameMessageInboxQueryScope(previousQuery.queryKey, queryKey)
+        ? previousData
+        : undefined,
+    queryKey,
     staleTime: 15_000,
   });
+}
+
+export function isSameMessageInboxQueryScope(
+  previous: readonly unknown[],
+  current: readonly unknown[],
+) {
+  if (previous.length !== current.length) return false;
+  return current
+    .slice(0, -1)
+    .every((segment, index) => previous[index] === segment);
 }

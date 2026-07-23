@@ -1,5 +1,12 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Keyboard, Pressable, StyleSheet, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Keyboard,
+  Pressable,
+  StyleSheet,
+  TextInput,
+  View,
+} from 'react-native';
 
 import {
   AppIconButton,
@@ -13,6 +20,7 @@ import {
 import { messagesUi } from '../ui/messages-ui';
 
 export type MessageInboxSearchHeaderProps = Readonly<{
+  busy?: boolean;
   compact: boolean;
   onCancel: () => void;
   onChangeQuery: (query: string) => void;
@@ -21,6 +29,7 @@ export type MessageInboxSearchHeaderProps = Readonly<{
 
 /** Owns the focused search mode without competing with page-level header actions. */
 export function MessageInboxSearchHeader({
+  busy = false,
   compact,
   onCancel,
   onChangeQuery,
@@ -66,11 +75,19 @@ export function MessageInboxSearchHeader({
         withHighlight={false}
         withShadow={false}
       >
-        <Ionicons
-          color={appColors.text.muted}
-          name="search-outline"
-          size={20}
-        />
+        {busy ? (
+          <ActivityIndicator
+            color={appColors.accent.purpleIcon}
+            size="small"
+            testID="messages-search-progress"
+          />
+        ) : (
+          <Ionicons
+            color={appColors.text.muted}
+            name="search-outline"
+            size={20}
+          />
+        )}
         <TextInput
           accessibilityLabel="Tìm kiếm cuộc trò chuyện"
           autoCapitalize="none"
