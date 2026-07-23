@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { BackHandler, Keyboard, StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { InMemorySocialRelationshipRepository } from '@/entities/social-relationship';
@@ -235,16 +235,14 @@ describe('MessagesScreen', () => {
       screen.queryByPlaceholderText('Tìm người hoặc trò chuyện...'),
     ).toBeNull();
     await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
-    expect(
-      screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
-    ).toBeTruthy();
-    const activeSearchAction = StyleSheet.flatten(
-      screen.getByTestId('messages-header-search-action').props.style,
+    const searchInput = screen.getByPlaceholderText(
+      'Tìm người hoặc trò chuyện...',
     );
-    const activeComposeAction = StyleSheet.flatten(
-      screen.getByTestId('messages-header-compose-action').props.style,
-    );
-    expect(activeSearchAction.width).toBeGreaterThan(activeComposeAction.width);
+    expect(searchInput.props.autoFocus).toBe(true);
+    expect(screen.getByTestId('messages-search-header')).toBeTruthy();
+    expect(screen.queryByTestId('messages-identity-header')).toBeNull();
+    expect(screen.queryByLabelText('Tạo cuộc trò chuyện')).toBeNull();
+    expect(screen.getByLabelText('Đóng tìm kiếm')).toBeTruthy();
     expect(screen.getByText('Tất cả')).toBeTruthy();
     expect(screen.getByText('Chưa đọc')).toBeTruthy();
     expect(screen.getByText('Cá nhân')).toBeTruthy();
@@ -269,9 +267,45 @@ describe('MessagesScreen', () => {
     ).toBeNull();
     expect(screen.getAllByText('Khoa Jungle').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Team Sao Băng').length).toBeGreaterThan(0);
-    expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
+    expect(screen.queryByLabelText('Tạo cuộc trò chuyện')).toBeNull();
     expect(screen.queryByLabelText('Bắt đầu trò chuyện')).toBeNull();
     expect(screen.queryByLabelText('Tuỳ chọn tin nhắn')).toBeNull();
+  });
+
+  it('owns cancel and Android back inside search mode', async () => {
+    let hardwareBackHandler: (() => boolean | null | undefined) | undefined;
+    const removeBackHandler = jest.fn();
+    jest
+      .spyOn(BackHandler, 'addEventListener')
+      .mockImplementation((_event, handler) => {
+        hardwareBackHandler = handler;
+        return { remove: removeBackHandler };
+      });
+    const dismissKeyboard = jest.spyOn(Keyboard, 'dismiss');
+    const screen = await renderMessagesScreen();
+
+    await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
+    await fireEvent.changeText(
+      screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
+      'Khoa',
+    );
+    expect(hardwareBackHandler).toBeDefined();
+    await act(() => {
+      expect(hardwareBackHandler?.()).toBe(true);
+    });
+
+    expect(screen.queryByTestId('messages-search-header')).toBeNull();
+    expect(screen.getByTestId('messages-identity-header')).toBeTruthy();
+    expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
+    expect(dismissKeyboard).toHaveBeenCalled();
+    expect(removeBackHandler).toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
+    expect(
+      screen.getByPlaceholderText('Tìm người hoặc trò chuyện...').props.value,
+    ).toBe('');
+    await fireEvent.press(screen.getByLabelText('Đóng tìm kiếm'));
+    expect(screen.queryByTestId('messages-search-header')).toBeNull();
   });
 
   it('promotes compose only for a truly empty inbox', async () => {
@@ -297,7 +331,7 @@ describe('MessagesScreen', () => {
     expect(await screen.findByLabelText('Chọn Người chơi 1')).toBeTruthy();
   });
 
-  it('returns compose to the header when an empty inbox becomes a search result', async () => {
+  it('keeps compose suppressed in search results and restores it on cancel', async () => {
     const screen = await renderMessagesScreen({
       repository: repositoryForItems([]),
     });
@@ -315,7 +349,11 @@ describe('MessagesScreen', () => {
       ).toBeTruthy(),
     );
     expect(screen.queryByLabelText('Bắt đầu trò chuyện')).toBeNull();
+    expect(screen.queryByLabelText('Tạo cuộc trò chuyện')).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText('Đóng tìm kiếm'));
     expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
+    expect(screen.getByLabelText('Bắt đầu trò chuyện')).toBeTruthy();
   });
 
   it('opens the exact provisioned direct conversation from the friend picker', async () => {
