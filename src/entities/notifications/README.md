@@ -16,9 +16,11 @@ updates and presentation mapping should not need transport-specific edits.
 
 - `seenAt`: the notification has been exposed in the focused inbox. This drives
   the Home red dot and the `new` to `unread` presentation transition.
-- `readAt`: the user opened the notification or its primary action. Reading
-  implies seen; focusing the inbox does **not** imply read. Presentation derives
-  `new`, `unread` and `read` from these two timestamps.
+- `readAt`: the user opened the notification, used its primary action or
+  explicitly acknowledged a destinationless inbox row. Reading implies seen;
+  focusing the inbox does **not** imply read. Presentation derives
+  `new`, `unread` and `read` from these two timestamps, and the “Chưa đọc” filter
+  includes both `new` and `unread`.
 - Action completion is intentionally not modelled yet. Add `actionedAt` only
   when an action has a real backend command and success state.
 

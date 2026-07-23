@@ -42,7 +42,6 @@ describe('notification view model', () => {
       attentionState: 'new',
       category: 'set-invite',
       group: 'Hôm nay',
-      isSeen: false,
       messageParts: ['đã mời bạn vào set', '“Team Sao Băng”'],
       timeLabel: '2 phút trước',
       title: 'Minh Anh',
@@ -54,13 +53,11 @@ describe('notification view model', () => {
         kind: 'conversation',
       },
       label: 'Trả lời',
-      tone: 'blue',
     });
     expect(reward).toMatchObject({
       attentionState: 'read',
       category: 'system',
       group: 'Trước đó',
-      isSeen: true,
       reward: { label: 'x50' },
       title: 'Hệ thống:',
     });

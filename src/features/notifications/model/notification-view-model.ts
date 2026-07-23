@@ -1,16 +1,16 @@
 import type { ImageSourcePropType } from 'react-native';
 
 import type { AssetResolver, ResolvedAsset } from '@/entities/media-asset';
-
-import {
-  resolveNotificationAttentionState,
-  type NotificationAttentionState,
-} from './notification-attention';
 import {
   notificationCategory,
   type NotificationActor,
   type NotificationRecord,
 } from '@/entities/notifications';
+
+import {
+  resolveNotificationAttentionState,
+  type NotificationAttentionState,
+} from './notification-attention';
 
 export type NotificationTone = 'blue' | 'cyan' | 'pink' | 'purple';
 
@@ -25,7 +25,6 @@ export type NotificationDestination =
 export type NotificationAction = {
   destination?: NotificationDestination;
   label: string;
-  tone: Extract<NotificationTone, 'blue' | 'pink' | 'purple'>;
 };
 
 export type NotificationResolvedMedia =
@@ -69,7 +68,6 @@ export type NotificationItem = {
   category: ReturnType<typeof notificationCategory>;
   group: 'Hôm nay' | 'Trước đó';
   id: string;
-  isSeen: boolean;
   messageParts: readonly string[];
   previewAvatars?: readonly NotificationResolvedMedia[];
   reward?: NotificationReward;
@@ -92,7 +90,6 @@ export function mapNotificationToViewModel(
     category: notificationCategory(notification),
     group: notificationGroup(notification.occurredAt, now),
     id: notification.id,
-    isSeen: Boolean(notification.seenAt),
     timeLabel: formatNotificationTime(notification.occurredAt, now),
   } as const;
 
@@ -107,7 +104,6 @@ export function mapNotificationToViewModel(
         action: {
           destination: { kind: 'set', setId: notification.payload.setId },
           label: 'Xem set',
-          tone: 'pink',
         },
         messageParts: [
           'đã mời bạn vào set',
@@ -130,7 +126,6 @@ export function mapNotificationToViewModel(
         action: {
           destination: { kind: 'set', setId: notification.payload.setId },
           label: 'Xem set',
-          tone: 'pink',
         },
         messageParts: ['Bạn có lời mời vào set mới'],
         title: 'Lời mời vào set',
@@ -149,7 +144,6 @@ export function mapNotificationToViewModel(
             kind: 'conversation',
           },
           label: 'Trả lời',
-          tone: 'blue',
         },
         messageParts: ['đã nhắn cho bạn', `“${notification.payload.excerpt}”`],
         title: notification.payload.actor.displayName,
@@ -172,7 +166,6 @@ export function mapNotificationToViewModel(
             kind: 'conversation',
           },
           label: 'Trả lời',
-          tone: 'blue',
         },
         messageParts: ['Bạn có tin nhắn mới'],
         title: 'Tin nhắn mới',
@@ -184,7 +177,6 @@ export function mapNotificationToViewModel(
         action: {
           destination: { kind: 'match', matchId: notification.payload.matchId },
           label: 'Xem match',
-          tone: 'pink',
         },
         messageParts: ['Bạn vừa có một match mới'],
         title: 'Match mới',
@@ -196,7 +188,6 @@ export function mapNotificationToViewModel(
         action: {
           destination: { kind: 'set', setId: notification.payload.setId },
           label: 'Xem yêu cầu',
-          tone: 'purple',
         },
         messageParts: ['Có người muốn tham gia set của bạn'],
         title: 'Yêu cầu tham gia',
@@ -211,7 +202,6 @@ export function mapNotificationToViewModel(
             playerId: notification.payload.requesterPlayerId,
           },
           label: 'Xem lời mời',
-          tone: 'purple',
         },
         messageParts: ['Bạn có một lời mời kết bạn mới'],
         title: 'Lời mời kết bạn',
@@ -226,7 +216,6 @@ export function mapNotificationToViewModel(
             playerId: notification.payload.friendPlayerId,
           },
           label: 'Xem bạn bè',
-          tone: 'purple',
         },
         messageParts: ['Lời mời kết bạn đã được chấp nhận'],
         title: 'Đã trở thành bạn bè',
@@ -238,7 +227,7 @@ export function mapNotificationToViewModel(
       );
       return {
         ...shared,
-        action: { destination, label: 'Mở', tone: 'blue' },
+        action: { destination, label: 'Mở' },
         messageParts: ['Có cập nhật mới dành cho bạn'],
         title: 'Hệ thống:',
         visual: {
@@ -267,7 +256,6 @@ export function mapNotificationToViewModel(
     case 'team-event':
       return {
         ...shared,
-        action: { label: 'Tham gia', tone: 'purple' },
         messageParts: [
           'tối nay bắt đầu',
           `lúc ${formatClockTime(notification.payload.startsAt)}`,

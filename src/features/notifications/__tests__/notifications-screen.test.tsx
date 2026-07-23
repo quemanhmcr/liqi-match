@@ -84,6 +84,9 @@ jest.mock('expo-router', () => ({
 
 const mockExpoRouter = jest.requireMock('expo-router') as {
   router: {
+    back: ReturnType<typeof jest.fn>;
+    canGoBack: ReturnType<typeof jest.fn>;
+    navigate: ReturnType<typeof jest.fn>;
     push: ReturnType<typeof jest.fn>;
   };
 };
@@ -91,63 +94,115 @@ const mockExpoRouter = jest.requireMock('expo-router') as {
 describe('NotificationsScreen', () => {
   beforeEach(async () => {
     mockFocusEffect = undefined;
+    mockExpoRouter.router.back.mockClear();
+    mockExpoRouter.router.canGoBack.mockReset();
+    mockExpoRouter.router.canGoBack.mockReturnValue(false);
+    mockExpoRouter.router.navigate.mockClear();
     mockExpoRouter.router.push.mockClear();
     await resetMockNotificationInboxForTesting(testAuthSession.user.id);
   });
 
-  it('maps the production-shaped mock and marks it seen only after focus', async () => {
-    const { findByText, getAllByText, getByText, queryByLabelText, unmount } =
-      await renderNotificationWithProviders(<NotificationsScreen />);
+  it('renders the canonical inbox and marks exposure seen only after focus', async () => {
+    const screen = await renderNotificationWithProviders(
+      <NotificationsScreen />,
+    );
 
-    expect(await findByText('3 thông báo mới')).toBeTruthy();
-    expect(getByText('Thông báo')).toBeTruthy();
-    expect(getByText('Minh Anh')).toBeTruthy();
-    expect(getByText('“Team Sao Băng”')).toBeTruthy();
-    expect(getByText('Khoa Jungle')).toBeTruthy();
-    expect(getAllByText('Hệ thống:').length).toBeGreaterThan(0);
-    expect(getByText('Đã tải hết thông báo')).toBeTruthy();
-    expect(queryByLabelText('Đánh dấu tất cả thông báo là đã đọc')).toBeNull();
+    expect(await screen.findByText('Minh Anh')).toBeTruthy();
+    expect(screen.getByTestId('app-screen-scroll')).toBeTruthy();
+    expect(screen.getByTestId('notifications-identity-header')).toBeTruthy();
+    expect(screen.getByText('Thông báo')).toBeTruthy();
+    expect(screen.getByText('Những cập nhật quan trọng từ LiQi')).toBeTruthy();
+    expect(screen.getByLabelText('Quay lại')).toBeTruthy();
+    expect(screen.getByLabelText('Lọc Tất cả')).toBeTruthy();
+    expect(screen.getByLabelText('Lọc Chưa đọc')).toBeTruthy();
+    expect(screen.getByLabelText('Lọc Tin nhắn')).toBeTruthy();
+    expect(screen.getByLabelText('Lọc Hoạt động')).toBeTruthy();
+    expect(screen.getByLabelText('Lọc Hệ thống')).toBeTruthy();
+    expect(screen.getByText('“Team Sao Băng”')).toBeTruthy();
+    expect(screen.getByText('Khoa Jungle')).toBeTruthy();
+    expect(screen.getAllByText('Hệ thống:').length).toBeGreaterThan(0);
+    expect(screen.getByText('Đã tải hết thông báo')).toBeTruthy();
+    expect(
+      screen.queryByLabelText('Đánh dấu tất cả thông báo là đã đọc'),
+    ).toBeNull();
+    expect(screen.queryByText('3 thông báo mới')).toBeNull();
+    expect(
+      screen.getByTestId('notification-attention-invite-team-sao-bang'),
+    ).toBeTruthy();
 
     await act(async () => {
       mockFocusEffect?.();
     });
 
-    await waitFor(() => {
-      expect(getByText('Không còn thông báo mới')).toBeTruthy();
-    });
     await waitFor(async () => {
       const summary = await mockNotificationInboxRepository.getSummary({
         session: testAuthSession,
       });
       expect(summary.unseenCount).toBe(0);
     });
-    await unmount();
+    expect(screen.getByText('Minh Anh')).toBeTruthy();
+    expect(screen.getByText('Khoa Jungle')).toBeTruthy();
+    await screen.unmount();
   });
 
-  it('empties the unread filter when the focused inbox becomes seen', async () => {
-    const { findByLabelText, findByText, getByText, unmount } =
-      await renderNotificationWithProviders(<NotificationsScreen />);
+  it('owns back navigation through the canonical header action', async () => {
+    const screen = await renderNotificationWithProviders(
+      <NotificationsScreen />,
+    );
 
-    expect(await findByText('3 thông báo mới')).toBeTruthy();
-    await fireEvent.press(await findByLabelText('Lọc Chưa đọc'));
+    expect(await screen.findByText('Minh Anh')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Quay lại'));
+    expect(mockExpoRouter.router.navigate).toHaveBeenCalledWith(
+      appRoutes.main.home,
+    );
 
-    expect(getByText('Minh Anh')).toBeTruthy();
-    expect(getByText('Khoa Jungle')).toBeTruthy();
+    mockExpoRouter.router.canGoBack.mockReturnValue(true);
+    await fireEvent.press(screen.getByLabelText('Quay lại'));
+    expect(mockExpoRouter.router.back).toHaveBeenCalledTimes(1);
+    await screen.unmount();
+  });
+
+  it('keeps exposed items unread until the user opens their destination', async () => {
+    const screen = await renderNotificationWithProviders(
+      <NotificationsScreen />,
+    );
+
+    expect(await screen.findByText('Minh Anh')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Lọc Chưa đọc'));
+
+    expect(screen.getByText('Minh Anh')).toBeTruthy();
+    expect(screen.getByText('Khoa Jungle')).toBeTruthy();
 
     await act(async () => {
       mockFocusEffect?.();
     });
 
-    await waitFor(() => {
-      expect(getByText('Không có thông báo trong mục này')).toBeTruthy();
-    });
     await waitFor(async () => {
       const summary = await mockNotificationInboxRepository.getSummary({
         session: testAuthSession,
       });
       expect(summary.unseenCount).toBe(0);
     });
-    await unmount();
+    expect(screen.getByText('Minh Anh')).toBeTruthy();
+    expect(screen.getByText('Khoa Jungle')).toBeTruthy();
+    expect(screen.queryByText('Bạn đã xem hết')).toBeNull();
+
+    await fireEvent.press(screen.getByLabelText('Trả lời Khoa Jungle'));
+
+    await waitFor(() => {
+      expect(screen.queryByText('Khoa Jungle')).toBeNull();
+    });
+    expect(screen.getByText('Minh Anh')).toBeTruthy();
+    await waitFor(async () => {
+      const page = await mockNotificationInboxRepository.list({
+        limit: 50,
+        session: testAuthSession,
+      });
+      expect(
+        page.items.find((item) => item.id === 'message-khoa-jungle')?.readAt,
+      ).not.toBeNull();
+    });
+    await screen.unmount();
   });
 
   it('offers retry for a retryable notification failure', async () => {
@@ -163,7 +218,7 @@ describe('NotificationsScreen', () => {
     );
 
     expect(await screen.findByText('Không tải được thông báo')).toBeTruthy();
-    expect(screen.getByLabelText('Thử tải lại thông báo')).toBeTruthy();
+    expect(screen.getByLabelText('Thử lại')).toBeTruthy();
   });
 
   it('does not offer retry for a non-retryable notification failure', async () => {
@@ -179,7 +234,7 @@ describe('NotificationsScreen', () => {
     );
 
     expect(await screen.findByText('Không tải được thông báo')).toBeTruthy();
-    expect(screen.queryByLabelText('Thử tải lại thông báo')).toBeNull();
+    expect(screen.queryByLabelText('Thử lại')).toBeNull();
   });
 
   it('keeps the latest notification feed visible when refresh fails', async () => {
