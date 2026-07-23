@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
-import { BackHandler, Keyboard, StyleSheet } from 'react-native';
+import { Alert, BackHandler, Keyboard, StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { InMemorySocialRelationshipRepository } from '@/entities/social-relationship';
@@ -241,7 +241,7 @@ describe('MessagesScreen', () => {
     expect(searchInput.props.autoFocus).toBe(true);
     expect(screen.getByTestId('messages-search-header')).toBeTruthy();
     expect(screen.queryByTestId('messages-identity-header')).toBeNull();
-    expect(screen.queryByLabelText('Tạo cuộc trò chuyện')).toBeNull();
+    expect(screen.queryByLabelText('Nhắn cho bạn bè')).toBeNull();
     expect(screen.getByLabelText('Đóng tìm kiếm')).toBeTruthy();
     expect(screen.getByText('Tất cả')).toBeTruthy();
     expect(screen.getByText('Chưa đọc')).toBeTruthy();
@@ -267,8 +267,7 @@ describe('MessagesScreen', () => {
     ).toBeNull();
     expect(screen.getAllByText('Khoa Jungle').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Team Sao Băng').length).toBeGreaterThan(0);
-    expect(screen.queryByLabelText('Tạo cuộc trò chuyện')).toBeNull();
-    expect(screen.queryByLabelText('Bắt đầu trò chuyện')).toBeNull();
+    expect(screen.queryByLabelText('Nhắn cho bạn bè')).toBeNull();
     expect(screen.queryByLabelText('Tuỳ chọn tin nhắn')).toBeNull();
   });
 
@@ -296,7 +295,7 @@ describe('MessagesScreen', () => {
 
     expect(screen.queryByTestId('messages-search-header')).toBeNull();
     expect(screen.getByTestId('messages-identity-header')).toBeTruthy();
-    expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
+    expect(screen.getByLabelText('Nhắn cho bạn bè')).toBeTruthy();
     expect(dismissKeyboard).toHaveBeenCalled();
     expect(removeBackHandler).toHaveBeenCalled();
 
@@ -324,10 +323,10 @@ describe('MessagesScreen', () => {
       expect(screen.queryByText('Đang tải cuộc trò chuyện')).toBeNull(),
     );
     expect(screen.getByText('Chưa có cuộc trò chuyện')).toBeTruthy();
-    expect(screen.getByLabelText('Bắt đầu trò chuyện')).toBeTruthy();
-    expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
+    expect(screen.getByLabelText('Nhắn cho bạn bè')).toBeTruthy();
+    expect(screen.getByLabelText('Chọn bạn')).toBeTruthy();
 
-    await fireEvent.press(screen.getByLabelText('Bắt đầu trò chuyện'));
+    await fireEvent.press(screen.getByLabelText('Chọn bạn'));
     expect(await screen.findByLabelText('Chọn Người chơi 1')).toBeTruthy();
   });
 
@@ -336,7 +335,8 @@ describe('MessagesScreen', () => {
       repository: repositoryForItems([]),
     });
 
-    expect(screen.getByLabelText('Bắt đầu trò chuyện')).toBeTruthy();
+    expect(screen.getByLabelText('Nhắn cho bạn bè')).toBeTruthy();
+    expect(screen.getByLabelText('Chọn bạn')).toBeTruthy();
     await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
     await fireEvent.changeText(
       screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
@@ -348,12 +348,55 @@ describe('MessagesScreen', () => {
         screen.getByText('Không có kết quả cho “Không tồn tại”.'),
       ).toBeTruthy(),
     );
-    expect(screen.queryByLabelText('Bắt đầu trò chuyện')).toBeNull();
-    expect(screen.queryByLabelText('Tạo cuộc trò chuyện')).toBeNull();
+    expect(screen.queryByLabelText('Nhắn cho bạn bè')).toBeNull();
 
     await fireEvent.press(screen.getByLabelText('Đóng tìm kiếm'));
-    expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
-    expect(screen.getByLabelText('Bắt đầu trò chuyện')).toBeTruthy();
+    expect(screen.getByLabelText('Nhắn cho bạn bè')).toBeTruthy();
+    expect(screen.getByLabelText('Chọn bạn')).toBeTruthy();
+  });
+
+  it('does not open a blank compose picker when no friend can message', async () => {
+    const alert = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation(() => undefined);
+    const relationshipRepository = new InMemorySocialRelationshipRepository();
+    const screen = await renderWithProviders(
+      <MessagesScreen clock={fixedInboxClock} />,
+      { serviceOverrides: { relationshipRepository } },
+    );
+
+    await waitFor(() => expect(screen.queryClient.isFetching()).toBe(0));
+    await fireEvent.press(screen.getByLabelText('Nhắn cho bạn bè'));
+
+    expect(alert).toHaveBeenCalledWith(
+      'Chưa có bạn bè để nhắn tin',
+      expect.stringContaining('lời mời kết bạn được chấp nhận'),
+    );
+    expect(screen.queryByText('Đã chọn 0/1')).toBeNull();
+  });
+
+  it('keeps friendship failures outside the picker surface', async () => {
+    const failingRepository = new InMemorySocialRelationshipRepository();
+    failingRepository.listFriendships = jest.fn(async () => {
+      throw new Error('Friendship read failed');
+    });
+    const alert = jest
+      .spyOn(Alert, 'alert')
+      .mockImplementation(() => undefined);
+    const screen = await renderWithProviders(
+      <MessagesScreen clock={fixedInboxClock} />,
+      { serviceOverrides: { relationshipRepository: failingRepository } },
+    );
+
+    await waitFor(() => expect(screen.queryClient.isFetching()).toBe(0));
+    await fireEvent.press(screen.getByLabelText('Nhắn cho bạn bè'));
+
+    expect(alert).toHaveBeenCalledWith(
+      'Chưa tải được bạn bè',
+      expect.stringContaining('Không thể kiểm tra'),
+      expect.any(Array),
+    );
+    expect(screen.queryByText('Đã chọn 0/1')).toBeNull();
   });
 
   it('opens the exact provisioned direct conversation from the friend picker', async () => {
@@ -387,8 +430,9 @@ describe('MessagesScreen', () => {
       { serviceOverrides: { relationshipRepository } },
     );
 
-    await fireEvent.press(screen.getByLabelText('Tạo cuộc trò chuyện'));
-    expect(await screen.findByText('Bắt đầu trò chuyện')).toBeTruthy();
+    await waitFor(() => expect(screen.queryClient.isFetching()).toBe(0));
+    await fireEvent.press(screen.getByLabelText('Nhắn cho bạn bè'));
+    expect(await screen.findByText('Nhắn cho bạn bè')).toBeTruthy();
     await fireEvent.press(await screen.findByLabelText('Chọn Người chơi 1'));
     await fireEvent.press(screen.getByText('Xác nhận'));
 
