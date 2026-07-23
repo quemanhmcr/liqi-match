@@ -1,8 +1,10 @@
 import { describe, expect, it, jest } from '@jest/globals';
 import { render } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { processColor, StyleSheet } from 'react-native';
 
 import { appColors } from '@/shared/ui';
+
+import { messagesUi } from '../ui/messages-ui';
 
 import { ConversationCard } from '../components/ConversationCard';
 import type { MessageInboxConversationViewModel } from '../model/message-surface-presenters';
@@ -234,6 +236,40 @@ describe('ConversationCard semantics', () => {
       fontSize: 14,
     });
     expect(screen.getByText('3 thành viên')).toBeTruthy();
+  });
+
+  it('adds a local trailing scrim only when fantasy artwork is present', async () => {
+    const artworkScreen = await render(
+      <ConversationCard
+        compact={false}
+        conversation={conversation({
+          artworkVariant: 'pair',
+          id: 'artwork-contrast',
+        })}
+        onPress={jest.fn()}
+      />,
+    );
+
+    const trailingScrim = artworkScreen.getByTestId(
+      'messages-conversation-trailing-scrim-artwork-contrast',
+    );
+    expect(trailingScrim.props.colors).toEqual(
+      messagesUi.gradients.cardTrailingScrim.map((color) =>
+        processColor(color),
+      ),
+    );
+    const plainScreen = await render(
+      <ConversationCard
+        compact={false}
+        conversation={conversation({ id: 'plain-contrast' })}
+        onPress={jest.fn()}
+      />,
+    );
+    expect(
+      plainScreen.queryByTestId(
+        'messages-conversation-trailing-scrim-plain-contrast',
+      ),
+    ).toBeNull();
   });
 
   it('renders only the primary accessory chosen by attention authority', async () => {

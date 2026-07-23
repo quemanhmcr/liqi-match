@@ -199,6 +199,11 @@ export const messagesUi = {
       'rgba(5,7,21,0.52)',
       'rgba(4,7,20,0.10)',
     ] as const,
+    cardTrailingScrim: [
+      'rgba(4,7,20,0)',
+      'rgba(4,7,20,0.18)',
+      'rgba(3,7,17,0.82)',
+    ] as const,
     filterSelected: ['#723DFF', '#C247DE', '#ED649D'] as const,
     eventBannerScrim: [
       'rgba(3,7,17,0.06)',

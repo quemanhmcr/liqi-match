@@ -72,6 +72,15 @@ export function ConversationCard({
                 start={{ x: 0, y: 0.5 }}
                 style={StyleSheet.absoluteFill}
               />
+              <LinearGradient
+                colors={messagesUi.gradients.cardTrailingScrim}
+                end={{ x: 1, y: 0.5 }}
+                locations={[0, 0.46, 1]}
+                pointerEvents="none"
+                start={{ x: 0.56, y: 0.5 }}
+                style={StyleSheet.absoluteFill}
+                testID={`messages-conversation-trailing-scrim-${conversation.id}`}
+              />
             </ImageBackground>
           ) : undefined
         }
