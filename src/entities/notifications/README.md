@@ -15,9 +15,10 @@ updates and presentation mapping should not need transport-specific edits.
 ## State semantics
 
 - `seenAt`: the notification has been exposed in the focused inbox. This drives
-  the Home red dot and the current “Chưa đọc” product filter.
+  the Home red dot and the `new` to `unread` presentation transition.
 - `readAt`: the user opened the notification or its primary action. Reading
-  implies seen; focusing the inbox does **not** imply read.
+  implies seen; focusing the inbox does **not** imply read. Presentation derives
+  `new`, `unread` and `read` from these two timestamps.
 - Action completion is intentionally not modelled yet. Add `actionedAt` only
   when an action has a real backend command and success state.
 

@@ -39,6 +39,7 @@ describe('notification view model', () => {
         },
         label: 'Xem set',
       },
+      attentionState: 'new',
       category: 'set-invite',
       group: 'Hôm nay',
       isSeen: false,
@@ -56,12 +57,27 @@ describe('notification view model', () => {
       tone: 'blue',
     });
     expect(reward).toMatchObject({
+      attentionState: 'read',
       category: 'system',
       group: 'Trước đó',
       isSeen: true,
       reward: { label: 'x50' },
       title: 'Hệ thống:',
     });
+  });
+
+  it('keeps seen-but-unopened records unread', () => {
+    const record = createMockNotificationSeed('user-a', now)[0]!;
+    const item = mapNotificationToViewModel(
+      {
+        ...record,
+        readAt: null,
+        seenAt: '2026-07-11T08:59:00.000Z',
+      },
+      { assetResolver, now },
+    );
+
+    expect(item.attentionState).toBe('unread');
   });
 
   it('renders production message and match notifications without invented actor data', () => {
