@@ -253,7 +253,52 @@ describe('MessagesScreen', () => {
     expect(screen.getAllByText('Khoa Jungle').length).toBeGreaterThan(0);
     expect(screen.getAllByText('Team Sao Băng').length).toBeGreaterThan(0);
     expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
+    expect(screen.queryByLabelText('Bắt đầu trò chuyện')).toBeNull();
     expect(screen.queryByLabelText('Tuỳ chọn tin nhắn')).toBeNull();
+  });
+
+  it('promotes compose only for a truly empty inbox', async () => {
+    const relationshipRepository = new InMemorySocialRelationshipRepository({
+      relationships: [acceptedComposeRelationship()],
+    });
+    const screen = await renderWithProviders(
+      <MessagesScreen
+        clock={fixedInboxClock}
+        repository={repositoryForItems([])}
+      />,
+      { serviceOverrides: { relationshipRepository } },
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByText('Đang tải cuộc trò chuyện')).toBeNull(),
+    );
+    expect(screen.getByText('Chưa có cuộc trò chuyện')).toBeTruthy();
+    expect(screen.getByLabelText('Bắt đầu trò chuyện')).toBeTruthy();
+    expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
+
+    await fireEvent.press(screen.getByLabelText('Bắt đầu trò chuyện'));
+    expect(await screen.findByLabelText('Chọn Người chơi 1')).toBeTruthy();
+  });
+
+  it('returns compose to the header when an empty inbox becomes a search result', async () => {
+    const screen = await renderMessagesScreen({
+      repository: repositoryForItems([]),
+    });
+
+    expect(screen.getByLabelText('Bắt đầu trò chuyện')).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText('Tìm cuộc trò chuyện'));
+    await fireEvent.changeText(
+      screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
+      'Không tồn tại',
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByText('Không có kết quả cho “Không tồn tại”.'),
+      ).toBeTruthy(),
+    );
+    expect(screen.queryByLabelText('Bắt đầu trò chuyện')).toBeNull();
+    expect(screen.getByLabelText('Tạo cuộc trò chuyện')).toBeTruthy();
   });
 
   it('opens the exact provisioned direct conversation from the friend picker', async () => {
@@ -288,9 +333,7 @@ describe('MessagesScreen', () => {
     );
 
     await fireEvent.press(screen.getByLabelText('Tạo cuộc trò chuyện'));
-    expect(
-      (await screen.findAllByText('Bắt đầu trò chuyện')).length,
-    ).toBeGreaterThan(1);
+    expect(await screen.findByText('Bắt đầu trò chuyện')).toBeTruthy();
     await fireEvent.press(await screen.findByLabelText('Chọn Người chơi 1'));
     await fireEvent.press(screen.getByText('Xác nhận'));
 

@@ -27,7 +27,6 @@ export const messagesUi = {
     listCardDraftStroke: 'rgba(255,190,112,0.16)',
     mutedSurface: 'rgba(8,12,26,0.72)',
     onlineFrame: '#070A18',
-    promoSurface: 'rgba(14,15,36,0.96)',
     sourceBannerSurface: 'rgba(12,13,34,0.96)',
     sourceBannerStroke: 'rgba(183,108,255,0.24)',
     timestamp: 'rgba(226,224,240,0.58)',
@@ -207,7 +206,6 @@ export const messagesUi = {
       'rgba(3,7,17,0.96)',
     ] as const,
     outgoingBubble: ['#7449E9', '#B34FFF', '#ED649D'] as const,
-    promo: ['rgba(92,50,178,0.72)', 'rgba(32,25,78,0.94)'] as const,
     send: appGradients.primaryOrb,
     wallpaperScrim: [
       'rgba(3,7,17,0.72)',
@@ -237,7 +235,6 @@ export const messagesUi = {
       cardRadiusCompact: appRadii['2xl'],
       filterHeight: 32,
       filterPaddingHorizontal: appSpacing['2xl'],
-      promoMinHeight: 92,
       searchHeight: 46,
     },
   },
