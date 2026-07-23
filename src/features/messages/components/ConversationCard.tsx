@@ -23,7 +23,7 @@ import { MessageAvatarStack } from './MessageAvatarStack';
 import type { ChatDeliveryStatus } from '../model/chat-message';
 import type { MessageInboxConversationViewModel } from '../model/message-surface-presenters';
 import { messagesChatAssets } from '../screens/messages-redesign-assets';
-import { messagesUi } from '../ui/messages-ui';
+import { messagesUi, resolveMessageInboxCardVisual } from '../ui/messages-ui';
 
 export type ConversationCardProps = Readonly<{
   compact: boolean;
@@ -37,8 +37,9 @@ export function ConversationCard({
   conversation,
   onPress,
 }: ConversationCardProps) {
-  const isUnread = Boolean(conversation.unreadCount);
+  const isUnread = conversation.attentionState === 'unread';
   const artwork = conversationArtwork(conversation);
+  const cardVisual = resolveMessageInboxCardVisual(conversation.attentionState);
   const avatarSize = compact
     ? messagesUi.metrics.inbox.avatarCompact
     : messagesUi.metrics.inbox.avatar;
@@ -73,8 +74,8 @@ export function ConversationCard({
             </ImageBackground>
           ) : undefined
         }
-        borderColor={messagesUi.colors.listCardStroke}
-        borderOpacity={isUnread ? 0.86 : 0.58}
+        borderColor={cardVisual.borderColor}
+        borderOpacity={1}
         contentStyle={[
           styles.content,
           {
@@ -84,11 +85,13 @@ export function ConversationCard({
           },
         ]}
         density="list"
-        emphasis={isUnread ? 'medium' : 'low'}
+        emphasis={cardVisual.emphasis}
+        frameGradient={cardVisual.frameGradient}
         radius={cardRadius}
         surfaceTone="high"
         testID={`messages-conversation-card-${conversation.id}`}
         withHighlight={false}
+        withShadow={cardVisual.withShadow}
       >
         <MessageAvatarStack
           avatars={conversation.participantAvatars}
