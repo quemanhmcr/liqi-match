@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  BackHandler,
+  Keyboard,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -38,6 +39,7 @@ import type { PlayerId } from '@/shared/contracts/core-v1';
 import { classifyApplicationError } from '@/shared/errors/application-error';
 
 import { ConversationCard } from '../components/ConversationCard';
+import { MessageInboxSearchHeader } from '../components/MessageInboxSearchHeader';
 import type {
   MessageConversationSummary,
   MessageInboxFilter,
@@ -233,6 +235,23 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
     setComposeSelectedPlayerIds([]);
     setComposePickerVisible(true);
   };
+  const closeSearch = useCallback(() => {
+    setQuery('');
+    setSearchVisible(false);
+    Keyboard.dismiss();
+  }, []);
+
+  useEffect(() => {
+    if (!searchVisible) return undefined;
+    const subscription = BackHandler.addEventListener(
+      'hardwareBackPress',
+      () => {
+        closeSearch();
+        return true;
+      },
+    );
+    return () => subscription.remove();
+  }, [closeSearch, searchVisible]);
 
   const openFriendConversation = async (playerIds: readonly PlayerId[]) => {
     const targetPlayerId = playerIds[0];
@@ -272,12 +291,9 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
     }
   };
 
-  const toggleSearch = () => {
+  const openSearch = () => {
     selectionImpact();
-    setSearchVisible((visible) => {
-      if (visible) setQuery('');
-      return !visible;
-    });
+    setSearchVisible(true);
   };
 
   return (
@@ -289,85 +305,47 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
       scroll
       withHeader={false}
     >
-      <AppIdentityHeader
-        actions={[
-          {
-            accessibilityLabel: 'Tìm cuộc trò chuyện',
-            emphasized: searchVisible,
-            icon: searchVisible ? 'close-outline' : 'search-outline',
-            onPress: toggleSearch,
-            testID: 'messages-header-search-action',
-          },
-          {
-            accessibilityLabel: 'Tạo cuộc trò chuyện',
-            emphasized: !searchVisible,
-            icon: 'create-outline',
-            onPress: openComposePicker,
-            testID: 'messages-header-compose-action',
-          },
-        ]}
-        compact={compactLayout}
-        online={false}
-        presentation="page"
-        subtitle={'Kết nối với bạn bè hợp\u00A0vibe'}
-        testID="messages-identity-header"
-        title="Tin nhắn"
-        titleAccessory={
-          <Ionicons
-            color={appColors.accent.purpleIcon}
-            name="sparkles"
-            size={compactLayout ? 22 : 24}
-          />
-        }
-      />
+      {searchVisible ? (
+        <MessageInboxSearchHeader
+          compact={compactLayout}
+          onCancel={closeSearch}
+          onChangeQuery={setQuery}
+          query={query}
+        />
+      ) : (
+        <AppIdentityHeader
+          actions={[
+            {
+              accessibilityLabel: 'Tìm cuộc trò chuyện',
+              icon: 'search-outline',
+              onPress: openSearch,
+              testID: 'messages-header-search-action',
+            },
+            {
+              accessibilityLabel: 'Tạo cuộc trò chuyện',
+              emphasized: true,
+              icon: 'create-outline',
+              onPress: openComposePicker,
+              testID: 'messages-header-compose-action',
+            },
+          ]}
+          compact={compactLayout}
+          online={false}
+          presentation="page"
+          subtitle={'Kết nối với bạn bè hợp\u00A0vibe'}
+          testID="messages-identity-header"
+          title="Tin nhắn"
+          titleAccessory={
+            <Ionicons
+              color={appColors.accent.purpleIcon}
+              name="sparkles"
+              size={compactLayout ? 22 : 24}
+            />
+          }
+        />
+      )}
 
       <View style={styles.inboxControls}>
-        {searchVisible ? (
-          <AppSurface
-            backgroundColor={messagesUi.colors.composerInput}
-            borderColor={messagesUi.colors.composerStroke}
-            contentStyle={styles.searchBox}
-            emphasis="none"
-            radius={appRadii.pill}
-            style={styles.searchShell}
-            variant="nav"
-            withHighlight={false}
-            withShadow={false}
-          >
-            <Ionicons
-              color={appColors.text.muted}
-              name="search-outline"
-              size={20}
-            />
-            <TextInput
-              accessibilityLabel="Tìm kiếm cuộc trò chuyện"
-              autoCapitalize="none"
-              autoCorrect={false}
-              clearButtonMode="while-editing"
-              maxLength={120}
-              onChangeText={setQuery}
-              placeholder="Tìm người hoặc trò chuyện..."
-              placeholderTextColor={appColors.text.muted}
-              returnKeyType="search"
-              style={styles.searchInput}
-              value={query}
-            />
-            {query ? (
-              <Pressable
-                accessibilityLabel="Xoá tìm kiếm"
-                hitSlop={8}
-                onPress={() => setQuery('')}
-              >
-                <Ionicons
-                  color={appColors.text.tertiary}
-                  name="close-circle"
-                  size={19}
-                />
-              </Pressable>
-            ) : null}
-          </AppSurface>
-        ) : null}
-
         <ScrollView
           accessibilityLabel="Bộ lọc cuộc trò chuyện"
           contentContainerStyle={styles.filterRail}
@@ -655,20 +633,6 @@ const styles = StyleSheet.create({
     width: 8,
   },
   inboxControls: { gap: appSpacing.lg },
-  searchBox: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: appSpacing.md,
-    minHeight: messagesUi.metrics.inbox.searchHeight,
-    paddingHorizontal: appSpacing['2xl'],
-  },
-  searchInput: {
-    ...appTypography.body,
-    color: appColors.text.primary,
-    flex: 1,
-    paddingVertical: 0,
-  },
-  searchShell: { marginHorizontal: appSpacing.xs },
   section: { gap: appSpacing.md },
   sectionCount: {
     ...appTypography.caption,
