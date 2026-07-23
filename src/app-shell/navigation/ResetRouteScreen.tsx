@@ -9,7 +9,6 @@ export type ResetProductRouteId =
   | 'discover-sets'
   | 'discover-vibes'
   | 'explore'
-  | 'notifications'
   | 'profile'
   | 'profile-blocked'
   | 'profile-edit'

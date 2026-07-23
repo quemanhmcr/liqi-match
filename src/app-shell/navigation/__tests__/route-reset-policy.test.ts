@@ -19,6 +19,10 @@ const preservedAdapters = new Map([
     '@/features/messages/screens/ChatConversationScreen',
   ],
   [
+    'src/app/(app)/notifications.tsx',
+    '@/features/notifications/screens/NotificationsScreen',
+  ],
+  [
     'src/app/(app)/sessions/conversations/[conversationId].tsx',
     '@/features/messages/screens/LegacySessionConversationRedirectScreen',
   ],
@@ -47,7 +51,6 @@ const resetAdapters = new Map([
   ['src/app/(app)/discover/sets.tsx', 'discover-sets'],
   ['src/app/(app)/discover/sets/[setId].tsx', 'discover-set-detail'],
   ['src/app/(app)/discover/vibes.tsx', 'discover-vibes'],
-  ['src/app/(app)/notifications.tsx', 'notifications'],
   [
     'src/app/(app)/profile/[playerId]/reputation/index.tsx',
     'profile-player-reputation',
@@ -109,6 +112,6 @@ describe('authenticated product route reset policy', () => {
       ...resetAdapters.keys(),
     ]);
     expect(routeAdapters(appRoot).sort()).toEqual([...classified].sort());
-    expect(resetAdapters.size).toBe(21);
+    expect(resetAdapters.size).toBe(20);
   });
 });
