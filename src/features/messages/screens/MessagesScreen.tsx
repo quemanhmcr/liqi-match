@@ -44,6 +44,7 @@ import type {
   MessageInboxFilter,
 } from '../contracts/messages-contracts';
 import { loadChatDraftIndex } from '../model/chat-draft-store';
+import { isMessageInboxAttentionStateActionable } from '../model/message-inbox-attention';
 import {
   presentInboxConversation,
   type MessageInboxConversationViewModel,
@@ -90,17 +91,6 @@ function lightImpact() {
 function openConversation(conversationId: string) {
   selectionImpact();
   router.push(appRoutes.messages.detail(conversationId));
-}
-
-function isActionableConversation(
-  conversation: MessageInboxConversationViewModel,
-) {
-  return Boolean(
-    conversation.isDraft ||
-    conversation.unreadCount ||
-    conversation.latestDeliveryStatus === 'failed' ||
-    conversation.latestDeliveryStatus === 'queued',
-  );
 }
 
 function compareActivity(
@@ -211,7 +201,9 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
     ],
   );
   const actionable = conversations
-    .filter(isActionableConversation)
+    .filter((conversation) =>
+      isMessageInboxAttentionStateActionable(conversation.attentionState),
+    )
     .sort(compareActivity);
   const actionableIds = new Set(actionable.map(({ id }) => id));
   const pinned = conversations

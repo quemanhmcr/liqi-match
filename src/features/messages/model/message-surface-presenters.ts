@@ -19,6 +19,10 @@ import type {
 } from './chat-message';
 import { getOutgoingMessagePreviewText } from './chat-message';
 import { formatInboxTimestamp } from './chat-timeline';
+import {
+  resolveMessageInboxAttentionState,
+  type MessageInboxAttentionState,
+} from './message-inbox-attention';
 
 type IoniconName = ComponentProps<
   typeof import('@expo/vector-icons').Ionicons
@@ -30,6 +34,7 @@ export type MessageInboxArtworkVariant = 'love' | 'pair' | 'party' | 'rank';
 
 export type MessageInboxConversationViewModel = {
   activityAt?: string;
+  attentionState: MessageInboxAttentionState;
   artworkVariant?: MessageInboxArtworkVariant;
   avatar?: MessageResolvedMedia;
   canMessage: boolean;
@@ -275,9 +280,9 @@ export function presentInboxConversation({
 }): MessageInboxConversationViewModel {
   const runtimeMessage = runtimeMessages[runtimeMessages.length - 1];
   const draft = (draftPreview ?? '').trim();
-  const isDraft = draft.length > 0;
+  const hasDraft = draft.length > 0;
   const draftActivityAt =
-    isDraft && draftUpdatedAt
+    hasDraft && draftUpdatedAt
       ? new Date(draftUpdatedAt).toISOString()
       : undefined;
   const latestActivity = runtimeMessage
@@ -288,9 +293,20 @@ export function presentInboxConversation({
         preview: getOutgoingMessagePreviewText(runtimeMessage),
       }
     : conversation.latestActivity;
-  const activityAt =
-    runtimeMessage?.createdAt ?? draftActivityAt ?? latestActivity?.createdAt;
-  const latestDirection = isDraft ? undefined : latestActivity?.direction;
+  const unreadCount = !isRead
+    ? conversation.viewerState.unreadCount || undefined
+    : undefined;
+  const attentionState = resolveMessageInboxAttentionState({
+    hasDraft,
+    latestDeliveryStatus: latestActivity?.deliveryStatus,
+    latestDirection: latestActivity?.direction,
+    unreadCount,
+  });
+  const presentsDraft = attentionState === 'draft';
+  const activityAt = presentsDraft
+    ? (draftActivityAt ?? latestActivity?.createdAt)
+    : (latestActivity?.createdAt ?? draftActivityAt);
+  const latestDirection = presentsDraft ? undefined : latestActivity?.direction;
   const senderPrefix =
     latestDirection === 'incoming' && conversation.kind === 'group'
       ? conversation.latestActivity?.senderDisplayName
@@ -305,6 +321,7 @@ export function presentInboxConversation({
 
   return {
     activityAt,
+    attentionState,
     artworkVariant: inboxArtworkVariant(conversation),
     avatar: conversation.avatar
       ? resolveMessageMedia(conversation.avatar, assetResolver)
@@ -312,20 +329,22 @@ export function presentInboxConversation({
     canMessage: conversation.capabilities.canMessage,
     icon: conversation.fallbackIcon as IoniconName | undefined,
     id: conversation.id,
-    isDraft,
+    isDraft: presentsDraft,
     isGroup: conversation.kind === 'group',
     kind: conversation.kind,
     isMuted: conversation.viewerState.isMuted,
     isOnline: conversation.presence.state === 'online',
     isPinned: conversation.viewerState.isPinned,
-    lastMessage: isDraft ? draft : (latestActivity?.preview ?? ''),
-    latestDeliveryStatus: isDraft ? undefined : latestActivity?.deliveryStatus,
+    lastMessage: presentsDraft ? draft : (latestActivity?.preview ?? ''),
+    latestDeliveryStatus: presentsDraft
+      ? undefined
+      : latestActivity?.deliveryStatus,
     latestDirection,
     name: conversation.title,
     participantAvatars,
     participantCount: conversation.participants.totalCount,
     presenceLabel: conversation.presence.label,
-    previewPrefix: isDraft
+    previewPrefix: presentsDraft
       ? 'Bản nháp:'
       : latestDirection === 'outgoing'
         ? 'Bạn:'
@@ -337,10 +356,7 @@ export function presentInboxConversation({
     sourceType: conversation.source?.type,
     time: activityAt ? formatInboxTimestamp(activityAt, referenceDate) : '',
     tone: toneByRelationship[conversation.relationship],
-    unreadCount:
-      !isDraft && !isRead && !runtimeMessage
-        ? conversation.viewerState.unreadCount || undefined
-        : undefined,
+    unreadCount,
   };
 }
 

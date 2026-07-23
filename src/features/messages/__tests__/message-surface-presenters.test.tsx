@@ -217,4 +217,64 @@ describe('message surface presenters', () => {
     expect(new Set(firstPass).size).toBe(3);
     expect(firstPass.every(Boolean)).toBe(true);
   });
+
+  it('projects one primary attention state and keeps the matching preview authoritative', () => {
+    const conversation = MessageConversationSummarySchema.parse({
+      capabilities: {
+        canCall: false,
+        canMessage: true,
+        canMute: true,
+        canViewDetails: true,
+        composerActions: [],
+      },
+      id: 'attention-conversation',
+      kind: 'direct',
+      latestActivity: {
+        createdAt: '2026-07-12T10:00:00.000Z',
+        direction: 'incoming',
+        id: 'incoming-unread',
+        kind: 'text',
+        preview: 'Tin chưa đọc',
+      },
+      participants: { preview: [], totalCount: 2 },
+      presence: { label: 'Ngoại tuyến', state: 'offline' },
+      relationship: 'friend',
+      title: 'Người cần phản hồi',
+      viewerState: {
+        isArchived: false,
+        isMuted: false,
+        isPinned: false,
+        unreadCount: 3,
+      },
+    });
+
+    const presented = presentInboxConversation({
+      assetResolver,
+      conversation,
+      draftPreview: 'Bản nháp mới hơn',
+      draftUpdatedAt: new Date('2026-07-12T10:03:00.000Z').getTime(),
+      isRead: false,
+      referenceDate: new Date('2026-07-12T12:00:00.000Z'),
+      runtimeMessages: [
+        {
+          createdAt: '2026-07-12T10:02:00.000Z',
+          deliveryStatus: 'failed',
+          direction: 'outgoing',
+          id: 'failed-outgoing',
+          kind: 'text',
+          text: 'Không gửi được',
+        },
+      ],
+    });
+
+    expect(presented).toMatchObject({
+      attentionState: 'failed',
+      isDraft: false,
+      lastMessage: 'Không gửi được',
+      latestDeliveryStatus: 'failed',
+      latestDirection: 'outgoing',
+      previewPrefix: 'Bạn:',
+      unreadCount: 3,
+    });
+  });
 });
