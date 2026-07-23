@@ -170,6 +170,11 @@ describe('ConversationCard semantics', () => {
     expect(screen.getByLabelText('Tin nhắn gửi thất bại')).toBeTruthy();
     expect(screen.queryByLabelText('Có bản nháp')).toBeNull();
     expect(screen.queryByLabelText('3 tin nhắn chưa đọc')).toBeNull();
+    expect(
+      StyleSheet.flatten(screen.getByText('An Nhiên').props.style),
+    ).toMatchObject({
+      color: appColors.text.secondary,
+    });
   });
 
   it.each(densityCases)(

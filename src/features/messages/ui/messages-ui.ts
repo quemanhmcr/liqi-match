@@ -1,5 +1,7 @@
 import { appGradients, appRadii, appSpacing } from '@/shared/ui';
 
+import type { MessageInboxAttentionState } from '../model/message-inbox-attention';
+
 /** Visual recipes owned by Messages and Chat. Shared components must not import this file. */
 export const messagesUi = {
   colors: {
@@ -18,6 +20,11 @@ export const messagesUi = {
     incomingStroke: 'rgba(205,213,244,0.12)',
     listCardSurface: 'rgba(7,10,24,0.94)',
     listCardStroke: 'rgba(176,155,255,0.18)',
+    listCardReadStroke: 'rgba(176,155,255,0.10)',
+    listCardUnreadStroke: 'rgba(205,173,255,0.38)',
+    listCardFailureStroke: 'rgba(255,118,136,0.36)',
+    listCardQueuedStroke: 'rgba(255,190,112,0.28)',
+    listCardDraftStroke: 'rgba(255,190,112,0.16)',
     mutedSurface: 'rgba(8,12,26,0.72)',
     onlineFrame: '#070A18',
     promoSurface: 'rgba(14,15,36,0.96)',
@@ -235,3 +242,66 @@ export const messagesUi = {
     },
   },
 } as const;
+
+export type MessageInboxCardVisual = Readonly<{
+  borderColor: string;
+  emphasis: 'none' | 'low';
+  frameGradient: readonly [string, string];
+  withShadow: false;
+}>;
+
+/** Maps the authoritative attention state to one restrained inbox-card treatment. */
+export function resolveMessageInboxCardVisual(
+  state: MessageInboxAttentionState,
+): MessageInboxCardVisual {
+  const quietStroke = messagesUi.colors.listCardReadStroke;
+  const quietFrame = [quietStroke, quietStroke] as const;
+
+  switch (state) {
+    case 'unread':
+      return {
+        borderColor: messagesUi.colors.listCardUnreadStroke,
+        emphasis: 'low',
+        frameGradient: [
+          messagesUi.colors.listCardUnreadStroke,
+          messagesUi.colors.listCardStroke,
+        ],
+        withShadow: false,
+      };
+    case 'failed':
+      return {
+        borderColor: messagesUi.colors.listCardFailureStroke,
+        emphasis: 'none',
+        frameGradient: [messagesUi.colors.listCardFailureStroke, quietStroke],
+        withShadow: false,
+      };
+    case 'queued':
+      return {
+        borderColor: messagesUi.colors.listCardQueuedStroke,
+        emphasis: 'none',
+        frameGradient: [messagesUi.colors.listCardQueuedStroke, quietStroke],
+        withShadow: false,
+      };
+    case 'draft':
+      return {
+        borderColor: messagesUi.colors.listCardDraftStroke,
+        emphasis: 'none',
+        frameGradient: [messagesUi.colors.listCardDraftStroke, quietStroke],
+        withShadow: false,
+      };
+    case 'sending':
+    case 'normal':
+      return {
+        borderColor: quietStroke,
+        emphasis: 'none',
+        frameGradient: quietFrame,
+        withShadow: false,
+      };
+    default: {
+      const unsupportedState: never = state;
+      throw new Error(
+        `Unsupported message inbox attention state: ${String(unsupportedState)}`,
+      );
+    }
+  }
+}
