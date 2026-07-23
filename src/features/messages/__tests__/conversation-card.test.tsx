@@ -67,6 +67,91 @@ describe('ConversationCard semantics', () => {
     expect(screen.getByText('Đã ghép đôi')).toBeTruthy();
   });
 
+  it.each<[kind: 'direct' | 'group', name: string, initials: string]>([
+    ['direct', 'An Nhiên', 'AN'],
+    ['group', 'Biệt đội Sao', 'BS'],
+  ])(
+    'uses title initials for %s conversations without avatar media',
+    async (kind, name, initials) => {
+      const id = `fallback-${kind}`;
+      const screen = await render(
+        <ConversationCard
+          compact={false}
+          conversation={conversation({
+            id,
+            isGroup: kind === 'group',
+            kind,
+            name,
+          })}
+          onPress={jest.fn()}
+        />,
+      );
+
+      expect(
+        screen.getByTestId(
+          `messages-conversation-avatar-${id}-fallback-initials`,
+        ).props.children,
+      ).toBe(initials);
+      expect(
+        screen.queryByTestId(
+          `messages-conversation-avatar-${id}-fallback-icon`,
+        ),
+      ).toBeNull();
+    },
+  );
+
+  it('keeps resolved avatar media ahead of title initials', async () => {
+    const screen = await render(
+      <ConversationCard
+        compact={false}
+        conversation={conversation({
+          avatar: {
+            kind: 'remote',
+            source: { uri: 'https://example.com/an-nhien.jpg' },
+            state: 'ready',
+            uri: 'https://example.com/an-nhien.jpg',
+          },
+          id: 'resolved-avatar',
+        })}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.queryByTestId(
+        'messages-conversation-avatar-resolved-avatar-fallback-initials',
+      ),
+    ).toBeNull();
+  });
+
+  it('keeps semantic icons for system conversation fallbacks', async () => {
+    const screen = await render(
+      <ConversationCard
+        compact={false}
+        conversation={conversation({
+          icon: 'notifications',
+          id: 'fallback-system',
+          kind: 'system',
+          name: 'LiQi',
+          relationship: 'system',
+          relationshipLabel: 'Thông báo',
+        })}
+        onPress={jest.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByTestId(
+        'messages-conversation-avatar-fallback-system-fallback-icon',
+      ),
+    ).toBeTruthy();
+    expect(
+      screen.queryByTestId(
+        'messages-conversation-avatar-fallback-system-fallback-initials',
+      ),
+    ).toBeNull();
+  });
+
   it('reserves the presence dot for authoritative online state', async () => {
     const screen = await render(
       <ConversationCard
@@ -207,6 +292,11 @@ describe('ConversationCard semantics', () => {
         height: avatarSize,
         width: avatarSize,
       });
+      expect(
+        screen.getByTestId(
+          `messages-conversation-avatar-density-${_layout}-fallback-initials`,
+        ).props.children,
+      ).toBe('AN');
     },
   );
 });

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { ComponentProps } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
 import { appColors } from '@/shared/ui';
 
@@ -14,6 +14,7 @@ type IoniconName = ComponentProps<typeof Ionicons>['name'];
 export type MessageAvatarStackProps = Readonly<{
   avatars?: readonly MessageResolvedMedia[];
   fallbackIcon?: IoniconName;
+  fallbackLabel?: string;
   online?: boolean;
   primaryAvatar?: MessageResolvedMedia;
   size: number;
@@ -23,6 +24,7 @@ export type MessageAvatarStackProps = Readonly<{
 export function MessageAvatarStack({
   avatars = [],
   fallbackIcon = 'chatbubble-ellipses-outline',
+  fallbackLabel,
   online = false,
   primaryAvatar,
   size,
@@ -33,6 +35,9 @@ export function MessageAvatarStack({
       (avatar): avatar is MessageResolvedMedia => Boolean(avatar),
     ),
   ).slice(0, 2);
+  const fallbackInitials = fallbackLabel
+    ? messageAvatarInitials(fallbackLabel)
+    : undefined;
   const stacked = uniqueAvatars.length > 1;
   const avatarSize = stacked ? Math.round(size * 0.76) : size;
   const width = stacked ? Math.round(size * 1.34) : size;
@@ -49,7 +54,13 @@ export function MessageAvatarStack({
           />
         ))
       ) : (
-        <AvatarFrame fallbackIcon={fallbackIcon} left={0} size={size} />
+        <AvatarFrame
+          fallbackIcon={fallbackIcon}
+          fallbackInitials={fallbackInitials}
+          fallbackTestID={testID ? `${testID}-fallback` : undefined}
+          left={0}
+          size={size}
+        />
       )}
       {online ? <View style={styles.onlineDot} /> : null}
     </View>
@@ -59,11 +70,15 @@ export function MessageAvatarStack({
 function AvatarFrame({
   avatar,
   fallbackIcon,
+  fallbackInitials,
+  fallbackTestID,
   left,
   size,
 }: Readonly<{
   avatar?: MessageResolvedMedia;
   fallbackIcon?: IoniconName;
+  fallbackInitials?: string;
+  fallbackTestID?: string;
   left: number;
   size: number;
 }>) {
@@ -96,16 +111,36 @@ function AvatarFrame({
             resizeMode="cover"
             style={StyleSheet.absoluteFill}
           />
+        ) : fallbackInitials ? (
+          <Text
+            maxFontSizeMultiplier={1}
+            style={[
+              styles.fallbackInitials,
+              { fontSize: Math.round(size * 0.32) },
+            ]}
+            testID={fallbackTestID ? `${fallbackTestID}-initials` : undefined}
+          >
+            {fallbackInitials}
+          </Text>
         ) : (
           <Ionicons
             color={appColors.icon.primary}
             name={fallbackIcon ?? 'person-outline'}
             size={Math.round(size * 0.42)}
+            testID={fallbackTestID ? `${fallbackTestID}-icon` : undefined}
           />
         )}
       </View>
     </LinearGradient>
   );
+}
+
+function messageAvatarInitials(label: string) {
+  const parts = label.trim().split(/\s+/).filter(Boolean);
+  const first = parts[0]?.[0];
+  if (!first) return undefined;
+  const second = parts.length > 1 ? parts[parts.length - 1]?.[0] : undefined;
+  return `${first}${second ?? ''}`.toUpperCase();
 }
 
 function deduplicateAvatars(avatars: readonly MessageResolvedMedia[]) {
@@ -125,6 +160,11 @@ function mediaIdentity(media: MessageResolvedMedia) {
 }
 
 const styles = StyleSheet.create({
+  fallbackInitials: {
+    color: appColors.text.primary,
+    fontWeight: '900',
+    letterSpacing: 0.3,
+  },
   frame: {
     alignItems: 'center',
     backgroundColor: messagesUi.colors.avatarFrame,

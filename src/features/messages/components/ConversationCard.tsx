@@ -40,6 +40,7 @@ export function ConversationCard({
   const isUnread = conversation.attentionState === 'unread';
   const artwork = conversationArtwork(conversation);
   const cardVisual = resolveMessageInboxCardVisual(conversation.attentionState);
+  const usesSemanticFallback = conversation.kind === 'system';
   const avatarSize = compact
     ? messagesUi.metrics.inbox.avatarCompact
     : messagesUi.metrics.inbox.avatar;
@@ -95,7 +96,8 @@ export function ConversationCard({
       >
         <MessageAvatarStack
           avatars={conversation.participantAvatars}
-          fallbackIcon={conversation.icon}
+          fallbackIcon={usesSemanticFallback ? conversation.icon : undefined}
+          fallbackLabel={usesSemanticFallback ? undefined : conversation.name}
           online={conversation.isOnline}
           primaryAvatar={conversation.avatar}
           size={avatarSize}
