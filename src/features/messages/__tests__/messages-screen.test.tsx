@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 import { act, fireEvent, waitFor } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { appRoutes } from '@/app-shell/navigation/routes';
 import { InMemorySocialRelationshipRepository } from '@/entities/social-relationship';
@@ -217,9 +218,18 @@ describe('MessagesScreen', () => {
     await waitFor(() => expect(screen.getByText('Cần bạn xử lý')).toBeTruthy());
     expect(screen.getByText('Tin nhắn')).toBeTruthy();
     expect(screen.getByTestId('messages-identity-header')).toBeTruthy();
+    expect(screen.getByText('Kết nối với bạn bè hợp\u00A0vibe')).toBeTruthy();
+    expect(screen.queryByText('Kết nối với bạn bè hợp\\u00A0vibe')).toBeNull();
     expect(
-      screen.getByText('Kết nối với những người bạn hợp vibe'),
-    ).toBeTruthy();
+      screen.queryByText('Kết nối với những người bạn hợp vibe'),
+    ).toBeNull();
+    const idleSearchAction = StyleSheet.flatten(
+      screen.getByTestId('messages-header-search-action').props.style,
+    );
+    const idleComposeAction = StyleSheet.flatten(
+      screen.getByTestId('messages-header-compose-action').props.style,
+    );
+    expect(idleSearchAction.width).toBeLessThan(idleComposeAction.width);
     expect(screen.queryByText('KẾT NỐI')).toBeNull();
     expect(
       screen.queryByPlaceholderText('Tìm người hoặc trò chuyện...'),
@@ -228,6 +238,13 @@ describe('MessagesScreen', () => {
     expect(
       screen.getByPlaceholderText('Tìm người hoặc trò chuyện...'),
     ).toBeTruthy();
+    const activeSearchAction = StyleSheet.flatten(
+      screen.getByTestId('messages-header-search-action').props.style,
+    );
+    const activeComposeAction = StyleSheet.flatten(
+      screen.getByTestId('messages-header-compose-action').props.style,
+    );
+    expect(activeSearchAction.width).toBeGreaterThan(activeComposeAction.width);
     expect(screen.getByText('Tất cả')).toBeTruthy();
     expect(screen.getByText('Chưa đọc')).toBeTruthy();
     expect(screen.getByText('Cá nhân')).toBeTruthy();

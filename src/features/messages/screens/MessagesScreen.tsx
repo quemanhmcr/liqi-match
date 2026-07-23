@@ -293,21 +293,23 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
         actions={[
           {
             accessibilityLabel: 'Tìm cuộc trò chuyện',
-            emphasized: true,
+            emphasized: searchVisible,
             icon: searchVisible ? 'close-outline' : 'search-outline',
             onPress: toggleSearch,
+            testID: 'messages-header-search-action',
           },
           {
             accessibilityLabel: 'Tạo cuộc trò chuyện',
-            emphasized: true,
+            emphasized: !searchVisible,
             icon: 'create-outline',
             onPress: openComposePicker,
+            testID: 'messages-header-compose-action',
           },
         ]}
         compact={compactLayout}
         online={false}
         presentation="page"
-        subtitle="Kết nối với những người bạn hợp vibe"
+        subtitle={'Kết nối với bạn bè hợp\u00A0vibe'}
         testID="messages-identity-header"
         title="Tin nhắn"
         titleAccessory={
