@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -45,6 +44,7 @@ import type {
 } from '../contracts/messages-contracts';
 import { loadChatDraftIndex } from '../model/chat-draft-store';
 import { isMessageInboxAttentionStateActionable } from '../model/message-inbox-attention';
+import { resolveMessageInboxComposePlacement } from '../model/message-inbox-compose';
 import {
   presentInboxConversation,
   type MessageInboxConversationViewModel,
@@ -220,6 +220,13 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
     .filter((conversation) => !sectionedIds.has(conversation.id))
     .sort(compareActivity);
   const unreadCount = activeSnapshot?.unreadConversationCount ?? 0;
+  const composePlacement = resolveMessageInboxComposePlacement({
+    filter: selectedFilter,
+    inboxReady: hasResolvedInbox && !inboxQuery.isError,
+    query: canonicalQuery,
+    resultCount: activeSnapshot?.totalCount,
+  });
+  const promotesComposeInEmptyState = composePlacement === 'empty-state';
   const openComposePicker = () => {
     lightImpact();
     setQuery('');
@@ -463,13 +470,27 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
         />
       ) : conversations.length === 0 ? (
         <InboxState
-          description={
-            canonicalQuery
-              ? `Không có kết quả cho “${canonicalQuery}”.`
-              : 'Bộ lọc này chưa có cuộc trò chuyện phù hợp.'
+          actionLabel={
+            promotesComposeInEmptyState ? 'Bắt đầu trò chuyện' : undefined
           }
-          icon="search-outline"
-          title="Không tìm thấy cuộc trò chuyện"
+          description={
+            promotesComposeInEmptyState
+              ? 'Chọn một người bạn đã sẵn sàng nhắn tin để bắt đầu.'
+              : canonicalQuery
+                ? `Không có kết quả cho “${canonicalQuery}”.`
+                : 'Bộ lọc này chưa có cuộc trò chuyện phù hợp.'
+          }
+          icon={
+            promotesComposeInEmptyState
+              ? 'chatbubble-ellipses-outline'
+              : 'search-outline'
+          }
+          onAction={promotesComposeInEmptyState ? openComposePicker : undefined}
+          title={
+            promotesComposeInEmptyState
+              ? 'Chưa có cuộc trò chuyện'
+              : 'Không tìm thấy cuộc trò chuyện'
+          }
         />
       ) : (
         <View style={styles.sections}>
@@ -493,11 +514,6 @@ export function MessagesScreen(props: MessagesScreenProps = {}) {
           />
         </View>
       )}
-
-      <StartConversationCard
-        compact={compactLayout}
-        onPress={openComposePicker}
-      />
 
       <FriendPlayerPickerModal
         maxSelected={1}
@@ -550,57 +566,6 @@ function ConversationSection({
         ))}
       </View>
     </View>
-  );
-}
-
-function StartConversationCard({
-  compact,
-  onPress,
-}: Readonly<{ compact: boolean; onPress: () => void }>) {
-  return (
-    <AppCard
-      backgroundColor={messagesUi.colors.promoSurface}
-      backgroundSlot={
-        <LinearGradient
-          colors={messagesUi.gradients.promo}
-          end={{ x: 1, y: 1 }}
-          start={{ x: 0, y: 0 }}
-          style={StyleSheet.absoluteFill}
-        />
-      }
-      borderColor={messagesUi.colors.listCardStroke}
-      contentStyle={[
-        styles.promoContent,
-        compact && styles.promoContentCompact,
-      ]}
-      density="list"
-      emphasis="medium"
-      radius={messagesUi.metrics.inbox.cardRadiusCompact}
-      style={styles.promoCard}
-      withHighlight
-    >
-      <View style={styles.promoIcon}>
-        <Ionicons
-          color={appColors.text.onAccent}
-          name="chatbubble-ellipses"
-          size={25}
-        />
-      </View>
-      <View style={styles.promoCopy}>
-        <Text style={styles.promoTitle}>Bắt đầu trò chuyện</Text>
-        <Text numberOfLines={2} style={styles.promoDescription}>
-          Kết nối ngay với một người bạn đã sẵn sàng nhắn tin.
-        </Text>
-      </View>
-      <AppButton
-        accessibilityLabel="Bắt đầu trò chuyện"
-        onPress={onPress}
-        style={styles.promoButton}
-        textStyle={styles.promoButtonText}
-      >
-        Bắt đầu
-      </AppButton>
-    </AppCard>
   );
 }
 
@@ -688,37 +653,6 @@ const styles = StyleSheet.create({
     width: 8,
   },
   inboxControls: { gap: appSpacing.lg },
-  promoButton: { minWidth: 94 },
-  promoButtonText: { fontSize: appTypography.buttonCompact.fontSize },
-  promoCard: { marginTop: appSpacing.xs },
-  promoContent: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: appSpacing.xl,
-    minHeight: messagesUi.metrics.inbox.promoMinHeight,
-    padding: appSpacing.xl,
-  },
-  promoContentCompact: {
-    gap: appSpacing.md,
-    paddingHorizontal: appSpacing.lg,
-  },
-  promoCopy: { flex: 1, gap: appSpacing.xs, minWidth: 0 },
-  promoDescription: {
-    ...appTypography.caption,
-    color: appColors.text.secondary,
-  },
-  promoIcon: {
-    alignItems: 'center',
-    backgroundColor: appColors.accent.purpleSoft,
-    borderRadius: appRadii.xl,
-    height: 48,
-    justifyContent: 'center',
-    width: 48,
-  },
-  promoTitle: {
-    ...appTypography.sectionTitle,
-    color: appColors.text.primary,
-  },
   searchBox: {
     alignItems: 'center',
     flexDirection: 'row',
