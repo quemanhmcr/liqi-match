@@ -60,13 +60,11 @@ export const notificationsUi = {
     separator: 'rgba(153,157,202,0.10)',
   },
   gradients: {
-    filterSelected: ['#723DFF', '#C247DE', '#ED649D'] as const,
     symbolFrame: ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.025)'] as const,
   },
   metrics: {
     attentionDot: 8,
     attentionDotNew: 9,
-    filterHeight: 36,
     row: {
       radiusRich: appRadii.xl,
       richMinHeight: 88,
@@ -79,7 +77,6 @@ export const notificationsUi = {
     stateRadius: appRadii['2xl'],
   },
   spacing: {
-    filterGap: appSpacing.md,
     rowHorizontal: appSpacing.lg,
     rowHorizontalCompact: appSpacing.md,
     rowVertical: appSpacing.md,
