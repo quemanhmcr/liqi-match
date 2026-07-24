@@ -77,12 +77,37 @@ export const PushNotificationNavigationDataV1Schema = z
   })
   .strict();
 
+export const NotificationPrimaryPlayerV1Schema = z
+  .object({
+    avatarAssetId: z.string().uuid().nullable(),
+    displayName: z.string().trim().min(1).max(40),
+    playerId: PlayerIdSchema,
+  })
+  .strict();
+
+export const NotificationPresentationV1Schema = z
+  .object({
+    excerpt: z.string().trim().min(1).max(160).nullable(),
+    primaryPlayer: NotificationPrimaryPlayerV1Schema.nullable(),
+  })
+  .strict()
+  .superRefine((presentation, context) => {
+    if (presentation.primaryPlayer === null && presentation.excerpt !== null) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Notification excerpts require a visible primary player.',
+        path: ['excerpt'],
+      });
+    }
+  });
+
 export const NotificationV1Schema = z
   .object({
     deepLink: DeepLinkV1Schema,
     kind: NotificationKindV1Schema,
     notificationId: NotificationIdSchema,
     occurredAt: z.string().datetime({ offset: true }),
+    presentation: NotificationPresentationV1Schema.nullable().optional(),
     readAt: z.string().datetime({ offset: true }).nullable(),
     recipientPlayerId: PlayerIdSchema,
     seenAt: z.string().datetime({ offset: true }).nullable(),
@@ -123,6 +148,29 @@ export const NotificationV1Schema = z
         code: 'custom',
         message: `${notification.kind} requires a ${expectedTarget} deep link.`,
         path: ['deepLink'],
+      });
+    }
+
+    if (
+      notification.presentation &&
+      notification.kind !== 'match_created' &&
+      notification.kind !== 'message_received'
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'Notification presentation is available only for match and message notifications.',
+        path: ['presentation'],
+      });
+    }
+    if (
+      notification.kind === 'match_created' &&
+      notification.presentation?.excerpt
+    ) {
+      context.addIssue({
+        code: 'custom',
+        message: 'Match notifications cannot expose message excerpts.',
+        path: ['presentation', 'excerpt'],
       });
     }
   });
@@ -177,6 +225,10 @@ export const notificationDeepLinkResolutionV1Schema =
   NotificationDeepLinkResolutionV1Schema;
 export const pushNotificationNavigationDataV1Schema =
   PushNotificationNavigationDataV1Schema;
+export const notificationPrimaryPlayerV1Schema =
+  NotificationPrimaryPlayerV1Schema;
+export const notificationPresentationV1Schema =
+  NotificationPresentationV1Schema;
 export const notificationV1Schema = NotificationV1Schema;
 export const notificationWatermarkV1Schema = NotificationWatermarkV1Schema;
 export const notificationInboxPageV1Schema = NotificationInboxPageV1Schema;
@@ -201,6 +253,12 @@ export type NotificationDeepLinkResolutionV1 = z.infer<
 >;
 export type PushNotificationNavigationDataV1 = z.infer<
   typeof PushNotificationNavigationDataV1Schema
+>;
+export type NotificationPrimaryPlayerV1 = z.infer<
+  typeof NotificationPrimaryPlayerV1Schema
+>;
+export type NotificationPresentationV1 = z.infer<
+  typeof NotificationPresentationV1Schema
 >;
 export type NotificationV1 = z.infer<typeof NotificationV1Schema>;
 export type NotificationWatermarkV1 = z.infer<

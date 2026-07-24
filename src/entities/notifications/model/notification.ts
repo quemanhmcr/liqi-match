@@ -37,12 +37,16 @@ export type SetInviteReceivedNotification = NotificationBase<
 
 export type MessageReceivedNotification = NotificationBase<
   'message-received',
-  { conversationId: string }
+  {
+    actor?: NotificationActor;
+    conversationId: string;
+    excerpt?: string;
+  }
 >;
 
 export type MatchCreatedNotification = NotificationBase<
   'match-created',
-  { matchId: string }
+  { matchId: string; player?: NotificationActor }
 >;
 
 export type JoinRequestNotification = NotificationBase<

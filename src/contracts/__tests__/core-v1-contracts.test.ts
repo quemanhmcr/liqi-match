@@ -99,6 +99,83 @@ describe('core-v1 executable contracts', () => {
     expect(event.data.matchId).toBe(event.aggregateId);
   });
 
+  it('validates notification player context without leaking excerpts after identity revocation', () => {
+    const base = {
+      deepLink: {
+        conversationId: '60000000-0000-4000-8000-000000000001',
+        target: 'conversation' as const,
+      },
+      kind: 'message_received' as const,
+      notificationId: '90000000-0000-4000-8000-000000000001',
+      occurredAt: '2026-07-14T08:03:00.000Z',
+      readAt: null,
+      recipientPlayerId: '20000000-0000-4000-8000-000000000002',
+      seenAt: null,
+      sourceEventId: '80000000-0000-4000-8000-000000000001',
+    };
+
+    expect(
+      NotificationV1Schema.parse({
+        ...base,
+        presentation: {
+          excerpt: 'Chào bạn, mình duo rank nhé?',
+          primaryPlayer: {
+            avatarAssetId: null,
+            displayName: 'Return A',
+            playerId: '20000000-0000-4000-8000-000000000001',
+          },
+        },
+      }).presentation?.primaryPlayer?.displayName,
+    ).toBe('Return A');
+
+    expect(() =>
+      NotificationV1Schema.parse({
+        ...base,
+        presentation: {
+          excerpt: 'Nội dung không được rò rỉ',
+          primaryPlayer: null,
+        },
+      }),
+    ).toThrow('Notification excerpts require a visible primary player');
+
+    expect(() =>
+      NotificationV1Schema.parse({
+        ...base,
+        deepLink: { target: 'home' },
+        kind: 'system',
+        presentation: {
+          excerpt: null,
+          primaryPlayer: {
+            avatarAssetId: null,
+            displayName: 'Return A',
+            playerId: '20000000-0000-4000-8000-000000000001',
+          },
+        },
+      }),
+    ).toThrow(
+      'Notification presentation is available only for match and message notifications',
+    );
+
+    expect(() =>
+      NotificationV1Schema.parse({
+        ...base,
+        deepLink: {
+          matchId: '50000000-0000-4000-8000-000000000001',
+          target: 'match',
+        },
+        kind: 'match_created',
+        presentation: {
+          excerpt: 'Không thuộc match notification',
+          primaryPlayer: {
+            avatarAssetId: null,
+            displayName: 'Return A',
+            playerId: '20000000-0000-4000-8000-000000000001',
+          },
+        },
+      }),
+    ).toThrow('Match notifications cannot expose message excerpts');
+  });
+
   it('publishes friendship notification profile deep links without stale action payloads', () => {
     const requested = NotificationV1Schema.parse(
       read('provider', 'friendship-requested-notification.json'),

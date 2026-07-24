@@ -2,7 +2,31 @@ create extension if not exists pgtap with schema extensions;
 
 begin;
 
-select plan(50);
+select plan(57);
+
+select ok(
+  has_function_privilege(
+    'authenticated',
+    'public.list_notifications_v1(text,integer)',
+    'EXECUTE'
+  )
+  and has_function_privilege(
+    'authenticated',
+    'public.mark_notification_read_v1(uuid)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated',
+    'private.notification_primary_player_v1(uuid,uuid)',
+    'EXECUTE'
+  )
+  and not has_function_privilege(
+    'authenticated',
+    'private.notification_presentation_v1(public.notifications_v1)',
+    'EXECUTE'
+  ),
+  'notification presentation keeps public RPC and private helper privileges separated'
+);
 
 insert into auth.users (id, aud, role, email, encrypted_password, email_confirmed_at, created_at, updated_at)
 values
@@ -173,9 +197,19 @@ select set_config('request.jwt.claim.role', 'authenticated', true);
 select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000402', true);
 
 select is((public.list_notifications_v1(null, 30) ->> 'unseenCount')::integer, 1, 'inbox starts unseen');
+select is(
+  public.list_notifications_v1(null, 30) #>> '{items,0,presentation,primaryPlayer,displayName}',
+  'Return A',
+  'match inbox row resolves the authoritative counterpart identity'
+);
 select is((public.mark_notifications_seen_through_v1(current_setting('test.match_notification_id')::uuid) ->> 'unseenCount')::integer, 0, 'seen watermark clears unseen count');
 select ok((public.list_notifications_v1(null, 30) #>> '{items,0,seenAt}') is not null, 'seen transition is persisted');
 select ok((public.mark_notification_read_v1(current_setting('test.match_notification_id')::uuid) #>> '{notification,readAt}') is not null, 'read transition is persisted');
+select is(
+  public.mark_notification_read_v1(current_setting('test.match_notification_id')::uuid) #>> '{notification,presentation,primaryPlayer,displayName}',
+  'Return A',
+  'mark-read returns the same enriched notification presentation'
+);
 select ok(
   (public.list_notifications_v1(null, 30) #>> '{items,0,readAt}')::timestamptz >=
   (public.list_notifications_v1(null, 30) #>> '{items,0,seenAt}')::timestamptz,
@@ -199,12 +233,71 @@ reset role;
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'conversation_created')) ->> 'processed')::boolean, 'conversation event is processed');
 select is((select home_status_v1::text from public.matches where id = '50000000-0000-4000-8000-000000000401'), 'conversation_ready', 'conversation event advances server Home status');
 select is((select count(*)::integer from private.home_conversation_projection_v1), 2, 'conversation event projects both participants');
+
+-- The production command persists MessageV1 before dispatching message and
+-- notification events. Keep this consumer fixture faithful to that ordering so
+-- notification presentation can prove its exact-source lookup.
+insert into public.messages (
+  id,
+  conversation_id,
+  sender_id,
+  body,
+  schema_version_v1,
+  sender_player_id_v1,
+  client_message_id_v1,
+  sequence_v1,
+  content_kind_v1,
+  content_v1,
+  correlation_id_v1,
+  request_fingerprint_v1,
+  created_at
+) values (
+  '91000000-0000-4000-8000-000000000401',
+  '60000000-0000-4000-8000-000000000401',
+  '00000000-0000-0000-0000-000000000401',
+  'Chào bạn, mình duo rank nhé?',
+  1,
+  '20000000-0000-4000-8000-000000000401',
+  'return-loop-message-0001',
+  1,
+  'text',
+  '{"kind":"text","text":"Chào bạn, mình duo rank nhé?"}'::jsonb,
+  '70000000-0000-4000-8000-000000000401',
+  private.request_fingerprint_v1(
+    jsonb_build_object(
+      'conversationId', '60000000-0000-4000-8000-000000000401'::uuid,
+      'content', '{"kind":"text","text":"Chào bạn, mình duo rank nhé?"}'::jsonb
+    )
+  ),
+  '2026-07-14T08:02:30.000Z'
+);
+update public.conversations
+set last_sequence_v1 = 1,
+    last_message_at = '2026-07-14T08:02:30.000Z',
+    version_v1 = greatest(version_v1, 1)
+where id = '60000000-0000-4000-8000-000000000401';
+
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'message_sent')) ->> 'processed')::boolean, 'message event is processed');
 select is((select last_message_preview from private.home_conversation_projection_v1 where player_id = '20000000-0000-4000-8000-000000000402'), 'Chào bạn, mình duo rank nhé?', 'Home preview comes from canonical MessageV1 content');
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'message_notification')) ->> 'processed')::boolean, 'message notification is processed');
 select is((select count(*)::integer from public.notifications_v1), 2, 'message attention is persisted independently');
 select is((select count(*)::integer from private.notification_push_jobs_v1 where status = 'pending'), 2, 'provider events persist push work without deciding foreground suppression');
 select is((select unread_count from private.home_conversation_projection_v1 where player_id = '20000000-0000-4000-8000-000000000402'), 3, 'Home receives exact authoritative unread count');
+
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000402', true);
+select is(
+  public.list_notifications_v1(null, 30) #>> '{items,0,presentation,primaryPlayer,displayName}',
+  'Return A',
+  'message inbox row resolves the authoritative sender identity'
+);
+select is(
+  public.list_notifications_v1(null, 30) #>> '{items,0,presentation,excerpt}',
+  'Chào bạn, mình duo rank nhé?',
+  'message inbox excerpt comes from the exact source MessageV1 row'
+);
+reset role;
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'read_advanced')) ->> 'processed')::boolean, 'read-advanced event is processed');
 select is((select unread_count from private.home_conversation_projection_v1 where player_id = '20000000-0000-4000-8000-000000000402'), 0, 'read authority replaces unread with zero');
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'profile_updated')) ->> 'processed')::boolean, 'profile update event invalidates Home projection');
@@ -289,6 +382,25 @@ select is(
   'event consumer kill switch leaves event replayable'
 );
 select is((select count(*)::integer from private.return_loop_processed_events_v1), 8, 'disabled event is not marked processed');
+
+insert into public.blocks (blocker_id, blocked_id, reason)
+values (
+  '00000000-0000-0000-0000-000000000402',
+  '00000000-0000-0000-0000-000000000401',
+  'notification presentation privacy test'
+);
+set local role authenticated;
+select set_config('request.jwt.claim.role', 'authenticated', true);
+select set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-000000000402', true);
+select ok(
+  public.list_notifications_v1(null, 30) #> '{items,0,presentation,primaryPlayer}' = 'null'::jsonb,
+  'blocking revokes notification player identity without deleting history'
+);
+select ok(
+  public.list_notifications_v1(null, 30) #> '{items,0,presentation,excerpt}' = 'null'::jsonb,
+  'blocking also revokes the private message excerpt'
+);
+reset role;
 
 select * from finish();
 rollback;

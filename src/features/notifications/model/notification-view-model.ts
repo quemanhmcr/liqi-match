@@ -157,7 +157,11 @@ export function mapNotificationToViewModel(
           : { icon: 'chatbubble-outline', kind: 'symbol', tone: 'blue' },
       };
     }
-    case 'message-received':
+    case 'message-received': {
+      const actor = notification.payload.actor;
+      const media = actor
+        ? resolveNotificationActorMedia(actor, assetResolver)
+        : undefined;
       return {
         ...shared,
         action: {
@@ -167,21 +171,47 @@ export function mapNotificationToViewModel(
           },
           label: 'Trả lời',
         },
-        messageParts: ['Bạn có tin nhắn mới'],
-        title: 'Tin nhắn mới',
-        visual: { icon: 'chatbubble-outline', kind: 'symbol', tone: 'blue' },
+        messageParts: actor
+          ? [
+              'đã nhắn cho bạn',
+              ...(notification.payload.excerpt
+                ? [`“${notification.payload.excerpt}”`]
+                : []),
+            ]
+          : ['Bạn có tin nhắn mới'],
+        title: actor?.displayName ?? 'Tin nhắn mới',
+        visual:
+          actor && media
+            ? {
+                badgeIcon: 'chatbubble-ellipses-outline',
+                kind: 'avatar',
+                media,
+                tone: 'blue',
+              }
+            : { icon: 'chatbubble-outline', kind: 'symbol', tone: 'blue' },
       };
-    case 'match-created':
+    }
+    case 'match-created': {
+      const player = notification.payload.player;
+      const media = player
+        ? resolveNotificationActorMedia(player, assetResolver)
+        : undefined;
       return {
         ...shared,
         action: {
           destination: { kind: 'match', matchId: notification.payload.matchId },
           label: 'Xem match',
         },
-        messageParts: ['Bạn vừa có một match mới'],
-        title: 'Match mới',
-        visual: { icon: 'heart-outline', kind: 'symbol', tone: 'pink' },
+        messageParts: player
+          ? ['vừa match với bạn']
+          : ['Bạn vừa có một match mới'],
+        title: player?.displayName ?? 'Match mới',
+        visual:
+          player && media
+            ? { kind: 'avatar', media, tone: 'pink' }
+            : { icon: 'heart-outline', kind: 'symbol', tone: 'pink' },
       };
+    }
     case 'join-request':
       return {
         ...shared,
