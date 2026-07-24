@@ -233,6 +233,50 @@ reset role;
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'conversation_created')) ->> 'processed')::boolean, 'conversation event is processed');
 select is((select home_status_v1::text from public.matches where id = '50000000-0000-4000-8000-000000000401'), 'conversation_ready', 'conversation event advances server Home status');
 select is((select count(*)::integer from private.home_conversation_projection_v1), 2, 'conversation event projects both participants');
+
+-- The production command persists MessageV1 before dispatching message and
+-- notification events. Keep this consumer fixture faithful to that ordering so
+-- notification presentation can prove its exact-source lookup.
+insert into public.messages (
+  id,
+  conversation_id,
+  sender_id,
+  body,
+  schema_version_v1,
+  sender_player_id_v1,
+  client_message_id_v1,
+  sequence_v1,
+  content_kind_v1,
+  content_v1,
+  correlation_id_v1,
+  request_fingerprint_v1,
+  created_at
+) values (
+  '91000000-0000-4000-8000-000000000401',
+  '60000000-0000-4000-8000-000000000401',
+  '00000000-0000-0000-0000-000000000401',
+  'Chào bạn, mình duo rank nhé?',
+  1,
+  '20000000-0000-4000-8000-000000000401',
+  'return-loop-message-0001',
+  1,
+  'text',
+  '{"kind":"text","text":"Chào bạn, mình duo rank nhé?"}'::jsonb,
+  '70000000-0000-4000-8000-000000000401',
+  private.request_fingerprint_v1(
+    jsonb_build_object(
+      'conversationId', '60000000-0000-4000-8000-000000000401'::uuid,
+      'content', '{"kind":"text","text":"Chào bạn, mình duo rank nhé?"}'::jsonb
+    )
+  ),
+  '2026-07-14T08:02:30.000Z'
+);
+update public.conversations
+set last_sequence_v1 = 1,
+    last_message_at = '2026-07-14T08:02:30.000Z',
+    version_v1 = greatest(version_v1, 1)
+where id = '60000000-0000-4000-8000-000000000401';
+
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'message_sent')) ->> 'processed')::boolean, 'message event is processed');
 select is((select last_message_preview from private.home_conversation_projection_v1 where player_id = '20000000-0000-4000-8000-000000000402'), 'Chào bạn, mình duo rank nhé?', 'Home preview comes from canonical MessageV1 content');
 select ok((public.consume_return_loop_event_v1((select payload from return_loop_events where name = 'message_notification')) ->> 'processed')::boolean, 'message notification is processed');

@@ -431,9 +431,12 @@ requireInvariant(
   'Production Notifications must map provider-owned player context and media URLs without inventing actors.',
 );
 requireInvariant(
-  /match inbox row resolves the authoritative counterpart identity/i.test(
+  /insert into public\.messages\s*\([\s\S]*schema_version_v1[\s\S]*sender_player_id_v1[\s\S]*content_v1[\s\S]*91000000-0000-4000-8000-000000000401/i.test(
     databaseTest,
   ) &&
+    /match inbox row resolves the authoritative counterpart identity/i.test(
+      databaseTest,
+    ) &&
     /message inbox excerpt comes from the exact source MessageV1 row/i.test(
       databaseTest,
     ) &&
