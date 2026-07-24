@@ -27,6 +27,12 @@ const notificationPresentationMigration = fs.readFileSync(
   notificationPresentationMigrationPath,
   'utf8',
 );
+const notificationPresentationForwardMigrationPath =
+  'supabase/migrations/202607230914_notification_inbox_player_context_forward_v1.sql';
+const notificationPresentationForwardMigration = fs.readFileSync(
+  notificationPresentationForwardMigrationPath,
+  'utf8',
+);
 const conversationProjectionRepairPath =
   'supabase/migrations/202607140050_repair_return_loop_conversation_projection_v1.sql';
 const conversationProjectionRepair = fs.readFileSync(
@@ -382,6 +388,12 @@ requireInvariant(
   /createApiNotificationInboxRepository/.test(applicationComposition) &&
     !/createUnavailableNotificationRepository/.test(applicationComposition),
   'API composition must bind the authoritative Notification repository.',
+);
+
+requireInvariant(
+  notificationPresentationForwardMigration ===
+    notificationPresentationMigration,
+  'The staging-forward notification presentation migration must remain byte-identical to the canonical migration.',
 );
 
 requireInvariant(
