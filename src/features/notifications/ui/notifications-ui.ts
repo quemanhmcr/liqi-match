@@ -49,75 +49,68 @@ const tones: Record<NotificationTone, NotificationToneVisual> = {
 
 export const notificationsUi = {
   colors: {
-    attentionHalo: 'rgba(183,108,255,0.18)',
     attentionNew: '#ED649D',
     attentionUnread: '#B76CFF',
     mediaFallback: '#10162B',
     previewAvatarBorder: 'rgba(255,255,255,0.72)',
-    readBackground: '#070A18',
     refreshSurface: '#070A18',
     rewardBorder: 'rgba(255,255,255,0.18)',
-    unreadBackground: '#080B19',
+    richBorder: 'rgba(183,108,255,0.14)',
+    richSurface: 'rgba(8,11,25,0.78)',
+    separator: 'rgba(153,157,202,0.10)',
   },
   gradients: {
     filterSelected: ['#723DFF', '#C247DE', '#ED649D'] as const,
-    newFrame: ['rgba(237,100,157,0.38)', 'rgba(183,108,255,0.16)'] as const,
-    readFrame: ['rgba(153,157,202,0.12)', 'rgba(255,255,255,0.035)'] as const,
     symbolFrame: ['rgba(255,255,255,0.10)', 'rgba(255,255,255,0.025)'] as const,
-    unreadFrame: ['rgba(183,108,255,0.34)', 'rgba(255,141,206,0.08)'] as const,
   },
   metrics: {
+    attentionDot: 8,
+    attentionDotNew: 9,
     filterHeight: 36,
     row: {
-      minHeight: 106,
-      minHeightCompact: 94,
-      radius: appRadii['2xl'],
-      radiusCompact: appRadii.xl,
-      visual: 56,
-      visualCompact: 48,
+      radiusRich: appRadii.xl,
+      richMinHeight: 88,
+      richMinHeightCompact: 80,
+      standardMinHeight: 72,
+      standardMinHeightCompact: 64,
+      visual: 48,
+      visualCompact: 44,
     },
     stateRadius: appRadii['2xl'],
   },
   spacing: {
     filterGap: appSpacing.md,
-    rowGap: appSpacing.xl,
+    rowHorizontal: appSpacing.lg,
+    rowHorizontalCompact: appSpacing.md,
+    rowVertical: appSpacing.md,
+    rowVerticalCompact: appSpacing.sm,
     sectionGap: appSpacing['3xl'],
+    separatorInset: 48 + appSpacing.lg * 2,
   },
   tones,
 } as const;
 
-export type NotificationCardVisual = Readonly<{
+export type NotificationRowVisual = Readonly<{
   attentionColor: string | null;
-  backgroundColor: string;
-  emphasis: 'none' | 'low';
-  frameGradient: readonly [string, string];
+  attentionSize: number;
 }>;
 
-export function resolveNotificationCardVisual(
+export function resolveNotificationRowVisual(
   state: NotificationAttentionState,
-): NotificationCardVisual {
+): NotificationRowVisual {
   switch (state) {
     case 'new':
       return {
         attentionColor: notificationsUi.colors.attentionNew,
-        backgroundColor: notificationsUi.colors.unreadBackground,
-        emphasis: 'low',
-        frameGradient: notificationsUi.gradients.newFrame,
+        attentionSize: notificationsUi.metrics.attentionDotNew,
       };
     case 'unread':
       return {
         attentionColor: notificationsUi.colors.attentionUnread,
-        backgroundColor: notificationsUi.colors.unreadBackground,
-        emphasis: 'none',
-        frameGradient: notificationsUi.gradients.unreadFrame,
+        attentionSize: notificationsUi.metrics.attentionDot,
       };
     case 'read':
-      return {
-        attentionColor: null,
-        backgroundColor: notificationsUi.colors.readBackground,
-        emphasis: 'none',
-        frameGradient: notificationsUi.gradients.readFrame,
-      };
+      return { attentionColor: null, attentionSize: 0 };
     default: {
       const unsupportedState: never = state;
       throw new Error(
