@@ -24,14 +24,18 @@ function item(overrides: Partial<NotificationItem> = {}): NotificationItem {
   };
 }
 
-const geometryCases: [layout: string, compact: boolean, minHeight: number][] = [
-  ['regular', false, notificationsUi.metrics.row.minHeight],
-  ['compact', true, notificationsUi.metrics.row.minHeightCompact],
+const standardGeometryCases: [
+  layout: string,
+  compact: boolean,
+  minHeight: number,
+][] = [
+  ['regular', false, notificationsUi.metrics.row.standardMinHeight],
+  ['compact', true, notificationsUi.metrics.row.standardMinHeightCompact],
 ];
 
 describe('NotificationRow', () => {
-  it.each(geometryCases)(
-    'keeps the %s whole-card action touch-safe',
+  it.each(standardGeometryCases)(
+    'uses a dense %s standard social row as the whole action target',
     async (_layout, compact, minHeight) => {
       const onAction = jest.fn();
       const screen = await render(
@@ -43,14 +47,36 @@ describe('NotificationRow', () => {
       expect(
         screen.getByTestId('notification-attention-notification-row-test'),
       ).toBeTruthy();
-      expect(
-        StyleSheet.flatten(
-          screen.getByTestId('notification-row-notification-row-test-content')
-            .props.style,
-        ),
-      ).toMatchObject({ minHeight });
+      const contentStyle = StyleSheet.flatten(
+        screen.getByTestId('notification-row-notification-row-test-content')
+          .props.style,
+      );
+      expect(contentStyle).toMatchObject({ minHeight });
+      expect(contentStyle.backgroundColor).toBeUndefined();
+      expect(contentStyle.borderColor).toBeUndefined();
     },
   );
+
+  it('uses a restrained rich surface only for reward content', async () => {
+    const screen = await render(
+      <NotificationRow
+        compact={false}
+        item={item({
+          reward: { icon: 'diamond-outline', label: 'x50', tone: 'purple' },
+        })}
+        onAction={jest.fn()}
+      />,
+    );
+    const style = StyleSheet.flatten(
+      screen.getByTestId('notification-row-notification-row-test-content').props
+        .style,
+    );
+    expect(style).toMatchObject({
+      backgroundColor: notificationsUi.colors.richSurface,
+      borderColor: notificationsUi.colors.richBorder,
+      minHeight: notificationsUi.metrics.row.richMinHeight,
+    });
+  });
 
   it('acknowledges an unread destinationless item without inventing navigation', async () => {
     const onAction = jest.fn();

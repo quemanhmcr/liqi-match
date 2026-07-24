@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { StyleSheet, View } from 'react-native';
 
 import { AppSectionHeader } from '@/shared/ui';
@@ -22,13 +23,21 @@ export function NotificationGroup({
     <View testID={`notification-group-${label}`}>
       <AppSectionHeader title={label} />
       <View style={styles.rows}>
-        {items.map((item) => (
-          <NotificationRow
-            compact={compact}
-            item={item}
-            key={item.id}
-            onAction={() => onAction(item)}
-          />
+        {items.map((item, index) => (
+          <Fragment key={item.id}>
+            <NotificationRow
+              compact={compact}
+              item={item}
+              onAction={() => onAction(item)}
+            />
+            {index < items.length - 1 ? (
+              <View
+                pointerEvents="none"
+                style={styles.separator}
+                testID={`notification-separator-${item.id}`}
+              />
+            ) : null}
+          </Fragment>
         ))}
       </View>
     </View>
@@ -36,8 +45,10 @@ export function NotificationGroup({
 }
 
 const styles = StyleSheet.create({
-  rows: {
-    gap: notificationsUi.spacing.rowGap,
-    marginTop: notificationsUi.spacing.rowGap,
+  rows: { marginTop: notificationsUi.spacing.rowVertical },
+  separator: {
+    backgroundColor: notificationsUi.colors.separator,
+    height: StyleSheet.hairlineWidth,
+    marginLeft: notificationsUi.spacing.separatorInset,
   },
 });

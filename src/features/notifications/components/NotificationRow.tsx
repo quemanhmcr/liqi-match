@@ -1,19 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import type { ComponentProps } from 'react';
-import { StyleSheet, View } from 'react-native';
+import type { ComponentProps, ReactNode } from 'react';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import {
-  AppCard,
-  AppPressableCard,
   AppSurface,
   AppText,
-  appColors,
+  appMotion,
+  appOpacity,
   appRadii,
   appSpacing,
 } from '@/shared/ui';
 
 import { NotificationResolvedImage } from './NotificationResolvedImage';
+import { resolveNotificationRowKind } from '../model/notification-row-presentation';
 import type {
   NotificationItem,
   NotificationResolvedMedia,
@@ -21,7 +21,7 @@ import type {
 import {
   notificationToneVisual,
   notificationsUi,
-  resolveNotificationCardVisual,
+  resolveNotificationRowVisual,
 } from '../ui/notifications-ui';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
@@ -35,62 +35,35 @@ export function NotificationRow({
   item: NotificationItem;
   onAction: () => void;
 }>) {
-  const cardVisual = resolveNotificationCardVisual(item.attentionState);
+  const rowKind = resolveNotificationRowKind(item);
   const hasDestination = Boolean(item.action?.destination);
   const canAcknowledge = item.attentionState !== 'read';
   const interactive = hasDestination || canAcknowledge;
-  const radius = compact
-    ? notificationsUi.metrics.row.radiusCompact
-    : notificationsUi.metrics.row.radius;
-  const content = <NotificationRowContent compact={compact} item={item} />;
-  const shellProps = {
-    backgroundColor: cardVisual.backgroundColor,
-    borderOpacity: 0,
-    contentStyle: [styles.content, compact && styles.contentCompact],
-    density: 'list' as const,
-    emphasis: cardVisual.emphasis,
-    frameGradient: cardVisual.frameGradient,
-    radius,
-    surfaceTone: 'low' as const,
-    testID: `notification-row-${item.id}`,
-    withHighlight: item.attentionState !== 'read',
-    withShadow: false,
-  };
+  const content = (
+    <NotificationRowContent compact={compact} item={item} rowKind={rowKind} />
+  );
+
+  if (interactive) {
+    return (
+      <Pressable
+        accessibilityLabel={notificationRowAccessibilityLabel(item)}
+        accessibilityRole="button"
+        onPress={onAction}
+        style={({ pressed }) => [pressed && styles.pressed]}
+        testID={`notification-row-${item.id}`}
+      >
+        {content}
+      </Pressable>
+    );
+  }
 
   return (
-    <View style={styles.host}>
-      {interactive ? (
-        <AppPressableCard
-          {...shellProps}
-          accessibilityLabel={notificationRowAccessibilityLabel(item)}
-          onPress={onAction}
-        >
-          {content}
-        </AppPressableCard>
-      ) : (
-        <View
-          accessibilityLabel={notificationContentAccessibilityLabel(item)}
-          accessible
-        >
-          <AppCard {...shellProps}>{content}</AppCard>
-        </View>
-      )}
-      {cardVisual.attentionColor ? (
-        <View
-          pointerEvents="none"
-          style={styles.attentionHost}
-          testID={`notification-attention-${item.id}`}
-        >
-          <View style={styles.attentionHalo} />
-          <View
-            style={[
-              styles.attentionDot,
-              item.attentionState === 'new' && styles.attentionDotNew,
-              { backgroundColor: cardVisual.attentionColor },
-            ]}
-          />
-        </View>
-      ) : null}
+    <View
+      accessibilityLabel={notificationContentAccessibilityLabel(item)}
+      accessible
+      testID={`notification-row-${item.id}`}
+    >
+      {content}
     </View>
   );
 }
@@ -98,16 +71,30 @@ export function NotificationRow({
 function NotificationRowContent({
   compact,
   item,
-}: Readonly<{ compact: boolean; item: NotificationItem }>) {
+  rowKind,
+}: Readonly<{
+  compact: boolean;
+  item: NotificationItem;
+  rowKind: ReturnType<typeof resolveNotificationRowKind>;
+}>) {
   const tone = notificationToneVisual(item.visual.tone);
-  const hasDestination = Boolean(item.action?.destination);
+  const rowVisual = resolveNotificationRowVisual(item.attentionState);
   const [firstPart, secondPart] = item.messageParts;
   const title = item.title || firstPart;
   const body = item.title ? firstPart : secondPart;
   const detail = item.title ? secondPart : undefined;
+  const minHeight = resolveRowMinHeight(rowKind, compact);
 
   return (
-    <>
+    <View
+      style={[
+        styles.content,
+        compact && styles.contentCompact,
+        rowKind === 'rich' && styles.contentRich,
+        { minHeight },
+      ]}
+      testID={`notification-row-${item.id}-content`}
+    >
       <NotificationLeadingVisual compact={compact} item={item} />
       <View style={styles.copy}>
         <AppText
@@ -118,7 +105,7 @@ function NotificationRowContent({
             item.attentionState === 'read' && styles.titleRead,
           ]}
           tone="primary"
-          variant="h3"
+          variant="body"
         >
           {title}
         </AppText>
@@ -147,15 +134,42 @@ function NotificationRowContent({
         </AppText>
       </View>
       <NotificationTrailingAccessory compact={compact} item={item} />
-      {hasDestination ? (
-        <Ionicons
-          color={appColors.icon.inactive}
-          name="chevron-forward"
-          size={compact ? 18 : 20}
+      {rowVisual.attentionColor ? (
+        <View
+          accessibilityLabel={
+            item.attentionState === 'new'
+              ? 'Thông báo mới'
+              : 'Thông báo chưa đọc'
+          }
+          accessible
+          style={[
+            styles.attentionDot,
+            {
+              backgroundColor: rowVisual.attentionColor,
+              borderRadius: rowVisual.attentionSize / 2,
+              height: rowVisual.attentionSize,
+              width: rowVisual.attentionSize,
+            },
+          ]}
+          testID={`notification-attention-${item.id}`}
         />
       ) : null}
-    </>
+    </View>
   );
+}
+
+function resolveRowMinHeight(
+  rowKind: ReturnType<typeof resolveNotificationRowKind>,
+  compact: boolean,
+) {
+  if (rowKind === 'rich') {
+    return compact
+      ? notificationsUi.metrics.row.richMinHeightCompact
+      : notificationsUi.metrics.row.richMinHeight;
+  }
+  return compact
+    ? notificationsUi.metrics.row.standardMinHeightCompact
+    : notificationsUi.metrics.row.standardMinHeight;
 }
 
 function NotificationLeadingVisual({
@@ -200,7 +214,7 @@ function NotificationLeadingVisual({
             <Ionicons
               color={tone.icon}
               name={item.visual.badgeIcon as IconName}
-              size={compact ? 10 : 11}
+              size={compact ? 9 : 10}
             />
           </View>
         ) : null}
@@ -226,7 +240,7 @@ function NotificationLeadingVisual({
       <Ionicons
         color={tone.icon}
         name={item.visual.icon as IconName}
-        size={compact ? 22 : 25}
+        size={compact ? 20 : 22}
       />
     </AppSurface>
   );
@@ -236,15 +250,15 @@ function NotificationTrailingAccessory({
   compact,
   item,
 }: Readonly<{ compact: boolean; item: NotificationItem }>) {
+  let content: ReactNode = null;
   if (item.previewAvatars?.length) {
-    return (
+    content = (
       <PreviewAvatarStack avatars={item.previewAvatars} compact={compact} />
     );
+  } else if (item.reward) {
+    content = <NotificationReward compact={compact} item={item} />;
   }
-  if (item.reward) {
-    return <NotificationReward compact={compact} item={item} />;
-  }
-  return null;
+  return content ? <View style={styles.trailing}>{content}</View> : null;
 }
 
 function PreviewAvatarStack({
@@ -254,7 +268,7 @@ function PreviewAvatarStack({
   avatars: readonly NotificationResolvedMedia[];
   compact: boolean;
 }>) {
-  const size = compact ? 27 : 31;
+  const size = compact ? 26 : 30;
   return (
     <View style={styles.previewStack}>
       {avatars.slice(0, 3).map((avatar, index) => (
@@ -294,7 +308,7 @@ function NotificationReward({
       <Ionicons
         color={tone.icon}
         name={item.reward.icon as IconName}
-        size={compact ? 18 : 20}
+        size={compact ? 17 : 19}
       />
       {item.reward.label ? (
         <AppText tone="secondary" variant="caption">
@@ -320,89 +334,64 @@ function notificationContentAccessibilityLabel(item: NotificationItem) {
 }
 
 const styles = StyleSheet.create({
-  attentionDot: {
-    borderRadius: 4,
-    height: 8,
-    width: 8,
-  },
-  attentionDotNew: {
-    borderRadius: 5,
-    height: 10,
-    width: 10,
-  },
-  attentionHalo: {
-    backgroundColor: notificationsUi.colors.attentionHalo,
-    borderRadius: 10,
-    height: 20,
-    position: 'absolute',
-    width: 20,
-  },
-  attentionHost: {
-    alignItems: 'center',
-    height: 20,
-    justifyContent: 'center',
-    marginTop: -10,
-    position: 'absolute',
-    right: -8,
-    top: '50%',
-    width: 20,
-  },
+  attentionDot: { flexShrink: 0, marginLeft: appSpacing.xs },
   avatarFrame: {
     alignItems: 'center',
     height: '100%',
     justifyContent: 'center',
     width: '100%',
   },
-  avatarImage: {
-    backgroundColor: notificationsUi.colors.mediaFallback,
-  },
+  avatarImage: { backgroundColor: notificationsUi.colors.mediaFallback },
   content: {
     alignItems: 'center',
     flexDirection: 'row',
-    gap: appSpacing.xl,
-    minHeight: notificationsUi.metrics.row.minHeight,
-    overflow: 'hidden',
-    paddingHorizontal: appSpacing['2xl'],
-    paddingVertical: appSpacing.xl,
+    gap: appSpacing.lg,
+    paddingHorizontal: notificationsUi.spacing.rowHorizontal,
+    paddingVertical: notificationsUi.spacing.rowVertical,
   },
   contentCompact: {
-    gap: appSpacing.lg,
-    minHeight: notificationsUi.metrics.row.minHeightCompact,
-    paddingHorizontal: appSpacing.xl,
-    paddingVertical: appSpacing.md,
+    gap: appSpacing.md,
+    paddingHorizontal: notificationsUi.spacing.rowHorizontalCompact,
+    paddingVertical: notificationsUi.spacing.rowVerticalCompact,
   },
-  copy: {
-    flex: 1,
-    gap: appSpacing.xxs,
-    minWidth: 0,
+  contentRich: {
+    backgroundColor: notificationsUi.colors.richSurface,
+    borderColor: notificationsUi.colors.richBorder,
+    borderRadius: notificationsUi.metrics.row.radiusRich,
+    borderWidth: StyleSheet.hairlineWidth,
   },
-  host: { overflow: 'visible', position: 'relative' },
+  copy: { flex: 1, gap: appSpacing.xxs, minWidth: 0 },
+  pressed: {
+    opacity: appOpacity.pressed,
+    transform: [{ scale: appMotion.subtlePressScale }],
+  },
   previewAvatar: {
     borderColor: notificationsUi.colors.previewAvatarBorder,
     borderWidth: StyleSheet.hairlineWidth,
   },
   previewAvatarOverlap: { marginLeft: -appSpacing.md },
-  previewStack: { flexDirection: 'row', marginLeft: appSpacing.xs },
+  previewStack: { flexDirection: 'row' },
   rewardContent: {
     alignItems: 'center',
     gap: appSpacing.xs,
-    minHeight: 42,
-    minWidth: 42,
-    paddingHorizontal: appSpacing.md,
-    paddingVertical: appSpacing.sm,
+    minHeight: 38,
+    minWidth: 38,
+    paddingHorizontal: appSpacing.sm,
+    paddingVertical: appSpacing.xs,
   },
   symbolContent: { alignItems: 'center', justifyContent: 'center', padding: 0 },
   title: { fontWeight: '700' },
-  titleRead: { fontWeight: '600' },
+  titleRead: { fontWeight: '500' },
+  trailing: { flexShrink: 0, marginLeft: appSpacing.xs },
   visualBadge: {
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 9,
     borderWidth: StyleSheet.hairlineWidth,
     bottom: -1,
-    height: 20,
+    height: 18,
     justifyContent: 'center',
     position: 'absolute',
     right: -2,
-    width: 20,
+    width: 18,
   },
 });
