@@ -8,6 +8,7 @@ import {
 } from '../api-notification-inbox.repository';
 
 const ids = {
+  avatar: '92000000-0000-4000-8000-000000000001',
   conversation: '60000000-0000-4000-8000-000000000001',
   event1: '80000000-0000-4000-8000-000000000001',
   event2: '80000000-0000-4000-8000-000000000002',
@@ -48,6 +49,14 @@ function notification(
       | 'friendship_accepted'
       | 'system';
     notificationId: string;
+    presentation: {
+      excerpt: string | null;
+      primaryPlayer: {
+        avatarAssetId: string | null;
+        displayName: string;
+        playerId: string;
+      } | null;
+    } | null;
     sourceEventId: string;
   }> = {},
 ) {
@@ -77,7 +86,16 @@ describe('ApiNotificationInboxRepository', () => {
   it('calls the inbox RPC with named arguments and maps canonical variants', async () => {
     const response = {
       items: [
-        notification(),
+        notification({
+          presentation: {
+            excerpt: null,
+            primaryPlayer: {
+              avatarAssetId: null,
+              displayName: 'Return A',
+              playerId: ids.friend,
+            },
+          },
+        }),
         notification({
           deepLink: {
             conversationId: ids.conversation,
@@ -85,6 +103,14 @@ describe('ApiNotificationInboxRepository', () => {
           },
           kind: 'message_received',
           notificationId: ids.notification2,
+          presentation: {
+            excerpt: 'Chào bạn, mình duo rank nhé?',
+            primaryPlayer: {
+              avatarAssetId: ids.avatar,
+              displayName: 'Return A',
+              playerId: ids.friend,
+            },
+          },
           sourceEventId: ids.event2,
         }),
       ],
@@ -112,11 +138,22 @@ describe('ApiNotificationInboxRepository', () => {
     expect(page.items).toEqual([
       expect.objectContaining({
         kind: 'match-created',
-        payload: { matchId: ids.match },
+        payload: {
+          matchId: ids.match,
+          player: { displayName: 'Return A', id: ids.friend },
+        },
       }),
       expect.objectContaining({
         kind: 'message-received',
-        payload: { conversationId: ids.conversation },
+        payload: expect.objectContaining({
+          actor: expect.objectContaining({
+            avatarUrl: expect.stringContaining(`/media/${ids.avatar}`),
+            displayName: 'Return A',
+            id: ids.friend,
+          }),
+          conversationId: ids.conversation,
+          excerpt: 'Chào bạn, mình duo rank nhé?',
+        }),
       }),
     ]);
     expect(page.latestWatermark).toEqual({
@@ -268,6 +305,14 @@ describe('ApiNotificationInboxRepository', () => {
     const { repository } = repositoryWith({
       notification: {
         ...notification(),
+        presentation: {
+          excerpt: null,
+          primaryPlayer: {
+            avatarAssetId: null,
+            displayName: 'Return A',
+            playerId: ids.friend,
+          },
+        },
         readAt: '2026-07-14T00:02:00.000Z',
         seenAt: '2026-07-14T00:01:00.000Z',
       },
@@ -280,6 +325,10 @@ describe('ApiNotificationInboxRepository', () => {
       notification: expect.objectContaining({
         id: ids.notification1,
         kind: 'match-created',
+        payload: {
+          matchId: ids.match,
+          player: { displayName: 'Return A', id: ids.friend },
+        },
         readAt: '2026-07-14T00:02:00.000Z',
       }),
       unseenCount: 0,

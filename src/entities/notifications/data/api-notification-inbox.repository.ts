@@ -3,8 +3,10 @@ import {
   MarkNotificationsSeenResultV1Schema,
   NotificationInboxPageV1Schema,
   NotificationSummaryV1Schema,
+  type NotificationPrimaryPlayerV1,
   type NotificationV1,
 } from '@/shared/contracts/core-v1';
+import { env } from '@/shared/config/env';
 import { supabaseRest } from '@/shared/services/supabase-rest';
 
 import type {
@@ -137,7 +139,16 @@ function mapNotification(notification: NotificationV1): NotificationRecord {
       return {
         ...base,
         kind: 'match-created',
-        payload: { matchId: notification.deepLink.matchId },
+        payload: {
+          matchId: notification.deepLink.matchId,
+          ...(notification.presentation?.primaryPlayer
+            ? {
+                player: mapPresentationPlayer(
+                  notification.presentation.primaryPlayer,
+                ),
+              }
+            : {}),
+        },
       };
     case 'message_received':
       if (notification.deepLink.target !== 'conversation')
@@ -145,7 +156,19 @@ function mapNotification(notification: NotificationV1): NotificationRecord {
       return {
         ...base,
         kind: 'message-received',
-        payload: { conversationId: notification.deepLink.conversationId },
+        payload: {
+          conversationId: notification.deepLink.conversationId,
+          ...(notification.presentation?.primaryPlayer
+            ? {
+                actor: mapPresentationPlayer(
+                  notification.presentation.primaryPlayer,
+                ),
+              }
+            : {}),
+          ...(notification.presentation?.excerpt
+            ? { excerpt: notification.presentation.excerpt }
+            : {}),
+        },
       };
     case 'set_invite':
       if (notification.deepLink.target !== 'set') return neverNotification();
@@ -183,6 +206,29 @@ function mapNotification(notification: NotificationV1): NotificationRecord {
         kind: 'system',
         payload: { deepLink: notification.deepLink },
       };
+  }
+}
+
+function mapPresentationPlayer(player: NotificationPrimaryPlayerV1) {
+  const avatarUrl = mediaUrl(player.avatarAssetId);
+  return {
+    ...(avatarUrl ? { avatarUrl } : {}),
+    displayName: player.displayName,
+    id: player.playerId,
+  };
+}
+
+function mediaUrl(assetId: string | null | undefined) {
+  if (!assetId) return undefined;
+  try {
+    return new URL(
+      `media/${encodeURIComponent(assetId)}`,
+      env.EXPO_PUBLIC_MEDIA_BASE_URL.endsWith('/')
+        ? env.EXPO_PUBLIC_MEDIA_BASE_URL
+        : `${env.EXPO_PUBLIC_MEDIA_BASE_URL}/`,
+    ).toString();
+  } catch {
+    return undefined;
   }
 }
 

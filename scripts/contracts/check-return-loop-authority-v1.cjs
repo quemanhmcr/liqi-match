@@ -21,6 +21,12 @@ const notificationAuthorityRepair = fs.readFileSync(
   notificationAuthorityRepairPath,
   'utf8',
 );
+const notificationPresentationMigrationPath =
+  'supabase/migrations/202607170105_notification_inbox_player_context_v1.sql';
+const notificationPresentationMigration = fs.readFileSync(
+  notificationPresentationMigrationPath,
+  'utf8',
+);
 const conversationProjectionRepairPath =
   'supabase/migrations/202607140050_repair_return_loop_conversation_projection_v1.sql';
 const conversationProjectionRepair = fs.readFileSync(
@@ -376,6 +382,66 @@ requireInvariant(
   /createApiNotificationInboxRepository/.test(applicationComposition) &&
     !/createUnavailableNotificationRepository/.test(applicationComposition),
   'API composition must bind the authoritative Notification repository.',
+);
+
+requireInvariant(
+  /private\.are_players_blocked_v2\([\s\S]*p_viewer_player_id[\s\S]*p_target_player_id/i.test(
+    notificationPresentationMigration,
+  ) &&
+    /private\.player_summary_v1\(p_target_player_id\)/i.test(
+      notificationPresentationMigration,
+    ) &&
+    /target_lifecycle in \('deleting', 'deleted'\)/i.test(
+      notificationPresentationMigration,
+    ),
+  'Notification player context must reuse PlayerSummary authority and fail closed after Social block or deletion.',
+);
+requireInvariant(
+  /message\.id = message_id_value/i.test(notificationPresentationMigration) &&
+    /message\.conversation_id = conversation_id_value/i.test(
+      notificationPresentationMigration,
+    ) &&
+    /message\.sender_player_id_v1 = primary_player_id/i.test(
+      notificationPresentationMigration,
+    ) &&
+    /message\.deleted_at is null/i.test(notificationPresentationMigration) &&
+    /private\.message_summary_json_v1\(message\)\s*->>\s*'preview'/i.test(
+      notificationPresentationMigration,
+    ),
+  'Notification excerpts must come from the exact non-deleted source MessageV1 row and canonical preview authority.',
+);
+requireInvariant(
+  /'presentation', private\.notification_presentation_v1\(p_notification\)/i.test(
+    notificationPresentationMigration,
+  ) &&
+    /create or replace function public\.list_notifications_without_lifecycle_guard_v1/i.test(
+      notificationPresentationMigration,
+    ) &&
+    /private\.notification_to_json_v1\(limited\.notification\)/i.test(
+      notificationPresentationMigration,
+    ),
+  'List and mark-read must serialize one shared enriched notification contract.',
+);
+requireInvariant(
+  /notification\.presentation\?\.primaryPlayer/.test(
+    notificationApiRepository,
+  ) &&
+    /notification\.presentation\?\.excerpt/.test(notificationApiRepository) &&
+    /EXPO_PUBLIC_MEDIA_BASE_URL/.test(notificationApiRepository),
+  'Production Notifications must map provider-owned player context and media URLs without inventing actors.',
+);
+requireInvariant(
+  /match inbox row resolves the authoritative counterpart identity/i.test(
+    databaseTest,
+  ) &&
+    /message inbox excerpt comes from the exact source MessageV1 row/i.test(
+      databaseTest,
+    ) &&
+    /blocking also revokes the private message excerpt/i.test(databaseTest) &&
+    /notification presentation keeps public RPC and private helper privileges separated/i.test(
+      databaseTest,
+    ),
+  'Database coverage must prove identity enrichment, exact excerpts, privilege boundaries and block-time privacy revocation.',
 );
 
 const assertionCount = (

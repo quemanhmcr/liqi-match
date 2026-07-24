@@ -77,7 +77,7 @@ describe('notification view model', () => {
     expect(item.attentionState).toBe('unread');
   });
 
-  it('renders production message and match notifications without invented actor data', () => {
+  it('keeps generic production fallbacks when player context is unavailable', () => {
     const message = mapNotificationToViewModel(
       {
         id: 'notification-message',
@@ -114,6 +114,81 @@ describe('notification view model', () => {
     expect(match.action?.destination).toEqual({
       kind: 'match',
       matchId: 'match-1',
+    });
+  });
+
+  it('renders production message and match notifications from authoritative player context', () => {
+    const message = mapNotificationToViewModel(
+      {
+        id: 'notification-message-rich',
+        kind: 'message-received',
+        occurredAt: now.toISOString(),
+        payload: {
+          actor: {
+            avatarUrl: 'https://media.example.test/return-a.jpg',
+            displayName: 'Return A',
+            id: 'player-return-a',
+          },
+          conversationId: 'conversation-1',
+          excerpt: 'Chào bạn, mình duo rank nhé?',
+        },
+        readAt: null,
+        recipientId: 'player-1',
+        seenAt: null,
+      },
+      { assetResolver, now },
+    );
+    const match = mapNotificationToViewModel(
+      {
+        id: 'notification-match-rich',
+        kind: 'match-created',
+        occurredAt: now.toISOString(),
+        payload: {
+          matchId: 'match-1',
+          player: {
+            avatarUrl: 'https://media.example.test/return-a.jpg',
+            displayName: 'Return A',
+            id: 'player-return-a',
+          },
+        },
+        readAt: null,
+        recipientId: 'player-1',
+        seenAt: null,
+      },
+      { assetResolver, now },
+    );
+
+    expect(message).toMatchObject({
+      messageParts: ['đã nhắn cho bạn', '“Chào bạn, mình duo rank nhé?”'],
+      title: 'Return A',
+      visual: { kind: 'avatar', tone: 'blue' },
+    });
+    expect(match).toMatchObject({
+      messageParts: ['vừa match với bạn'],
+      title: 'Return A',
+      visual: { kind: 'avatar', tone: 'pink' },
+    });
+
+    const messageWithoutAvatar = mapNotificationToViewModel(
+      {
+        id: 'notification-message-without-avatar',
+        kind: 'message-received',
+        occurredAt: now.toISOString(),
+        payload: {
+          actor: { displayName: 'Return B', id: 'player-return-b' },
+          conversationId: 'conversation-2',
+          excerpt: 'Mình vào trận nhé?',
+        },
+        readAt: null,
+        recipientId: 'player-1',
+        seenAt: null,
+      },
+      { assetResolver, now },
+    );
+    expect(messageWithoutAvatar).toMatchObject({
+      messageParts: ['đã nhắn cho bạn', '“Mình vào trận nhé?”'],
+      title: 'Return B',
+      visual: { kind: 'symbol', tone: 'blue' },
     });
   });
 
